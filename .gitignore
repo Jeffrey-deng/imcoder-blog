@@ -11,5 +11,5 @@ Desktop.ini
 /src/main/webapp/static/upload/article/
 /out/
 /target/
-#/src/main/webapp/WEB-INF/conf/ServerConfig.xml
-#/src/main/webapp/WEB-INF/conf/jdbc.properties
+/src/main/webapp/WEB-INF/conf/ServerConfig.xml
+/src/main/webapp/WEB-INF/conf/jdbc.properties
