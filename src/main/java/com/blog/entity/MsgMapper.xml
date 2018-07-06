@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 消息 -->
+<mapper namespace="msg">
+
+	<!-- 保存私信 -->
+	<insert id="saveLetter" parameterType="letter" >
+		insert into letter (s_uid,r_uid,content,send_time)
+        values (#{s_uid},#{r_uid},#{content},#{send_time})
+	</insert>
+	
+	<!-- 查询所有私信列表  read_status=0未读/1全部 -->
+	<select id="findLetterList" parameterType="hashMap" resultMap="letterMap">
+		select leid,s_uid,r_uid,content,send_time,status,
+			   u.uid as chatuid,nickname,email,description,head_photo,ug.gid,ug.group_name
+		from  letter l left join 
+		     ( user u left join user_group ug on u.gid=ug.gid ) on l.s_uid=u.uid 
+		<where>
+			l.r_uid=#{user.uid}
+			<if test="read_status==0">
+				and status = 0
+			</if>
+		</where>
+		<if test="read_status==1">
+			UNION All
+			select leid,s_uid,r_uid,content,send_time,status,
+				   u.uid as chatuid,nickname,email,description,head_photo,ug.gid,ug.group_name
+			from  letter l left join 
+			     ( user u left join user_group ug on u.gid=ug.gid ) on l.r_uid=u.uid 
+			<where>
+				 l.s_uid=#{user.uid}
+			</where>
+		</if>
+		order by leid desc
+	</select>
+	
+	<resultMap id="letterMap" type="letter">
+		<result column="leid" property="leid"/>
+		<result column="s_uid" property="s_uid"/>
+		<result column="r_uid" property="r_uid"/>
+		<result column="content" property="content"/>
+		<result column="send_time" property="send_time"/>
+		<result column="status" property="status"/>
+		<association property="chatUser" javaType="user" >
+			<result column="chatuid" property="uid"/>
+			<result column="nickname" property="nickname"/>
+			<result column="email" property="email"/>
+			<result column="description" property="description"/>
+			<result column="head_photo" property="head_photo"/>
+			<association property="userGroup" javaType="userGroup" >
+				<result column="gid" property="gid"/>
+				<result column="group_name" property="group_name"/>
+			</association>
+		</association>
+	</resultMap>
+	
+	<!-- 查询系统消息列表  read_status=0 未读 =1全部 -->
+	<select id="findSysMsgList" parameterType="hashMap" resultMap="sysMsgMap">
+		select smid,uid,content,send_time,status
+		from  system_message sm
+		<where>
+			sm.uid=#{user.uid}
+			<if test="read_status==0">
+				and status = 0
+			</if>
+		</where>
+		order by smid desc
+	</select>
+	
+	<resultMap id="sysMsgMap" type="sysMsg">
+		<result column="smid" property="smid"/>
+		<result column="uid" property="uid"/>
+		<result column="content" property="content"/>
+		<result column="send_time" property="send_time"/>
+		<result column="status" property="status"/>
+	</resultMap>
+
+	<insert id="insertSystemMessage" parameterType="sysMsg" >
+		insert into system_message (uid, content, send_time, status) VALUES
+		(#{uid}, #{content},#{send_time},#{status});
+	</insert>
+
+    <update id="updateSystemMessageStatus" parameterType="java.util.List">
+        update system_message set status = 1
+        where status = 0 and smid in
+        <foreach collection="list" index="index" item="item" separator="," open="(" close=")">
+            #{item,jdbcType=INTEGER}
+        </foreach>
+    </update>
+	
+</mapper>

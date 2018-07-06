@@ -1,0 +1,15 @@
+# Windows:
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# java
+*.class
+
+#other
+/src/main/webapp/cloud/user/
+/src/main/webapp/static/upload/article/
+/out/
+/target/
+#/src/main/webapp/WEB-INF/conf/ServerConfig.xml
+#/src/main/webapp/WEB-INF/conf/jdbc.properties
