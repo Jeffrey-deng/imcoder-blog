@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="user">
+
+	<delete id="deleteUser" parameterType="int">
+		delete from user where id=#{id}
+	</delete>
+	
+	<!-- 查询所有 -->
+	<select id="findUserList" resultType="user" parameterType="hashmap">
+		select * from user
+		<!-- 查询时拼装条件 -->
+		<where>
+			<if test="name!=null and name!=''">and name like '%${name}%'</if>
+			<if test="age!=null and age>0">and age=#{age}</if>
+			<if test="phone!=null and phone!=''">and phone=#{phone}</if>
+		</where>
+		 limit ${startRow},${pageSize}
+	</select>
+	
+	<!-- 查询总行数 -->
+	<select id="findUserListCount" resultType="int" parameterType="user">
+		select count(*) from user
+		<where>
+			<if test="name!=null and name!=''">and name like '%${name}%'</if>
+			<if test="age>0">and age=#{age}</if>
+			<if test="phone!=null and phone!=''">and phone=#{phone}</if>
+		</where>
+	</select>
+	
+	<!-- 保存 -->
+	<insert id="saveUser" parameterType="user" useGeneratedKeys="true" keyProperty="uid">
+		insert into user(gid,username,password,nickname,phone,sex,email,description,head_photo,register_time,qq,lock_status)
+		values(#{userGroup.gid},#{username},#{password},#{nickname},#{phone},#{sex},#{email},#{description},#{head_photo},
+		#{register_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler},
+		#{qq},#{lock_status})
+	</insert>
+	
+	<!-- 保存 个人资料-->
+	<update id="saveprofile" parameterType="user" >
+		update user set head_photo=#{head_photo},nickname=#{nickname},phone=#{phone},sex=#{sex},description=#{description},qq=#{qq},weibo=#{weibo},address=#{address},birthday=#{birthday},says=#{says}
+		where uid = #{uid}
+	</update>
+	
+	<resultMap id="userMap" type="user">
+		<result column="uid" property="uid"/>
+		<result column="username" property="username"/>
+		<result column="password" property="password"/>
+		<result column="nickname" property="nickname"/>
+		<result column="phone" property="phone"/>
+		<result column="sex" property="sex"/>
+		<result column="email" property="email"/>
+		<result column="address" property="address"/>
+		<result column="birthday" property="birthday"/>
+		<result column="description" property="description"/>
+		<result column="head_photo" property="head_photo"/>
+		<result column="register_time" property="register_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+		<result column="qq" property="qq"/>
+		<result column="weibo" property="weibo"/>
+		<result column="says" property="says"/>
+		<result column="lock_status" property="lock_status"/>
+		<result column="token" property="token"/>
+		<result column="login_ip" property="loginIP"/>
+		<association property="userGroup" column="gid" javaType="userGroup" >
+			<result column="gid" property="gid"/>
+			<result column="group_name" property="group_name"/>
+		</association>
+	</resultMap>
+
+	<!-- 更新用户令牌 -->
+	<update id="updateTokenAndIp" parameterType="user">
+		update user
+		<set>
+			<if test="token!=null">token=#{token},</if>
+			<if test="loginIP!=null">login_ip=#{loginIP},</if>
+		</set>
+		where uid=#{uid}
+	</update>
+
+	<!-- 更新用户 -->
+	<update id="updateAccount" parameterType="user">
+		update user
+		<set>
+			<if test=" username!=null and username !='' ">username=#{username},</if>
+			<if test=" email!=null and email !='' ">email=#{email},</if>
+			<if test=" password!=null and password !='' ">password=#{password},</if>
+		</set>
+		where uid=#{uid}
+	</update>
+	
+	<!-- 根据用户名或ID、email查询 -->
+	<select id="findUser" parameterType="user" resultMap="userMap">
+		select uid,u.gid,username,password,nickname,phone,sex,email,address,birthday,description,head_photo,register_time,qq,weibo,says,lock_status,token, login_ip,
+			   ug.group_name
+		from user u left join user_group ug on u.gid=ug.gid
+		<where>
+			<choose>
+				<when test="uid>0">uid=#{uid}</when>
+				<when test="username!=null">username=#{username}</when>
+				<when test="email!=null">email=#{email}</when>
+				<otherwise>1=-1</otherwise>
+			</choose>
+			<if test="uid == 0 and username!=null and email!=null and username==email">
+				or email=#{username}
+			</if>
+		</where> limit 1
+	</select>
+	
+<!-- *************************关注 start********************* -->
+	<!-- 检查是否fansUser关注了hostUser -->
+	<select id="checkFollow" parameterType="follow" resultType="int">
+		select count(*) from user_follow where ( uid=#{uid} and fuid=#{fuid} ) 
+	</select>
+	
+	<!-- 保存关注 如果已关注则不插入 由count判断 -->
+	<insert id="saveFollow" parameterType="hashMap">
+		  <selectKey keyProperty="count" resultType="int" order="BEFORE">
+		    select count(*) from user_follow where ( uid=#{follow.uid} and fuid=#{follow.fuid} ) 
+		  </selectKey>
+		  <if test="count==0">
+		   	  insert into user_follow(UID,FUID) values (#{follow.uid},#{follow.fuid})
+		  </if>
+		  <if test="count>0">
+		   	  select count(*) from user_follow where ( uid=#{follow.uid} and fuid=#{follow.fuid} ) 
+		  </if>
+	</insert>
+	
+	<!-- 查询用户关注列表 -->
+	<select id="findFollowList" parameterType="user" resultMap="userMap_contact">
+		select uf.fuid as userid,nickname,sex,email,address,birthday,description,head_photo,register_time,qq,weibo,says,
+			   ug.gid,ug.group_name
+		from  user_follow uf left join 
+		     ( user u left join user_group ug on u.gid=ug.gid ) on uf.fuid=u.uid 
+		<where>
+			uf.uid=#{uid}
+		</where>
+	</select>
+
+	<!-- 查询粉丝关注列表 -->
+	<select id="findFansList" parameterType="user" resultMap="userMap_contact">
+		select uf.uid as userid,nickname,sex,email,address,birthday,description,head_photo,register_time,qq,weibo,says,
+		ug.gid,ug.group_name
+		from  user_follow uf left join
+		( user u left join user_group ug on u.gid=ug.gid ) on uf.uid=u.uid
+		<where>
+			uf.fuid=#{uid}
+		</where>
+	</select>
+	
+	<resultMap id="userMap_contact" type="user">
+		<result column="userid" property="uid"/>
+		<result column="nickname" property="nickname"/>
+		<result column="sex" property="sex"/>
+		<result column="email" property="email"/>
+		<result column="address" property="address"/>
+		<result column="birthday" property="birthday"/>
+		<result column="description" property="description"/>
+		<result column="head_photo" property="head_photo"/>
+		<result column="register_time" property="register_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+		<result column="qq" property="qq"/>
+		<result column="weibo" property="weibo"/>
+		<result column="says" property="says"/>
+		<association property="userGroup" javaType="userGroup" >
+			<result column="gid" property="gid"/>
+			<result column="group_name" property="group_name"/>
+		</association>
+	</resultMap>
+	
+	<!-- 删除关注关系 -->
+	<delete id="deleteFollow" parameterType="follow" >
+		delete from user_follow  where ( uid=#{uid} and fuid=#{fuid} ) 
+	</delete>
+
+<!-- *************************关注 end********************* -->
+
+<!-- *************************好友 start********************* -->
+	<!-- 检查是否相互关注 -->
+	<select id="checkMutualFollow" parameterType="follow" resultType="int">
+		select count(*) as cnt from user_follow where
+		 ( uid=#{uid} and fuid=#{fuid} ) or ( uid=#{fuid} and fuid=#{uid} )
+	</select>
+	
+	<!-- 检查是否为好友 -->
+	<select id="checkFriendRalationship" parameterType="friend" resultType="int">
+		select count(*) as cnt from friends where
+		 ( uid=#{uid} and fid=#{fid} ) or ( uid=#{fid} and fid=#{uid} )
+	</select>
+	
+	<!-- 保存好友 -->
+	<insert id="beFriend" parameterType="friend">
+		insert into friends(UID,FID)
+		values(#{uid},#{fid})
+	</insert>
+	
+	<!-- 查询用户好友 -->
+	<select id="findFriendList" parameterType="user" resultMap="userMap_contact">
+		select f.fid as userid,nickname,sex,email,address,birthday,description,head_photo,register_time,qq,weibo,says,
+			   ug.gid,ug.group_name
+		from  friends f left join 
+		     ( user u left join user_group ug on u.gid=ug.gid ) on f.fid=u.uid 
+		<where>
+			f.uid=#{uid}
+		</where>
+	</select>
+	
+	<!-- 删除好友关系 -->
+	<delete id="deleteFriend" parameterType="friend" >
+		delete from friends where
+		 ( uid=#{uid} and fid=#{fid} ) or ( uid=#{fid} and fid=#{uid} )
+	</delete>
+
+<!-- *************************好友 end********************* -->
+
+<!-- *************************收藏 start********************* -->
+	<!-- 检查收藏是否重复 -->
+	<select id="checkCollection" parameterType="collect" resultType="int" >
+		select count(*) from collection where ( uid=#{uid} and aid=#{article_aid} );
+	</select>
+	
+	<!-- 插入用户收藏表行 -->
+	<insert id="saveCollection" parameterType="collect" >
+		insert into collection(uid,aid,clet_time) values(#{uid},#{article_aid},#{clet_time})
+	</insert>
+	
+	<!-- 删除用户收藏表行  -->
+	<insert id="deleteCollection" parameterType="collect" >
+		delete from collection where ( uid=#{uid} and aid=#{article_aid} )
+	</insert>
+	
+	<!-- 查找收藏文章列表 -->
+	<select id="findCollectList" parameterType="user" resultMap="collectListMap">
+		select coid,c.uid,a.aid,a.title,clet_time,
+				u.uid as auid,u.nickname
+		from collection c left join
+				( article a left join user u on a.uid = u.uid )
+			 on c.aid=a.aid
+		where c.uid=#{uid}
+	</select>
+	
+	<resultMap id="collectListMap" type="collect">
+		<result column="coid" property="coid"/>
+		<result column="uid" property="uid"/>
+		<result column="auid" property="author_uid"/>
+		<result column="nickname" property="author_nickname"/>
+		<result column="aid" property="article_aid"/>
+		<result column="title" property="article_title"/>
+		<result column="clet_time" property="clet_time" />
+	</resultMap>
+
+<!-- *************************收藏 end********************* -->	
+</mapper>

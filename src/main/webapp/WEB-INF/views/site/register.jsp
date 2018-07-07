@@ -1,5 +1,6 @@
 <%@ page language="java" import="java.util.*" pageEncoding="UTF-8" %>
-<%@ page import="com.blog.setting.*" %>
+<%@ page import="site.imcoder.blog.setting.Config" %>
+<%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%
     String path = request.getContextPath();
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";

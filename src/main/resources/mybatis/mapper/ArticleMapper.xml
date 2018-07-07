@@ -1,0 +1,417 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="article">
+
+	<!-- 保存文章表 -->
+	<insert id="saveArticle" parameterType="article" useGeneratedKeys="true" keyProperty="aid">
+		insert into article
+		(atid,title,uid,tags,summary,permission,create_time,update_time)
+		values(
+		#{category.atid},#{title},#{author.uid},#{tags},#{summary},#{permission},
+		#{create_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler},
+		#{update_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+		)
+	</insert>
+	
+	<!-- 保存文章詳情表 -->
+	<insert id="saveArticleDetail" parameterType="article" >
+		insert into article_detail
+		(aid,detail) values ( #{aid},#{detail} )
+	</insert>
+	
+	<!-- 更新文章表 -->
+	<update id="updateArticle" parameterType="article" >
+		update article set
+		  atid = #{category.atid},title = #{title},tags = #{tags},
+		  summary = #{summary},permission = #{permission},update_time = #{update_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+		where aid = #{aid}
+	</update>
+	
+	<update id="updateArticleDetail" parameterType="article" >
+		update article_detail set 
+			detail = #{detail} 
+		where aid = #{aid} 
+	</update>
+	
+	<!-- 根据文章id查询 -->
+	<select id="findArticle" parameterType="int" resultMap="articleMap">
+		select uid,a.aid,title,tags,summary,create_time,update_time,click,collection,comment,permission,top,recommend,
+		ad.detail,
+		at.atid,at.atname
+		from ( article a left join article_type at on a.atid=at.atid ) left join article_detail ad on a.aid=ad.aid
+		where a.aid=#{aid} limit 1
+	</select>
+	
+	<resultMap id="articleMap" type="article">
+		<result column="aid" property="aid"/>
+		<result column="title" property="title"/>
+		<result column="tags" property="tags"/>
+		<result column="summary" property="summary"/>
+		<result column="create_time" property="create_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+		<result column="update_time" property="update_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+		<result column="click" property="click"/>
+		<result column="collection" property="collection"/>
+		<result column="comment" property="comment"/>
+		<result column="permission" property="permission"/>
+		<result column="top" property="top"/>
+		<result column="recommend" property="recommend"/>
+		<result column="detail" property="detail"/>
+		<association property="category" column="atid" javaType="category" >
+			<result column="atid" property="atid"/>
+			<result column="atname" property="atname"/>
+		</association>
+		<association property="author" column="uid" javaType="user" select="findUser" />
+	</resultMap>
+	
+	<resultMap id="userMap" type="user">
+		<result column="uid" property="uid"/>
+		<result column="username" property="username"/>
+		<result column="nickname" property="nickname"/>
+		<result column="phone" property="phone"/>
+		<result column="sex" property="sex"/>
+		<result column="email" property="email"/>
+		<result column="address" property="address"/>
+		<result column="birthday" property="birthday"/>
+		<result column="description" property="description"/>
+		<result column="head_photo" property="head_photo"/>
+		<result column="register_time" property="register_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+		<result column="qq" property="qq"/>
+		<result column="weibo" property="weibo"/>
+		<result column="says" property="says"/>
+		<result column="lock_status" property="lock_status"/>
+		<association property="userGroup" column="gid" javaType="userGroup" >
+			<result column="gid" property="gid"/>
+			<result column="group_name" property="group_name"/>
+		</association>
+	</resultMap>
+	
+	<!-- 根据用户ID查询 -->
+	<select id="findUser" parameterType="int" resultMap="userMap">
+		select uid,u.gid,username,nickname,phone,sex,email,address,birthday,description,head_photo,register_time,qq,weibo,says,lock_status,
+				ug.group_name
+		from user u left join user_group ug on u.gid = ug.gid 
+		where uid=#{uid} limit 1
+	</select>
+	
+	
+	<!-- 根据文章条件查询 -->
+	<select id="findArticleList" parameterType="hashMap" resultMap="articleListMap">
+		select a.aid,title,tags,summary,create_time,update_time,click,collection,comment,permission,top,recommend,
+		at.atid,at.atname,
+		u.uid as auid,u.gid,username,nickname,sex,head_photo,lock_status,
+		ug.group_name
+		from ( article a left join article_type at on a.atid=at.atid )
+		     left join ( user u left join user_group ug on u.gid = ug.gid ) 
+		     on a.uid = u.uid 
+		<where>
+			1=1 
+			<if test="condition!=null">
+			    <if test="condition.author != null">
+			   	 	<if test="condition.author.uid!= 0">
+			    		and a.uid = #{condition.author.uid}
+			  		</if>
+			    </if>
+			    <if test="condition.category != null">
+			   		<if test="condition.category.atid!= 0">
+			    		and a.atid = #{condition.category.atid}
+			  		</if>
+			    </if>
+			    <if test="condition.title != null and condition.title!='' ">
+			    	and a.title like '%${condition.title}%'
+			    </if>
+			   <if test="condition.tags != null and condition.tags!='' ">
+			    	and a.tags like '%${condition.tags}%'
+			    </if>
+			    <if test="condition.summary != null and condition.summary!='' ">
+			    	and a.summary like '%${condition.summary}%'
+			    </if>
+			    <if test="condition.create_time != null ">
+			    	and a.create_time &lt;= #{create_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+			    </if>
+			   <if test="condition.update_time != null ">
+			    	and a.update_time &lt;= #{update_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+			    </if>
+			    <if test="condition.click != 0">
+			    	and a.click >= #{condition.click} 
+			    </if>
+			    <if test="condition.top!= 0">
+			    	and a.top = #{condition.top}
+			    </if>
+			    <if test="condition.recommend!= 0">
+			    	and a.recommend = #{condition.recommend}
+			    </if>
+			</if>  
+		    <choose>
+		    	<when test="loginUser!= null and loginUser.uid>0">
+		    		<choose>
+		    		<when test="condition!=null and condition.permission != 0">
+		    			and a.uid=#{loginUser.uid} and a.permission=#{condition.permission}
+		    		</when>
+		    		<otherwise>
+			    		and( ( a.permission = 0 )
+			    			   or
+			    			  ( a.permission = 1
+			    			   		 and 
+			    			   	  (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid = #{loginUser.uid} ) )
+			    			   )
+			    			   or 
+			    			   ( a.permission = 2 and a.uid = #{loginUser.uid} )
+			    			)
+		    		  </otherwise>
+		    		  </choose>
+		    	</when>
+		    	<otherwise>
+		    	    and a.permission=0
+		    	</otherwise>
+		    </choose>
+		</where>
+		order by
+		<if test="condition!=null">
+			<if test="condition.click&lt;0" >
+			    a.click 
+				<if test="condition.click==-1">
+			       desc,
+				</if>
+				<if test="condition.click==-2">
+			       asc,
+				</if>
+			</if>
+		</if>
+		a.aid desc
+		limit #{startRow},#{pageSize}
+	</select>
+	
+	<!-- 根据置顶文章 -->
+	<select id="findTopsList" parameterType="int" resultMap="articleListMap">
+		select a.aid,title,tags,summary,create_time,update_time,click,collection,comment,permission,top,recommend,
+		at.atid,at.atname,
+		u.uid as auid,u.gid,username,nickname,sex,head_photo,lock_status,
+		ug.group_name
+		from ( article a left join article_type at on a.atid=at.atid )
+		     left join ( user u left join user_group ug on u.gid = ug.gid ) 
+		     on a.uid = u.uid 
+		where recommend=1 order by top desc
+		limit #{num}
+	</select>
+	
+	<resultMap id="articleListMap" type="article">
+		<result column="aid" property="aid"/>
+		<result column="title" property="title"/>
+		<result column="tags" property="tags"/>
+		<result column="summary" property="summary"/>
+		<result column="create_time" property="create_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+		<result column="update_time" property="update_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+		<result column="click" property="click"/>
+		<result column="collection" property="collection"/>
+		<result column="comment" property="comment"/>
+		<result column="permission" property="permission"/>
+		<result column="top" property="top"/>
+		<result column="recommend" property="recommend"/>
+		<association property="category" column="atid" javaType="category" >
+			<result column="atid" property="atid"/>
+			<result column="atname" property="atname"/>
+		</association>
+		<association property="author" column="auid" javaType="user" >
+			<result column="auid" property="uid"/>
+			<result column="username" property="username"/>
+			<result column="nickname" property="nickname"/>
+			<result column="sex" property="sex"/>
+			<result column="head_photo" property="head_photo"/>
+			<result column="lock_status" property="lock_status"/>
+			<association property="userGroup" column="gid" javaType="userGroup" >
+				<result column="gid" property="gid"/>
+				<result column="group_name" property="group_name"/>
+			</association>
+		</association>
+	</resultMap>
+	
+	<!-- 根据文章条件查询文章数量 -->
+	<select id="findCount" parameterType="hashMap" resultType="int">
+		select count(*) as count from article a
+		<where>
+			1=1 
+			<if test="condition!=null">
+			    <if test="condition.author != null">
+			   	 	<if test="condition.author.uid!= 0">
+			    		and a.uid = #{condition.author.uid}
+			  		</if>
+			    </if>
+			    <if test="condition.category != null">
+			   		<if test="condition.category.atid!= 0">
+			    		and a.atid = #{condition.category.atid}
+			  		</if>
+			    </if>
+			    <if test="condition.title != null and condition.title!='' ">
+			    	and a.title like '%${condition.title}%'
+			    </if>
+			   <if test="condition.tags != null and condition.tags!='' ">
+			    	and a.tags like '%${condition.tags}%'
+			    </if>
+			    <if test="condition.summary != null and condition.summary!='' ">
+			    	and a.summary like '%${condition.summary}%'
+			    </if>
+			    <if test="condition.create_time != null ">
+			    	and a.create_time &lt;= #{create_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+			    </if>
+			   <if test="condition.update_time != null ">
+			    	and a.update_time &lt;= #{update_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+			    </if>
+			    <if test="condition.click != 0">
+			    	and a.click >= #{condition.click} 
+			    </if>
+			    <if test="condition.top!= 0">
+			    	and a.top = #{condition.top}
+			    </if>
+			    <if test="condition.recommend!= 0">
+			    	and a.recommend = #{condition.recommend}
+			    </if>
+			</if>  
+		    <choose>
+		    	<when test="loginUser!= null and loginUser.uid>0">
+		    		<choose>
+		    		<when test="condition!=null and condition.permission != 0">
+		    			and a.uid=#{loginUser.uid} and a.permission=#{condition.permission}
+		    		</when>
+		    		<otherwise>
+			    		and ( ( a.permission = 0 )
+			    			   or
+			    			  ( a.permission = 1
+			    			   		 and 
+			    			   	  (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid = #{loginUser.uid} ) )
+			    			   )
+			    			   or 
+			    			   ( a.permission = 2 and a.uid = #{loginUser.uid} )
+			    			 )
+		    		  </otherwise>
+		    		  </choose>
+		    	</when>
+		    	<otherwise>
+		    	    and a.permission=0
+		    	</otherwise>
+		    </choose>
+		</where>
+	</select>
+	
+<!-- Comment handle start -->
+
+	<!-- 保存评论 -->
+	<insert id="saveComment" parameterType="comment" >
+		insert into comment (aid,uid,r_cid,content,send_time)
+        values (#{aid},#{user.uid},#{parentid},#{content},#{send_time})
+	</insert>
+	
+	<!-- 根据文章id查询评论列表 -->
+	<select id="findCommentList" parameterType="int" resultMap="commentMap">
+		select cid,aid,r_cid,content,send_time,u.uid,u.nickname,u.head_photo 
+		from comment c left join user u on c.uid=u.uid 
+		where c.aid=#{aid}
+	</select>
+	
+	<resultMap id="commentMap" type="comment" >
+		<result column="cid" property="cid"/>
+		<result column="aid" property="aid"/>
+		<result column="r_cid" property="parentid"/>
+		<result column="content" property="content"/>
+		<result column="send_time" property="send_time"/>
+		<association property="user"  javaType="user">
+			<result column="uid" property="uid" />
+			<result column="nickname" property="nickname"/>
+			<result column="head_photo" property="head_photo"/>
+		</association>
+	</resultMap>
+		
+	<update id="deleteComment_1" parameterType="comment">
+		update comment set content='*已删除*' where cid=#{cid}
+	</update>
+	<delete id="deleteComment_2" parameterType="comment">
+		delete from comment where cid=#{cid}
+	</delete>
+	<select id="selectCmtChildCount" parameterType="comment" resultType="int">
+		select count(*) as rows from comment where r_cid=#{cid}
+	</select>
+
+<!-- Comment handle end -->
+
+<!-- article rank manager start -->
+	<!-- 评论数量 -->
+	<update id="raiseCommentCnt" parameterType="comment">
+		update article set comment=comment+1 where aid=#{aid}
+	</update>
+	<update id="reduceCommentCnt" parameterType="comment">
+		update article set comment=comment-1 where aid=#{aid}
+	</update>
+	<!-- 收藏数量 -->
+	<update id="raiseCollectCnt" parameterType="article">
+		update article set collection=collection+1 where aid=#{aid}
+	</update>
+	<update id="reduceCollectCnt" parameterType="comment">
+		update article set collection=collection-1 where aid=#{aid}
+	</update>
+	<!-- 点击数量 -->
+	<update id="raiseClickCnt" parameterType="article">
+		update article set click=click+1 where aid=#{aid}
+	</update>
+<!-- article rank manager end -->
+
+<!-- article rank find start -->
+	<select id="findClickRankList" parameterType="hashMap" resultType="article">
+		select title,aid,click from article 
+		<where>
+			permission=0
+			<if test="uid!=0">
+				and	uid=#{uid}
+			</if>
+		</where>
+		order by click desc limit #{num}
+	</select>
+	<select id="findCommentRankList" parameterType="hashMap" resultType="article">
+		select title,aid,comment from article 
+		<where>
+			permission=0
+			<if test="uid!=0">
+				and	uid=#{uid}
+			</if>
+		</where>
+		order by comment desc limit #{num}
+	</select>
+	<select id="findCollectRankList" parameterType="hashMap" resultType="article">
+		select title,aid,collent from article
+		<where>
+			permission=0
+			<if test="uid!=0">
+				and	uid=#{uid}
+			</if>
+		</where>
+		 order by collection desc limit #{num}
+	</select>
+	<select id="findNewestList" parameterType="hashMap" resultType="article">
+		select title,aid from article
+		<where>
+			permission=0
+			<if test="uid!=0">
+				and	uid=#{uid}
+			</if>
+		</where>
+		order by aid desc limit #{num}
+	</select>
+	<select id="findCategoryCntList" resultType="article">
+	</select>
+<!-- article rank find end -->
+
+<!-- 删除文章  start -->
+	<delete id="deleteArticle_comment" parameterType="article">
+		delete from comment where aid=#{aid}
+	</delete>
+	<delete id="deleteArticle_collection" parameterType="article">
+		delete from collection where aid=#{aid}
+	</delete>
+	<delete id="deleteArticle_detail" parameterType="article">
+		delete from article_detail where aid=#{aid}
+	</delete>
+	<delete id="deleteArticle" parameterType="article">
+		delete from article where aid=#{aid}
+	</delete>
+<!-- 删除文章 end -->
+</mapper>

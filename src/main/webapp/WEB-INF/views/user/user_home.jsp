@@ -1,5 +1,6 @@
 <%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
-<%@ page import="com.blog.setting.*" %>
+<%@ page import="site.imcoder.blog.setting.Config" %>
+<%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
 <%

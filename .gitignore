@@ -6,16 +6,16 @@ Desktop.ini
 # java
 *.class
 
-#idea
+# idea
 /.idea/
 *.iml
 /out/
 
-#maven
+# maven
 /target/
 
-#other
+# other
 /src/main/webapp/cloud/user/
 /src/main/webapp/static/upload/article/
-/src/main/webapp/WEB-INF/conf/ServerConfig.xml
-/src/main/webapp/WEB-INF/conf/jdbc.properties
+/src/main/resources/server/ServerConfig.xml
+/src/main/resources/server/jdbc.properties

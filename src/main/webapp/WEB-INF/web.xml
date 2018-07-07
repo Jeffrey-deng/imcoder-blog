@@ -8,7 +8,7 @@
     <!--log4j config start! 日志处理 -->
     <context-param>
         <param-name>log4jConfigLocation</param-name>
-        <param-value>/WEB-INF/conf/log4j.properties</param-value>
+        <param-value>classpath:log4j.properties</param-value>
     </context-param>
 
     <!-- 监控配置文件变化 -->
@@ -29,7 +29,7 @@
 
     <!-- Session 监听器 -->
     <listener>
-        <listener-class>com.blog.listener.SessionListener</listener-class>
+        <listener-class>site.imcoder.blog.listener.SessionListener</listener-class>
     </listener>
 
     <!-- 强制https -->
@@ -65,7 +65,7 @@
     <!-- 系统配置文件 -->
     <context-param>
         <param-name>serverConfigLocation</param-name>
-        <param-value>/WEB-INF/conf/ServerConfig.xml</param-value>
+        <param-value>classpath:server/ServerConfig.xml</param-value>
     </context-param>
 
     <!-- spring mvc start-->
@@ -74,7 +74,7 @@
         <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
         <init-param>
             <param-name>contextConfigLocation</param-name>
-            <param-value>/WEB-INF/conf/applicationContext.xml,/WEB-INF/conf/springmvc.xml</param-value>
+            <param-value>classpath:spring/applicationContext.xml,classpath:spring/springmvc.xml</param-value>
         </init-param>
         <load-on-startup>1</load-on-startup>
     </servlet>

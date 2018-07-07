@@ -1,5 +1,6 @@
 <%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
-<%@ page import="com.blog.setting.*" %>
+<%@ page import="site.imcoder.blog.setting.Config" %>
+<%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%
 String path = request.getContextPath();

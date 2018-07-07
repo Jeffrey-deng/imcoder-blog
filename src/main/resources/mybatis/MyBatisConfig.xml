@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+	<!-- 别名 -->
+	<typeAliases>
+		<typeAlias type="site.imcoder.blog.entity.User" alias="user"/>
+		<typeAlias type="site.imcoder.blog.entity.Article" alias="article"/>
+		<typeAlias type="site.imcoder.blog.entity.Comment" alias="comment"/>
+		<typeAlias type="site.imcoder.blog.entity.Category" alias="category"/>
+		<typeAlias type="site.imcoder.blog.entity.UserGroup" alias="userGroup"/>
+		<typeAlias type="site.imcoder.blog.entity.Letter" alias="letter"/>
+		<typeAlias type="site.imcoder.blog.entity.SysMsg" alias="sysMsg"/>
+		<typeAlias type="site.imcoder.blog.entity.Collection" alias="collect"/>
+		<typeAlias type="site.imcoder.blog.entity.Follow" alias="follow"/>
+		<typeAlias type="site.imcoder.blog.entity.Friend" alias="friend"/>
+		<typeAlias type="site.imcoder.blog.entity.Album" alias="album"/>
+		<typeAlias type="site.imcoder.blog.entity.Photo" alias="photo"/>
+	</typeAliases>
+	
+	<!-- 注册类型转换器 -->
+	<typeHandlers>
+    	<typeHandler handler="site.imcoder.blog.dao.typehandler.DateTypeHandler"
+        	javaType="java.util.Date" jdbcType="BIGINT"/>
+	</typeHandlers>
+
+</configuration>

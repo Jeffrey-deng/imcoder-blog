@@ -1,7 +1,8 @@
 ﻿<%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
-<%@ page import="com.blog.setting.*" %>
-<%@ page import="com.blog.common.PageUtil" %>
-<%@ page import="com.blog.entity.Article" %>
+<%@ page import="site.imcoder.blog.common.PageUtil" %>
+<%@ page import="site.imcoder.blog.entity.Article" %>
+<%@ page import="site.imcoder.blog.setting.Config" %>
+<%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
