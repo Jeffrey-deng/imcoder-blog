@@ -2,6 +2,8 @@ package site.imcoder.blog.common;
 
 import com.baidu.aip.speech.AipSpeech;
 import com.baidu.aip.speech.TtsResponse;
+import site.imcoder.blog.setting.Config;
+import site.imcoder.blog.setting.ConfigConstants;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -14,11 +16,17 @@ import java.util.List;
 public class AudioUtil {
 
     //设置APPID/AK/SK
-    public static final String APP_ID = "9927525";
+    public static String APP_ID = null;
 
-    public static final String API_KEY = "RYEDklkobQQKUVijNcpsPExe";
+    public static String API_KEY = null;
 
-    public static final String SECRET_KEY = "9b43953329f2be6ad4fe3997d44cd36d";
+    public static String SECRET_KEY = null;
+
+    public static void updateTokenInfo() {
+        APP_ID = Config.get(ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID);
+        API_KEY = Config.get(ConfigConstants.TOOL_SPEECH_TOKEN_API_KEY);
+        SECRET_KEY = Config.get(ConfigConstants.TOOL_SPEECH_TOKEN_SECRET_KEY);
+    }
 
     public static void main(String[] args) {
         // 初始化一个FaceClient

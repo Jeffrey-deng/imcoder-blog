@@ -170,6 +170,13 @@ public class Config {
         //默认的相册封面，相对于SITE_CLOUD_ADDR
         set(ConfigConstants.ALBUM_DEFAULT_COVER, "res/img/album_default.jpg");
 
+        //文字转语音的百度 token
+        set(ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID, "");
+
+        set(ConfigConstants.TOOL_SPEECH_TOKEN_API_KEY, "");
+
+        set(ConfigConstants.TOOL_SPEECH_TOKEN_SECRET_KEY, "");
+
         EmailUtil.updateAccountInfo();
     }
 }

@@ -7,6 +7,7 @@ import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import site.imcoder.blog.common.AudioUtil;
 import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.common.mail.EmailUtil;
 
@@ -41,6 +42,11 @@ public class ConfigManager {
      * 邮件推送服务标识前缀
      */
     private String emailPushPrefix = ConfigConstants.EMAILPUSH_SMTP_ADDR.substring(0, ConfigConstants.EMAILPUSH_SMTP_ADDR.indexOf('_'));
+
+    /**
+     * 邮件推送服务标识前缀
+     */
+    private String toolSpeechPrefix = ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID.substring(0, ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID.indexOf('_', ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID.indexOf('_') + 1));
 
     @Autowired
     public ConfigManager (ServletContext servletContext) {
@@ -112,6 +118,7 @@ public class ConfigManager {
         loadConfigFromXML(Config.get(ConfigConstants.SERVER_CONFIG_LOCATION), "init");
         initLogFilePath(servletContext);
         EmailUtil.updateAccountInfo();
+        AudioUtil.updateTokenInfo();
         for (Map.Entry<String, String> entry : Config.getAll().entrySet()) {
             // 输出日志
             logger.info("设置 \"" + entry.getKey() + "\" : " + (entry.getKey().equals(ConfigConstants.EMAILPUSH_ACCOUNT_PASSWORD) ? "******" : entry.getValue()));
@@ -190,8 +197,10 @@ public class ConfigManager {
             Config.set(key, value);
             if (key.equals(ConfigConstants.EMAILPUSH_THREAD_NUM)) {
 
-            } else if (key.indexOf("_") != -1 && emailPushPrefix.equals(key.substring(0, key.indexOf("_")))) {
+            } else if (key.indexOf("_") != -1 && key.startsWith(emailPushPrefix)) {
                 EmailUtil.updateAccountInfo();
+            } else if (key.indexOf("_") != -1 && key.startsWith(toolSpeechPrefix)) {
+                AudioUtil.updateTokenInfo();
             }
         }
     }

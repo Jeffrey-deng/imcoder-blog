@@ -136,4 +136,19 @@ public class ConfigConstants {
      */
     public static final String ALBUM_DEFAULT_COVER = "album_default_cover";
 
+    /**
+     * 文字转语音的百度 APP_ID
+     */
+    public static final String TOOL_SPEECH_TOKEN_APP_ID = "tool_speech_token_app_id";
+
+    /**
+     * 文字转语音的百度 API_KEY
+     */
+    public static final String TOOL_SPEECH_TOKEN_API_KEY = "tool_speech_token_api_key";
+
+    /**
+     * 文字转语音的百度 SECRET_KEY
+     */
+    public static final String TOOL_SPEECH_TOKEN_SECRET_KEY = "tool_speech_token_secret_key";
+
 }
