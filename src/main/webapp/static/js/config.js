@@ -24,6 +24,9 @@
             "clipboard": ["lib/clipboard/clipboard.min"],
             "jszip": ["lib/jszip/jszip.min"],
             "domReady": ["lib/requirejs/module/domReady.min"],
+            "jquery_steps": ["lib/steps/jquery.steps.min"],
+            "jquery_validate": ["lib/validate/jquery.validate.min"],
+            "jquery_validate_messages_zh": ["lib/validate/messages_zh"],
 
             "album_photo_handle": ["js/album/module/album_photo_handle"],
             "album_photo_page_handle": ["js/album/module/album_photo_page_handle"],
@@ -47,6 +50,7 @@
             "period_cache": ["js/site/period_cache"],
             "results_cache": ["js/site/results_cache"],
             "index": ["js/site/index"],
+            "register": ["js/site/register"],
             "login_handle": ["js/site/login"],
             "notice": ["js/site/notice"],
             "sideCol": ["js/site/sideCol"],
@@ -64,6 +68,10 @@
             niftymodals: {
                 deps: ['jquery'],
                 exports: 'jQuery.fn.niftyModal'
+            },
+            jquery_steps: {
+                deps: ['jquery'],
+                exports: 'jQuery.fn.jquery_steps'
             }
         },
         waitSeconds: 10,
@@ -90,6 +98,10 @@
                 if (page == "index") {
 
                     require(["jquery", "bootstrap", "domReady", "toastr", "stickUp", "common_utils", "login_handle", "toolbar", "index", "sideCol"]);
+
+                } else if (page == "register") {
+
+                    require(['jquery', 'bootstrap', 'toastr', 'jquery_steps', 'jquery_validate', 'jquery_validate_messages_zh', 'register']);
 
                 } else if (page == "user_home") {
 
@@ -143,12 +155,12 @@
                     require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "clipboard",
                         "magnificPopup", "common_utils", "login_handle", "toolbar", "blowup", "jszip", "period_cache", "results_cache", "album_photo_handle", "album_photo_page_handle", "album_photo_dashboard"]);
 
-                }   else if (page == "album_dashboard") {
+                } else if (page == "album_dashboard") {
 
                     require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "clipboard",
                         "common_utils", "login_handle", "toolbar", "jszip", "period_cache", "album_handle", "album_page_handle", "album_dashboard"]);
 
-                }  else if (page == "album_tags_square") {
+                } else if (page == "album_tags_square") {
 
                     require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "common_utils", "login_handle", "toolbar", "album_page_handle", "album_tags_square"]);
 
@@ -168,7 +180,7 @@
 
                     require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "summernote", "common_utils", "login_handle", "toolbar", "log_view"]);
 
-                }  else if (page == "manager_article_modify") {
+                } else if (page == "manager_article_modify") {
 
                     require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "store2", "clipboard", "summernote", "niftymodals", "common_utils", "login_handle", "toolbar", "edit_tool", "article_modify"]);
 
