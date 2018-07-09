@@ -121,7 +121,7 @@ public class ConfigManager {
         AudioUtil.updateTokenInfo();
         for (Map.Entry<String, String> entry : Config.getAll().entrySet()) {
             // 输出日志
-            logger.info("设置 \"" + entry.getKey() + "\" : " + (entry.getKey().equals(ConfigConstants.EMAILPUSH_ACCOUNT_PASSWORD) ? "******" : entry.getValue()));
+            logger.info("设置 \"" + entry.getKey() + "\" : " + getPublicValue(entry.getValue()));
         }
     }
 
@@ -187,12 +187,12 @@ public class ConfigManager {
     private void updateAssignment(String key, String value) {
         String preValue = Config.get(key);
         if (value.equals(preValue)) {
-            logger.info("更新配置 \"" + key + "\" : " + (key.equals(ConfigConstants.EMAILPUSH_ACCOUNT_PASSWORD) ? "******" : value) + ", 但是因为值与原始值相同，所以未操作！");
+            logger.info("更新配置 \"" + key + "\" : " + getPublicValue(value) + ", 但是因为值与原始值相同，所以未操作！");
         } else {
             if (preValue == null) {
-                logger.warn("更新配置 \"" + key + "\" : " + (key.equals(ConfigConstants.EMAILPUSH_ACCOUNT_PASSWORD) ? "******" : value) + ", 但该key不属于默认配置项！");
+                logger.warn("更新配置 \"" + key + "\" : " + getPublicValue(value) + ", 但该key不属于默认配置项！");
             } else {
-                logger.info("更新配置 \"" + key + "\" : " + (key.equals(ConfigConstants.EMAILPUSH_ACCOUNT_PASSWORD) ? "******" : value));
+                logger.info("更新配置 \"" + key + "\" : " + getPublicValue(value));
             }
             Config.set(key, value);
             if (key.equals(ConfigConstants.EMAILPUSH_THREAD_NUM)) {
@@ -221,6 +221,19 @@ public class ConfigManager {
             filePath = Utils.getContextRealPath() + path;
         }
         return filePath;
+    }
+
+    /**
+     *  隐藏 password
+     * @param value
+     * @return
+     */
+    private String getPublicValue(String value) {
+        if (value != null && (value.equals(ConfigConstants.EMAILPUSH_ACCOUNT_PASSWORD) || value.startsWith(toolSpeechPrefix))) {
+            return "******";
+        } else {
+            return value;
+        }
     }
 
 }

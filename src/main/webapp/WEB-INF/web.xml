@@ -35,7 +35,7 @@
     <!-- 强制https -->
 <!--    <filter>
         <filter-name>Http2HttpsFilter</filter-name>
-        <filter-class>com.blog.filter.Http2HttpsFilter</filter-class>
+        <filter-class>site.imcoder.blog.filter.Http2HttpsFilter</filter-class>
     </filter>
     <filter-mapping>
         <filter-name>Http2HttpsFilter</filter-name>

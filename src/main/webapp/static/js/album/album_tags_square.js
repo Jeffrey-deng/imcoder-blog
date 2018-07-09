@@ -175,7 +175,7 @@
 
         var isInAlbum = params.album_id ? true : false;
         var lastSearchKey = null;
-        var lastViewIndex = 0;
+        var nextViewIndex = 0;
         toolbar.rewriteSearch(function (key) {
             key = key.trim();
             if (isInAlbum) {
@@ -207,13 +207,13 @@
                 }
 
                 if (key == lastSearchKey) {
-                    if (lastViewIndex >= results.length) {
-                        lastViewIndex = 0;
+                    if (nextViewIndex >= results.length) {
+                        nextViewIndex = 0;
                     }
                 } else {
-                    lastViewIndex = 0;
+                    nextViewIndex = 0;
                 }
-                var pageNum = album_page_handle.utils.getAlbumPageNum(results[lastViewIndex].album_id);
+                var pageNum = album_page_handle.utils.getAlbumPageNum(results[nextViewIndex].album_id);
                 var indexAlbum = function (masonryInstance) {
                     common_utils.removeNotify("search_tags_in_album");
                     $.each(results, function (i, result) {
@@ -221,10 +221,10 @@
                             .css("background-color", "#faebcc");
                     });
                     setTimeout(function () {
-                        var span = album_page_handle.utils.getAlbumDom(results[lastViewIndex].album_id).find(".album_name span");
+                        var span = album_page_handle.utils.getAlbumDom(results[nextViewIndex].album_id).find(".album_name span");
                         var scroll = span.offset().top - $(window).height() * (2 / 3);
                         $("html,body").animate({scrollTop: scroll}, 300);
-                        lastViewIndex++;
+                        nextViewIndex++;
                     }, 70);
                     calls.splice(calls.indexOf(indexAlbum), 1);
                 };
