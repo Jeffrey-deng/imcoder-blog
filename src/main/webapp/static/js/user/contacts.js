@@ -6,7 +6,7 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'domReady', 'toastr', 'common_utils','login_handle'], factory);
+        define(['jquery', 'domReady', 'toastr', 'common_utils', 'login_handle'], factory);
     } else {
         // Browser globals
         window.contact = factory(window.jQuery, $(document).ready, toastr, common_utils, login_handle);
@@ -148,7 +148,7 @@
         $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
             var search = "?method=contact";
             $.each(params, function (key, value) {
-                if(key != "method" && key != "action") {
+                if (key != "method" && key != "action") {
                     search += "&" + key + "=" + value;
                 }
             });

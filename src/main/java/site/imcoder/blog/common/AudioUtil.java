@@ -61,10 +61,10 @@ public class AudioUtil {
         DataOutputStream out = null;
         int status = 0;
         try {
-            out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(savePath,true)));
+            out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(savePath, true)));
             for (String str : splitText(text)) {
                 TtsResponse res = client.synthesis(str, "zh", 1, options);
-                if(res.getResult() != null) {
+                if (res.getResult() != null) {
 
                 }
                 out.write(res.getData());
@@ -78,7 +78,7 @@ public class AudioUtil {
             status = -1;
         } finally {
             try {
-                if(out != null)
+                if (out != null)
                     out.close();
             } catch (IOException e) {
                 e.printStackTrace();

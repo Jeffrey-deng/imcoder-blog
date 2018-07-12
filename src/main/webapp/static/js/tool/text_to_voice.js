@@ -25,8 +25,8 @@
 
     function textToVoice(text) {
         /*var notify = common_utils.notify({"timeOut": 4000});
-        notify.config({"timeOut": 0}).success("正在处理。。。", "", "notify_handle");
-        common_utils.removeNotify("notify_handle");*/
+         notify.config({"timeOut": 0}).success("正在处理。。。", "", "notify_handle");
+         common_utils.removeNotify("notify_handle");*/
         var notify_handle = toastr.success("正在处理。。。", "", {"timeOut": 0});
         var options = {};
         options.text = text;
@@ -38,7 +38,7 @@
                 toastr.remove(notify_handle, true);
                 toastr.success("转制成功！");
                 var mp3_html = '<audio controls="controls" style="width:100%">';
-                mp3_html += '<source src="'+ $("#cloudFromSite").attr("href") + data.mp3_url +'" type="audio/mpeg"></audio>';
+                mp3_html += '<source src="' + $("#cloudFromSite").attr("href") + data.mp3_url + '" type="audio/mpeg"></audio>';
                 $('#audio_div').append(mp3_html);
                 //downloadFile(data.fileName, $("#cloudFromSite").attr("href") + data.mp3_url);
             } else {

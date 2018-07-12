@@ -14,6 +14,7 @@ public interface IAlbumDao {
 
     /**
      * 保存相册
+     *
      * @param album
      * @return
      */
@@ -21,6 +22,7 @@ public interface IAlbumDao {
 
     /**
      * 查找相册
+     *
      * @param album
      * @return
      */
@@ -28,6 +30,7 @@ public interface IAlbumDao {
 
     /**
      * 查找相册列表
+     *
      * @param album
      * @param loginUser
      * @return
@@ -36,6 +39,7 @@ public interface IAlbumDao {
 
     /**
      * 更新相册信息
+     *
      * @param album
      * @return
      */
@@ -43,6 +47,7 @@ public interface IAlbumDao {
 
     /**
      * 更新相册封面
+     *
      * @param album
      * @return
      */
@@ -50,6 +55,7 @@ public interface IAlbumDao {
 
     /**
      * 删除相册
+     *
      * @param album
      * @return
      */
@@ -57,6 +63,7 @@ public interface IAlbumDao {
 
     /**
      * 插入照片
+     *
      * @param photo
      * @return
      */
@@ -64,6 +71,7 @@ public interface IAlbumDao {
 
     /**
      * 删除照片
+     *
      * @param photo
      * @return
      */
@@ -71,6 +79,7 @@ public interface IAlbumDao {
 
     /**
      * 更新照片信息
+     *
      * @param photo
      * @return
      */
@@ -78,6 +87,7 @@ public interface IAlbumDao {
 
     /**
      * 查找照片信息
+     *
      * @param photo
      * @return
      */
@@ -85,6 +95,7 @@ public interface IAlbumDao {
 
     /**
      * 查找一个相册下的照片集合
+     *
      * @param album
      * @return
      */
@@ -92,6 +103,7 @@ public interface IAlbumDao {
 
     /**
      * 查找照片集合
+     *
      * @param photo
      * @param logic_conn
      * @param start

@@ -44,6 +44,7 @@ public interface IArticleService {
 
     /**
      * 查找文章列表
+     *
      * @param pageSize  每页篇数
      * @param jumpPage  跳转页
      * @param condition article查找条件

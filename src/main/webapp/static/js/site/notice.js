@@ -11,7 +11,7 @@
         factory(window.jQuery, null, toastr, common_utils);
     }
 })(function ($, bootstrap, toastr, common_utils) {
-    window.page_jump = function(pagenum){
-        document.location.href = "site.do?method=list&jumpPage="+pagenum;
+    window.page_jump = function (pagenum) {
+        document.location.href = "site.do?method=list&jumpPage=" + pagenum;
     };
 });

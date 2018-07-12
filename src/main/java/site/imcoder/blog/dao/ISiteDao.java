@@ -46,6 +46,7 @@ public interface ISiteDao {
 
     /**
      * 管理员更新文章基本信息
+     *
      * @param article
      * @return
      */
@@ -56,6 +57,7 @@ public interface ISiteDao {
 
     /**
      * 清除系统消息未读状态
+     *
      * @param smIdList
      * @return
      */

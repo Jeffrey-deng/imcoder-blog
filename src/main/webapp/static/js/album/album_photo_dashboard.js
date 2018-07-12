@@ -82,7 +82,7 @@
         if (search_input_value) {
             $('#header').find(".toolbar_search_input").val(search_input_value);
         }
-        if(title_prefix && title_prefix == "_") {
+        if (title_prefix && title_prefix == "_") {
             !params.description && !params.name && $("head").find("title").text("所有标签" + " | " + $("head").find("title").text());
         } else if (title_prefix) {
             $("head").find("title").text(title_prefix + " | " + $("head").find("title").text());
@@ -160,19 +160,21 @@
                     var config = context.config;
                     if (!config.hasLoadAll && config.page_params.pageNum == config.page_params.pageCount) {
                         if (context.pointer.album.size == 520 && config.query_size == 520) {
-                            toastr.success("点击加载更多照片", "", {timeOut: 0, onclick: function () {
-                                config.query_size = 0;
-                                config.query_start = context.pointer.album.size;
-                                context.loadAlbumWithPhotos(config, function (data) {
-                                    var photos = context.pointer.album.photos;
-                                    photos.push.apply(photos, data.album.photos);
-                                    context.pointer.album.size = photos.length;
-                                    config.page_params.pageCount = context.utils.calcPageCount();
-                                    context.utils.updateAlbumSizeInPage();
-                                    context.jumpPage(config.page_params.pageNum);
-                                    config.hasLoadAll = true;
-                                });
-                            }});
+                            toastr.success("点击加载更多照片", "", {
+                                timeOut: 0, onclick: function () {
+                                    config.query_size = 0;
+                                    config.query_start = context.pointer.album.size;
+                                    context.loadAlbumWithPhotos(config, function (data) {
+                                        var photos = context.pointer.album.photos;
+                                        photos.push.apply(photos, data.album.photos);
+                                        context.pointer.album.size = photos.length;
+                                        config.page_params.pageCount = context.utils.calcPageCount();
+                                        context.utils.updateAlbumSizeInPage();
+                                        context.jumpPage(config.page_params.pageNum);
+                                        config.hasLoadAll = true;
+                                    });
+                                }
+                            });
                         }
                     }
                 }
@@ -283,7 +285,7 @@
                         } else {
                             updateModal.find('span[name="album_id"]').text(photo.album_id).parent().attr("href", album_url);
                         }
-                        user_base_info_cache.compute(photo.uid).then(function(user) {
+                        user_base_info_cache.compute(photo.uid).then(function (user) {
                             var user_home_url = "user.do?method=home&uid=" + photo.uid;
                             if (user) {
                                 updateModal.find('span[name="user_id"]').text(user.nickname).parent().attr("href", user_home_url);

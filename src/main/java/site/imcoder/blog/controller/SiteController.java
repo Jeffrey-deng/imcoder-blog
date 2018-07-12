@@ -12,7 +12,6 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
 import site.imcoder.blog.Interceptor.LoginRequired;
 import site.imcoder.blog.common.AudioUtil;
-import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.controller.propertyeditors.IntEditor;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.User;
@@ -155,7 +154,7 @@ public class SiteController {
             map.put("flag", 401);
             map.put("info", "未登录");
         } else if (text != null && !text.equals("")) {
-            String dir = Utils.getContextFatherPath() + Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + loginUser.getUid() + "/files/text_to_voice/";
+            String dir = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + loginUser.getUid() + "/files/text_to_voice/";
             File dirFile = new File(dir);
             if (!dirFile.exists()) {
                 dirFile.mkdirs();

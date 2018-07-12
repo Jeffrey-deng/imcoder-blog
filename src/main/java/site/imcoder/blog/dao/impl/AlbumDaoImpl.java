@@ -24,6 +24,7 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
 
     /**
      * 保存相册
+     *
      * @param album
      * @return
      */
@@ -41,6 +42,7 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
 
     /**
      * 查找相册
+     *
      * @param album
      * @return
      */
@@ -51,6 +53,7 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
 
     /**
      * 查找相册列表
+     *
      * @param album
      * @param loginUser
      * @return
@@ -65,6 +68,7 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
 
     /**
      * 更新相册信息
+     *
      * @param album
      * @return
      */
@@ -82,6 +86,7 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
 
     /**
      * 更新相册封面
+     *
      * @param album
      * @return
      */
@@ -99,6 +104,7 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
 
     /**
      * 删除相册
+     *
      * @param album
      * @return
      */
@@ -116,6 +122,7 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
 
     /**
      * 插入照片
+     *
      * @param photo
      * @return
      */
@@ -133,6 +140,7 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
 
     /**
      * 删除照片
+     *
      * @param photo
      * @return
      */
@@ -150,6 +158,7 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
 
     /**
      * 更新照片信息
+     *
      * @param photo
      * @return
      */
@@ -167,6 +176,7 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
 
     /**
      * 查找照片信息
+     *
      * @param photo
      * @return
      */
@@ -177,15 +187,17 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
 
     /**
      * 查找一个相册下的照片集合
+     *
      * @param album
      * @return
      */
-    public List<Photo> findPhotosFromAlbum(Album album){
+    public List<Photo> findPhotosFromAlbum(Album album) {
         return this.getSqlSession().selectList("album.findPhotosFromAlbum", album);
     }
 
     /**
      * 查找照片集合
+     *
      * @param photo
      * @param logic_conn
      * @param start

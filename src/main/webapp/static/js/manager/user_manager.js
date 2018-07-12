@@ -12,9 +12,9 @@
         factory(window.jQuery, null, $(document).ready, null);
     }
 })(function ($, bootstrap, domReady, toastr) {
-    domReady(function() {
+    domReady(function () {
         $('#user_tds').find('tr').each(function (index, tr) {
-            if(index == 0) return;
+            if (index == 0) return;
             $(tr).click(function () {
                 var uid = $(this).attr('uid');
                 $.get("user.do?method=profile", {"uid": uid}, function (user) {

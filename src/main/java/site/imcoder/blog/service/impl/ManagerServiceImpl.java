@@ -189,16 +189,15 @@ public class ManagerServiceImpl implements IManagerService {
     }
 
     /**
-     *
      * @return int
-     *           403 ： 不是管理员
-     *           401 ： 未登录
-     *           200 ： 是管理员
+     * 403 ： 不是管理员
+     * 401 ： 未登录
+     * 200 ： 是管理员
      */
-    private int isAdmin(User loginUser){
+    private int isAdmin(User loginUser) {
         if (loginUser == null) {
             return 401;
-        } else if(loginUser.getUserGroup().getGid() == 1){
+        } else if (loginUser.getUserGroup().getGid() == 1) {
             return 200;
         } else {
             return 403;

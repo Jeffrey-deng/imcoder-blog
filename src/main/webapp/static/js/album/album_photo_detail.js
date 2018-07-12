@@ -44,11 +44,11 @@
             });
         }
     }
-    
+
     function addFeaturedBtnBasedRemote(album_id) {
         var callback = function (album_id) {
             $("#main .album_options .options_right").prepend(
-            '<a class="option_featured" itemtype="url" href="photo.do?method=dashboard&mode=photo&album_id=' + album_id + '&tags=精选" target="_blank">精选</a>'
+                '<a class="option_featured" itemtype="url" href="photo.do?method=dashboard&mode=photo&album_id=' + album_id + '&tags=精选" target="_blank">精选</a>'
             );
         };
         var isLoadNew = true;
@@ -72,11 +72,19 @@
         if (isLoadNew) {
             $.get("photo.do?method=photoListByAjax", {"album_id": album_id, "tags": "精选"}, function (data) {
                 if (data.flag == 200 && data.photos && data.photos.length > 0) {
-                    featured_info_cache[album_id] = {"album_id": album_id, "featured": "true", "time": new Date().getTime()};
+                    featured_info_cache[album_id] = {
+                        "album_id": album_id,
+                        "featured": "true",
+                        "time": new Date().getTime()
+                    };
                     localStorage.setItem("featured_info_cache", JSON.stringify(featured_info_cache));
                     callback(album_id);
                 } else {
-                    featured_info_cache[album_id] = {"album_id": album_id, "featured": "false", "time": new Date().getTime()};
+                    featured_info_cache[album_id] = {
+                        "album_id": album_id,
+                        "featured": "false",
+                        "time": new Date().getTime()
+                    };
                     localStorage.setItem("featured_info_cache", JSON.stringify(featured_info_cache));
                 }
             });
@@ -232,23 +240,26 @@
         });
 
         // dragenter .album_options
-        $(document.body).on("dragenter", function(e){
+        $(document.body).on("dragenter", function (e) {
             var types = e.originalEvent.dataTransfer.types;
             if (types && types.indexOf("Files") != -1) {
                 e.stopPropagation();
                 e.preventDefault();
                 if (!common_utils.getNotify("dragUpload_notify")) {
-                    common_utils.notify({"timeOut": 0, "progressBar": false}).success("松开鼠标上传", "", "dragUpload_notify");
+                    common_utils.notify({
+                        "timeOut": 0,
+                        "progressBar": false
+                    }).success("松开鼠标上传", "", "dragUpload_notify");
                 }
             }
         });
         // dragover
-        $(document.body).on("dragover", function(e){
+        $(document.body).on("dragover", function (e) {
             e.preventDefault();
             e.stopPropagation();
         });
         // drop
-        $(document.body).on("drop", function(e){
+        $(document.body).on("drop", function (e) {
             e.preventDefault();
             e.stopPropagation();
             var files = e.originalEvent.dataTransfer.files;

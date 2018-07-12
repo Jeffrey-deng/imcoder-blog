@@ -155,7 +155,7 @@ public class ArticleController {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> queryMap = articleService.detail(aid, loginUser);
         convertStatusCodeToWord(queryMap, "flag", "info");
-        if (((int)queryMap.get("flag")) == 404) {
+        if (((int) queryMap.get("flag")) == 404) {
             queryMap.put("info", "无此文章");
         }
         return queryMap;
@@ -299,6 +299,7 @@ public class ArticleController {
 
     /**
      * description:获得排行榜列表
+     *
      * @param uid  是否查询所有还是单个 uid=0 为查询所有
      * @param size list长度 默认5
      * @return {clickRankList, newestList, hotTagList}
@@ -314,11 +315,12 @@ public class ArticleController {
 
     /**
      * 文章删除接口
+     *
      * @param article      文章id
      * @param validateCode 验证码
      * @param session      登陆
-     * @return  flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此文章，500: 失败
-     *           info - 提示
+     * @return flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此文章，500: 失败
+     * info - 提示
      */
     @LoginRequired
     @RequestMapping(params = "method=delete")
@@ -346,8 +348,8 @@ public class ArticleController {
      * @param isImage  是否是图片
      * @param request
      * @param session
-     * @return  flag - 200：成功，400: 参数错误，401：需要登录，500: 失败
-     *           info - 提示
+     * @return flag - 200：成功，400: 参数错误，401：需要登录，500: 失败
+     * info - 提示
      */
     @LoginRequired
     @RequestMapping(params = "method=attachmentUpload")
@@ -441,7 +443,7 @@ public class ArticleController {
         map.put("flag", flag);
         if (flag == 200) {
             map.put("info", "删除成功");
-        } else if (flag == 404){
+        } else if (flag == 404) {
             map.put("info", "文件不存在 或 该链接不属于本站");
         } else {
             map.put("info", "错误");

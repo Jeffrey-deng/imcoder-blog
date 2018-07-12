@@ -16,9 +16,9 @@
             url: "manager.do?method=load_log",
             data: params,
             type: "GET",
-            complete: function(XHR, TS) {
+            complete: function (XHR, TS) {
                 if (XHR.status == 200 || XHR.status == 304) {
-                    if(XHR.getResponseHeader('Content-Length') !== "0") {
+                    if (XHR.getResponseHeader('Content-Length') !== "0") {
                         var data = XHR.responseText;
                         if (data) {
                             toastr.success("加载成功！");
@@ -55,7 +55,7 @@
                     var params = common_utils.parseURL(document.location.href).params;
                     var search = "?method=log_view";
                     $.each(params, function (key, value) {
-                        if(key != "method" && key != "type") {
+                        if (key != "method" && key != "type") {
                             search += "&" + key + "=" + value;
                         }
                     });

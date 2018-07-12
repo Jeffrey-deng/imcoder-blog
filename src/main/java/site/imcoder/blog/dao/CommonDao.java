@@ -11,7 +11,7 @@ import javax.annotation.Resource;
 public abstract class CommonDao extends SqlSessionDaoSupport {
 
     @Resource
-    public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory){
+    public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
         super.setSqlSessionFactory(sqlSessionFactory);
     }
 

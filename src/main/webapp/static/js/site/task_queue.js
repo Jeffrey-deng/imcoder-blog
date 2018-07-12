@@ -21,7 +21,7 @@
      *  methods: append
      *      appends a task to the Queue. Queue will only call a task when the previous task has finished
      */
-    var TaskQueue = function(handler) {
+    var TaskQueue = function (handler) {
         var tasks = [];
         // empty resolved deferred object
         var deferred = $.when();
@@ -47,7 +47,7 @@
         }
 
         // appends a task.
-        this.append = function(task) {
+        this.append = function (task) {
             // add to the array
             tasks.push(task);
             // handle the next task

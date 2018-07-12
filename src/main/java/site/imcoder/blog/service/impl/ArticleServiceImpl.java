@@ -71,6 +71,7 @@ public class ArticleServiceImpl implements IArticleService {
 
     /**
      * 更新文章
+     *
      * @param article
      * @param loginUser
      * @return flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此文章，500: 失败
@@ -152,6 +153,7 @@ public class ArticleServiceImpl implements IArticleService {
 
     /**
      * 查找文章列表
+     *
      * @param pageSize  每页篇数
      * @param jumpPage  跳转页
      * @param condition article查找条件

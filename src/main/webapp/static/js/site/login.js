@@ -5,7 +5,7 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery','bootstrap', 'toastr', 'common_utils'], factory);
+        define(['jquery', 'bootstrap', 'toastr', 'common_utils'], factory);
     } else {
         // Browser globals
         window.login_handle = factory(window.jQuery, null, toastr, common_utils);
@@ -26,7 +26,7 @@
         login_form: null,
         login_modal: null
     };
-    
+
     var config = {
         //保存跳转链接 默认刷新本页面
         jumpUrl: window.location.href,
@@ -38,11 +38,11 @@
         },
         uid: 0
     };
-    
+
     var replaceConfig = function (options) {
         init(options);
     };
-    
+
     var init = function (options) {
         $.extend(true, config, options);
         if (!$(config.selector.uid_element).attr("uid") && common_utils.cookieUtil.get("login_status") == "true") {
@@ -66,7 +66,7 @@
         (refresh === undefined) && (refresh = true);
         var uid_ele = $(config.selector.uid_element).attr("uid");
         var need_login = common_utils.cookieUtil.get("login_status") == "false" || uid_ele == undefined || uid_ele == "";
-        if ( need_login && window.location.href.indexOf("method=jumpLogin") == -1) {
+        if (need_login && window.location.href.indexOf("method=jumpLogin") == -1) {
             var data = {};
             data.uid = common_utils.cookieUtil.get("uid");
             data.token = common_utils.cookieUtil.get("token");
@@ -98,7 +98,7 @@
             });
         }
     };
-    
+
     var bindEvent = function () {
         pointer.login_form.find('.login_submit').click(function () {
             var form = {};
@@ -121,10 +121,10 @@
         $(config.selector.loginModal_trigger).click(function () {
             showLoginModal();
         });
-        if(pointer.login_modal.length > 0){
+        if (pointer.login_modal.length > 0) {
             pointer.login_form.find('input[name="remember"]').click(function (e) {
                 var remember = $(e.currentTarget).prop('checked');
-                if(remember) {
+                if (remember) {
                     //toastr.success("关闭记住密码请点击导航栏退出登录", {"timeOut": "8000"});
                     toastr.success("同一IP下会保持登录状态", "已开启自动登录", {"timeOut": "6000"});
                 } else {
@@ -134,7 +134,7 @@
         }
 
     };
-    
+
     /**
      * 初始化JumpUrl
      */
@@ -153,7 +153,7 @@
             config.jumpUrl = decoderUrl;
         }
     };
-    
+
     /**
      * 跳转到登录
      * @param {String} url - 跳转链接
@@ -169,7 +169,7 @@
             window.location.href = "user.do?method=jumpLogin&continue=" + encoderUrl;
         }
     };
-    
+
     /** 弹出登录框
      * @param {String} url - 登录后跳转的链接，为最高优先级，可以不填
      * @param {Function} call - 登录后执行的回调函数，可以不填
@@ -200,7 +200,7 @@
         isRememberLogin() && pointer.login_form.find('input[name="remember"]').prop("checked", true);
         pointer.login_modal.modal({backdrop: 'static', keyboard: false});
     };
-    
+
     //登录请求
     var login = function (form) {
         if (utils.validateParams(form.username, form.password)) {
@@ -260,7 +260,7 @@
             });
         }
     };
-    
+
     /**
      * 验证是否登陆 超过15分钟，强力登陆
      * @returns {Boolean}
@@ -342,7 +342,7 @@
             }
         });
     };
-    
+
     /**
      * 退出登录
      */
@@ -361,7 +361,7 @@
             }
         });
     };
-    
+
     /**
      * 当前登录用户id
      * @returns {String} uid - 用户id
@@ -373,7 +373,7 @@
             return $(config.selector.uid_element).attr('uid');
         }
     };
-    
+
     /**
      * 用户是否记住了密码
      * @returns {boolean}
@@ -385,7 +385,7 @@
             return false;
         }
     };
-    
+
     /**
      * 判断uid是否等于当前登录用户
      * @param {Integer | String} uid - 用户id
@@ -397,9 +397,9 @@
         }
         return validateLogin() && getCurrentUserId() == uid;
     };
-    
+
     var utils = {
-        validateParams: function(username, password) {
+        validateParams: function (username, password) {
             var e = true;
             if (username == "") {
                 toastr.info("未填写账号！");
@@ -412,7 +412,7 @@
             return e;
         },
         //判断是否登录后刷新原来的页面
-        IsCurrentPage: function(jumpUrl) {
+        IsCurrentPage: function (jumpUrl) {
             return (window.location.href == jumpUrl) || (jumpUrl.indexOf('#') === 0);
         },
         go: function (jumpUrl) {
@@ -423,7 +423,7 @@
             window.location.href = jumpUrl;
         }
     };
-    
+
     var context = {
         "replaceConfig": replaceConfig,
         "init": init,
@@ -440,6 +440,6 @@
     };
 
     context.init();
-    
+
     return context;
 });

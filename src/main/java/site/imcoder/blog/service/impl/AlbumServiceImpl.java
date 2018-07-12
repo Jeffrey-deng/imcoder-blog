@@ -3,7 +3,6 @@ package site.imcoder.blog.service.impl;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.cache.Cache;
-import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.dao.IAlbumDao;
 import site.imcoder.blog.entity.Album;
 import site.imcoder.blog.entity.Friend;
@@ -36,11 +35,12 @@ public class AlbumServiceImpl implements IAlbumService {
 
     /**
      * 创建相册
+     *
      * @param album
      * @param loginUser
      * @return map
-     *              flag - 200：成功，400: 参数错误，401：需要登录，500：服务器错误
-     *              album - album对象
+     * flag - 200：成功，400: 参数错误，401：需要登录，500：服务器错误
+     * album - album对象
      */
     public Map<String, Object> createAlbum(Album album, User loginUser) {
         Map<String, Object> map = new HashMap<>();
@@ -67,11 +67,12 @@ public class AlbumServiceImpl implements IAlbumService {
 
     /**
      * 只查找相册的信息
+     *
      * @param album
      * @param loginUser
      * @return map
-     *              flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册ID未找到
-     *              album - album对象, 没有photos
+     * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册ID未找到
+     * album - album对象, 没有photos
      */
     @Override
     public Map<String, Object> findAlbumInfo(Album album, User loginUser) {
@@ -115,11 +116,12 @@ public class AlbumServiceImpl implements IAlbumService {
 
     /**
      * 查找出该相册的信息和图片列表
+     *
      * @param album
      * @param loginUser
      * @return map
-     *              flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册未找到
-     *              album - album对象 with photos
+     * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册未找到
+     * album - album对象 with photos
      */
     public Map<String, Object> findAlbumWithPhotos(Album album, User loginUser) {
         Map<String, Object> map = this.findAlbumInfo(album, loginUser);
@@ -137,6 +139,7 @@ public class AlbumServiceImpl implements IAlbumService {
 
     /**
      * 查找相册列表
+     *
      * @param album
      * @param loginUser
      * @return list
@@ -148,6 +151,7 @@ public class AlbumServiceImpl implements IAlbumService {
 
     /**
      * 更新相册
+     *
      * @param album
      * @param loginUser
      * @return flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册ID未找到，500：服务器错误
@@ -174,6 +178,7 @@ public class AlbumServiceImpl implements IAlbumService {
 
     /**
      * 删除相册
+     *
      * @param album
      * @param loginUser
      * @param deleteFromDisk
@@ -202,12 +207,13 @@ public class AlbumServiceImpl implements IAlbumService {
 
     /**
      * 保存图片
+     *
      * @param file
      * @param photo
      * @param loginUser
      * @return map
-     *              flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册未找到, 500: 服务器错误
-     *              photo - photo对象
+     * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册未找到, 500: 服务器错误
+     * photo - photo对象
      */
     @Override
     public Map<String, Object> savePhoto(MultipartFile file, Photo photo, User loginUser) {
@@ -222,15 +228,15 @@ public class AlbumServiceImpl implements IAlbumService {
             album.setAlbum_id(photo.getAlbum_id());
             Map<String, Object> albumFindMap = this.findAlbumInfo(album, loginUser);
             int albumFindFlag = (int) albumFindMap.get("flag");
-            if(albumFindFlag == 200) {
+            if (albumFindFlag == 200) {
                 Album albumFindAlbum = (Album) albumFindMap.get("album");
-                if(albumFindAlbum.getUser().getUid() == loginUser.getUid()) {
+                if (albumFindAlbum.getUser().getUid() == loginUser.getUid()) {
                     photo.setUid(loginUser.getUid());
                     photo.setUpload_time(new Date());
                     int uid = photo.getUid();
                     int albumId = photo.getAlbum_id();
                     String relativePath = Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + uid + "/album/" + albumId + "/";
-                    String fileName = getMaxPhotoFilename(photo, Utils.getContextFatherPath() + Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath);
+                    String fileName = getMaxPhotoFilename(photo, Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath);
                     boolean isSave = fileService.savePhotoFile(file, photo, relativePath, fileName);
                     if (isSave) {
                         photo.setPath(relativePath + fileName);
@@ -244,7 +250,7 @@ public class AlbumServiceImpl implements IAlbumService {
                             map.put("flag", 200);
                         } else {
                             map.put("flag", 500);
-                            String diskPath = Utils.getContextFatherPath() + Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + photo.getPath();
+                            String diskPath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + photo.getPath();
                             File tempFile = new File(diskPath);
                             if (tempFile.exists() && !tempFile.isDirectory()) {
                                 fileService.delete(diskPath);
@@ -265,6 +271,7 @@ public class AlbumServiceImpl implements IAlbumService {
 
     /**
      * 查找照片
+     *
      * @param photo
      * @param loginUser
      * @return flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 照片未找到
@@ -315,6 +322,7 @@ public class AlbumServiceImpl implements IAlbumService {
 
     /**
      * 删除照片
+     *
      * @param photo
      * @param loginUser
      * @param deleteFromDisk 是否从服务器磁盘删除此照片
@@ -333,7 +341,7 @@ public class AlbumServiceImpl implements IAlbumService {
                 int left = albumDao.deletePhoto(db_photo);
                 if (deleteFromDisk) {
                     // int right = fileService.deleteFileByUrl(db_photo.getPath(), "cloud", request);
-                    String diskPath = Utils.getContextFatherPath() + Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + db_photo.getPath();
+                    String diskPath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + db_photo.getPath();
                     int right = fileService.delete(diskPath);
                     left = left * right;
                 }
@@ -348,6 +356,7 @@ public class AlbumServiceImpl implements IAlbumService {
 
     /**
      * 更新照片
+     *
      * @param photo
      * @param loginUser
      * @return flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 照片未找到，500：服务器错误
@@ -384,6 +393,7 @@ public class AlbumServiceImpl implements IAlbumService {
 
     /**
      * 查找照片集合
+     *
      * @param photo
      * @param logic_conn
      * @param start

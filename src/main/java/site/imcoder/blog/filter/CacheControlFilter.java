@@ -522,7 +522,6 @@ public class CacheControlFilter implements Filter {
         }
 
 
-
     }
 
     private static final Pattern commaSeparatedValuesPattern = Pattern.compile("\\s*,\\s*");
@@ -553,7 +552,7 @@ public class CacheControlFilter implements Filter {
         excludedPageArray = commaDelimitedListToStringArray(filterConfig.getInitParameter("ExcludedPages"));
         excludedResponseStatusCodes = commaDelimitedListToIntArray(filterConfig.getInitParameter(PARAMETER_EXPIRES_EXCLUDED_RESPONSE_STATUS_CODES));
 
-        for (Enumeration<String> names = filterConfig.getInitParameterNames(); names.hasMoreElements();) {
+        for (Enumeration<String> names = filterConfig.getInitParameterNames(); names.hasMoreElements(); ) {
             String name = names.nextElement();
             String value = filterConfig.getInitParameter(name);
             value = (isNotEmpty(value) ? value : "public");
@@ -648,15 +647,15 @@ public class CacheControlFilter implements Filter {
             return false;
         }
 
-        for (String excludedPage: this.excludedPageArray) {
-            if (startsWithIgnoreCase(excludedPage, "*.")){
+        for (String excludedPage : this.excludedPageArray) {
+            if (startsWithIgnoreCase(excludedPage, "*.")) {
                 if (excludedPage.length() > 2) {
                     if (request.getServletPath().endsWith(excludedPage.substring(2))) {
                         return false;
                     }
                 }
             }
-            if(request.getServletPath().equals(excludedPage)){
+            if (request.getServletPath().equals(excludedPage)) {
                 return false;
             }
         }

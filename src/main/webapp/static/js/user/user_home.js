@@ -12,20 +12,21 @@
     }
 })(function ($, bootstrap, domReady, toastr, common_utils) {
 
-    var params = common_utils.parseURL(window.location.href).params;;
-    window.page_jump = function(pagenum){
-        var $auid=$('#h_auid').attr("auid");
-        var page ="user.do?method=home&uid="+$auid;
-        $.each(params,function(key,value){
-            if( key!="method" && key!="jumpPage" && key!="uid"){
-                page +=  "&"+key+"="+value;
+    var params = common_utils.parseURL(window.location.href).params;
+
+    window.page_jump = function (pagenum) {
+        var $auid = $('#h_auid').attr("auid");
+        var page = "user.do?method=home&uid=" + $auid;
+        $.each(params, function (key, value) {
+            if (key != "method" && key != "jumpPage" && key != "uid") {
+                page += "&" + key + "=" + value;
             }
         });
-        page += "&jumpPage="+pagenum;
+        page += "&jumpPage=" + pagenum;
         window.location.href = page;
     };
 
-    domReady( function() {
+    domReady(function () {
 
         $('#userInfo_trigger').click(function () {
             var uid = $(this).attr('uid');

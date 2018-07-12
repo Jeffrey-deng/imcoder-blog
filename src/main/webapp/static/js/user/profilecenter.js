@@ -78,7 +78,12 @@
                     }
                     if (user.address) {
                         var arr_addr = ( user.address ).split('/');
-                        $("#addresssel").citySelect({prov: arr_addr[0], city: arr_addr[1], dist: arr_addr[2], nodata: "none"});
+                        $("#addresssel").citySelect({
+                            prov: arr_addr[0],
+                            city: arr_addr[1],
+                            dist: arr_addr[2],
+                            nodata: "none"
+                        });
                     } else {
                         $("#addresssel").citySelect({prov: "湖南", city: "长沙", dist: "岳麓区", nodata: "none"});
                     }
@@ -555,14 +560,14 @@
         $('a[href="#messages"]').click(function () {
             var smids = "";
             $.each(unreadList.sysMsgs, function (i, sysMsg) {
-                if(sysMsg.status == 0) {
+                if (sysMsg.status == 0) {
                     smids = smids + "_" + sysMsg.smid;
                 }
             });
-            if(smids != "") {
+            if (smids != "") {
                 smids = smids.substring(1);
                 $.post("site.do?method=clearSysMsgStatus", {"smids": smids}, function (data) {
-                    if(data.flag == 200) {
+                    if (data.flag == 200) {
                         console.log("清除未读系统消息成功！");
                     } else {
                         console.log("清除未读系统消息成功！" + data.info);
@@ -743,7 +748,7 @@
                 //倒序遍历
                 for (var i = letterList.length - 1; i >= 0; i--) {
                     var letter = letterList[i];
-                    html += '<div class="chat-message-'+ (letter.s_uid == $uid ? "right" : "left") +'">';
+                    html += '<div class="chat-message-' + (letter.s_uid == $uid ? "right" : "left") + '">';
                     html += '<img class="message-avatar" src="' + (letter.s_uid == $uid ? loginUserHeadPath : (staticPath + letter.chatUser.head_photo) ) + '" alt="">';
                     html += '<div class="message">';
                     html += ' <a class="message-author" target="_blank" href="user.do?method=home&uid=' + letter.s_uid + '">' + (letter.s_uid == $uid ? loginUserNickname : letter.chatUser.nickname) + '</a>';

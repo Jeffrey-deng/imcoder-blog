@@ -71,8 +71,8 @@
         });
 
 
-        var $IMAGE_URL  = "";
-        var NATIVE_IMG  = new Image();
+        var $IMAGE_URL = "";
+        var NATIVE_IMG = new Image();
 
         // Show magnification lens
         var mouseenter_handler = function (e) {
@@ -104,41 +104,41 @@
 
             // Apply styles to lens
             $blowupLens.css({
-                left                  : lensX,
-                top                   : lensY,
-                "background-image"    : "url(" + $IMAGE_URL + ")",
-                "background-size"     : backgroundSize,
-                "background-position" : backPos
+                left: lensX,
+                top: lensY,
+                "background-image": "url(" + $IMAGE_URL + ")",
+                "background-size": backgroundSize,
+                "background-position": backPos
             });
         };
 
         // Hide magnification lens
-        var mouseleave_handler= function (e) {
+        var mouseleave_handler = function (e) {
             $blowupLens.css("visibility", "hidden");
             //NATIVE_IMG = null;
         };
 
-        var removeHandler = (function() {
+        var removeHandler = (function () {
             if (window.removeEventListener) {// 标准浏览器
-                return function(elem, type, handler) {
+                return function (elem, type, handler) {
                     elem.removeEventListener(type, handler, false);
 
                 }
             } else if (window.detachEvent) {// IE浏览器
-                return function(elem, type, handler) {
+                return function (elem, type, handler) {
                     elem.detachEvent("on" + type, handler);
                 }
             }
         })();
 
-        var addHandler = (function() {
+        var addHandler = (function () {
             if (window.addEventListener) {// 标准浏览器
-                return function(elem, type, handler) {
+                return function (elem, type, handler) {
                     elem.addEventListener(type, handler, false);
 
                 }
             } else if (window.detachEvent) {// IE浏览器
-                return function(elem, type, handler) {
+                return function (elem, type, handler) {
                     elem.attachEvent("on" + type, handler);
                 }
             }

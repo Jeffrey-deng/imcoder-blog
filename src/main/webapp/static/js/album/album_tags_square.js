@@ -43,7 +43,7 @@
             }
         });
         if (titleStr) {
-            $("head").find("title").text(titleStr.substring(1) + " | 标签索引 - 相册" );
+            $("head").find("title").text(titleStr.substring(1) + " | 标签索引 - 相册");
         }
 
         var calls = [];
@@ -78,7 +78,7 @@
                                 var tags = photo.tags ? photo.tags.split('#') : [];
                                 $.each(tags, function (i, tag) {
                                     if (tag) {
-                                        if (isSearchTags && tag.indexOf(config.load_condition.tags) == -1){
+                                        if (isSearchTags && tag.indexOf(config.load_condition.tags) == -1) {
                                             return true;
                                         }
                                         var tagInfo = tagsMap[tag];
@@ -141,7 +141,7 @@
                     a.title = album_href_suffix ? ("查看该相册(用户)下的" + album.album_id + "标签") : "点击查看照片";
                     var span = album_node.querySelector("span");
                     span.title = album_href_suffix ? ("查看该相册(用户)下的" + album.album_id + "标签") : "点击查看照片";
-                    span.innerText = span.innerText + "（" + album.count+ "张）";
+                    span.innerText = span.innerText + "（" + album.count + "张）";
                 },
                 "photosOnLoad_callback": function (masonryInstance) {
                     var context = this;
@@ -173,9 +173,9 @@
             album_href_prefix: "photo.do?method=dashboard&mode=photo&tags="
         });
 
-        var isInAlbum = params.album_id ? true : false;
-        var lastSearchKey = null;
-        var nextViewIndex = 0;
+        var isInAlbum = params.album_id ? true : false; //判断当前页面是不是在查看某个相册的标签索引
+        var lastSearchKey = null;   //上一次搜索的key
+        var nextViewIndex = 0;  //当前准备查看的搜索结果数组index
         toolbar.rewriteSearch(function (key) {
             key = key.trim();
             if (isInAlbum) {

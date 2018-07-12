@@ -51,8 +51,9 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 注册用户
+     *
      * @param user
-     * @return  flag - 200：成功，500: 失败
+     * @return flag - 200：成功，500: 失败
      */
     public int register(User user) {
         user.setUserGroup(new UserGroup(0));
@@ -98,10 +99,11 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 根据ID或name email 密码 登陆用户
+     *
      * @param user
      * @param remember
      * @return flag - 200：成功，400: 无参数，401：凭证错误，403：账号冻结，404：无此用户
-     *          user - 用户对象
+     * user - 用户对象
      */
     public Map<String, Object> login(User user, boolean remember) {
         Map<String, Object> map = new HashMap<>();
@@ -115,7 +117,7 @@ public class UserServiceImpl implements IUserService {
             map.put("flag", 404);
         } else if (dbUser.getLock_status() == 1) {
             map.put("flag", 403);
-        // 如果是令牌登录，则判断令牌
+            // 如果是令牌登录，则判断令牌
         } else if (user.getPassword() == null && user.getToken() != null && dbUser.getToken() != null) {
             if ("false".equals(Config.get(ConfigConstants.USER_LOGIN_STRICT)) || user.getLoginIP().equals(dbUser.getLoginIP())) {
                 String token = Utils.MD("MD5", dbUser.getUid() + user.getToken());
@@ -125,7 +127,7 @@ public class UserServiceImpl implements IUserService {
                     map.put("flag", 200);
                 }
             }
-        //如果是密码登录，判断（用户存在且密码相等）
+            //如果是密码登录，判断（用户存在且密码相等）
         } else if (user.getPassword() != null && dbUser.getPassword().equals(Utils.MD("MD5", user.getPassword()))) {
             User cacheUser = cache.getUser(dbUser.getUid(), Cache.READ);
             cacheUser.setLoginIP(user.getLoginIP());
@@ -147,6 +149,7 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 清除自动登录令牌
+     *
      * @param loginUser
      * @return flag - 200：成功，401：需要登录，404：无此用户，500: 失败
      */
@@ -161,6 +164,7 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 根据ID或name email查询用户
+     *
      * @param user
      * @param loginUser
      * @return
@@ -186,6 +190,7 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 根据ID查询用户
+     *
      * @param user
      * @param loginUser
      * @param synchronize 是否从缓存中查找
@@ -201,6 +206,7 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 查询的所有用户
+     *
      * @param currentPage
      * @param user
      * @return
@@ -223,9 +229,10 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 删除用户
+     *
      * @param user
      * @param loginUser
-     * @return  flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
      */
     public int deleteUser(User user, User loginUser) {
         if (loginUser == null) {
@@ -239,9 +246,10 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 更新个人资料
+     *
      * @param user
      * @param loginUser
-     * @return  flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
      */
     public int saveProfile(User user, User loginUser) {
         if (loginUser == null) {
@@ -269,9 +277,10 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 更新账号信息
+     *
      * @param user
      * @param loginUser
-     * @return  flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
      */
     public int updateAccount(User user, User loginUser) {
         if (loginUser == null) {
@@ -296,6 +305,7 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 检查是否fansUser关注了hostUser
+     *
      * @param hostUser
      * @param loginUser
      * @return flag - 200：已关注，404：未关注
@@ -308,7 +318,8 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 关注  相互关注则成为好友
-     * @param hostUser 被关注的用户
+     *
+     * @param hostUser  被关注的用户
      * @param loginUser
      * @return flag - 200：关注成功，201：关注成功并成为好友，204：重复插入，401：需要登录，404：无此用户，500: 失败
      */
@@ -324,7 +335,7 @@ public class UserServiceImpl implements IUserService {
             return 404;
         } else if (index == 11) {
             return 204;
-        }else if (index == 1) {
+        } else if (index == 1) {
             trigger.follow(follow);
             //系统通知
             String message = hostUser.getNickname() + "你好，有新的用户关注了你：<a style=\"color:#18a689;\" href=\"user.do?method=home&uid=" + loginUser.getUid() + "\" target=\"_balnk\" >" + loginUser.getNickname() + "</a>";
@@ -399,6 +410,7 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 查询好友列表
+     *
      * @param loginUser
      * @return
      */
@@ -408,6 +420,7 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 发送私信
+     *
      * @param letter
      * @param loginUser
      * @return flag - 200：发送成功，401：需要登录，500: 失败
@@ -452,6 +465,7 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 点击了文章
+     *
      * @param user
      * @param article
      * @return
@@ -464,6 +478,7 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 检查是否loginUser收藏了此文章
+     *
      * @param article
      * @param user
      * @return flag - 200：已收藏，404：未收藏
@@ -477,7 +492,7 @@ public class UserServiceImpl implements IUserService {
      *
      * @param user
      * @param article
-     * @return  flag - 200：成功，204: 重复插入，401：需要登录，404: 无此文章，500: 失败
+     * @return flag - 200：成功，204: 重复插入，401：需要登录，404: 无此文章，500: 失败
      */
     public int collectArticle(User user, Article article) {
         if (user == null) {
@@ -497,7 +512,7 @@ public class UserServiceImpl implements IUserService {
             String message = article_cache.getAuthor().getNickname() + "你好，有以下用户收藏了你的文章（" + article_cache.getTitle() + "）：<a style=\"color:#18a689;\" href=\"user.do?method=home&uid=" + user.getUid() + "\" target=\"_balnk\" >" + user.getNickname() + "</a>";
             SysMsg sysMsg = new SysMsg(article_cache.getAuthor().getUid(), message, new Date().getTime(), 0);
             siteService.sendSystemMessage(sysMsg);
-        } else if (index == 2)  {
+        } else if (index == 2) {
             return 204;
         }
         return convertRowToHttpCode(index);
@@ -515,6 +530,7 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 取消收藏文章
+     *
      * @param user
      * @param article
      * @return flag - 200：取消成功，401：需要登录，404：无此记录，500: 失败
@@ -535,12 +551,13 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 更新头像
+     *
      * @param file
      * @param user
      * @param fileName
      * @param request
      * @param map
-     * @return  flag - 200：成功，400: 图片为空，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * @return flag - 200：成功，400: 图片为空，401：需要登录，403：无权限，404：无此用户，500: 失败
      */
     @Override
     public int saveHeadPhoto(MultipartFile file, User user, String fileName, HttpServletRequest request, Map map) {

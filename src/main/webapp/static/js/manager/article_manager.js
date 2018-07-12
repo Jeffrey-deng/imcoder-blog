@@ -17,7 +17,7 @@
     function getArticle(aid, articles) {
         var article = null;
         $.each(articles, function (i, value) {
-            if(value.aid == aid) {
+            if (value.aid == aid) {
                 article = value;
                 return false;
             }
@@ -44,13 +44,13 @@
             var article = articles[i];
             html += '<tbody><tr style="height: 50px;" aid="' + article.aid + '">';
             html += '<td name="modifyModal_trigger" style="cursor: pointer;" title="点击编辑"><b>' + article.aid + '</b></td>';
-            html += '<td><a href="article.do?method=detail&aid='+ article.aid +'" target="_blank"><b>' + article.title + '</b></a></td>';
-            html += '<td><a href="user.do?method=home&uid='+ article.author.uid +'"  target="_blank"><i>' + article.author.nickname + '（' + article.author.uid+ '）</i></a></td>';
+            html += '<td><a href="article.do?method=detail&aid=' + article.aid + '" target="_blank"><b>' + article.title + '</b></a></td>';
+            html += '<td><a href="user.do?method=home&uid=' + article.author.uid + '"  target="_blank"><i>' + article.author.nickname + '（' + article.author.uid + '）</i></a></td>';
             html += '<td>' + article.category.atname + '</td>';
             var permission_name = "公开";
-            if(article.permission == 1) {
+            if (article.permission == 1) {
                 permission_name = "好友";
-            } else if (article.permission == 2){
+            } else if (article.permission == 2) {
                 permission_name = "私有";
             }
             html += '<td>' + permission_name + '</td>';
@@ -95,12 +95,12 @@
         });
 
         var navigator_html = '';
-        var pageCount = Math.ceil( articles.length / pageSize );
+        var pageCount = Math.ceil(articles.length / pageSize);
         for (var i = 1; i <= pageCount; i++) {
-            if(pagenum == i) {
-                navigator_html += '<li class="current"><a jumpPage="'+i+'">'+ i+'</a></li>'
+            if (pagenum == i) {
+                navigator_html += '<li class="current"><a jumpPage="' + i + '">' + i + '</a></li>'
             } else {
-                navigator_html += '<li><a jumpPage="'+i+'">'+ i+'</a></li>'
+                navigator_html += '<li><a jumpPage="' + i + '">' + i + '</a></li>'
             }
         }
         $('.page-navigator').html(navigator_html);
@@ -109,8 +109,8 @@
         });
     }
 
-    domReady(function() {
-        $.get("manager.do?method=articleListByAjax",function (data) {
+    domReady(function () {
+        $.get("manager.do?method=articleListByAjax", function (data) {
             if (data.flag == 200) {
                 articles = data.articles;
                 assembleCurrentTableHtml(articles, 1, 20);
@@ -131,17 +131,17 @@
 
         $('#modifyArticleModal button[name="modifyArticle_trigger"]').click(function () {
             var article = {};
-            article.aid =  $('#modifyArticleModal span[name="article_aid"]').html();
+            article.aid = $('#modifyArticleModal span[name="article_aid"]').html();
             article.atid = $('#modifyArticleModal select[name="article_category"]').val();
             article.permission = $("#modifyArticleModal input[name='article_permission']:checked").val();
             article.top = $("#modifyArticleModal input[name='article_top']").val();
             article.recommend = $("#modifyArticleModal input[name='article_recommend']:checked").val();
             $.post("manager.do?method=modifyArticleInfoByManager", article, function (data) {
-                if(data.flag == 200) {
+                if (data.flag == 200) {
                     toastr.success("更新成功");
                     var article_temp = getArticle(article.aid, articles);
                     article_temp.category.atid = article.atid;
-                    article_temp.category.atname = $('#modifyArticleModal option[value="'+ article.atid +'"]').html();
+                    article_temp.category.atname = $('#modifyArticleModal option[value="' + article.atid + '"]').html();
                     article_temp.permission = article.permission;
                     article_temp.top = article.top;
                     article_temp.recommend = article.recommend;

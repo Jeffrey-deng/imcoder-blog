@@ -11,9 +11,9 @@
         factory(window.jQuery, null, $(document).ready, toastr);
     }
 })(function ($, bootstrap, domReady, toastr) {
-    
+
     var configMap = null;
-    
+
     function loadAllConfig(callback) {
         $.get("manager.do?method=getAllConfig", function (data) {
             if (data.flag == 200) {
@@ -24,7 +24,7 @@
             }
         });
     }
-    
+
     domReady(function () {
 
         // 提示吐司  設置
@@ -124,6 +124,6 @@
                 }
             });
         });
-        
+
     });
 });

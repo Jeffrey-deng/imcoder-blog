@@ -16,7 +16,7 @@
         "callback": {
             "action_search": function (key) {
                 if (this.config.location_info.file == "photo.do") {
-                    if (key == ""){
+                    if (key == "") {
                         window.open("photo.do?method=dashboard&mode=photo");
                     } else if (/^[\d]+$/.test(key)) {
                         window.open("photo.do?method=dashboard&mode=photo&photo_id=" + key + "&name=" + key + "&description=" + key + "&tags=" + key + "&logic_conn=or");

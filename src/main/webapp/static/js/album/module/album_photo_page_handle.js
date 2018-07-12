@@ -50,7 +50,7 @@
      $('#photo-content').css('margin-left', '-' + $('#photo-content').width()/2 + 'px');
      $('#photo-content').css('margin-top','-' + $('#photo-content').height()/2 + 'px');
      }*/
-    
+
     var pointer = {
         album: null,
         masonryInstance: null
@@ -110,7 +110,7 @@
             "pageNum": 1,
             "col": undefined
         },
-        album_col : true,
+        album_col: true,
         page_method_address: "album_detail",
         load_condition: null,
         checkPhotoId: 0,
@@ -120,16 +120,16 @@
         $.extend(true, config, options);
         loadAlbumWithPhotos(config, function (data) {
             pointer.album = data.album;
-            if(pointer.album.photos != null) {
+            if (pointer.album.photos != null) {
                 config.page_params.pageCount = utils.calcPageCount();
                 config.page_params.col && (config.album_col = false);
                 bindPopstate();
-                if(config.checkPhotoId > 0) {
+                if (config.checkPhotoId > 0) {
                     jumpPage(utils.getPhotoPageNum(config.checkPhotoId));
                     var params = common_utils.parseURL(window.location.href).params;
                     var search = "?method=" + config.page_method_address;
                     $.each(params, function (key, value) {
-                        if(key != "method" && key != "check") {
+                        if (key != "method" && key != "check") {
                             search += "&" + key + "=" + value;
                         }
                     });
@@ -163,7 +163,7 @@
             var search = "";
             if (config.load_condition) {
                 $.each(config.load_condition, function (key, value) {
-                    if(value && key != "method" && key != "size" && key != "col" && key != "page" && key != "check") {
+                    if (value && key != "method" && key != "size" && key != "col" && key != "page" && key != "check") {
                         search += ", " + key + ": " + value;
                     }
                 });
@@ -179,17 +179,21 @@
             });
         });
     };
-    var loadAlbumWithPhotos = function(config, success) {
+    var loadAlbumWithPhotos = function (config, success) {
         config.callback.loadPhotos_callback.call(context, config, success);
     };
-    var jumpPage = function(pagenum) {
+    var jumpPage = function (pagenum) {
         var photos = pointer.album.photos,
             pageSize = config.page_params.pageSize;
 
         pagenum = utils.revisePageNum(pagenum);
         config.page_params.pageNum = pagenum;
 
-        pointer.notify_pageloading = toastr.success("加载中～", "第"+ config.page_params.pageNum +"页", {"progressBar": false, "timeOut": 0, "closeButton": false});
+        pointer.notify_pageloading = toastr.success("加载中～", "第" + config.page_params.pageNum + "页", {
+            "progressBar": false,
+            "timeOut": 0,
+            "closeButton": false
+        });
 
         // 组装该页的html
         assembleCurrentPageHtml(pagenum);
@@ -200,7 +204,7 @@
                 jumpPage(config.page_params.pageNum - 1);
             } else if (className == "page-right") {
                 jumpPage(config.page_params.pageNum + 1);
-            } else if (className != "separator"){
+            } else if (className != "separator") {
                 jumpPage(_self.getAttribute('jumpPage'))
             }
             config.callback.paginationClick_callback.call(context, _self.parentNode);
@@ -211,7 +215,7 @@
             var uid = parseInt(e.currentTarget.parentNode.getAttribute("data-uid"));
             var isAuthor = login_handle.equalsLoginUser(uid);
             var tips = isAuthor ? "松开鼠标打开编辑窗口~" : "松开鼠标查看图片信息~";
-            pointer.notify_drag = toastr.success(tips, "",{"progressBar": false, "timeOut": 0, "closeButton": false});
+            pointer.notify_drag = toastr.success(tips, "", {"progressBar": false, "timeOut": 0, "closeButton": false});
         });
         $('#' + config.selector.photosContainer_id).find("img").on("dragend", function (e) {
             toastr.remove(pointer.notify_drag, true);
@@ -229,7 +233,7 @@
         var params = common_utils.parseURL(window.location.href).params;
         var search = "?method=" + config.page_method_address;
         $.each(params, function (key, value) {
-            if(key != "method" && key != "page") {
+            if (key != "method" && key != "page") {
                 search += "&" + key + "=" + value;
             }
         });
@@ -279,7 +283,7 @@
         for (var i = (pagenum + 1), max = (pagenum + half < pageCount - 1 ? (pagenum + half) : pageCount); i <= max; i++) {
             navigator_fragment.appendChild(utils.createNavLiNode(i, false));
         }
-        if(pagenum + half < pageCount - 1) {
+        if (pagenum + half < pageCount - 1) {
             navigator_fragment.appendChild(separator.cloneNode(true));
             navigator_fragment.appendChild(utils.createNavLiNode(pageCount, false));
         }
@@ -330,7 +334,7 @@
             return photo;
         },
         "appendPhotoToPage": function (photo) {
-            if(pointer.album.photos == null || pointer.album.photos == undefined) {
+            if (pointer.album.photos == null || pointer.album.photos == undefined) {
                 pointer.album.photos = [];
             }
             pointer.album.photos.push(photo);
@@ -378,7 +382,7 @@
         "calcNavLocation": function () {
             var right = $(config.selector.page_nav).parent();
             var left = right.prev();
-            if(document.body.clientWidth >= 768) {
+            if (document.body.clientWidth >= 768) {
                 left.css("width", "").css("display", "inline-block");
                 right.css("width", "").css("display", "inline-block");
                 var maxWidth = right.parent().width() - left.width();
@@ -424,12 +428,12 @@
                     "parseFiles_callback": function (location_info, options) {
                         // options.photos.slice(0)
                         /*var photo_arr = [];
-                        $.each(options.album.photos, function (i, photo_src) {
-                            var photo = $.extend(true, {}, photo_src);
-                            photo.url = options.cloudPath + photo.path;
-                            photo.location = "photos";
-                            photo_arr.push(photo);
-                        });*/
+                         $.each(options.album.photos, function (i, photo_src) {
+                         var photo = $.extend(true, {}, photo_src);
+                         photo.url = options.cloudPath + photo.path;
+                         photo.location = "photos";
+                         photo_arr.push(photo);
+                         });*/
                         var groupWithAlbum = config.zipPhoto_groupWithAlbum;
                         var photo_arr = options.album.photos;
                         $.each(photo_arr, function (i, photo) {
@@ -446,13 +450,13 @@
                         names.suffix = null;
                         return names;
                     },
-                    "beforeFileDownload_callback": function(photos, names, location_info, options, zip, main_folder) {
+                    "beforeFileDownload_callback": function (photos, names, location_info, options, zip, main_folder) {
                         main_folder.file("photos_info.json", JSON.stringify(options.album));
                         main_folder.file("photos_info_format.txt", common_utils.formatJson(options.album));
-                        var page_info = "url: " + decodeURIComponent(decodeURIComponent(location_info.source)) + "\r\n" + "title: " + document.title + "\r\n" + "search params: " +  options.key;
+                        var page_info = "url: " + decodeURIComponent(decodeURIComponent(location_info.source)) + "\r\n" + "title: " + document.title + "\r\n" + "search params: " + options.key;
                         main_folder.file("page_info.txt", page_info);
                     },
-                    "eachFileOnload_callback": function(blob, photo,  location_info, options, zipFileLength, zip, main_folder, folder) {
+                    "eachFileOnload_callback": function (blob, photo, location_info, options, zipFileLength, zip, main_folder, folder) {
                         var fileName = photo.path.substring(photo.path.lastIndexOf('/') + 1);
                         photo.fileName = fileName;
                         if (blob == null) {
@@ -500,10 +504,10 @@
          });*/
         var col = config.page_params.col;
         var pcCol = col;
-        if(config.album_col) {
+        if (config.album_col) {
             pcCol = pointer.album.show_col;
         }
-        if(pointer.masonryInstance == null) {
+        if (pointer.masonryInstance == null) {
             pointer.masonryInstance = new Macy({
                 container: '#' + config.selector.photosContainer_id, // 图像列表容器id
                 trueOrder: false,
@@ -526,17 +530,17 @@
                         }
                     },
                     940: {
-                        columns: config.album_col && pcCol < 3 ? pcCol : (col?col:3),
+                        columns: config.album_col && pcCol < 3 ? pcCol : (col ? col : 3),
                         margin: {
                             y: 10
                         }
                     },
                     520: {
-                        columns: config.album_col && pcCol < 3 ? pcCol : (col?col:3),
+                        columns: config.album_col && pcCol < 3 ? pcCol : (col ? col : 3),
                         margin: 3
                     },
                     400: {
-                        columns: config.album_col && pcCol < 2 ? pcCol : (col?col:2)
+                        columns: config.album_col && pcCol < 2 ? pcCol : (col ? col : 2)
                     }
                 }
             });
@@ -576,17 +580,17 @@
         }
     };
     var bindPopstate = function () {
-        window.addEventListener('popstate', function(e) {
+        window.addEventListener('popstate', function (e) {
             var data = e.state;
             //console.log(data);
             if (data == null) {
                 return;
             } else if (data.flag == "page" && isMagnificPopupOpen) { // 转到列表界面时，当灯箱未关闭时运行（即只有当点击浏览器返回按钮时运行）
                 $.magnificPopup.close();
-            } else if(data.flag == "check" && !isMagnificPopupOpen) { // 转到详情界面时，当灯箱未开启时运行（即只有当点击浏览器前进按钮时运行）
+            } else if (data.flag == "check" && !isMagnificPopupOpen) { // 转到详情界面时，当灯箱未开启时运行（即只有当点击浏览器前进按钮时运行）
                 var params = common_utils.parseURL(window.location.href).params;
                 var photo_id = params.check;
-                if(photo_id){
+                if (photo_id) {
                     $("#photo_" + photo_id).children().click();
                 }
             }
@@ -634,14 +638,14 @@
                         history.back();
                     }
                 },
-                markupParse: function(template, values, item) {
+                markupParse: function (template, values, item) {
                     // Triggers each time when content of popup changes
                     //console.log('Parsing:', template, values, item);
                     var photo_node = item.el[0].parentNode;
                     var isAuthor = login_handle.equalsLoginUser(parseInt(photo_node.getAttribute("data-uid")));
                     var photo_id = photo_node.getAttribute("data-id");
                     var trigger = null;
-                    if(isAuthor) {
+                    if (isAuthor) {
                         trigger = '<a style="color:white;cursor: pointer;" class="openUpdateModal" photo-id=' + photo_id + ' title="点击编辑图片信息">编辑</a>'
                     } else {
                         trigger = '<a style="color:white;cursor: pointer;" class="openUpdateModal" photo-id=' + photo_id + ' title="点击查看图片信息">属性</a>'
@@ -656,7 +660,7 @@
 
                     //template.find(".mfp-title").width("calc(100% - 40px)");
 
-                    if(isMagnificPopupOpen) { // 灯箱打开的时候不替换，切换的时候替换
+                    if (isMagnificPopupOpen) { // 灯箱打开的时候不替换，切换的时候替换
                         var params = common_utils.parseURL(window.location.href).params;
                         var search = "?method=" + config.page_method_address;
                         $.each(params, function (key, value) {
@@ -672,7 +676,7 @@
                         );
                     }
                 },
-                change: function() {
+                change: function () {
                     //console.log(this.content); // Direct reference to your popup element
                     $(this.content).find(".openUpdateModal").unbind().click(function () {
                         var photo = utils.getPhotoByCache(this.getAttribute("photo-id"));
@@ -702,7 +706,7 @@
                     var name = photoNode.getAttribute('data-name');
                     var desc = photoNode.getAttribute('data-desc');
                     var src = item.el[0].src;
-                    if((!desc) && name) {
+                    if ((!desc) && name) {
                         desc = name;
                         name = "";
                     }

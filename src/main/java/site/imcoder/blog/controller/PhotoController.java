@@ -208,8 +208,8 @@ public class PhotoController {
      * @param request
      * @param session
      * @return map
-     *      flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册ID不存在，500：服务器错误
-     *      photo - photo对象
+     * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册ID不存在，500：服务器错误
+     * photo - photo对象
      */
     @LoginRequired
     @RequestMapping(params = "method=upload")
@@ -228,12 +228,13 @@ public class PhotoController {
 
     /**
      * 照片详情
+     *
      * @param id
      * @param request
      * @param session
      * @return map
-     *          flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 照片未找到
-     *           photo - photo对象
+     * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 照片未找到
+     * photo - photo对象
      */
     @RequestMapping(params = "method=detailByAjax")
     @ResponseBody
@@ -253,6 +254,7 @@ public class PhotoController {
 
     /**
      * 查找照片集合
+     *
      * @param photo
      * @param logic_conn
      * @param query_start
@@ -281,6 +283,7 @@ public class PhotoController {
 
     /**
      * 照片更新
+     *
      * @param photo
      * @param request
      * @param session
@@ -306,12 +309,13 @@ public class PhotoController {
 
     /**
      * 照片删除
+     *
      * @param photo
      * @param request
      * @param session
      * @return map
-     *      flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 照片未找到，500：服务器错误
-     *      info - 详细信息
+     * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 照片未找到，500：服务器错误
+     * info - 详细信息
      */
     @LoginRequired
     @RequestMapping(params = "method=delete")
@@ -331,7 +335,8 @@ public class PhotoController {
 
     /**
      * 打开dashboard
-     * @param mode photo、album
+     *
+     * @param mode    photo、album
      * @param session
      * @param request
      * @return
@@ -350,6 +355,7 @@ public class PhotoController {
 
     /**
      * 打开标签广场
+     *
      * @param session
      * @param request
      * @return

@@ -25,10 +25,11 @@ public interface IFileService {
 
     /**
      * 保存文章中上传的图片或附件
+     *
      * @param file
      * @param relativePath 上传的文件的存储相对路径
-     * @param fileName 图片重命名名字
-     * @param isImage 是否是图片
+     * @param fileName     图片重命名名字
+     * @param isImage      是否是图片
      * @param map
      * @return boolean 是否成功保存
      */
@@ -36,9 +37,10 @@ public interface IFileService {
 
     /**
      * 下载互联网图片
-     * @param url 图片链接
+     *
+     * @param url          图片链接
      * @param relativePath 保存相对路径
-     * @param fileName 图片重命名名字
+     * @param fileName     图片重命名名字
      * @param map
      * @return boolean 是否下载成功
      */
@@ -47,18 +49,20 @@ public interface IFileService {
 
     /**
      * 通过链接删除文件
-     * @param file_url 文件链接
+     *
+     * @param file_url           文件链接
      * @param deleteRelativePath 从哪个基础路径查找此文件
      * @param request
      * @return int
-     *          0 : 删除失败
-     *          1 ：删除成功
-     *          2 ：文件不存在 或 该链接不属于本站
+     * 0 : 删除失败
+     * 1 ：删除成功
+     * 2 ：文件不存在 或 该链接不属于本站
      */
     public int deleteFileByUrl(String file_url, String deleteRelativePath, HttpServletRequest request);
 
     /**
      * 保存用户头像
+     *
      * @param file
      * @param relativePath
      * @param fileName
@@ -68,6 +72,7 @@ public interface IFileService {
 
     /**
      * 保存用户相片
+     *
      * @param file
      * @param photo
      * @param relativePath
@@ -78,6 +83,7 @@ public interface IFileService {
 
     /**
      * 创建相册文件夹
+     *
      * @param relativePath
      * @return
      */

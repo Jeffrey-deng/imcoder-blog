@@ -32,7 +32,7 @@ public class ConfigConstants {
     public static final String ARTICLE_UPLOAD_RELATIVEPATH = "article_upload_relativepath";
 
     /**
-     *  上传文件存储基础路径 相对于context父文件夹
+     * 上传文件存储基础路径 相对于context父文件夹
      */
     public static final String ARTICLE_UPLOAD_BASEPATH = "article_upload_basepath";
 
@@ -42,12 +42,12 @@ public class ConfigConstants {
     public static final String CLOUD_FILE_RELATIVEPATH = "cloud_file_relativepath";
 
     /**
-     *  云盘文件存储基础路径 相对于context父文件夹
+     * 云盘文件存储基础路径 相对于context父文件夹
      */
     public static final String CLOUD_FILE_BASEPATH = "cloud_file_basepath";
 
     /**
-     *  ”关于我“ 对应的文章号
+     * ”关于我“ 对应的文章号
      */
     public static final String SITE_ABOUT_ARTICLE_ID = "site_about_article_id";
 

@@ -16,7 +16,7 @@ public class StopServer implements ApplicationListener<ContextClosedEvent> {
 
     @Override
     public void onApplicationEvent(ContextClosedEvent contextClosedEvent) {
-        if(contextClosedEvent.getApplicationContext().getParent() == null){
+        if (contextClosedEvent.getApplicationContext().getParent() == null) {
             //FileCleaner.getInstance().exitWhenFinished();
             logger.info("停止服务器前做一些处理...");
             //System.gc();

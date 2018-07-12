@@ -416,7 +416,7 @@
     };
     // 手动指定防止循环引用
     PeriodCache.staticContext.utils.context = {
-        "pointer":  PeriodCache.pointer,
+        "pointer": PeriodCache.pointer,
         "groupDefaultConfig": PeriodCache.groupDefaultConfig
     };
 

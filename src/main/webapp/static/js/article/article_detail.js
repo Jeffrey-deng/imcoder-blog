@@ -290,7 +290,7 @@
                             $('#collectArticleBtn').attr("status", "yes")
                             $('#collectArticleBtn').html('<span class="glyphicon glyphicon-star" aria-hidden="true"></span><b> 已收藏</b>');
                             toastr.success("收藏成功！");
-                        } else if (data.flag == 204){
+                        } else if (data.flag == 204) {
                             $('#collectArticleBtn').attr("status", "yes")
                             $('#collectArticleBtn').html('<span class="glyphicon glyphicon-star" aria-hidden="true"></span><b> 已收藏</b>');
                             toastr.success("已经收藏过了，无须再点击");
@@ -517,7 +517,7 @@
                 $("#main .article_header .article_handle").find(".dropdown-toggle").eq(0).click();
                 fullArticleMainArea("no");
             }
-        } else if(!hash) {
+        } else if (!hash) {
             //滚动效果（除去有hash值时）
             $('html, body').animate({scrollTop: x}, 'slow');
         }

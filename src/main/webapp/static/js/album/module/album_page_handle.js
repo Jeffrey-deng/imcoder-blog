@@ -71,7 +71,7 @@
             pointer.albums = data.albums;
             pointer.count = data.albums ? data.albums.length : 0;
 
-            if(pointer.albums != null) {
+            if (pointer.albums != null) {
                 config.page_params.pageCount = utils.calcPageCount();
                 jumpPage(config.page_params.pageNum);
             }
@@ -92,7 +92,7 @@
             var search = "";
             if (config.load_condition) {
                 $.each(config.load_condition, function (key, value) {
-                    if(value && key != "method" && key != "size" && key != "col" && key != "page" && key != "check") {
+                    if (value && key != "method" && key != "size" && key != "col" && key != "page" && key != "check") {
                         search += ", " + key + ": " + value;
                     }
                 });
@@ -103,18 +103,22 @@
         });
     };
 
-    var loadAlbums = function(config, success) {
+    var loadAlbums = function (config, success) {
         config.callback.loadAlbums_callback.call(context, config, success);
     };
 
-    var jumpPage = function(pagenum) {
+    var jumpPage = function (pagenum) {
         var albums = pointer.albums,
             pageSize = config.page_params.pageSize;
 
         pagenum = utils.revisePageNum(pagenum);
         config.page_params.pageNum = pagenum;
 
-        pointer.notify_pageloading = toastr.success("加载中～", "第"+ config.page_params.pageNum +"页", {"progressBar": false, "timeOut": 0, "closeButton": false});
+        pointer.notify_pageloading = toastr.success("加载中～", "第" + config.page_params.pageNum + "页", {
+            "progressBar": false,
+            "timeOut": 0,
+            "closeButton": false
+        });
 
         // 组装该页的html
         assembleCurrentPageHtml(pagenum);
@@ -125,7 +129,7 @@
                 jumpPage(config.page_params.pageNum - 1);
             } else if (className == "page-right") {
                 jumpPage(config.page_params.pageNum + 1);
-            } else if (className != "separator"){
+            } else if (className != "separator") {
                 jumpPage(_self.getAttribute('jumpPage'))
             }
             config.callback.paginationClick_callback.call(context, _self.parentNode);
@@ -140,7 +144,7 @@
             var uid = parseInt(e.currentTarget.parentNode.parentNode.getAttribute("data-uid"));
             var isAuthor = login_handle.equalsLoginUser(uid);
             var tips = isAuthor ? "松开鼠标打开编辑窗口~" : "松开鼠标查看相册信息~";
-            pointer.notify_drag = toastr.success(tips, "",{"progressBar": false, "timeOut": 0, "closeButton": false});
+            pointer.notify_drag = toastr.success(tips, "", {"progressBar": false, "timeOut": 0, "closeButton": false});
         });
         $('#' + config.selector.albumsContainer_id).find("img").on("dragend", function (e) {
             toastr.remove(pointer.notify_drag, true);
@@ -189,7 +193,7 @@
         for (var i = (pagenum + 1), max = (pagenum + half < pageCount - 1 ? (pagenum + half) : pageCount); i <= max; i++) {
             navigator_fragment.appendChild(utils.createNavLiNode(i, false));
         }
-        if(pagenum + half < pageCount - 1) {
+        if (pagenum + half < pageCount - 1) {
             navigator_fragment.appendChild(separator.cloneNode(true));
             navigator_fragment.appendChild(utils.createNavLiNode(pageCount, false));
         }
@@ -206,9 +210,9 @@
     };
 
     // 瀑布流
-    var initWaterfallFlow = function() {
+    var initWaterfallFlow = function () {
         var col = config.page_params.col;
-        if(pointer.masonryInstance == null) {
+        if (pointer.masonryInstance == null) {
             pointer.masonryInstance = new Macy({
                 container: '#' + config.selector.albumsContainer_id, // 图像列表容器id
                 trueOrder: false,
@@ -299,7 +303,7 @@
             return album;
         },
         "appendAlbumToPage": function (album) {
-            if(pointer.albums == null || pointer.albums == undefined) {
+            if (pointer.albums == null || pointer.albums == undefined) {
                 pointer.albums = [];
             }
             pointer.albums.push(album);
@@ -341,7 +345,7 @@
         "calcNavLocation": function () {
             var right = $(config.selector.page_nav).parent();
             var left = right.prev();
-            if(document.body.clientWidth >= 768) {
+            if (document.body.clientWidth >= 768) {
                 left.css("width", "").css("display", "inline-block");
                 right.css("width", "").css("display", "inline-block");
                 var maxWidth = right.parent().width() - left.width();

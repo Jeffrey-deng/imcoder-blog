@@ -231,7 +231,7 @@
         };
         config.callback.beforeUpdateModalOpen.call(context, pointer.updateModal, formatAlbumToModal_callback, album)
     };
-    var context =  {
+    var context = {
         "pointer": pointer,
         "config": config,
         "init": init,

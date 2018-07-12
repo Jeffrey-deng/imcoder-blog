@@ -1,107 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="site">
 
-	<!-- 根据文章条件查询 -->
-	<select id="findArticleBaseList" resultMap="articleListMap">
-		select a.aid,title,click,collection,comment,permission,top,recommend,tags,create_time,
-		at.atid,at.atname,u.uid,u.username,u.nickname
-		from ( article a left join article_type at on a.atid=at.atid ) left join user u on a.uid = u.uid
-		order by a.aid desc
-	</select>
-	
-	<resultMap id="articleListMap" type="article">
-		<result column="aid" property="aid"/>
-		<result column="title" property="title"/>
-		<result column="click" property="click"/>
-		<result column="collection" property="collection"/>
-		<result column="comment" property="comment"/>
-		<result column="permission" property="permission"/>
-		<result column="top" property="top"/>
-		<result column="recommend" property="recommend"/>
-		<result column="tags" property="tags"/>
-		<result column="create_time" property="create_time" javaType="java.util.Date" jdbcType="BIGINT" />
-		<association property="category" column="atid" javaType="category" >
-			<result column="atid" property="atid"/>
-			<result column="atname" property="atname"/>
-		</association>
-		<association property="author" column="uid" javaType="user" >
-			<result column="uid" property="uid"/>
-			<result column="username" property="username"/>
-			<result column="nickname" property="nickname"/>
-		</association>
-	</resultMap>
-	
-	<update id="updateArticleBaseBatch" parameterType="java.util.List">
-		 update article set
-		   click=
-		 <foreach collection="list" item="item" index="index" separator=" " open="case aid" close="end">
-		     when #{item.aid,jdbcType=INTEGER} then #{item.click,jdbcType=INTEGER}
-		 </foreach>
-		 ,comment=
-		 <foreach collection="list" item="item" index="index" separator=" " open="case aid" close="end">
-		     when #{item.aid,jdbcType=INTEGER} then #{item.comment,jdbcType=INTEGER}
-		 </foreach>
-		 ,collection=
-		 <foreach collection="list" item="item" index="index" separator=" " open="case aid" close="end">
-		     when #{item.aid,jdbcType=INTEGER} then #{item.collection,jdbcType=INTEGER}
-		 </foreach>
-		 where aid in
-		 <foreach collection="list" index="index" item="item" separator="," open="(" close=")">
-		     #{item.aid,jdbcType=INTEGER}
-		 </foreach>
-	</update>
+    <!-- 根据文章条件查询 -->
+    <select id="findArticleBaseList" resultMap="articleListMap">
+        select a.aid,title,click,collection,comment,permission,top,recommend,tags,create_time,
+        at.atid,at.atname,u.uid,u.username,u.nickname
+        from ( article a left join article_type at on a.atid=at.atid ) left join user u on a.uid = u.uid
+        order by a.aid desc
+    </select>
 
-	<update id="updateArticleInfoByManager" parameterType="article">
-		update article set atid = #{category.atid} , permission = #{permission} , top = #{top}, recommend = #{recommend} where aid = #{aid}
-	</update>
-	
-	<select id="selectCategoryCount" resultType="category">
-		select tmp.atid,at.atname,tmp.count from ( select atid,count(*) as count from article group by atid ) as tmp left join article_type at on tmp.atid = at.atid  
-	</select>
-	
-	<select id="selectCategory" resultType="category">
-		select atid,atname from article_type;  
-	</select>
-	
-	<select id="selectFriendTable" resultType="friend">
-		select frid,uid,fid from friends
-	</select>
-	
-	<select id="selectFollowTable" resultType="follow">
-		select fwid,uid,fuid from user_follow
-	</select>
-	
-	<resultMap id="userMap" type="user">
-		<result column="uid" property="uid"/>
-		<result column="username" property="username"/>
-		<result column="nickname" property="nickname"/>
-		<result column="phone" property="phone"/>
-		<result column="sex" property="sex"/>
-		<result column="email" property="email"/>
-		<result column="address" property="address"/>
-		<result column="birthday" property="birthday"/>
-		<result column="description" property="description"/>
-		<result column="head_photo" property="head_photo"/>
-		<result column="register_time" property="register_time" javaType="java.util.Date" jdbcType="BIGINT"/>
-		<result column="qq" property="qq"/>
-		<result column="weibo" property="weibo"/>
-		<result column="says" property="says"/>
-		<result column="lock_status" property="lock_status"/>
-		<result column="token" property="token"/>
-		<result column="login_ip" property="loginIP"/>
-		<association property="userGroup" column="gid" javaType="userGroup" >
-			<result column="gid" property="gid"/>
-			<result column="group_name" property="group_name"/>
-		</association>
-	</resultMap>
-	
-	<select id="selectUserTable" resultMap="userMap">
-		select uid,u.gid,username,nickname,phone,sex,email,address,birthday,description,head_photo,register_time,qq,weibo,says,lock_status,token, login_ip,
-			   ug.group_name
-		from user u left join user_group ug on u.gid=ug.gid order by uid desc
-	</select>
-	
+    <resultMap id="articleListMap" type="article">
+        <result column="aid" property="aid"/>
+        <result column="title" property="title"/>
+        <result column="click" property="click"/>
+        <result column="collection" property="collection"/>
+        <result column="comment" property="comment"/>
+        <result column="permission" property="permission"/>
+        <result column="top" property="top"/>
+        <result column="recommend" property="recommend"/>
+        <result column="tags" property="tags"/>
+        <result column="create_time" property="create_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+        <association property="category" column="atid" javaType="category">
+            <result column="atid" property="atid"/>
+            <result column="atname" property="atname"/>
+        </association>
+        <association property="author" column="uid" javaType="user">
+            <result column="uid" property="uid"/>
+            <result column="username" property="username"/>
+            <result column="nickname" property="nickname"/>
+        </association>
+    </resultMap>
+
+    <update id="updateArticleBaseBatch" parameterType="java.util.List">
+        update article set
+        click=
+        <foreach collection="list" item="item" index="index" separator=" " open="case aid" close="end">
+            when #{item.aid,jdbcType=INTEGER} then #{item.click,jdbcType=INTEGER}
+        </foreach>
+        ,comment=
+        <foreach collection="list" item="item" index="index" separator=" " open="case aid" close="end">
+            when #{item.aid,jdbcType=INTEGER} then #{item.comment,jdbcType=INTEGER}
+        </foreach>
+        ,collection=
+        <foreach collection="list" item="item" index="index" separator=" " open="case aid" close="end">
+            when #{item.aid,jdbcType=INTEGER} then #{item.collection,jdbcType=INTEGER}
+        </foreach>
+        where aid in
+        <foreach collection="list" index="index" item="item" separator="," open="(" close=")">
+            #{item.aid,jdbcType=INTEGER}
+        </foreach>
+    </update>
+
+    <update id="updateArticleInfoByManager" parameterType="article">
+        update article set atid = #{category.atid} , permission = #{permission} , top = #{top}, recommend = #{recommend}
+        where aid = #{aid}
+    </update>
+
+    <select id="selectCategoryCount" resultType="category">
+        select tmp.atid,at.atname,tmp.count from ( select atid,count(*) as count from article group by atid ) as tmp
+        left join article_type at on tmp.atid = at.atid
+    </select>
+
+    <select id="selectCategory" resultType="category">
+        select atid,atname from article_type;
+    </select>
+
+    <select id="selectFriendTable" resultType="friend">
+        select frid,uid,fid from friends
+    </select>
+
+    <select id="selectFollowTable" resultType="follow">
+        select fwid,uid,fuid from user_follow
+    </select>
+
+    <resultMap id="userMap" type="user">
+        <result column="uid" property="uid"/>
+        <result column="username" property="username"/>
+        <result column="nickname" property="nickname"/>
+        <result column="phone" property="phone"/>
+        <result column="sex" property="sex"/>
+        <result column="email" property="email"/>
+        <result column="address" property="address"/>
+        <result column="birthday" property="birthday"/>
+        <result column="description" property="description"/>
+        <result column="head_photo" property="head_photo"/>
+        <result column="register_time" property="register_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+        <result column="qq" property="qq"/>
+        <result column="weibo" property="weibo"/>
+        <result column="says" property="says"/>
+        <result column="lock_status" property="lock_status"/>
+        <result column="token" property="token"/>
+        <result column="login_ip" property="loginIP"/>
+        <association property="userGroup" column="gid" javaType="userGroup">
+            <result column="gid" property="gid"/>
+            <result column="group_name" property="group_name"/>
+        </association>
+    </resultMap>
+
+    <select id="selectUserTable" resultMap="userMap">
+        select
+        uid,u.gid,username,nickname,phone,sex,email,address,birthday,description,head_photo,register_time,qq,weibo,says,lock_status,token,
+        login_ip,
+        ug.group_name
+        from user u left join user_group ug on u.gid=ug.gid order by uid desc
+    </select>
+
 </mapper>

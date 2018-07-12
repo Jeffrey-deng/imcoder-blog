@@ -48,7 +48,7 @@ public class FileServiceImpl implements IFileService {
             return FileUtils.deleteQuietly(file) == true ? 1 : 0;
         } else {
             logger.warn("FileDelete path is directory, so not delete:  " + path);
-            return  0;
+            return 0;
         }
     }
 
@@ -73,8 +73,8 @@ public class FileServiceImpl implements IFileService {
      *
      * @param file
      * @param relativePath 上传的文件的存储相对路径
-     * @param fileName 图片重命名名字
-     * @param isImage  是否是图片
+     * @param fileName     图片重命名名字
+     * @param isImage      是否是图片
      * @param map
      * @return boolean 是否成功保存
      */
@@ -123,9 +123,9 @@ public class FileServiceImpl implements IFileService {
     /**
      * 下载互联网图片
      *
-     * @param url      图片链接
+     * @param url          图片链接
      * @param relativePath 保存相对路径
-     * @param fileName 图片重命名名字
+     * @param fileName     图片重命名名字
      * @param map
      * @return boolean 是否下载成功
      */
@@ -165,7 +165,7 @@ public class FileServiceImpl implements IFileService {
     /**
      * 通过链接删除文件
      *
-     * @param file_url       文件链接
+     * @param file_url           文件链接
      * @param deleteRelativePath 从哪个基础路径查找此文件
      * @param request
      * @return int
@@ -183,9 +183,9 @@ public class FileServiceImpl implements IFileService {
         }
         file_url = file_url.substring(index);
 
-        File file = new File(Utils.getContextFatherPath() + Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + file_url);
+        File file = new File(Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + file_url);
         if (!file.exists()) {
-            file =  new File(Utils.getContextFatherPath() + Config.get(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) + file_url);
+            file = new File(Config.get(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) + file_url);
         }
         if (file.exists()) {
             if (file.isDirectory()) {
@@ -226,7 +226,7 @@ public class FileServiceImpl implements IFileService {
      * 获得图片或附件当前日期所在的文件夹
      *
      * @param relativePath
-     * @param isImage  是否为图片
+     * @param isImage      是否为图片
      * @return String{datePath, realPath}
      */
     private void getCurrentFileDateDir(String relativePath, boolean isImage, Map map) {
@@ -238,9 +238,9 @@ public class FileServiceImpl implements IFileService {
         //String realPath = request.getSession().getServletContext().getRealPath(basePath) + datePath;
         String realPath = null;
         if (isImage) {
-            realPath = Utils.getContextFatherPath() + Config.get(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) + relativePath + datePath;
+            realPath = Config.get(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) + relativePath + datePath;
         } else {
-            realPath = Utils.getContextFatherPath() + Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath + datePath;
+            realPath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath + datePath;
         }
         map.put("realPath", realPath);
 
@@ -284,7 +284,7 @@ public class FileServiceImpl implements IFileService {
     @Override
     public boolean saveHeadPhotoFile(MultipartFile file, String relativePath, String fileName) {
         boolean isSave = false;
-        String realPath = Utils.getContextFatherPath() + Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath;
+        String realPath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath;
         createDirs(realPath);
         File head_photo = new File(realPath, fileName);
         try {
@@ -308,7 +308,7 @@ public class FileServiceImpl implements IFileService {
      */
     public boolean savePhotoFile(MultipartFile file, Photo photo, String relativePath, String fileName) {
         boolean isSave = false;
-        String realPath = Utils.getContextFatherPath() + Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath;
+        String realPath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath;
         createDirs(realPath);
         File photoFile = new File(realPath, fileName);
         try {
@@ -331,11 +331,12 @@ public class FileServiceImpl implements IFileService {
 
     /**
      * 创建相册文件夹
+     *
      * @param relativePath
      * @return
      */
-    public void createAlbumFolder(String relativePath){
-        String realPath = Utils.getContextFatherPath() + Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath;
+    public void createAlbumFolder(String relativePath) {
+        String realPath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath;
         this.createDirs(realPath);
     }
 

@@ -49,7 +49,7 @@
         if (search_input_value) {
             toolbar.view.find(".toolbar_search_input").val(search_input_value);
         }
-        if(title_prefix && title_prefix == "_") {
+        if (title_prefix && title_prefix == "_") {
             $("head").find("title").text("所有相册" + " | " + $("head").find("title").text());
         } else if (title_prefix) {
             $("head").find("title").text(title_prefix + " | " + $("head").find("title").text());
@@ -106,7 +106,7 @@
                     var a = album_node.querySelector("a");
                     a.title = album.description;
                     var span = album_node.querySelector("span");
-                    if (login_handle.equalsLoginUser(album.user.uid)){
+                    if (login_handle.equalsLoginUser(album.user.uid)) {
                         span.title = "点击编辑相册";
                     } else {
                         span.title = "点击查看相册信息";

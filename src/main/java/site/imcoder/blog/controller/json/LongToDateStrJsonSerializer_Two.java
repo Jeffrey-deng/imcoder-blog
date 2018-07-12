@@ -12,12 +12,12 @@ import java.util.Locale;
 
 public class LongToDateStrJsonSerializer_Two extends JsonSerializer<Long> {
 
-	@Override
-	public void serialize(Long value, JsonGenerator jgen, SerializerProvider arg2)
-			throws IOException, JsonProcessingException {
-		//Locale 指定为中文，因为阿里云服务器是英文系统
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy年MM月dd日(E) ahh:mm", Locale.SIMPLIFIED_CHINESE);
-		String formattedDate = sdf.format(new Date(value));
-		jgen.writeString(formattedDate);
-	}
+    @Override
+    public void serialize(Long value, JsonGenerator jgen, SerializerProvider arg2)
+            throws IOException, JsonProcessingException {
+        //Locale 指定为中文，因为阿里云服务器是英文系统
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy年MM月dd日(E) ahh:mm", Locale.SIMPLIFIED_CHINESE);
+        String formattedDate = sdf.format(new Date(value));
+        jgen.writeString(formattedDate);
+    }
 } 

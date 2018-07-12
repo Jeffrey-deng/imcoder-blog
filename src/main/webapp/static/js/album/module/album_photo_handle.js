@@ -50,9 +50,9 @@
             },
             "beforeUpdateModalOpen": function (context, updateModal, formatPhotoToModal_callback, photo) {  // 更新窗口打开前回调
                 // 如果openUpdatePhotoModal传入的参数为photo对象，直接使用
-                if (typeof photo  == "object" ) {
+                if (typeof photo == "object") {
                     formatPhotoToModal_callback(photo);
-                // 如果传入的参数为photo_id，异步获取photo对象
+                    // 如果传入的参数为photo_id，异步获取photo对象
                 } else {
                     context.loadPhoto(photo, function (data) {
                         var photo = data.photo;
@@ -107,7 +107,7 @@
 
         //更新图片事件
         pointer.updateModal.find('button[name="updatePhoto_trigger"]').click(function () {
-            var tags_modify_dom =  pointer.updateModal.find('.tags-modify');
+            var tags_modify_dom = pointer.updateModal.find('.tags-modify');
             var tags_input_dom = tags_modify_dom.find(".tag-input");
             if (tags_input_dom.val() != "") {
                 utils.addTagFromInput(tags_modify_dom, tags_input_dom);
@@ -150,7 +150,7 @@
         });
 
         // upload modal tags 输入框 绑定事件
-        var upload_tags_modify_dom =  pointer.uploadModal.find('.tags-modify');
+        var upload_tags_modify_dom = pointer.uploadModal.find('.tags-modify');
         pointer.uploadModal.on('shown.bs.modal', function () {
             utils.calcTagInputWidth(upload_tags_modify_dom);
         });
@@ -165,7 +165,7 @@
             }
         }).blur(function (e) {
             var input_dom = $(e.currentTarget);
-            if(upload_tags_modify_dom.find(".tag-single").length == 0 && input_dom.val() != "") {
+            if (upload_tags_modify_dom.find(".tag-single").length == 0 && input_dom.val() != "") {
                 utils.addTagFromInput(upload_tags_modify_dom, input_dom);
             }
         });
@@ -358,7 +358,7 @@
     var downloadPhoto = function (url, downloadType) {
         downloadType = downloadType || "url";
         if (downloadType == "ajax") {
-            common_utils.ajaxDownload(url, function(blob) {
+            common_utils.ajaxDownload(url, function (blob) {
                 common_utils.downloadBlobFile(blob, url.substring(url.lastIndexOf('/') + 1));
                 toastr.success("已下载！", "", {"progressBar": false});
             });
@@ -368,7 +368,7 @@
         }
     };
     var openUploadPhotoModal = function (files) {
-        if(!login_handle.validateLogin()) {
+        if (!login_handle.validateLogin()) {
             toastr.error("你没有登录！");
             login_handle.jumpLogin();
             return false;
@@ -457,7 +457,7 @@
                 var tags_str = '';
                 $.each(photo.tags.split('#'), function (i, tag) {
                     if (tag) {
-                        tags_str +=  '<span class="tag-single"><a class="tag-content" target="_blank" href="photo.do?method=dashboard&mode=photo&tags=' + tag + '">' + tag + '</a>' +
+                        tags_str += '<span class="tag-single"><a class="tag-content" target="_blank" href="photo.do?method=dashboard&mode=photo&tags=' + tag + '">' + tag + '</a>' +
                             '<span class="tag-close">X</span></span>';
                     }
                 });
@@ -480,7 +480,7 @@
                     }
                 }).blur(function (e) {
                     var input_dom = $(e.currentTarget);
-                    if(tags_modify_dom.find(".tag-single").length == 0 && input_dom.val() != "") {
+                    if (tags_modify_dom.find(".tag-single").length == 0 && input_dom.val() != "") {
                         utils.addTagFromInput(tags_modify_dom, input_dom);
                     }
                 });
@@ -494,7 +494,7 @@
                 var tags_str = '';
                 $.each(photo.tags.split('#'), function (i, tag) {
                     if (tag) {
-                        tags_str += '<span class="tag-single" style="margin-right: 6px;"><a class="tag-content"  target="_blank" href="photo.do?method=dashboard&mode=photo&tags=' + tag + '">' + tag + '</a></span>' ;
+                        tags_str += '<span class="tag-single" style="margin-right: 6px;"><a class="tag-content"  target="_blank" href="photo.do?method=dashboard&mode=photo&tags=' + tag + '">' + tag + '</a></span>';
                     }
                 });
                 tags_modify_dom.html(tags_str);
@@ -518,7 +518,7 @@
                     utils.calcTagInputWidth(tags_modify_dom);
                     //console.log(tags_modify_dom.outerHeight(true) + "_ " + tags_modify_dom.prop("scrollHeight"));
                     tags_modify_dom.autoTextarea({
-                        maxHeight:100,
+                        maxHeight: 100,
                         minHeight: config.tagsAreaHeight,
                         runOnce: true
                     });
@@ -528,7 +528,7 @@
         };
         config.callback.beforeUpdateModalOpen(context, pointer.updateModal, formatPhotoToModal_callback, photo); // 回调
     };
-    var initClipboard = function(bindElementSelector, containerId) {
+    var initClipboard = function (bindElementSelector, containerId) {
         var clipboard = new Clipboard(bindElementSelector, {
             container: $(containerId).get(0) //html所在模态框ID
         });
@@ -592,7 +592,7 @@
             tag_single.remove();
             utils.calcTagInputWidth(tags_modify_dom);
             tags_modify_dom.autoTextarea({
-                maxHeight:100,
+                maxHeight: 100,
                 minHeight: config.tagsAreaHeight,
                 runOnce: true
             });

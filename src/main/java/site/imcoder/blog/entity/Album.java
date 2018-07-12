@@ -67,10 +67,11 @@ public class Album implements Serializable {
 
     /**
      * 添加照片
+     *
      * @param photo
      */
     public void addPhoto(Photo photo) {
-        if(photos == null) {
+        if (photos == null) {
             photos = new ArrayList<Photo>();
         }
         photos.add(photo);
@@ -78,10 +79,11 @@ public class Album implements Serializable {
 
     /**
      * 移除照片
+     *
      * @param photo
      */
     public void removePhoto(Photo photo) {
-        if(photos == null) {
+        if (photos == null) {
             return;
         }
 

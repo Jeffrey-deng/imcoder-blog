@@ -74,6 +74,7 @@ public class FlushCacheTimer extends Timer {
 
     /**
      * 重新启动
+     *
      * @param cache
      */
     public void restart(Cache cache) {

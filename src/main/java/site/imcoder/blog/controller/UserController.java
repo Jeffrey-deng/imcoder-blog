@@ -47,8 +47,9 @@ public class UserController {
 
     /**
      * 注册
+     *
      * @param user
-     * @return  flag - 200：成功，500: 失败
+     * @return flag - 200：成功，500: 失败
      */
     @RequestMapping(params = "method=register")
     @ResponseBody
@@ -56,7 +57,7 @@ public class UserController {
         Map<String, Object> map = new HashMap<String, Object>();
         map.put("flag", userService.register(user));
         convertStatusCodeToWord(map, "flag", "info");
-        return  map;
+        return map;
     }
 
     /**
@@ -69,12 +70,13 @@ public class UserController {
 
     /**
      * 登陆
+     *
      * @param user
      * @param remember
      * @param session
      * @param request
-     * @return  flag - 200：成功，400: 参数错误，401：凭证错误，403：账号冻结，404：无此用户
-     *           loginUser - 用户对象
+     * @return flag - 200：成功，400: 参数错误，401：凭证错误，403：账号冻结，404：无此用户
+     * loginUser - 用户对象
      */
     @RequestMapping(params = "method=login", method = RequestMethod.POST)
     @ResponseBody
@@ -111,6 +113,7 @@ public class UserController {
 
     /**
      * 跳转到 登陆
+     *
      * @param user
      * @param mv
      * @param request
@@ -141,6 +144,7 @@ public class UserController {
 
     /**
      * 查询文章列表(访问主人的主页)
+     *
      * @param jumpPage  跳转页
      * @param condition 条件 article
      * @param session
@@ -148,10 +152,10 @@ public class UserController {
      */
     @RequestMapping(params = "method=home")
     public String list
-        (@RequestParam(defaultValue = "5") int pageSize,
-         @RequestParam(defaultValue = "1") int jumpPage,
-         @RequestParam(defaultValue = "0") int uid,
-         Article condition, HttpServletRequest request, HttpSession session) {
+    (@RequestParam(defaultValue = "5") int pageSize,
+     @RequestParam(defaultValue = "1") int jumpPage,
+     @RequestParam(defaultValue = "0") int uid,
+     Article condition, HttpServletRequest request, HttpSession session) {
         // convert [uid] to [author.uid]
         if (uid > 0) {
             if (condition == null) {
@@ -182,6 +186,7 @@ public class UserController {
 
     /**
      * 转到用户 关注粉丝好友 信息页
+     *
      * @param session
      * @return
      */
@@ -197,13 +202,14 @@ public class UserController {
 
     /**
      * 转到个人中心
+     *
      * @param session
      * @return
      */
     @LoginRequired
     @RequestMapping(params = "method=profilecenter")
     public String profilecenter(HttpSession session) {
-		/* 登陆验证 */
+        /* 登陆验证 */
         User loginUser = (User) session.getAttribute("loginUser");
         if (loginUser != null) {
             return "/user/profilecenter";
@@ -214,6 +220,7 @@ public class UserController {
 
     /**
      * 查询个人资料
+     *
      * @param user
      * @param session
      * @return
@@ -232,9 +239,10 @@ public class UserController {
 
     /**
      * 保存个人资料
+     *
      * @param user
      * @param session
-     * @return  flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
      */
     @LoginRequired
     @RequestMapping(params = "method=saveProfile")
@@ -259,8 +267,9 @@ public class UserController {
 
     /**
      * 检查该邮箱是否存在
+     *
      * @param user username
-     * @return  flag - 200：已存在，404：未使用
+     * @return flag - 200：已存在，404：未使用
      */
     @RequestMapping(params = "method=checkEmail")
     @ResponseBody
@@ -279,8 +288,9 @@ public class UserController {
 
     /**
      * 检查改用户名是否存在
+     *
      * @param user 用户名
-     * @return  flag - 200：已存在，404：未使用
+     * @return flag - 200：已存在，404：未使用
      */
     @RequestMapping(params = "method=checkUsername")
     @ResponseBody
@@ -299,10 +309,11 @@ public class UserController {
 
     /**
      * 更新账号信息
+     *
      * @param user
      * @param validateCode
      * @param session
-     * @return  flag - 200：成功，401：需要登录或验证码错误，403：无权限，404：无此用户，500: 失败
+     * @return flag - 200：成功，401：需要登录或验证码错误，403：无权限，404：无此用户，500: 失败
      */
     @LoginRequired
     @RequestMapping(params = "method=updateAccount")
@@ -314,7 +325,7 @@ public class UserController {
         if (loginUser == null) {
             map.put("flag", 401);
             map.put("info", "未登录");
-        //服务端再与Session中的验证码验证，防止修改html破解
+            //服务端再与Session中的验证码验证，防止修改html破解
         } else if (memValidateCode.equalsIgnoreCase(validateCode)) {
             user.setUid(loginUser.getUid());
             int flag = userService.updateAccount(user, loginUser);
@@ -334,6 +345,7 @@ public class UserController {
 
     /**
      * 检查是否loginUser关注了hostUser
+     *
      * @param hostUser
      * @param session
      * @return flag - 200：已关注，401：需要登录，404：未关注
@@ -361,6 +373,7 @@ public class UserController {
 
     /**
      * 关注，相互关注则成为好友
+     *
      * @param hostUser
      * @param session
      * @return flag - 200：关注成功，201：关注成功并成为好友，204：重复插入，401：需要登录，404：无此用户，500: 失败
@@ -376,7 +389,7 @@ public class UserController {
         convertStatusCodeToWord(map, "flag", "info");
         if (flag == 201) {
             map.put("info", "关注成功并成为好友");
-        } else if (flag == 204){
+        } else if (flag == 204) {
             map.put("info", "重复关注");
         } else if (flag == 404) {
             map.put("info", "无此用户");
@@ -386,6 +399,7 @@ public class UserController {
 
     /**
      * 取消关注
+     *
      * @param hostUser
      * @param session
      * @return flag - 200：取消成功，201：取消成功并取消好友，401：需要登录，404：无此记录，500: 失败
@@ -407,7 +421,8 @@ public class UserController {
 
     /**
      * 查询关注列表
-     * @param user 条件
+     *
+     * @param user    条件
      * @param session
      * @return followList
      */
@@ -425,7 +440,8 @@ public class UserController {
 
     /**
      * 查询粉丝列表
-     * @param user 条件
+     *
+     * @param user    条件
      * @param session
      * @return fansList
      */
@@ -443,6 +459,7 @@ public class UserController {
 
     /**
      * 查询好友列表
+     *
      * @param session
      * @return friendList
      */
@@ -461,6 +478,7 @@ public class UserController {
 
     /**
      * 查询私信列表
+     *
      * @param read_status 0 未读 ，1全部
      * @param session
      * @return
@@ -479,6 +497,7 @@ public class UserController {
 
     /**
      * 查询系统消息列表
+     *
      * @param read_status 0 未读 ，1全部
      * @param session
      * @return
@@ -497,6 +516,7 @@ public class UserController {
 
     /**
      * 查询所有未读消息
+     *
      * @param session
      * @return
      */
@@ -517,9 +537,10 @@ public class UserController {
 
     /**
      * 发送私信
+     *
      * @param letter
      * @param session
-     * @return  flag - 200：发送成功，401：需要登录，500: 失败
+     * @return flag - 200：发送成功，401：需要登录，500: 失败
      */
     @LoginRequired
     @RequestMapping(params = "method=sendLetter")
@@ -535,6 +556,7 @@ public class UserController {
 
     /**
      * 检查是否loginUser收藏了此文章
+     *
      * @param article
      * @param session
      * @return flag - 200：已收藏，401: 未登录，404：未收藏
@@ -562,9 +584,10 @@ public class UserController {
 
     /**
      * 保存收藏
+     *
      * @param session
      * @param article
-     * @return  flag - 200：成功，204: 重复插入，401：需要登录，404: 无此文章，500: 失败
+     * @return flag - 200：成功，204: 重复插入，401：需要登录，404: 无此文章，500: 失败
      */
     @LoginRequired
     @RequestMapping(params = "method=collectArticle")
@@ -585,9 +608,10 @@ public class UserController {
 
     /**
      * 删除收藏
+     *
      * @param session
      * @param article
-     * @return  flag - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * @return flag - 200：取消成功，401：需要登录，404：无此记录，500: 失败
      */
     @LoginRequired
     @RequestMapping(params = "method=unCollectArticle")
@@ -603,6 +627,7 @@ public class UserController {
 
     /**
      * 请求收藏文章列表
+     *
      * @param session
      * @return
      */
@@ -620,8 +645,9 @@ public class UserController {
 
     /**
      * 安全退出
+     *
      * @param session
-     * @return  flag - 200：成功，401：需要登录，404：无此用户，500: 失败
+     * @return flag - 200：成功，401：需要登录，404：无此用户，500: 失败
      */
     @LoginRequired
     @RequestMapping(params = "method=logout")

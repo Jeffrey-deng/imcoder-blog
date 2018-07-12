@@ -31,25 +31,23 @@ public interface IManagerService {
     public Map<String, Object> getAllConfig(User loginUser);
 
     /**
-     *
      * @return
      */
     public Map<String, Object> getBlogInfo(User loginUser);
 
     /**
-     *
      * @return
      */
     public Map<String, Object> getUserList(User loginUser);
 
     /**
-     *
      * @return
      */
     public Map<String, Object> getArticleInfoList(User loginUser);
 
     /**
      * 管理员更新文章基本信息
+     *
      * @param article
      * @return
      */

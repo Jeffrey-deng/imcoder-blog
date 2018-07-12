@@ -47,6 +47,7 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
 
     /**
      * 尝试登录
+     *
      * @param request
      * @param response
      * @param session
@@ -145,6 +146,7 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
 
     /**
      * 某个请求是否ajax请求
+     *
      * @param request
      * @return
      */
@@ -163,7 +165,7 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
         if (handler.getClass().isAssignableFrom(HandlerMethod.class)) {
             HttpSession session = request.getSession();
             User loginUser = (User) session.getAttribute("loginUser");
-            if (loginUser == null){
+            if (loginUser == null) {
                 tryToLogin(request, response, session);
             }
         }

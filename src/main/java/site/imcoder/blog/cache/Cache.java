@@ -250,6 +250,7 @@ public class Cache {
 
     /**
      * 得到文章的相邻文章
+     *
      * @param aid
      * @param rw
      * @return
@@ -301,6 +302,7 @@ public class Cache {
 
     /**
      * 获取管理员列表
+     *
      * @return
      */
     public List<User> getManagers() {

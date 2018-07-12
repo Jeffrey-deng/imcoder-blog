@@ -34,7 +34,7 @@ public class RedirectController {
             Map<String, Object> map = albumService.findPhoto(photo, loginUser);
             int flag = (int) map.get("flag");
             if (flag == 200) {
-                return "redirect:/photo.do?method=album_detail&id=" + ((Photo)map.get("photo")).getAlbum_id() + "&check=" + photo_id;
+                return "redirect:/photo.do?method=album_detail&id=" + ((Photo) map.get("photo")).getAlbum_id() + "&check=" + photo_id;
             } else if (flag == 401) {
                 return "/site/login";
             } else if (flag == 403) {

@@ -76,7 +76,7 @@
                         //显示结果框
                         $('#ResultTipsModal').niftyModal();
                         //window.location.href = "article.do?method=detail&aid="+data.aid ;
-                    } else if (data.flag == 401){
+                    } else if (data.flag == 401) {
                         login_handle.runOnLogin(function (isSuccess) {
                             if (isSuccess) {
                                 toastr.clear();
@@ -107,9 +107,9 @@
                 },
                 complete: function (XMLHttpRequest, textStatus) {
                     /*var reg = /Column 'UID' cannot be null/ig;
-                    if (XMLHttpRequest.responseText.search(reg) != -1) {
+                     if (XMLHttpRequest.responseText.search(reg) != -1) {
 
-                    }*/
+                     }*/
                 }
             });
         }
