@@ -504,6 +504,11 @@
         });
     };
 
+    /* ********** main ************* */
+
+    // 非事件绑定类，立即执行加载评论
+    init_comment();
+
     domReady(function () {
 
         var x = $('#first').height();
@@ -537,8 +542,6 @@
             "showMethod": "fadeIn",
             "hideMethod": "fadeOut"
         };
-
-        init_comment();
 
         $('#collectArticleBtn').click(function (e) {
             var preStatus = e.currentTarget.getAttribute("status") || "no";

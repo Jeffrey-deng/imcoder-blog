@@ -13,17 +13,7 @@
     }
 })(function ($, domReady, toastr, login_handle, PeriodCache) {
 
-    domReady(function () {
-        var cloudPath = $("#cloudPath").attr("href");
-        //用户的主页和用户文章页则 查找用户的rank
-        var detail_check = /^.*method=detail.*$/;
-        var home_check = /^.*method=home.*$/;
-        var uid = 0;
-        var isUserPage = detail_check.test(window.location.href) || home_check.test(window.location.href);
-        if (isUserPage) {
-            uid = $('#h_auid').attr('auid');
-        }
-        //uid==0 查找所有文章总rank
+    var loadRankList = function (uid) {
         $.get("article.do?method=ranking_list", {"uid": uid}, function (data) {
             //热门文章
             if (data.clickRankList != null) {
@@ -60,11 +50,15 @@
                 $('#rank_newest').html(rank_newest_html);
             }
         });
+    };
 
+    var loadPhotosShow = function (uid) {
         var photoShowArea = $("#photos_show");
+        var cloudPath = $("#cloudPath").attr("href");
         if (photoShowArea.length > 0) {
             var userAlbumsCacheConn = PeriodCache.getOrCreateGroup({
                 "groupName": "user_albums_cache",
+                "version": "1.1",
                 "timeOut": 900000,
                 "reload": {
                     "url": "photo.do?method=albumListByAjax",
@@ -81,6 +75,12 @@
                             $.each(data.albums, function (i, album) {
                                 album.name = encodeURIComponent(encodeURIComponent(album.name));
                                 album.description = encodeURIComponent(encodeURIComponent(album.description));
+                                try {
+                                    var coverJson = JSON.parse(album.cover);
+                                    album.cover = coverJson;
+                                } catch (e) {
+                                    album.cover = {"path": album.cover};
+                                }
                             });
                         }
                         return data.albums;
@@ -88,18 +88,14 @@
                 }
             });
             var loadUid = uid;
-            if (loadUid == 0) {
-                login_handle.runOnLogin(function (login) {
-                    if (login) {
-                        loadUid = "0_" + login_handle.getCurrentUserId();
-                    }
-                });
+            if (loadUid == 0 && login_handle.validateLogin()) {
+                loadUid = "0_" + login_handle.getCurrentUserId();
             }
             userAlbumsCacheConn.get(loadUid, function (albums) {
                 var html = null;
                 if (albums && albums.length > 0) {
                     var first = albums[0];
-                    html = '<a class="openAlbumByCover" data-index="0" href="photo.do?method=album_detail&id=' + first.album_id + '" target="_blank" title="左键切换、右键打开"><img src="' + cloudPath + first.cover + '" style="width: 100%"></a>'
+                    html = '<a class="openAlbumByCover" data-index="0" href="photo.do?method=album_detail&id=' + first.album_id + '" target="_blank" title="左键切换、右键打开"><img src="' + cloudPath + first.cover.path + '" style="width: 100%"></a>'
                 } else {
                     var userAlbumHref = "photo.do?method=user_albums" + (loadUid == 0 ? "" : ("&uid=" + loadUid));
                     html = '<a href="' + userAlbumHref + '" target="_blank" title="打开用户相册"><img src="' + cloudPath + 'res/img/album_default.jpg" style="width: 100%"></a>'
@@ -115,13 +111,25 @@
                     if (++index == albums.length) {
                         index = 0;
                     }
-                    a.querySelector("img").src = cloudPath + albums[index].cover;
+                    a.querySelector("img").src = cloudPath + albums[index].cover.path;
                     a.setAttribute("data-index", index);
+                    a.title = decodeURIComponent(decodeURIComponent(albums[index].name));
                     a.href = "photo.do?method=album_detail&id=" + albums[index].album_id;
                     return false;
                 });
             });
         }
-    });
+    };
+
+    /* ********** main ************* */
+
+    //用户的主页和用户文章页则查找用户的rank
+    var isUserPage = /^(.*method=detail.*|.*method=home.*)$/.test(document.location.href);
+    var uid = (isUserPage ? $('#h_auid').attr('auid') : 0); // uid为0，则查找所有文章总rank
+
+    // 加载文章rank列表
+    loadRankList(uid);
+    // 加载用户相册
+    loadPhotosShow(uid);
 
 });

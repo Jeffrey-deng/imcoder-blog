@@ -2,19 +2,19 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'domReady', 'toastr', 'common_utils'], factory);
+        define(['jquery', 'domReady', 'toastr', 'common_utils', 'toolbar'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, $(document).ready, toastr, common_utils);
+        factory(window.jQuery, $(document).ready, toastr, common_utils, toolbar);
     }
-})(function ($, domReady, toastr, common_utils) {
-
-    var params = common_utils.parseURL(window.location.href).params;
+})(function ($, domReady, toastr, common_utils, toolbar) {
 
     window.page_jump = function (pagenum) {
+        var params = common_utils.parseURL(document.location.href).params;
         var page = "article.do?method=list";
         $.each(params, function (key, value) {
             if (key != "method" && key != "jumpPage") {
+                console.log(value);
                 page += "&" + key + "=" + value;
             }
         });
@@ -22,7 +22,7 @@
         window.location.href = page;
     };
 
-    function load_tops() {
+    var loadTopArticle = function () {
         $.ajax({
             url: 'article.do?method=listTops',
             type: 'GET',
@@ -63,19 +63,53 @@
                 toastr.info('查询置顶列表失败！');
             }
         });
-    }
+    };
 
-    domReady(function () {
-        var url = window.location.href;
-        var name_check = /^(.*imcoder.site[\/]{0,1})$/;
-        var ip_check = /^(.*\d+)\.(\d+)\.(\d+)\.(\d+[\/]{0,1})$/;
-        var home_check = /^.*method=list$/;
-        if (name_check.test(url) || home_check.test(url) || ip_check.test(url)) {
-            //为首页（最首页）则查找置顶文章
-            load_tops();
-        } else {
-            $('#top').hide();
+    var showSearchCondition = function () {
+        // 显示搜索条件
+        var params = common_utils.parseURL(document.location.href).params;
+        var load_condition = {};
+        $.each(params, function (key, value) {
+            params[key] = value && decodeURIComponent(decodeURIComponent(value));
+            if (key != "method" && key != "jumpPage") {
+                load_condition[key] = params[key]
+            }
+        });
+        if (Object.keys(load_condition).length > 0) {
+            var search_input_value = "";
+            $.each(load_condition, function (key, value) {
+                if (key == "tags" || key == "title") {
+                    value = value.replace(new RegExp(toolbar.utils.getItsMultipleMatch_Separator(key), "g"), '#');
+                    value = value.replace(/\[\[:<:\]\]/g, '{s}');
+                    value = value.replace(/\[\[:>:\]\]/g, '{e}');
+                    if (/^\((.+)\.\*(.+)\)\|\(\2\.\*\1\)$/.test(value)) {
+                        var matchForTwo = value.match(/^\((.+)\.\*(.+)\)\|/);
+                        value = matchForTwo[1] + "#" + matchForTwo[2];
+                    }
+                    toolbar.view.find("#navbar-collapse .navbar-nav .active").next().find("a").text((key == "tags" ? "标签=" : "标题=") + "'" + value + "'");
+                }
+                search_input_value += "," + key + ":";
+                if (toolbar.config.special_pair_separator.test(value) || toolbar.config.special_value_separator.test(value)) {
+                    search_input_value += '"' + value + '"';
+                } else {
+                    search_input_value += value;
+                }
+            });
+            search_input_value = search_input_value && search_input_value.substring(1);
+            toolbar.rewriteSearch({
+                inputInitialValue: search_input_value
+            });
         }
-    });
+    };
+
+    /* ********** main ************* */
+
+    //为首页（最首页）则查找置顶文章
+    if (/^.*(imcoder.site\/?|(\d+\.){3}\d+\/?|method=list)$/.test(document.location.href)) {
+        loadTopArticle();
+    } else {    // 没有就隐藏置顶栏
+        $('#top').hide();
+    }
+    showSearchCondition();
 
 });

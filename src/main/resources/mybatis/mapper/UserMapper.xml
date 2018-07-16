@@ -13,7 +13,7 @@
         select * from user
         <!-- 查询时拼装条件 -->
         <where>
-            <if test="name!=null and name!=''">and name like '%${name}%'</if>
+            <if test="name!=null and name!=''">and name like concat('%', #{name} ,'%')</if>
             <if test="age!=null and age>0">and age=#{age}</if>
             <if test="phone!=null and phone!=''">and phone=#{phone}</if>
         </where>
@@ -24,7 +24,7 @@
     <select id="findUserListCount" resultType="int" parameterType="user">
         select count(*) from user
         <where>
-            <if test="name!=null and name!=''">and name like '%${name}%'</if>
+            <if test="name!=null and name!=''">and name like concat('%', #{name} ,'%')</if>
             <if test="age>0">and age=#{age}</if>
             <if test="phone!=null and phone!=''">and phone=#{phone}</if>
         </where>

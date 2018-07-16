@@ -106,8 +106,31 @@
         left join ( user u left join user_group ug on u.gid = ug.gid )
         on a.uid = u.uid
         <where>
-            1=1
+            <choose>
+                <when test="loginUser!= null and loginUser.uid>0">
+                    <choose>
+                        <when test="condition!=null and condition.permission != 0">
+                            (a.uid=#{loginUser.uid} and a.permission=#{condition.permission})
+                        </when>
+                        <otherwise>
+                            ( ( a.permission = 0 )
+                            or
+                            ( a.permission = 1
+                            and
+                            (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid = #{loginUser.uid}) )
+                            )
+                            or
+                            ( a.permission = 2 and a.uid = #{loginUser.uid} )
+                            )
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    a.permission=0
+                </otherwise>
+            </choose>
             <if test="condition!=null">
+                and ( (1=1)
                 <if test="condition.author != null">
                     <if test="condition.author.uid!= 0">
                         and a.uid = #{condition.author.uid}
@@ -119,13 +142,13 @@
                     </if>
                 </if>
                 <if test="condition.title != null and condition.title!='' ">
-                    and a.title like '%${condition.title}%'
+                    and a.title rlike #{condition.title}
                 </if>
                 <if test="condition.tags != null and condition.tags!='' ">
-                    and a.tags like '%${condition.tags}%'
+                    and a.tags rlike '${condition.tags}'
                 </if>
                 <if test="condition.summary != null and condition.summary!='' ">
-                    and a.summary like '%${condition.summary}%'
+                    and a.summary like concat('%', #{condition.summary} ,'%')
                 </if>
                 <if test="condition.create_time != null ">
                     and a.create_time &lt;=
@@ -139,35 +162,13 @@
                     and a.click >= #{condition.click}
                 </if>
                 <if test="condition.top!= 0">
-                    and a.top = #{condition.top}
+                    and a.top >= #{condition.top}
                 </if>
                 <if test="condition.recommend!= 0">
                     and a.recommend = #{condition.recommend}
                 </if>
+                )
             </if>
-            <choose>
-                <when test="loginUser!= null and loginUser.uid>0">
-                    <choose>
-                        <when test="condition!=null and condition.permission != 0">
-                            and a.uid=#{loginUser.uid} and a.permission=#{condition.permission}
-                        </when>
-                        <otherwise>
-                            and( ( a.permission = 0 )
-                            or
-                            ( a.permission = 1
-                            and
-                            (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid = #{loginUser.uid}) )
-                            )
-                            or
-                            ( a.permission = 2 and a.uid = #{loginUser.uid} )
-                            )
-                        </otherwise>
-                    </choose>
-                </when>
-                <otherwise>
-                    and a.permission=0
-                </otherwise>
-            </choose>
         </where>
         order by
         <if test="condition!=null">
@@ -233,8 +234,31 @@
     <select id="findCount" parameterType="hashMap" resultType="int">
         select count(*) as count from article a
         <where>
-            1=1
+            <choose>
+                <when test="loginUser!= null and loginUser.uid>0">
+                    <choose>
+                        <when test="condition!=null and condition.permission != 0">
+                            (a.uid=#{loginUser.uid} and a.permission=#{condition.permission})
+                        </when>
+                        <otherwise>
+                            ( ( a.permission = 0 )
+                            or
+                            ( a.permission = 1
+                            and
+                            (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid = #{loginUser.uid} ) )
+                            )
+                            or
+                            ( a.permission = 2 and a.uid = #{loginUser.uid} )
+                            )
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    a.permission=0
+                </otherwise>
+            </choose>
             <if test="condition!=null">
+                and ( (1=1)
                 <if test="condition.author != null">
                     <if test="condition.author.uid!= 0">
                         and a.uid = #{condition.author.uid}
@@ -246,13 +270,13 @@
                     </if>
                 </if>
                 <if test="condition.title != null and condition.title!='' ">
-                    and a.title like '%${condition.title}%'
+                    and a.title rlike #{condition.title}
                 </if>
                 <if test="condition.tags != null and condition.tags!='' ">
-                    and a.tags like '%${condition.tags}%'
+                    and a.tags rlike '${condition.tags}'
                 </if>
                 <if test="condition.summary != null and condition.summary!='' ">
-                    and a.summary like '%${condition.summary}%'
+                    and a.summary like concat('%', #{condition.summary} ,'%')
                 </if>
                 <if test="condition.create_time != null ">
                     and a.create_time &lt;=
@@ -266,35 +290,13 @@
                     and a.click >= #{condition.click}
                 </if>
                 <if test="condition.top!= 0">
-                    and a.top = #{condition.top}
+                    and a.top >= #{condition.top}
                 </if>
                 <if test="condition.recommend!= 0">
                     and a.recommend = #{condition.recommend}
                 </if>
+                )
             </if>
-            <choose>
-                <when test="loginUser!= null and loginUser.uid>0">
-                    <choose>
-                        <when test="condition!=null and condition.permission != 0">
-                            and a.uid=#{loginUser.uid} and a.permission=#{condition.permission}
-                        </when>
-                        <otherwise>
-                            and ( ( a.permission = 0 )
-                            or
-                            ( a.permission = 1
-                            and
-                            (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid = #{loginUser.uid} ) )
-                            )
-                            or
-                            ( a.permission = 2 and a.uid = #{loginUser.uid} )
-                            )
-                        </otherwise>
-                    </choose>
-                </when>
-                <otherwise>
-                    and a.permission=0
-                </otherwise>
-            </choose>
         </where>
     </select>
 

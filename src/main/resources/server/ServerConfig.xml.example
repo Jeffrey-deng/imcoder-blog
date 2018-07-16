@@ -26,7 +26,7 @@
         <value>upload/</value>
     </property>
 
-    <!-- 上传文件存储基础路径 相对于context父文件夹 -->
+    <!-- 上传文件存储基础路径 相对于context父文件夹，可以是绝对路径 -->
     <property>
         <param>article_upload_basepath</param>
         <value>blog/static/</value>
@@ -38,7 +38,7 @@
         <value>user/</value>
     </property>
 
-    <!-- 云盘文件存储基础路径 相对于context父文件夹 -->
+    <!-- 云盘文件存储基础路径 相对于context父文件夹，可以是绝对路径 -->
     <property>
         <param>cloud_file_basepath</param>
         <value>blog/cloud/</value>
@@ -163,7 +163,7 @@
     <!-- 默认的相册封面，相对于SITE_CLOUD_ADDR -->
     <property>
         <param>album_default_cover</param>
-        <value>res/img/album_default.jpg</value>
+        <value>{"path":"res/img/album_default.jpg","width": 800,"height": 800}</value>
     </property>
 
     <!-- 文字转语音的百度 APP_ID -->

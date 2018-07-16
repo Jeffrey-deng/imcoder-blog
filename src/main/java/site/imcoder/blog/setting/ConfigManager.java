@@ -29,16 +29,6 @@ public class ConfigManager {
     private ServletContext servletContext;
 
     /**
-     * 配置文件路径
-     */
-    private String serverConfigLocation = null;
-
-    /**
-     * 日志配置文件路径
-     */
-    private String log4jConfigPath = null;
-
-    /**
      * 邮件推送服务标识前缀
      */
     private String emailPushPrefix = ConfigConstants.EMAILPUSH_SMTP_ADDR.substring(0, ConfigConstants.EMAILPUSH_SMTP_ADDR.indexOf('_'));
@@ -51,21 +41,22 @@ public class ConfigManager {
     @Autowired
     public ConfigManager(ServletContext servletContext) {
         this.servletContext = servletContext;
-        initServerConfig(servletContext);
+        initServerConfig();
     }
 
-    private void initServerConfig(ServletContext servletContext) {
+    private void initServerConfig() {
         String serverConfigLocation = servletContext.getInitParameter(ConfigConstants.SERVER_CONFIG_LOCATION);
         if (serverConfigLocation != null) {
-            this.serverConfigLocation = serverConfigLocation;
+            // 保存 Server config file path config
             initAssignment(ConfigConstants.SERVER_CONFIG_LOCATION, serverConfigLocation);
+            // 加载配置
             loadConfig();
         } else {
             logger.warn("  Error : Server XML Config file location don't set, it should config a init-param tag with name " + ConfigConstants.SERVER_CONFIG_LOCATION + " in web.xml");
         }
     }
 
-    private void initLogFilePath(ServletContext servletContext) {
+    private void initLogFilePath() {
         String default_info_path = Config.get(ConfigConstants.LOG_FILE_INFO_PATH);
         String default_warn_path = Config.get(ConfigConstants.LOG_FILE_WARN_PATH);
         String default_error_path = Config.get(ConfigConstants.LOG_FILE_ERROR_PATH);
@@ -73,7 +64,6 @@ public class ConfigManager {
             String path = servletContext.getInitParameter(Config.get(ConfigConstants.LOG_CONFIG_PATH_PARAM_NAME));
             String filePath = this.convertClassPathAndGetRealPath(path);
             if (filePath != null) {
-                this.log4jConfigPath = filePath;
                 Properties properties = new Properties();
                 BufferedReader bufferedReader = null;
                 try {
@@ -116,10 +106,10 @@ public class ConfigManager {
     private void loadConfig() {
         setDefault();
         loadConfigFromXML(Config.get(ConfigConstants.SERVER_CONFIG_LOCATION), "init");
-        initLogFilePath(servletContext);
+        initLogFilePath();
         for (Map.Entry<String, String> entry : Config.getAll().entrySet()) {
             // 输出日志
-            logger.info("设置 \"" + entry.getKey() + "\" : " + getPublicValue(entry.getValue()));
+            logger.info("设置 \"" + entry.getKey() + "\" : " + getPublicValue(entry.getKey(), entry.getValue()));
         }
     }
 
@@ -193,12 +183,12 @@ public class ConfigManager {
         }
         String preValue = Config.get(key);
         if (value.equals(preValue)) {
-            logger.info("更新配置 \"" + key + "\" : " + getPublicValue(value) + ", 但是因为值与原始值相同，所以未操作！");
+            logger.info("更新配置 \"" + key + "\" : " + getPublicValue(key, value) + ", 但是因为值与原始值相同，所以未操作！");
         } else {
             if (preValue == null) {
-                logger.warn("更新配置 \"" + key + "\" : " + getPublicValue(value) + ", 但该key不属于默认配置项！");
+                logger.warn("更新配置 \"" + key + "\" : " + getPublicValue(key, value) + ", 但该key不属于默认配置项！");
             } else {
-                logger.info("更新配置 \"" + key + "\" : " + getPublicValue(value));
+                logger.info("更新配置 \"" + key + "\" : " + getPublicValue(key, value));
             }
             Config.set(key, value);
             if (key.equals(ConfigConstants.EMAILPUSH_THREAD_NUM)) {
@@ -211,6 +201,12 @@ public class ConfigManager {
         }
     }
 
+    /**
+     * 获取本项目下文件的一些实际路径
+     *
+     * @param path
+     * @return
+     */
     private String convertClassPathAndGetRealPath(String path) {
         if (path == null) {
             return null;
@@ -230,7 +226,7 @@ public class ConfigManager {
     }
 
     /**
-     * 获得配置中相对路径的绝对路径
+     * 获得配置中项目父路径下文件相对路径的绝对路径
      *
      * @param basePath
      * @return
@@ -249,8 +245,8 @@ public class ConfigManager {
      * @param value
      * @return
      */
-    private String getPublicValue(String value) {
-        if (value != null && (value.equals(ConfigConstants.EMAILPUSH_ACCOUNT_PASSWORD) || value.startsWith(toolSpeechPrefix))) {
+    private String getPublicValue(String key, String value) {
+        if (key != null && (key.equals(ConfigConstants.EMAILPUSH_ACCOUNT_PASSWORD) || key.startsWith(toolSpeechPrefix))) {
             return "******";
         } else {
             return value;
@@ -319,7 +315,7 @@ public class ConfigManager {
         Config.set(ConfigConstants.ARTICLE_HOME_SIZE_RANK, "7");
 
         //默认的相册封面，相对于SITE_CLOUD_ADDR
-        Config.set(ConfigConstants.ALBUM_DEFAULT_COVER, "res/img/album_default.jpg");
+        Config.set(ConfigConstants.ALBUM_DEFAULT_COVER, "{\"path\":\"res/img/album_default.jpg\",\"width\": 800,\"height\": 800}");
 
         //文字转语音的百度 token
         Config.set(ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID, "");

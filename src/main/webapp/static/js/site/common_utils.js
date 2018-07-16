@@ -319,6 +319,46 @@
         return output;
     };
 
+    /**
+     *  用JS实现EL表达式功能，支持 " "、{ }、${ } 包裹
+     *  eg:
+     *  var str = "path:\"Jeffrey\";name:{Jeffrey},attr:${Jeffrey},desc:”Jeffrey“";
+     *  var result = replaceByEL(str, function(index, key){
+     *      return "replace_" + key + "_" + index;
+     *  });
+     *  result: "path:replace_Jeffrey_1;name:replace_Jeffrey_2,attr:replace_Jeffrey_3,desc:replace_Jeffrey_4"
+     *
+     * @author Jeffrey.deng
+     * @param str
+     * @param replace
+     * @returns {string}
+     */
+    var replaceByEL = function (str, replace) {
+        if (!str) {
+            return str;
+        }
+        var regex = /\$\{(.*?)\}|\{(.*?)\}|"(.*?)"|”(.*?)“/ig;
+        var result;
+        var lastMatchEndIndex = 0;
+        var partArr = [];
+        var key = "";
+        var keyIndex = 0;
+        while ((result = regex.exec(str)) != null) {
+            for (var i = 1; i < result.length; i++) {
+                if (result[i] != undefined) {
+                    key = result[i].trim();
+                    break;
+                }
+            }
+            partArr.push(str.substring(lastMatchEndIndex, result.index) + replace.call(result, ++keyIndex, key));
+            lastMatchEndIndex = regex.lastIndex;
+        }
+        if (lastMatchEndIndex > 0 && lastMatchEndIndex < str.length) {
+            partArr.push(str.substring(lastMatchEndIndex));
+        }
+        return keyIndex == 0 ? str : partArr.join('');
+    };
+
     var cookieUtil = {
         // get the cookie of the key is name
         get: function (name) {
@@ -740,6 +780,7 @@
         "addStyle": addStyle,
         "encodeHTML": encodeHTML,
         "decodeHTML": decodeHTML,
+        "replaceByEL": replaceByEL,
         "TaskQueue": TaskQueue,
         "ajaxDownload": ajaxDownload,
         "fileNameFromHeader": fileNameFromHeader,

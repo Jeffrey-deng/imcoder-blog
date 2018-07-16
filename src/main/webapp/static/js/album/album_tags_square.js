@@ -87,8 +87,7 @@
                                                 "album_id": tag,
                                                 "name": tag,
                                                 "count": 0,
-                                                "cover": photo.path,
-                                                "coverId": photo.photo_id
+                                                "cover": {"photo_id": photo.photo_id, "path": photo.path, "width": photo.width, "height": photo.height},
                                             };
                                             tagsMap[tag] = tagInfo;
                                         }
@@ -176,64 +175,69 @@
         var isInAlbum = params.album_id ? true : false; //判断当前页面是不是在查看某个相册的标签索引
         var lastSearchKey = null;   //上一次搜索的key
         var nextViewIndex = 0;  //当前准备查看的搜索结果数组index
-        toolbar.rewriteSearch(function (key) {
-            key = key.trim();
-            if (isInAlbum) {
-                if (key == "") {
-                    toastr.info("请输入！", "", {"progressBar": false});
-                    return;
-                }
-                common_utils.notify({
-                    "progressBar": false,
-                    "timeOut": 0,
-                    "closeButton": false
-                }).success("正在查找。。", "", "search_tags_in_album");
+        toolbar.rewriteSearch({
+            placeholder: (isInAlbum ? "搜索该相册标签" : "输入关键字搜索标签"),
+            mode_action: function (key) {
+                key = key.trim();
+                if (isInAlbum) {
+                    if (key == "") {
+                        toastr.info("请输入！", "", {"progressBar": false});
+                        return;
+                    }
+                    common_utils.notify({
+                        "progressBar": false,
+                        "timeOut": 0,
+                        "closeButton": false
+                    }).success("正在查找。。", "", "search_tags_in_album");
 
-                var results = [];
-                var complete = album_page_handle.utils.getAlbumByCache(key);
-                if (!complete) {
-                    $.each(album_page_handle.pointer.albums, function (i, cache) {
-                        if (cache.album_id.indexOf(key) != -1) {
-                            results.push(cache);
+                    var results = [];
+                    var complete = album_page_handle.utils.getAlbumByCache(key);
+                    if (!complete) {
+                        $.each(album_page_handle.pointer.albums, function (i, cache) {
+                            if (cache.album_id.indexOf(key) != -1) {
+                                results.push(cache);
+                            }
+                        });
+                    } else {
+                        results.push(complete);
+                    }
+                    if (results.length == 0) {
+                        common_utils.removeNotify("search_tags_in_album");
+                        toastr.info("该相册内未找到该标签！", "", {"progressBar": false});
+                        return;
+                    }
+
+                    if (key == lastSearchKey) {
+                        if (nextViewIndex >= results.length) {
+                            nextViewIndex = 0;
                         }
-                    });
-                } else {
-                    results.push(complete);
-                }
-                if (results.length == 0) {
-                    common_utils.removeNotify("search_tags_in_album");
-                    toastr.info("该相册内未找到该标签！", "", {"progressBar": false});
-                    return;
-                }
-
-                if (key == lastSearchKey) {
-                    if (nextViewIndex >= results.length) {
+                    } else {
                         nextViewIndex = 0;
                     }
+                    var pageNum = album_page_handle.utils.getAlbumPageNum(results[nextViewIndex].album_id);
+                    var indexAlbum = function (masonryInstance) {
+                        common_utils.removeNotify("search_tags_in_album");
+                        $.each(results, function (i, result) {
+                            album_page_handle.utils.getAlbumDom(result.album_id).find(".album_name span")
+                                .css("background-color", "#faebcc");
+                        });
+                        setTimeout(function () {
+                            var span = album_page_handle.utils.getAlbumDom(results[nextViewIndex].album_id).find(".album_name span");
+                            var scroll = span.offset().top - $(window).height() * (2 / 3);
+                            $("html,body").animate({scrollTop: scroll}, 300);
+                            nextViewIndex++;
+                        }, 70);
+                        calls.splice(calls.indexOf(indexAlbum), 1);
+                    };
+                    calls.push(indexAlbum);
+                    album_page_handle.jumpPage(pageNum);
                 } else {
-                    nextViewIndex = 0;
+                    window.open("photo.do?method=tags_square&tags=" + encodeURIComponent(key));
                 }
-                var pageNum = album_page_handle.utils.getAlbumPageNum(results[nextViewIndex].album_id);
-                var indexAlbum = function (masonryInstance) {
-                    common_utils.removeNotify("search_tags_in_album");
-                    $.each(results, function (i, result) {
-                        album_page_handle.utils.getAlbumDom(result.album_id).find(".album_name span")
-                            .css("background-color", "#faebcc");
-                    });
-                    setTimeout(function () {
-                        var span = album_page_handle.utils.getAlbumDom(results[nextViewIndex].album_id).find(".album_name span");
-                        var scroll = span.offset().top - $(window).height() * (2 / 3);
-                        $("html,body").animate({scrollTop: scroll}, 300);
-                        nextViewIndex++;
-                    }, 70);
-                    calls.splice(calls.indexOf(indexAlbum), 1);
-                };
-                calls.push(indexAlbum);
-                album_page_handle.jumpPage(pageNum);
-            } else {
-                window.open("photo.do?method=tags_square&tags=" + key);
-            }
-            lastSearchKey = key;
-        }, isInAlbum ? "搜索该相册标签" : "输入关键字搜索标签");
+                lastSearchKey = key;
+            },
+            modeMapping: ["tag", "tags"],
+            setDefaultMapping: true
+        });
     });
 });

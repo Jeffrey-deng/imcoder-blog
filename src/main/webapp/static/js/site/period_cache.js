@@ -71,7 +71,7 @@
                     callback.call(null, null);
                     return;
                 }
-                if (old_object) {
+                if (old_object && old_object.header.version == groupConfig.version) {
                     if (new Date().getTime() - old_object.header.update_time < groupConfig.timeOut) {
                         isLoadNew = false;
                         callback.call(old_object.value, old_object.value);
@@ -81,7 +81,7 @@
                 if (isLoadNew) {
                     if (groupConfig.reload_udf) {
                         var saveNewObjectValue_callback = function (object_value) {
-                            context.utils.setCache(groupName, key, {"update_time": new Date().getTime()}, object_value);
+                            context.utils.setCache(groupName, key, {"update_time": new Date().getTime(), "version": groupConfig.version}, object_value);
                             callback.call(object_value, object_value);
                         };
                         groupConfig.reload_udf.call(context, context.pointer.cacheCtx, groupName, key, (old_object ? old_object.value : null), saveNewObjectValue_callback);
@@ -93,7 +93,7 @@
                             "data": groupConfig.reload.params(groupName, key),
                             "success": function (data) {
                                 var new_object_value = groupConfig.reload.parse.call(context, context.pointer.cacheCtx, groupName, key, (old_object ? old_object.value : null), data);
-                                context.utils.setCache(groupName, key, {"update_time": new Date().getTime()}, new_object_value);
+                                context.utils.setCache(groupName, key, {"update_time": new Date().getTime(), "version": groupConfig.version}, new_object_value);
                                 callback.call(new_object_value, new_object_value);
                             },
                             "error": function (XHR, TS) {
@@ -122,6 +122,9 @@
      */
     PeriodCache.prototype.getOrCreateGroup = function (groupConfig) {
         var context = this;
+        if (!groupConfig.version) {
+            groupConfig.version = context.groupDefaultConfig.version;
+        }
         context.utils.setGroupConfig(groupConfig.groupName, groupConfig, false);
         var group = context.utils.getGroup(groupConfig.groupName);
         if (!group) {
@@ -351,6 +354,7 @@
      *  }
      */
     PeriodCache.groupDefaultConfig = {
+        "version": "1.0", // add this config will has version verification for object
         "groupName": "example",
         "timeOut": 900000,
         "reload": {

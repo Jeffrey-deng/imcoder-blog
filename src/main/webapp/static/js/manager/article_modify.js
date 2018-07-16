@@ -9,82 +9,6 @@
     }
 })(function ($, bootstrap, domReady, toastr, Clipboard, niftymodals, edit_tool, common_utils, login_handle) {
 
-    domReady(function () {
-        toastr.options = {
-            "closeButton": true,
-            "debug": false,
-            "progressBar": false,
-            "positionClass": "toast-bottom-left",
-            "showDuration": "400",
-            "hideDuration": "1000",
-            "timeOut": 4500,
-            "extendedTimeOut": "1000",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "fadeIn",
-            "hideMethod": "fadeOut"
-        };
-
-        //添加标签事件
-        $('#btn_addTag').click(function () {
-            addTag();
-        });
-        //保存事件
-        $('#btn_save').click(function () {
-            save();
-        });
-
-        //如果有文章id，则请求该文章JOSN
-        var params = common_utils.parseURL(window.location.href).params;
-        if (params['aid'] != undefined) {
-            updateInit(params['aid']);
-            $('#input_article_id').val(params['aid']);
-        }
-
-        /**
-         * 监听页面刷新或关闭事件
-         */
-        //body onbeforeunload="return checkUnsave();"
-        $(window).bind('beforeunload', function () {
-            if (!isSaveFlag) {
-                return "文章未保存，若关闭或刷新，则该数据将丢失！";
-            }
-        });
-
-        $("#btn_article_img_cdnTrigger").click(function () {
-            $('#inputCdnHostModal').modal({backdrop: 'static', keyboard: false});
-        });
-
-        $("#input_article_img_submit").click(function () {
-            changeImgCdnPath();
-        });
-
-        $("#btn_article_img_relative").click(function () {
-            restoreImgRelativePath();
-        });
-
-        $("#btn_article_query").click(function () {
-            if (!isNaN($("#input_article_id").val())) {
-                updateInit($("#input_article_id").val());
-            } else {
-                toastr.error("请输入数字！");
-            }
-        });
-
-        $('#btn_article_img_format').click(function () {
-            if ($(this).attr('hasFormat') != "true") {
-                formatImgShow();
-                $(this).attr("hasFormat", "true");
-                $(this).val("还原修改");
-            } else {
-                restoreFormatImgShow();
-                $(this).attr("hasFormat", "false");
-                $(this).val("格式化图片展示");
-            }
-        });
-
-    });
-
     //是否已经保存
     var isSaveFlag = false;
 
@@ -400,5 +324,81 @@
 
         toastr.success("还原完成，请查看！");
     }
+
+    domReady(function () {
+        toastr.options = {
+            "closeButton": true,
+            "debug": false,
+            "progressBar": false,
+            "positionClass": "toast-bottom-left",
+            "showDuration": "400",
+            "hideDuration": "1000",
+            "timeOut": 4500,
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        };
+
+        //添加标签事件
+        $('#btn_addTag').click(function () {
+            addTag();
+        });
+        //保存事件
+        $('#btn_save').click(function () {
+            save();
+        });
+
+        //如果有文章id，则请求该文章JOSN
+        var params = common_utils.parseURL(window.location.href).params;
+        if (params['aid'] != undefined) {
+            updateInit(params['aid']);
+            $('#input_article_id').val(params['aid']);
+        }
+
+        /**
+         * 监听页面刷新或关闭事件
+         */
+        //body onbeforeunload="return checkUnsave();"
+        $(window).bind('beforeunload', function () {
+            if (!isSaveFlag) {
+                return "文章未保存，若关闭或刷新，则该数据将丢失！";
+            }
+        });
+
+        $("#btn_article_img_cdnTrigger").click(function () {
+            $('#inputCdnHostModal').modal({backdrop: 'static', keyboard: false});
+        });
+
+        $("#input_article_img_submit").click(function () {
+            changeImgCdnPath();
+        });
+
+        $("#btn_article_img_relative").click(function () {
+            restoreImgRelativePath();
+        });
+
+        $("#btn_article_query").click(function () {
+            if (!isNaN($("#input_article_id").val())) {
+                updateInit($("#input_article_id").val());
+            } else {
+                toastr.error("请输入数字！");
+            }
+        });
+
+        $('#btn_article_img_format').click(function () {
+            if ($(this).attr('hasFormat') != "true") {
+                formatImgShow();
+                $(this).attr("hasFormat", "true");
+                $(this).val("还原修改");
+            } else {
+                restoreFormatImgShow();
+                $(this).attr("hasFormat", "false");
+                $(this).val("格式化图片展示");
+            }
+        });
+
+    });
 
 });

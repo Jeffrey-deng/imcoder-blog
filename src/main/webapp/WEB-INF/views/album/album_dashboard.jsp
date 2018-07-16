@@ -589,12 +589,12 @@ String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
                                 <textarea class="form-control" type="text" name="photo_desc"></textarea>
                             </div>
                             <div class="form-group">
-                                <a href="photo.do?method=dashboard&mode=photo&tags=_&logic_conn=or" target="_blank" style="color: #666; cursor: pointer" title="点击查看所有带标签的照片">
+                                <a href="photo.do?method=tags_square" target="_blank" style="color: #666; cursor: pointer" title="标签广场">
                                     <label>标签：</label>
                                 </a>
                                 <span class="form-control tags-modify" name="tags">
-                            <input type="text" class="tag-input" name="tag_input"/>
-                        </span>
+                                    <input type="text" class="tag-input" name="tag_input"/>
+                                </span>
                             </div>
                             <div class="form-group" style="padding-top: 7px;">
                                 <label class="control-label">是否作为封面</label>

@@ -58,15 +58,17 @@
                 </otherwise>
             </choose>
             <if test="album != null">
+                and ( (1=1)
                 <if test="album.user != null and album.user.uid > 0">
                     and a.uid = #{album.user.uid}
                 </if>
                 <if test="album.name != null and album.name != '' ">
-                    and a.name like '%${album.name}%'
+                    and a.name rlike #{album.name}
                 </if>
                 <if test="album.description != null and album.description != '' ">
-                    and a.description like '%${album.description}%'
+                    and a.description like concat('%', #{album.description} ,'%')
                 </if>
+                )
             </if>
         </where>
     </select>
@@ -172,13 +174,13 @@
                             or p.uid = #{photo.uid}
                         </if>
                         <if test="photo.name != null and photo.name != '' ">
-                            or p.name like '%${photo.name}%'
+                            or p.name like concat('%', #{photo.name} ,'%')
                         </if>
                         <if test="photo.description != null and photo.description != '' ">
-                            or p.description like '%${photo.description}%'
+                            or p.description like concat('%', #{photo.description} ,'%')
                         </if>
                         <if test="photo.tags != null and photo.tags != '' ">
-                            or p.tags like '%${photo.tags}%'
+                            or p.tags rlike '${photo.tags}'
                         </if>
                         <if test="photo.width > 0">
                             or p.width >= #{photo.width}
@@ -200,14 +202,15 @@
                             #{photo.upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
                         </if>
                         <if test="photo.path != null and photo.path != '' ">
-                            or p.path like '%${photo.path}%'
+                            or p.path like concat('%', #{photo.path} ,'%')
                         </if>
                         <if test="photo.originName != null and photo.originName != '' ">
-                            or p.originName like '%${photo.originName}%'
+                            or p.originName like concat('%', #{photo.originName} ,'%')
                         </if>
                         )
                     </when>
                     <otherwise>
+                        and ( (1=1)
                         <if test="photo.photo_id > 0">
                             and p.photo_id = #{photo.photo_id}
                         </if>
@@ -218,13 +221,13 @@
                             and p.uid = #{photo.uid}
                         </if>
                         <if test="photo.name != null and photo.name != '' ">
-                            and p.name like '%${photo.name}%'
+                            and p.name like concat('%', #{photo.name} ,'%')
                         </if>
                         <if test="photo.description != null and photo.description != '' ">
-                            and p.description like '%${photo.description}%'
+                            and p.description like concat('%', #{photo.description} ,'%')
                         </if>
                         <if test="photo.tags != null and photo.tags != '' ">
-                            and p.tags like '%${photo.tags}%'
+                            and p.tags rlike '${photo.tags}'
                         </if>
                         <if test="photo.width > 0">
                             and p.width >= #{photo.width}
@@ -246,11 +249,12 @@
                             #{photo.upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
                         </if>
                         <if test="photo.path != null and photo.path != '' ">
-                            and p.path like '%${photo.path}%'
+                            and p.path like concat('%', #{photo.path} ,'%')
                         </if>
                         <if test="photo.originName != null and photo.originName != '' ">
-                            and p.originName like '%${photo.originName}%'
+                            and p.originName like concat('%', #{photo.originName} ,'%')
                         </if>
+                        )
                     </otherwise>
                 </choose>
             </if>

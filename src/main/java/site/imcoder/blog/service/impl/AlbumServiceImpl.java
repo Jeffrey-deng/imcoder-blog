@@ -451,7 +451,8 @@ public class AlbumServiceImpl implements IAlbumService {
     private void updateCoverForAlbum(Photo photo) {
         Album album = new Album();
         album.setAlbum_id(photo.getAlbum_id());
-        album.setCover(photo.getPath());
+        String json = "{\"path\": \"" + photo.getPath() + "\", \"photo_id\": " + photo.getPhoto_id() + ", \"width\": " + photo.getWidth() + ", \"height\": " + photo.getHeight() + "}";
+        album.setCover(json);
         albumDao.updateCoverForAlbum(album);
     }
 

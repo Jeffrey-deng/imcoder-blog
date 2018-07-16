@@ -76,6 +76,14 @@
                                     '<h2 style="font-size: 1.25em;" class="post-title" itemprop="name headline">此用户还没有创建相册，或者你没有权限查看</h2>'
                                 ).parent().addClass("post-container");
                             } else {
+                                $.each(data.albums, function (i, album) {
+                                    try {
+                                        var coverJson = JSON.parse(album.cover);
+                                        album.cover = coverJson;
+                                    } catch (e) {
+                                        album.cover = {"path": album.cover};
+                                    }
+                                });
                                 success(data);
                             }
                         } else {

@@ -78,9 +78,36 @@
             album.name = pointer.updateModal.find('input[name="album_name"]').val();
             album.description = pointer.updateModal.find('textarea[name="album_desc"]').val();
             album.permission = pointer.updateModal.find('input[name="album_permission"]:checked').val();
-            album.cover = pointer.updateModal.find('input[name="album_cover_path"]').val();
+            album.cover = pointer.updateModal.find('input[name="album_cover_path"]').val().trim();
             album.show_col = pointer.updateModal.find('input[name="album_show_col"]').val();
-            updateAlbum(album);
+            var isJson = false;
+            album.cover = album.cover.replace(config.path_params.cloudPath, "").replace(config.path_params.staticPath, "");
+            try {
+                var coverJson = JSON.stringify(JSON.parse(album.cover));
+                album.cover = coverJson;
+                isJson = true;
+            } catch (e) {
+                if (album.cover.indexOf("{") == -1) {
+                    $.get("photo.do?method=photoListByAjax", {"path": album.cover}, function (data) {
+                        if (data.flag == 200 && data.photos.length > 0) {
+                            var photo = data.photos[0];
+                            album.cover = JSON.stringify({
+                                "photo_id": photo.photo_id,
+                                "path": photo.path,
+                                "width": photo.width,
+                                "height": photo.height
+                            });
+                            updateAlbum(album);
+                        } else {
+                            pointer.updateModal.find('input[name="album_cover_path"]').val(JSON.stringify({"path": album.cover}));
+                            toastr.error("你输入相册封面不存在或没有权限或格式错误", "请重新输入");
+                        }
+                    });
+                } else {
+                    toastr.error("你输入相册封面格式错误", "请重新输入");
+                }
+            }
+            isJson && updateAlbum(album);
         });
 
         //删除相册事件
@@ -141,6 +168,11 @@
             if (data.flag == 200) {
                 toastr.success("创建成功 ");
                 pointer.createModal.modal('hide');
+                try {
+                    album.cover = JSON.parse(album.cover);
+                } catch (e) {
+                    album.cover = {"path": album.cover};
+                }
                 config.callback.createCompleted.call(context, data.album);
             } else {
                 toastr.error(data.info, "创建失败");
@@ -168,6 +200,11 @@
     var updateAlbum = function (album) {
         $.post("photo.do?method=updateAlbum", album, function (data) {
             if (data.flag == 200) {
+                try {
+                    album.cover = JSON.parse(album.cover);
+                } catch (e) {
+                    album.cover = {"path": album.cover};
+                }
                 toastr.success("更新成功 ");
                 pointer.updateModal.modal('hide');
                 config.callback.updateCompleted.call(context, album);
@@ -210,7 +247,8 @@
                     $(this).prop("checked", true);
                 }
             });
-            pointer.updateModal.find('input[name="album_cover_path"]').val(album.cover);
+            var coverJson = ((typeof album.cover == "object") ? JSON.stringify(album.cover) : album.cover);
+            pointer.updateModal.find('input[name="album_cover_path"]').val(coverJson);
             pointer.updateModal.find('input[name="album_show_col"]').val(album.show_col);
             pointer.updateModal.find('span[name="album_size"]').html(album.size);
             pointer.updateModal.find('span[name="album_create_time"]').html(album.create_time);

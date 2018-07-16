@@ -46,7 +46,7 @@ public class VideoServiceImpl implements IVideoService {
         } else {
             video.setUser(loginUser);
             video.getCover().setImage_type("video/mp4");
-            // save disk
+            //todo save disk
             int row = videoDao.saveVideo(video);
             map.put("flag", convertRowToHttpCode(row));
         }

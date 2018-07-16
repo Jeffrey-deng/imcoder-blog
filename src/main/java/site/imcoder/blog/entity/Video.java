@@ -1,9 +1,11 @@
 package site.imcoder.blog.entity;
 
+import java.io.Serializable;
+
 /**
  * @author Jeffrey.Deng
  */
-public class Video {
+public class Video implements Serializable {
 
     /**
      * 视频ID
@@ -26,9 +28,22 @@ public class Video {
     private User user;
 
     /**
+     * 视频源的类型：
+     * 0：本地源
+     * 1：引用链接
+     * 2：引用代码块（frame等）
+     */
+    private int source_type;
+
+    /**
      * 视频路径
      */
     private String path;
+
+    /**
+     * 视频引用代码块
+     */
+    private String code;
 
     /**
      * 视频封面
@@ -65,6 +80,11 @@ public class Video {
      */
     private String originName;
 
+    /**
+     * 标签
+     */
+    private String tags;
+
     public int getVideo_id() {
         return video_id;
     }
@@ -97,12 +117,28 @@ public class Video {
         this.user = user;
     }
 
+    public int getSource_type() {
+        return source_type;
+    }
+
+    public void setSource_type(int source_type) {
+        this.source_type = source_type;
+    }
+
     public String getPath() {
         return path;
     }
 
     public void setPath(String path) {
         this.path = path;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
     }
 
     public Photo getCover() {
@@ -159,5 +195,13 @@ public class Video {
 
     public void setOriginName(String originName) {
         this.originName = originName;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
     }
 }

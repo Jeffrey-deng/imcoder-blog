@@ -141,10 +141,12 @@
     }
 
     domReady(function () {
+        //
         var $uid = login_handle.getCurrentUserId();
         var url = common_utils.parseURL(document.location.href);
         var params = url.params;
-        var action = params['action'] || "follows";
+
+        // 改变地址栏随着切换tab
         $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
             var search = "?method=contact";
             $.each(params, function (key, value) {
@@ -159,6 +161,9 @@
                 location.pathname + search
             );
         });
+
+        // 打开时显示的tab
+        var action = params['action'] || "follows";
         if (action !== undefined && action.length > 0) {
             $('a[href="#' + action + '"]').tab('show');
         }
@@ -175,7 +180,6 @@
         } else {
             $('a[href="#friends"]').hide();
         }
-
     });
 
 });

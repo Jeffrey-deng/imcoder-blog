@@ -11,17 +11,6 @@
         factory(window.jQuery, null, $(document).ready, toastr);
     }
 })(function ($, bootstrap, domReady, toastr) {
-    domReady(function () {
-        $('#post_trigger').click(function () {
-            var text = $("#post_val").val();
-            if (text != "") {
-                textToVoice(text);
-            } else {
-                toastr.error("请输入内容！");
-            }
-        });
-        $("#post_val").focus();
-    });
 
     function textToVoice(text) {
         /*var notify = common_utils.notify({"timeOut": 4000});
@@ -48,17 +37,15 @@
         });
     }
 
-    function downloadFile(fileName, content) {
-        var aLink = document.createElement('a');
-        //var blob = new Blob([content]);
-        var evt = document.createEvent("MouseEvents");
-        evt.initEvent("click", true, true);
-        if (fileName) {
-            aLink.download = fileName;
-        }
-        aLink.target = "_blank";
-        //aLink.href = URL.createObjectURL(blob);
-        aLink.href = content;
-        aLink.dispatchEvent(evt);
-    }
+    domReady(function () {
+        $('#post_trigger').click(function () {
+            var text = $("#post_val").val();
+            if (text != "") {
+                textToVoice(text);
+            } else {
+                toastr.error("请输入内容！");
+            }
+        });
+        $("#post_val").focus();
+    });
 });

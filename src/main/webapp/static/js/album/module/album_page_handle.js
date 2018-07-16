@@ -251,13 +251,42 @@
                     }
                 }
             });
+            pointer.masonryInstance.recalculate(true);
+            $.each($('#' + config.selector.albumsContainer_id).children(), function (i, dom) {
+                var img = dom.querySelector("img");
+                var width = dom.getAttribute("data-width");
+                var height = dom.getAttribute("data-height");
+                if (!img.naturalHeight && width && height) {
+                    var scale = img.offsetWidth / width;
+                    img.style.height = (height * scale) + "px";
+                }
+            });
+            pointer.masonryInstance.recalculate(true);
             pointer.masonryInstance.runOnImageLoad(function () {
+                $.each($('#' + config.selector.albumsContainer_id).children(), function (i, dom) {
+                    var img = dom.querySelector("img");
+                    if (img.style.height) {
+                        img.style.height = "";
+                    }
+                });
+                pointer.masonryInstance.recalculate(true);
                 console.log('第 ' + config.page_params.pageNum + ' 页加载完成！');
                 //pointer.masonryInstance.recalculate(true, true);
                 pointer.notify_pageloading && toastr.remove(pointer.notify_pageloading, true);
                 config.callback.photosOnLoad_callback.call(context, pointer.masonryInstance);
             });
         } else {
+            pointer.masonryInstance.recalculate(true);
+            $.each($('#' + config.selector.albumsContainer_id).children(), function (i, dom) {
+                var img = dom.querySelector("img");
+                var width = dom.getAttribute("data-width");
+                var height = dom.getAttribute("data-height");
+                if (!img.naturalHeight && width && height) {
+                    var scale = img.offsetWidth / width;
+                    img.style.height = (height * scale) + "px";
+                }
+            });
+            pointer.masonryInstance.recalculate(true);
             pointer.masonryInstance.recalculateOnImageLoad(true);
         }
     };
@@ -270,14 +299,16 @@
             // div.setAttribute("data-order", photo.count);
             div.setAttribute("data-id", album.album_id);
             div.setAttribute("data-uid", album.user ? album.user.uid : '');
-            div.setAttribute("data-cover", album.cover);
+            div.setAttribute("data-cover", album.cover.path);
+            album.cover.width && div.setAttribute("data-width", album.cover.width);
+            album.cover.height && div.setAttribute("data-height", album.cover.height);
 
             var a = document.createElement("a");
             a.target = "_blank";
             a.href = config.album_href_prefix + album.album_id;
             div.appendChild(a);
             var img = document.createElement("img");
-            img.setAttribute("src", config.path_params.cloudPath + album.cover);
+            img.setAttribute("src", config.path_params.cloudPath + album.cover.path);
             //img.className = "img-thumbnail";
             a.appendChild(img);
 
@@ -314,8 +345,8 @@
             var album_source = utils.getAlbumByCache(album.album_id);
             $.extend(album_source, album);
             var dom = utils.getAlbumDom(album.album_id);
-            dom.attr("data-cover", album.cover)
-                .find("img").attr("src", config.path_params.cloudPath + album.cover).attr("title", album.description);
+            dom.attr("data-cover", album.cover.path).attr("data-width", album.cover.width).attr("data-height", album.cover.height)
+                .find("img").attr("src", config.path_params.cloudPath + album.cover.path).attr("title", album.description);
             dom.find(".album_name span").text(album.name);
         },
         "deleteAlbumInPage": function (album_id) {

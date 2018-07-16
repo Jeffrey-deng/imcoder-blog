@@ -229,6 +229,7 @@ String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
                     <div style="float: right" class="options_right">
                         <a class="option_time_sort" itemtype="url" href="photo.do?method=dashboard&mode=photo&uid=${hostUser.uid}" target="_blank">时间序</a>
                         <a class="option_tags_index" itemtype="url" href="photo.do?method=tags_square&uid=${hostUser.uid}" target="_blank">标签索引</a>
+                        <a class="option_photo_square" itemtype="url" href="photo.do?method=dashboard&mode=photo" target="_blank">照片广场</a>
                     </div>
                 </h1>
             </header>

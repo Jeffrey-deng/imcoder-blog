@@ -39,16 +39,12 @@
         var load_condition = {};
         $.each(params, function (key, value) {
             params[key] = value && decodeURIComponent(decodeURIComponent(value));
-            if (key != "size" && key != "page" && key != "method" && key != "col") {
+            if (key != "size" && key != "page" && key != "method" && key != "col" && key != "mode") {
                 load_condition[key] = params[key]
             }
         });
 
-        var search_input_value = params.name || params.description || "";
-        var title_prefix = search_input_value;
-        if (search_input_value) {
-            toolbar.view.find(".toolbar_search_input").val(search_input_value);
-        }
+        var title_prefix = params.name || params.description || "";
         if (title_prefix && title_prefix == "_") {
             $("head").find("title").text("所有相册" + " | " + $("head").find("title").text());
         } else if (title_prefix) {
@@ -86,7 +82,23 @@
                     $.get("photo.do?method=albumListByAjax", config.load_condition, function (data) {
                         common_utils.removeNotify("notify_albums_loading");
                         if (data.flag == 200) {
+                            $.each(data.albums, function (i, album) {
+                                try {
+                                    var coverJson = JSON.parse(album.cover);
+                                    album.cover = coverJson;
+                                } catch (e) {
+                                    album.cover = {"path": album.cover};
+                                }
+                            });
                             success(data);
+                            if (data.albums.length == 0) {
+                                common_utils.notify({
+                                    "progressBar": false,
+                                    "hideDuration": 0,
+                                    "timeOut": 10000,
+                                    "closeButton": false
+                                }).success("抱歉，未找到您要的内容", "", "notify_albums_loading_empty");
+                            }
                         } else {
                             toastr.error(data.info, "加载相册失败!");
                             console.warn("Error Code: " + data.flag);
@@ -182,8 +194,36 @@
             album_handle.openCreateAlbumModal();
         });
 
-        toolbar.rewriteSearch(function (key) {
-            window.open("photo.do?method=dashboard&mode=album&name=" + key);
-        }, "输入关键字搜索相册");
+        // 搜索重写
+        var search_input_value = "";
+        if (Object.keys(load_condition).length > 0) {
+            $.each(load_condition, function (key, value) {
+                if (key == "name") {
+                    value = value.replace(new RegExp(toolbar.utils.getItsMultipleMatch_Separator(key), "g"), '#');
+                    value = value.replace(/\[\[:<:\]\]/g, '{s}');
+                    value = value.replace(/\[\[:>:\]\]/g, '{e}');
+                    if (/^\((.+)\.\*(.+)\)\|\(\2\.\*\1\)$/.test(value)) {
+                        var matchForTwo = value.match(/^\((.+)\.\*(.+)\)\|/);
+                        value = matchForTwo[1] + "#" + matchForTwo[2];
+                    }
+                }
+                search_input_value += "," + key + ":";
+                if (toolbar.config.special_pair_separator.test(value) || toolbar.config.special_value_separator.test(value)) {
+                    search_input_value += '"' + value + '"';
+                } else {
+                    search_input_value += value;
+                }
+            });
+        }
+        search_input_value = search_input_value && search_input_value.substring(1);
+        toolbar.rewriteSearch({
+            placeholder: "输入关键字搜索相册",
+            inputInitialValue: search_input_value,
+            mode_action: function (key) {
+                this.config.callback.album_search.call(this, key);
+            },
+            modeMapping: ["album", "albums"],
+            setDefaultMapping: true
+        });
     });
 });

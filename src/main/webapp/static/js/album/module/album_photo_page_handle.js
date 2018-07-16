@@ -111,7 +111,7 @@
             "col": undefined
         },
         album_col: true,
-        page_method_address: "album_detail",
+        page_method_address: "dashboard",
         load_condition: null,
         checkPhotoId: 0,
         zipPhoto_groupWithAlbum: false

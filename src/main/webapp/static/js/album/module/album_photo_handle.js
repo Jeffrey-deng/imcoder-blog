@@ -62,7 +62,8 @@
             }
         },
         albumId: 0,
-        downloadType: "url"
+        downloadType: "url",
+        maxUploadSize: 7 * 1024 * 1024
     };
     var init = function (options) {
 
@@ -232,8 +233,8 @@
         photos = arguments[3] || [];
 
         var file = files[index];
-        if (file.size > (7 * 1024 * 1024)) {
-            toastr.error("换个小的，最大7M", file['name'], {timeOut: 0});
+        if (file.size > config.maxUploadSize) {
+            toastr.error("换个小的，最大" + (config.maxUploadSize/(1024*1024)) + "M", file['name'], {timeOut: 0});
             console.log("Error : 文件超过大小 - " + file['name']);
             index++;
             pointer.failUploadNum += 1;
@@ -570,9 +571,19 @@
         "addTagFromInput": function (tags_modify_dom, input_dom) {
             var tag = input_dom.val();
             if (tag && !/^[ ]+$/.test(tag)) {
+                // 如果要使用分割字符, 用 ""、{}、${} 包裹
+                var elMap = {};
+                tag = common_utils.replaceByEL(tag, function (index, key) {
+                    var replaceFlag = "replaceEL_" + index;
+                    elMap[replaceFlag] = key;
+                    return replaceFlag;
+                });
                 var insert_text = "";
-                $.each(tag.split("#"), function (i, value) {
+                $.each(tag.split(/[#,，;；X]/), function (i, value) {
                     if (value) {
+                        // 标记处还原原始值
+                        var match = value.match(/replaceEL_[\d]{1}/);
+                        match && (value = value.replace(match[0], elMap[match[0]]));
                         insert_text += '<span class="tag-single"><a class="tag-content"  target="_blank" href="photo.do?method=dashboard&mode=photo&tags=' + value + '">' + value + '</a><span class="tag-close"">X</span></span>';
                     }
                 });

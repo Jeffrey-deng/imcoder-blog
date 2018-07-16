@@ -5,12 +5,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'blowup', 'common_utils', 'login_handle', 'period_cache', 'results_cache', 'album_photo_handle', 'album_photo_page_handle'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'blowup', 'common_utils', 'login_handle', 'toolbar', 'period_cache', 'results_cache', 'album_photo_handle', 'album_photo_page_handle'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, null, common_utils, login_handle, PeriodCache, ResultsCache, album_photo_handle, album_photo_page_handle);
+        factory(window.jQuery, null, $(document).ready, toastr, null, common_utils, login_handle, toolbar, PeriodCache, ResultsCache, album_photo_handle, album_photo_page_handle);
     }
-})(function ($, bootstrap, domReady, toastr, blowup, common_utils, login_handle, PeriodCache, ResultsCache, album_photo_handle, album_photo_page_handle) {
+})(function ($, bootstrap, domReady, toastr, blowup, common_utils, login_handle, toolbar, PeriodCache, ResultsCache, album_photo_handle, album_photo_page_handle) {
 
     /**
      * 放大镜
@@ -73,15 +73,41 @@
         var query_size = params.query_size ? parseInt(params.query_size) : 520;
         var query_start = params.query_start ? parseInt(params.query_start) : 0;
 
+        var load_condition = {};
         $.each(params, function (key, value) {
             params[key] = value && decodeURIComponent(decodeURIComponent(value));
+            if (key != "method" && key != "size" && key != "col" && key != "page" && key != "check" && key != "mode") {
+                load_condition[key] = params[key]
+            }
         });
 
-        var search_input_value = params.tags || params.name || params.description || "";
-        var title_prefix = params.tags || params.name || params.description || "";
-        if (search_input_value) {
-            $('#header').find(".toolbar_search_input").val(search_input_value);
+        // 搜索重写
+        if (Object.keys(load_condition).length > 0) {
+            var search_input_value = "";
+            $.each(load_condition, function (key, value) {
+                if (key == "tags") {
+                    value = value.replace(new RegExp(toolbar.utils.getItsMultipleMatch_Separator(key), "g"), '#');
+                    value = value.replace(/\[\[:<:\]\]/g, '{s}');
+                    value = value.replace(/\[\[:>:\]\]/g, '{e}');
+                    if (/^\((.+)\.\*(.+)\)\|\(\2\.\*\1\)$/.test(value)) {
+                        var matchForTwo = value.match(/^\((.+)\.\*(.+)\)\|/);
+                        value = matchForTwo[1] + "#" + matchForTwo[2];
+                    }
+                }
+                search_input_value += "," + key + ":";
+                if (toolbar.config.special_pair_separator.test(value) || toolbar.config.special_value_separator.test(value)) {
+                    search_input_value += '"' + value + '"';
+                } else {
+                    search_input_value += value;
+                }
+            });
+            search_input_value = search_input_value && search_input_value.substring(1);
+            toolbar.rewriteSearch({
+                inputInitialValue: search_input_value
+            });
         }
+
+        var title_prefix = params.tags || params.name || params.description || "";
         if (title_prefix && title_prefix == "_") {
             !params.description && !params.name && $("head").find("title").text("所有标签" + " | " + $("head").find("title").text());
         } else if (title_prefix) {
@@ -107,7 +133,7 @@
             },
             checkPhotoId: checkPhotoId,
             page_method_address: "dashboard",
-            load_condition: params,
+            load_condition: load_condition,
             query_size: query_size,
             query_start: query_start,
             zipPhoto_groupWithAlbum: false,
@@ -125,6 +151,14 @@
                             album.show_col = 4;
                             data.album = album;
                             success(data);
+                            if (album.size == 0) {
+                                common_utils.notify({
+                                    "progressBar": false,
+                                    "hideDuration": 0,
+                                    "timeOut": 10000,
+                                    "closeButton": false
+                                }).success("抱歉，未找到您要的内容", "", "notify_photos_loading_empty");
+                            }
                         } else {
                             toastr.error(data.info, "加载相册信息失败!");
                             console.warn("Error Code: " + data.flag);
