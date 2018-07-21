@@ -327,7 +327,7 @@
     /**
      *  默认的配置，静态
      *  reload 与 reload_udf 取其一
-     *
+     *  <pre>
      *  "exampleGroupConfig 1":
      *  {
      *      "groupName": "example1",
@@ -351,7 +351,7 @@
      *                return data.user;
      *            }
      *       }
-     *  }
+     *  } </pre>
      */
     PeriodCache.groupDefaultConfig = {
         "version": "1.0", // add this config will has version verification for object

@@ -107,7 +107,7 @@ public class UserServiceImpl implements IUserService {
      */
     public Map<String, Object> login(User user, boolean remember) {
         Map<String, Object> map = new HashMap<>();
-        if (user == null) {
+        if (user == null || "".equals(user.getPassword()) || "".equals(user.getToken())) {
             map.put("flag", 400);
             return map;
         }
@@ -120,11 +120,12 @@ public class UserServiceImpl implements IUserService {
             // 如果是令牌登录，则判断令牌
         } else if (user.getPassword() == null && user.getToken() != null && dbUser.getToken() != null) {
             if ("false".equals(Config.get(ConfigConstants.USER_LOGIN_STRICT)) || user.getLoginIP().equals(dbUser.getLoginIP())) {
-                String token = Utils.MD("MD5", dbUser.getUid() + user.getToken());
-                if (token.equals(dbUser.getToken())) {
+                String encryptedToken = Utils.MD("MD5", dbUser.getUid() + user.getToken());
+                if (encryptedToken.equals(dbUser.getToken())) {
                     User cacheUser = cache.getUser(dbUser.getUid(), Cache.READ);
                     map.put("user", cacheUser);
                     map.put("flag", 200);
+                    cache.putTokenEntry(encryptedToken, user.getToken()); // 在服务器重启时重新注入映射关系到缓存
                 }
             }
             //如果是密码登录，判断（用户存在且密码相等）
@@ -132,12 +133,20 @@ public class UserServiceImpl implements IUserService {
             User cacheUser = cache.getUser(dbUser.getUid(), Cache.READ);
             cacheUser.setLoginIP(user.getLoginIP());
             if (remember) {
-                String token = Utils.MD("MD5", dbUser.getUid() + user.getToken());
-                cacheUser.setToken(token);
+                String beforeUseToken = cache.getTokenEntry(dbUser.getToken()); //获取上次用户的token
+                if ("false".equals(Config.get(ConfigConstants.USER_LOGIN_STRICT)) && beforeUseToken != null && dbUser.getToken() != null && dbUser.getToken().length() > 0) {
+                    cacheUser.setToken(dbUser.getToken()); //非严格模式下，如果之前有了token，则复用，让多个终端保持自动登陆
+                    map.put("token", beforeUseToken);
+                } else {
+                    String encryptedToken = Utils.MD("MD5", dbUser.getUid() + user.getToken()); // 加密token
+                    cacheUser.setToken(encryptedToken); //上面条件不成立则产生新的token
+                    cache.putTokenEntry(encryptedToken, user.getToken()); //缓存下加密的token与未加密的token的映射关系
+                    map.put("token", user.getToken());
+                }
                 userDao.updateTokenAndIp(cacheUser);
             } else if (!user.getLoginIP().equals(dbUser.getLoginIP())) {
                 if ("true".equals(Config.get(ConfigConstants.USER_LOGIN_STRICT))) {
-                    cacheUser.setToken("");
+                    cacheUser.setToken(""); //当是严格模式且登录IP不同时，清除token
                 }
                 userDao.updateTokenAndIp(cacheUser);
             }
@@ -157,6 +166,7 @@ public class UserServiceImpl implements IUserService {
         if (loginUser == null) {
             return 401;
         }
+        cache.removeTokenEntry(loginUser.getToken());
         loginUser.setToken("");
         loginUser.setLoginIP(null);
         return convertRowToHttpCode(userDao.updateTokenAndIp(loginUser));
@@ -297,6 +307,8 @@ public class UserServiceImpl implements IUserService {
         if (row > 0) {
             User newUser = userDao.findUser(user);
             newUser.setPassword(null);
+            //清除token，使所有终端自动登录失效
+            clearToken(newUser);
             //更新缓存中用户
             trigger.updateUser(newUser);
         }

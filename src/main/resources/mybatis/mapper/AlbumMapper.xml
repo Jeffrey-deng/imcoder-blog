@@ -59,6 +59,9 @@
             </choose>
             <if test="album != null">
                 and ( (1=1)
+                <if test="album.album_id != 0">
+                    and a.album_id = #{album.album_id}
+                </if>
                 <if test="album.user != null and album.user.uid > 0">
                     and a.uid = #{album.user.uid}
                 </if>
@@ -106,7 +109,7 @@
     <update id="updatePhoto" parameterType="photo">
 		update photo set
 		album_id = #{album_id}, name = #{name}, path = #{path}, description = #{description}, tags = #{tags},
-		 width = #{width}, height = #{height}, size = #{size}, image_type = #{image_type}, iscover = #{iscover}
+		 width = #{width}, height = #{height}, size = #{size}, image_type = #{image_type}, iscover = #{iscover}, originName = #{originName}
 		where photo_id = #{photo_id}
 	</update>
 

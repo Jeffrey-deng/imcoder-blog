@@ -16,6 +16,8 @@ import site.imcoder.blog.setting.ConfigConstants;
 import javax.annotation.Resource;
 import java.io.File;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by Jeffrey.Deng on 2018/1/3.
@@ -358,11 +360,12 @@ public class AlbumServiceImpl implements IAlbumService {
      * 更新照片
      *
      * @param photo
+     * @param file      可选，有则更新
      * @param loginUser
      * @return flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 照片未找到，500：服务器错误
      */
     @Override
-    public int updatePhoto(Photo photo, User loginUser) {
+    public int updatePhoto(Photo photo, MultipartFile file, User loginUser) {
         if (loginUser == null) {
             return 401;
         }
@@ -372,11 +375,34 @@ public class AlbumServiceImpl implements IAlbumService {
             Photo db_photo = (Photo) map.get("photo");
             if (db_photo.getUid() == loginUser.getUid()) {
                 photo.setAlbum_id(db_photo.getAlbum_id());
-                photo.setWidth(db_photo.getWidth());
-                photo.setHeight(db_photo.getHeight());
-                photo.setImage_type(db_photo.getImage_type());
-                photo.setSize(db_photo.getSize());
-                photo.setPath(db_photo.getPath());
+                String oldPath = db_photo.getPath();
+                if (file != null && !file.isEmpty() && file.getContentType().indexOf("image") != -1) {
+                    if (photo.getOriginName() == null) {
+                        if (db_photo.getOriginName() != null) {
+                            photo.setOriginName(db_photo.getOriginName());
+                        } else {
+                            photo.setOriginName("");
+                        }
+                    }
+                    Matcher matcher = Pattern.compile("(.*/)(.*_)(\\d{10,})(\\..+)?$").matcher(oldPath);
+                    matcher.find();
+                    String newPathDir = matcher.group(1); //文件夹
+                    String newPathExt = photo.getOriginName().lastIndexOf('.') != -1 ? photo.getOriginName().substring(photo.getOriginName().lastIndexOf('.')) : ".jpg";
+                    String newPathFileName = matcher.group(2) + new Date().getTime() + newPathExt; // 新文件名
+                    if (fileService.savePhotoFile(file, photo, newPathDir, newPathFileName)) { //保存新文件到磁盘
+                        photo.setPath(newPathDir + newPathFileName);
+                        fileService.delete(Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + oldPath); // 删除就文件
+                    } else {
+                        return 500;
+                    }
+                } else {
+                    photo.setWidth(db_photo.getWidth());
+                    photo.setHeight(db_photo.getHeight());
+                    photo.setImage_type(db_photo.getImage_type());
+                    photo.setSize(db_photo.getSize());
+                    photo.setPath(oldPath);
+                    photo.setOriginName(db_photo.getOriginName());
+                }
                 // 更新相册封面 需要先更新 album_cover 在更新photo
                 if (photo.getIscover() == 1) {
                     updateCoverForAlbum(photo);

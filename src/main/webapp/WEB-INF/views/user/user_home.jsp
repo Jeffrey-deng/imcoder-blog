@@ -15,7 +15,7 @@ String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 	<meta name="renderer" content="webkit">
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-	<title>${hostUser.nickname} 的个人博客</title>
+	<title>${hostUser.nickname}的个人博客 | CODER博客</title>
 	<meta name="description" content="${hostUser.description}" >
 	<!-- 引入文件 -->
 	<link rel="icon" href="<%=staticPath%>img/favicon.ico">

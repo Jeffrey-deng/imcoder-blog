@@ -107,6 +107,8 @@ public class ConfigManager {
         setDefault();
         loadConfigFromXML(Config.get(ConfigConstants.SERVER_CONFIG_LOCATION), "init");
         initLogFilePath();
+        EmailUtil.updateAccountInfo();
+        AudioUtil.updateTokenInfo();
         for (Map.Entry<String, String> entry : Config.getAll().entrySet()) {
             // 输出日志
             logger.info("设置 \"" + entry.getKey() + "\" : " + getPublicValue(entry.getKey(), entry.getValue()));

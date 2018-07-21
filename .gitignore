@@ -10,6 +10,7 @@ Desktop.ini
 /.idea/
 *.iml
 /out/
+/src/test/
 
 # maven
 /target/

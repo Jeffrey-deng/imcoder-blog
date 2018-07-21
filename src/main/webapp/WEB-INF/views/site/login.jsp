@@ -32,6 +32,7 @@ String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
 </head>
 
 <body class="gray-bg">

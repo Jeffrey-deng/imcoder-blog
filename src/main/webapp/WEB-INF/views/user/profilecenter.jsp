@@ -398,7 +398,7 @@ String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
         <div class="ibox float-e-margins">
             <div class="ibox-content mailbox-content">
                 <div class="file-manager">
-                    <a class="btn btn-block btn-primary compose-mail" href="#" >写信</a>
+                    <a class="btn btn-block btn-primary compose-mail" id="openChatModal">写信</a>
                     <div class="space-25"></div>
                     <h5>文件夹</h5>
                     <ul class="folder-list m-b-md" style="padding: 0">

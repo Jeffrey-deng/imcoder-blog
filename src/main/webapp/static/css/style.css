@@ -2092,3 +2092,16 @@ ripple {
     
 }
 
+.toast-success-no-icon {
+	background-color: #51A351 !important;
+}
+.toast-error-no-icon {
+	background-color: #BD362F !important;
+}
+.toast-info-no-icon {
+	background-color: #2F96B4 !important;
+}
+.toast-warning-no-icon {
+	background-color: #F89406 !important;
+}
+

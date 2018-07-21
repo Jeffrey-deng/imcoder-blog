@@ -22,14 +22,14 @@
             "cloudPath": "https://cloud.imcoder.site/",
             "staticPath": "https://static.imcoder.site/"
         },
-        "special_replace_prefix": "replaceEL_",
+        "special_replace_prefix": "@replaceEL_",
         "special_pair_separator": /[&;；,，]/,   //每一对键值对的分隔符
         "special_value_separator": /[:：=]/,    //键与值的分隔符
         "special_search_object": {    //需要特殊处理的关键字
             "type_schema": ["mode", "m"],
-            "photo_schema": ["logic_conn", "name", "description", "desc", "tags", "uid", "photo_id", "album_id", "originName", "origin", "path"],
-            "article_schema": ["logic_conn", "author.uid", "uid", "category.atid", "atid", "title", "tags", "summary", "create_time", "update_time", "click", "top", "recommend"],
-            "album_schema": ["name", "description", "desc", "user.uid", "uid"]
+            "photo_schema": ["logic_conn", "name", "description", "desc", "tags", "uid", "photo_id", "id", "album_id", "aid", "originName", "origin", "path"],
+            "article_schema": ["logic_conn", "id", "aid", "author.uid", "uid", "category.atid", "atid", "title", "tags", "summary", "create_time", "update_time", "click", "top", "recommend"],
+            "album_schema": ["id", "album_id", "name", "description", "desc", "user.uid", "uid"]
         },
         "special_multiple_match_separator": "' and ${column} rlike '",    //多重匹配,
         "callback": {
@@ -49,10 +49,17 @@
                     return replaceFlag;
                 });
                 var mode = null;
+                var modePairRegex = null;
                 context.utils.eachEntry(key, context.config.special_search_object.type_schema, function (entry) {
                     mode = entry[1].trim();
+                    modePairRegex = entry[0] + context.config.special_value_separator.toString().replace(/\//g, "") +
+                        entry[1] + context.config.special_pair_separator.toString().replace(/\//g, "") + "{0,1}";
                     return false;
                 });
+                // 去掉标记模式的字段
+                if (modePairRegex) {
+                    key = key.replace(new RegExp(modePairRegex), "");
+                }
                 if (mode && config.special_mode_mapping[mode]) {
                     config.special_mode_mapping[mode].call(context, key);   // mapping module
                 } else {
@@ -73,25 +80,16 @@
                 // 工具方法遍历pair_key每一个在schema中的pair，回调返回false跳出循环
                 context.utils.eachEntry(key, context.config.special_search_object.photo_schema, function (entry) {
                     // 还原标记位被el表达式保留的value
-                    if (entry[1] && entry[1].trim().indexOf(context.config.special_replace_prefix) != -1) {
-                        var match = entry[1].match(new RegExp(context.config.special_replace_prefix + "\\d{1}", "g"));
-                        if (match) {
-                            // 遍历，就是一个value可以写多个el表达式
-                            for (var i = 0; i < match.length; i++) {
-                                // 如果el符号为 { }，则保留{}符号
-                                if ((entry[0] == "tags") && context.config.elSourceMap[match[i]].indexOf("{") == 0) {
-                                    entry[1] = entry[1].replace(match[i], context.config.elSourceMap[match[i]]);
-                                    // 如果el符号为 ${} "" “”，则去除el符号
-                                } else {
-                                    entry[1] = entry[1].replace(match[i], context.config.elMap[match[i]]);
-                                }
-                            }
-                        }
-                    }
+                    context.utils.revertELReplaceContent(entry, ["tags"]);
+                    // 修正变量名
                     entry[0] == "desc" && (entry[0] = "description");
                     entry[0] == "origin" && (entry[0] = "originName");
+                    entry[0] == "id" && (entry[0] = "photo_id");
+                    entry[0] == "aid" && (entry[0] = "album_id");
+                    // 转化图片路径为相对路径
                     entry[0] == "path" && (entry[1] = entry[1].replace(context.config.path_params.cloudPath, ""));
-                    entry[0] == "tags" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1])); // 编码正则表达式
+                    // 编码正则表达式
+                    entry[0] == "tags" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
                     photo_url += "&" + entry[0] + "=" + entry[1];
                     isFindSpecial = true;
                 });
@@ -112,25 +110,15 @@
                     return;
                 }
                 context.utils.eachEntry(key, context.config.special_search_object.article_schema, function (entry) {
-                    // 还原被el表达式保留的value
-                    if (entry[1] && entry[1].trim().indexOf(context.config.special_replace_prefix) != -1) {
-                        var match = entry[1].match(new RegExp(context.config.special_replace_prefix + "\\d{1}", "g"));
-                        if (match) {
-                            for (var i = 0; i < match.length; i++) {
-                                // 如果el符号为 { }，则保留{}符号
-                                if ((entry[0] == "tags" || entry[0] == "title") && context.config.elSourceMap[match[i]].indexOf("{") == 0) {
-                                    entry[1] = entry[1].replace(match[i], context.config.elSourceMap[match[i]]);
-                                    // 如果el符号为 ${} "" “”，则去除el符号
-                                } else {
-                                    entry[1] = entry[1].replace(match[i], context.config.elMap[match[i]]);
-                                }
-                            }
-                        }
-                    }
+                    // 还原标记位被el表达式保留的value
+                    context.utils.revertELReplaceContent(entry, ["tags", "title"]);
+                    // 修正变量名
+                    entry[0] == "id" && (entry[0] = "aid");
                     entry[0] == "uid" && (entry[0] = "author.uid");
                     entry[0] == "atid" && (entry[0] = "category.atid");
-                    entry[0] == "tags" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1])); // 编码正则表达式
-                    entry[0] == "title" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1])); // 编码正则表达式
+                    // 编码正则表达式
+                    entry[0] == "tags" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
+                    entry[0] == "title" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
                     article_url += "&" + entry[0] + "=" + entry[1];
                     isFindSpecial = true;
                 });
@@ -150,24 +138,13 @@
                 }
                 context.utils.eachEntry(key, context.config.special_search_object.album_schema, function (entry) {
                     // 还原标记位被el表达式保留的value
-                    if (entry[1] && entry[1].trim().indexOf(context.config.special_replace_prefix) != -1) {
-                        var match = entry[1].match(new RegExp(context.config.special_replace_prefix + "\\d{1}", "g"));
-                        if (match) {
-                            // 遍历，就是一个value可以写多个el表达式
-                            for (var i = 0; i < match.length; i++) {
-                                // 如果el符号为 { }，则保留{}符号
-                                if ((entry[0] == "tags") && context.config.elSourceMap[match[i]].indexOf("{") == 0) {
-                                    entry[1] = entry[1].replace(match[i], context.config.elSourceMap[match[i]]);
-                                    // 如果el符号为 ${} "" “”，则去除el符号
-                                } else {
-                                    entry[1] = entry[1].replace(match[i], context.config.elMap[match[i]]);
-                                }
-                            }
-                        }
-                    }
+                    context.utils.revertELReplaceContent(entry, ["name"]);
+                    // 修正变量名
+                    entry[0] == "id" && (entry[0] = "album_id");
                     entry[0] == "desc" && (entry[0] = "description");
                     entry[0] == "uid" && (entry[0] = "user.uid");
-                    entry[0] == "name" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1])); // 编码正则表达式
+                    // 编码正则表达式
+                    entry[0] == "name" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
                     album_url += "&" + entry[0] + "=" + entry[1];
                     isFindSpecial = true;
                 });
@@ -176,6 +153,46 @@
                 } else {
                     key = encodeURIComponent(key);
                     window.open(album_url + "&name=" + key);
+                }
+            },
+            "tags_square_search": function (key) {
+                var isFindSpecial = false; //标记是否找到特殊关键字
+                var tags_square_url = "photo.do?method=tags_square";
+                if (key == "") {
+                    window.open(tags_square_url);
+                    return;
+                }
+                var filterKeyWord = null;
+                var filterPairRegex = null;
+                context.utils.eachEntry(key, ["filter", "f"], function (entry) {
+                    filterPairRegex = entry[0] + context.config.special_value_separator.toString().replace(/\//g, "") +
+                        entry[1] + context.config.special_pair_separator.toString().replace(/\//g, "") + "{0,1}";
+                    context.utils.revertELReplaceContent(entry, ["filter", "f"]);
+                    filterKeyWord = entry[1].trim();
+                });
+                // 去掉标记过滤的字段
+                if (filterPairRegex) {
+                    key = key.replace(new RegExp(filterPairRegex), "");
+                }
+                context.utils.eachEntry(key, context.config.special_search_object.photo_schema, function (entry) {
+                    // 还原标记位被el表达式保留的value
+                    context.utils.revertELReplaceContent(entry, ["tags"]);
+                    // 修正变量名
+                    entry[0] == "desc" && (entry[0] = "description");
+                    entry[0] == "origin" && (entry[0] = "originName");
+                    entry[0] == "id" && (entry[0] = "photo_id");
+                    entry[0] == "aid" && (entry[0] = "album_id");
+                    // 转化图片路径为相对路径
+                    entry[0] == "path" && (entry[1] = entry[1].replace(context.config.path_params.cloudPath, ""));
+                    // 编码正则表达式
+                    entry[0] == "tags" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
+                    tags_square_url += "&" + entry[0] + "=" + entry[1];
+                    isFindSpecial = true;
+                });
+                if (isFindSpecial || key == "") {
+                    window.open(tags_square_url + (filterKeyWord ? ("&filter=" + encodeURIComponent(filterKeyWord)) : ""));
+                } else {
+                    window.open(tags_square_url + (key ? ("&filter=" + encodeURIComponent(key)) : ""));
                 }
             }
         },
@@ -194,9 +211,9 @@
         config.special_mode_mapping = {
             "default": function (key) {
                 if (config.location_info.file == "photo.do") {
-                    config.callback.photo_search(key);
+                    config.callback.photo_search.call(context, key);
                 } else {
-                    config.callback.article_search(key);
+                    config.callback.article_search.call(context, key);
                 }
             },
             "photo": config.callback.photo_search,
@@ -204,18 +221,19 @@
             "photos": config.callback.photo_search,
             "article": config.callback.article_search,
             "a": config.callback.article_search,
-            "album": config.callback.album_search
+            "album": config.callback.album_search,
+            "ts": config.callback.tags_square_search
         }
     };
 
     /**
      *  重写搜索响应
      * {
-     *  {String}placeholder, // 搜索框提示值
-     *  {String}inputInitialValue, // 搜索框默认值
+     *  {String} placeholder, // 搜索框提示值
+     *  {String} inputInitialValue, // 搜索框默认值
      *  {Function} mode_action, // 搜索模块响应
      *  {Array} modeMapping, // 搜索模块映射名称
-     *  {Boolean}setDefaultMapping  // 是否设置成默认模块
+     *  {Boolean} setDefaultMapping  // 是否设置成默认模块
      * }
      * @param options
      */
@@ -306,7 +324,7 @@
             e.defaultPrevented;
             var theEvent = e || window.event;
             var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
-            if (code == "13") {//keyCode=13是回车键
+            if (code == 13) {//keyCode=13是回车键
                 _self.find('.toolbar_search_trigger').click();
                 //防止触发表单提交 返回false
                 return false;
@@ -331,7 +349,34 @@
     }
 
     var utils = {
-        "eachEntry": function (key, schema, entryCallBack) { // 遍历pair_key每一个在schema中的pair，回调返回false跳出循环
+        /**
+         * 还原标记位被el表达式保留的value
+         * @param {Array} entry
+         * @param {Array} ignoreBraceRegexProps - 需要保留{ }符号的属性
+         */
+        "revertELReplaceContent": function (entry, ignoreBraceRegexProps) {
+            if (entry && entry[1] && entry[1].trim().indexOf(context.config.special_replace_prefix) != -1) {
+                var match = entry[1].match(new RegExp(context.config.special_replace_prefix + "\\d{1}", "g"));
+                if (match) {
+                    // 遍历，就是一个value可以写多个el表达式
+                    for (var i = 0; i < match.length; i++) {
+                        // 如果el符号为 { }，则保留{}符号
+                        if (ignoreBraceRegexProps && ignoreBraceRegexProps.indexOf(entry[0]) != -1 && context.config.elSourceMap[match[i]].indexOf("{") == 0) {
+                            entry[1] = entry[1].replace(match[i], context.config.elSourceMap[match[i]]);
+                        } else { // 如果el符号为 ${} "" “”，则去除el符号
+                            entry[1] = entry[1].replace(match[i], context.config.elMap[match[i]]);
+                        }
+                    }
+                }
+            }
+        },
+        /**
+         * 遍历pair_key每一个在schema中的pair，回调返回false跳出循环
+         * @param {String} key - 被遍历的字符串
+         * @param {Array} schema - 当pair_key在schema数组中时候执行回调方法
+         * @param {Function} entryCallBack
+         */
+        "eachEntry": function (key, schema, entryCallBack) {
             $.each(key.split(context.config.special_pair_separator), function (index, pair) {
                 if (pair) {
                     var entry = pair.split(context.config.special_value_separator);
@@ -344,8 +389,14 @@
             });
         },
         "encodeRegexSearch": function (key, value) {
-            value = value.replace(/\{s\}/g, "[[:<:]]"); // 替换 {s}为单词头
-            value = value.replace(/\{e\}/g, "[[:>:]]"); // 替换 {e}为单词尾
+            value.indexOf("<") != -1 && (value = value.replace(/\\{<\\}/g, "@WD_BR_L").replace(/</g, "[[:<:]]").replace(/@WD_BR_L/g, "{<}")); // 替换 < 为单词头
+            value.indexOf(">") != -1 && (value = value.replace(/\\{>\\}/g, "@WD_BR_R").replace(/>/g, "[[:>:]]").replace(/@WD_BR_R/g, "{>}")); // 替换 > 为单词尾
+            if (value.indexOf("{") != -1) {
+                value = common_utils.replaceByEL(value, function (index, key) { // 转义MySQL特殊字符
+                    return /^[^\w]+$/.test(key) ? "[[." + key + ".]]" : this[0];
+                }, "\\{", "\\}");
+            }
+            value = value.replace(/\[\[\.\#\.\]\]/g, "@NUMBER_SIGN");
             if (value.indexOf("#") != -1 && value.indexOf("|") == -1) { // #替换为与正则
                 var matchArr = [];
                 $.each(value.split("#"), function (i, tag) {
@@ -368,6 +419,7 @@
                     value = three.replace(new RegExp("^" + separator), '');
                 }
             }
+            value = value.replace(/@NUMBER_SIGN/g, "[[.#.]]");
             value = value.replace(/(^\|)|(\|$)/g, "");  // 去掉首尾 |
             value = encodeURIComponent(value);  // 转义
             return value;

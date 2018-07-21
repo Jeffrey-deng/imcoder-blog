@@ -5,29 +5,35 @@
 <mapper namespace="user">
 
     <delete id="deleteUser" parameterType="int">
-        delete from user where id=#{id}
+        delete from user where uid=#{uid}
     </delete>
 
     <!-- 查询所有 -->
     <select id="findUserList" resultType="user" parameterType="hashmap">
         select * from user
         <!-- 查询时拼装条件 -->
-        <where>
-            <if test="name!=null and name!=''">and name like concat('%', #{name} ,'%')</if>
-            <if test="age!=null and age>0">and age=#{age}</if>
-            <if test="phone!=null and phone!=''">and phone=#{phone}</if>
-        </where>
-        limit ${startRow},${pageSize}
+        <if test="condition != null">
+            <where>
+                <if test="uid>0">and uid=#{condition.uid}</if>
+                <if test="nickname!=null and nickname!=''">and nickname like concat('%', #{condition.nickname} ,'%')
+                </if>
+                <if test="username!=null and username!=''">and username=#{condition.username}</if>
+            </where>
+        </if>
+        limit #{startRow},#{pageSize}
     </select>
 
     <!-- 查询总行数 -->
     <select id="findUserListCount" resultType="int" parameterType="user">
         select count(*) from user
-        <where>
-            <if test="name!=null and name!=''">and name like concat('%', #{name} ,'%')</if>
-            <if test="age>0">and age=#{age}</if>
-            <if test="phone!=null and phone!=''">and phone=#{phone}</if>
-        </where>
+        <if test="condition != null">
+            <where>
+                <if test="uid>0">and uid=#{condition.uid}</if>
+                <if test="nickname!=null and nickname!=''">and nickname like concat('%', #{condition.nickname} ,'%')
+                </if>
+                <if test="username!=null and username!=''">and username=#{condition.username}</if>
+            </where>
+        </if>
     </select>
 
     <!-- 保存 -->

@@ -537,6 +537,10 @@
             sendLetter();
         });
 
+        $('#openChatModal').click(function () {
+            showChatModal(null);
+        });
+
         setTimeout(function () {
             $('#mainForShowMsg').html(temp_unreadHtml);
             $('#mainForShowMsg').find('.showChatModal_trigger').click(function () {
@@ -704,13 +708,13 @@
     }
 
     function showChatModal(uid) {
-        if (uid.length > 0 || !isNaN(uid)) {
+        if (uid && !isNaN(uid) && parseInt(uid) > 0) {
             //没有此用户则先加载
-            if ($('#chat_uid_' + uid).length <= 0)
+            if ($('#chat_uid_' + uid).length <= 0) {
                 asbChatUserLetterList(uid);
-        }
-        if (uid.length > 0 || !isNaN(uid)) {
-            $('#chat_uid_' + uid).click();
+            } else {
+                $('#chat_uid_' + uid).click();
+            }
         }
         $('#chat_Modal').modal();
     }

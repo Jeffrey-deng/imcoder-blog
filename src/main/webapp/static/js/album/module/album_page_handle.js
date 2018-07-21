@@ -294,7 +294,7 @@
     var utils = {
         "createAlbumNode": function (album) {
             var div = document.createElement("div");
-            div.id = config.selector.album_id_prefix + album.album_id;
+            div.id = (config.selector.album_id_prefix + album.album_id).replace(/\s/g, "-").replace(/\./g, "_");
             div.className = "album";
             // div.setAttribute("data-order", photo.count);
             div.setAttribute("data-id", album.album_id);
@@ -350,7 +350,7 @@
             dom.find(".album_name span").text(album.name);
         },
         "deleteAlbumInPage": function (album_id) {
-            $("#" + config.selector.album_id_prefix + album.album_id).remove();
+            utils.getAlbumDom(album_id).remove();
             var albums = pointer.albums;
             var index = albums.indexOf(utils.getPhotoByCache(album_id));
             albums.splice(index, 1);
@@ -359,7 +359,8 @@
             utils.calcNavLocation();
         },
         "getAlbumDom": function (album_id) {
-            return $("#" + config.selector.album_id_prefix + album_id);
+            var encodeId = album_id.replace(/\s/g, "-").replace(/\./g, "_");
+            return $("#" + config.selector.album_id_prefix + encodeId);
         },
         "createNavLiNode": function (pageNum, isActive) {
             var li = document.createElement("li");

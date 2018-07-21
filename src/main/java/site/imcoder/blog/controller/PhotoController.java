@@ -214,7 +214,7 @@ public class PhotoController {
     @LoginRequired
     @RequestMapping(params = "method=upload")
     @ResponseBody
-    public Map<String, Object> uploadPhoto(@RequestParam(value = "file", required = false) MultipartFile file, Photo photo, HttpServletRequest request, HttpSession session) {
+    public Map<String, Object> uploadPhoto(@RequestParam(value = "file") MultipartFile file, Photo photo, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = albumService.savePhoto(file, photo, loginUser);
         int flag = (Integer) map.get("flag");
@@ -294,10 +294,10 @@ public class PhotoController {
     @LoginRequired
     @RequestMapping(params = "method=update")
     @ResponseBody
-    public Map<String, Object> updatePhoto(Photo photo, HttpServletRequest request, HttpSession session) {
+    public Map<String, Object> updatePhoto(Photo photo, @RequestParam(value = "file", required = false) MultipartFile file, HttpServletRequest request, HttpSession session) {
         Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
-        int flag = albumService.updatePhoto(photo, loginUser);
+        int flag = albumService.updatePhoto(photo, file, loginUser);
         map.put("flag", flag);
         if (flag == 200) {
             map.put("info", "更新成功！");

@@ -151,6 +151,9 @@
                     album_page_handle.jumpPage(album_page_handle.config.page_params.pageCount);
                 },
                 "updateCompleted": function (album) {  // 在相册更新完成后回调
+                    if (album_page_handle.utils.getAlbumByCache(album.album_id).cover.path != album.cover.path) {
+                        album_page_handle.jumpPage(album_page_handle.config.page_params.pageNum);
+                    }
                     album_page_handle.utils.updateAlbumInPage(album);
                     PeriodCache.utils.removeCache("user_albums_cache", login_handle.getCurrentUserId());
                     PeriodCache.utils.removeCache("user_albums_cache", "0_" + login_handle.getCurrentUserId());
@@ -158,7 +161,7 @@
                 "deleteCompleted": function (album_id) {  // 在相册删除完成后回调
                     //album_page_handle.utils.deleteAlbumInPage(album_id);
                 },
-                "beforeCreateModalOpen": function (createModal, openCreateModal_callback) {  // 上传窗口打开前回调
+                "beforeCreateModalOpen": function (createModal, openCreateModal_callback) {  // 创建窗口打开前回调
                     openCreateModal_callback();
                 },
                 "beforeUpdateModalOpen": function (updateModal, formatAlbumToModal_callback, album) {  // 更新窗口打开前回调

@@ -104,8 +104,8 @@ String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
             <div class="">
                 <div class="container">
                     <div class="" style="text-align:center;">
-                        <h1 hostUid="${album.user.uid}">${album.name}</h1>
-                        <h3 style="color:#444;font-size:16.5px;">${album.description}</h3>
+                        <h1 class="album_name" hostUid="${album.user.uid}">${album.name}</h1>
+                        <h3 class="album_description" style="color:#444;font-size:16.5px;">${album.description}</h3>
                     </div>
                 </div>
             </div>
@@ -412,8 +412,8 @@ String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
                         </span>
                     </div>
                     <div class="form-group note-group-select-from-files">
-                        <label>从本地上传</label>
-                        <input class="note-image-input form-control" type="file" name="photos" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif" multiple="multiple">
+                        <label title="不选择则不更新">更新图片文件</label>
+                        <input class="note-image-input form-control" type="file" name="photo_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
                     </div>
                     <div class="form-group">
                         <label>名称：</label>
@@ -452,6 +452,78 @@ String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
                 <div class="modal-footer">
                     <button class="btn btn-danger" name="deletePhoto_trigger">删除图片</button>
                     <button class="btn btn-primary" name="updatePhoto_trigger">更新信息</button>
+                    <button class="btn btn-default" name="cancelBtn" data-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media (min-width: 768px){
+        #updateAlbumModal .modal-dialog {
+            width:500px;
+        }
+    }
+    @media (max-width:768px){
+        #updateAlbumModal .modal-dialog{
+            width:100%;
+        }
+    }
+</style>
+<div class="note-editor">
+    <div class="modal fade in" id="updateAlbumModal" aria-hidden="false" tabindex="-1" style="padding-right: 0 !important;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">×</span></button>
+                    <h4 class="modal-title">更新相册信息</h4></div>
+                <div class="modal-body"  style="padding-bottom: 0px;">
+                    <div class="form-group">
+                        <label>相册ID：</label>
+                        <span name="album_id" class="control-label" style="display:inline-block;width: 50%;margin-left: 15px;"></span>
+                    </div>
+                    <div class="form-group">
+                        <label>名称：</label>
+                        <input class="form-control" type="text" name="album_name">
+                    </div>
+                    <div class="form-group">
+                        <label>描述：</label>
+                        <textarea class="form-control" type="text" name="album_desc"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>封面地址：</label>
+                        <input class="form-control" type="text" name="album_cover_path" />
+                    </div>
+                    <div class="form-group" style="padding-top: 5px;">
+                        <label>相册权限：</label>
+                        <label class="radio-inline" style="margin-left:7px;">
+                            <input type="radio" name="album_permission" value="0" checked="checked"> 公开
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="album_permission" value="1"> 好友
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="album_permission" value="2" > 私有
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label title="一行显示图片的数量">展示列数：</label>
+                        <input class="form-control" style="display:inline-block;width: 14%;margin-left: 6px;" type="text" name="album_show_col" value="4">
+                    </div>
+                    <div class="form-group">
+                        <label>照片数量：</label>
+                        <span name="album_size" class="control-label" style="display:inline-block;width: 50%;margin-left: 7px;"></span>
+                    </div>
+                    <div class="form-group">
+                        <label>创建时间：</label>
+                        <span name="album_create_time" class="control-label" style="display:inline-block;width: 50%;margin-left: 7px;"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-danger" name="deleteAlbum_trigger">删除相册</button>
+                    <button class="btn btn-primary" name="updateAlbum_trigger">更新信息</button>
                     <button class="btn btn-default" name="cancelBtn" data-dismiss="modal">关闭</button>
                 </div>
             </div>

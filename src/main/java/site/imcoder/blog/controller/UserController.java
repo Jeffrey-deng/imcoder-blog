@@ -84,7 +84,7 @@ public class UserController {
         /* 登陆验证 */
         user.setEmail(user.getUsername());
         user.setLoginIP(Utils.getRemoteAddr(request));
-        if (user.getPassword() != null && remember) {
+        if (user.getPassword() != null && remember && user.getToken() == null) {
             user.setToken(session.getId());
         }
         Map<String, Object> map = userService.login(user, remember);
@@ -95,8 +95,9 @@ public class UserController {
             loginUser.setPassword("");
             session.setAttribute("loginUser", loginUser);
             map.put("loginUser", loginUser);
+            map.remove("user");
             if (remember) {
-                map.put("token", user.getToken());
+                map.put("token", map.get("token"));
             }
             map.put("continue", "article.do?method=list");
         } else if (flag == 400) {
@@ -332,8 +333,8 @@ public class UserController {
             map.put("flag", flag);
             convertStatusCodeToWord(map, "flag", "info");
             if (flag == 200) {
-                //更新session中的loginUser
-                session.setAttribute("loginUser", userService.findUser(user, loginUser, true));
+                //销毁session让其重新登录
+                session.invalidate(); //由于前面清除了token，使所有终端自动登录失效，重新登录是为了让其获取新的token
             }
         } else {
             map.put("flag", 401);
@@ -655,7 +656,7 @@ public class UserController {
     public Map<String, Object> logout(HttpSession session) {
         Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
-        int flag = userService.clearToken(loginUser);
+        int flag = userService.clearToken(loginUser); //清除token，让所有终端自动登录失效
         map.put("flag", flag);
         convertStatusCodeToWord(map, "flag", "info");
         session.invalidate();

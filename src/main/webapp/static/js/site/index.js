@@ -80,12 +80,18 @@
             $.each(load_condition, function (key, value) {
                 if (key == "tags" || key == "title") {
                     value = value.replace(new RegExp(toolbar.utils.getItsMultipleMatch_Separator(key), "g"), '#');
-                    value = value.replace(/\[\[:<:\]\]/g, '{s}');
-                    value = value.replace(/\[\[:>:\]\]/g, '{e}');
                     if (/^\((.+)\.\*(.+)\)\|\(\2\.\*\1\)$/.test(value)) {
                         var matchForTwo = value.match(/^\((.+)\.\*(.+)\)\|/);
                         value = matchForTwo[1] + "#" + matchForTwo[2];
                     }
+                    value = value.replace(/\[\[:<:\]\]/g, '<');
+                    value = value.replace(/\[\[:>:\]\]/g, '>');
+                    if (value.indexOf("[[.") != -1) {
+                        value = common_utils.replaceByEL(value, function (index, key) { // 还原被转义的MySQL特殊字符
+                            return /^[^\w]+$/.test(key) ? "{" + key + "}" : this[0];
+                        }, "\\[\\[\\.", "\\.\\]\\]")
+                    }
+                    document.title = value + " - CODER 博客";
                     toolbar.view.find("#navbar-collapse .navbar-nav .active").next().find("a").text((key == "tags" ? "标签=" : "标题=") + "'" + value + "'");
                 }
                 search_input_value += "," + key + ":";

@@ -53,7 +53,7 @@
         toastr.options = {
             "closeButton": true,
             "debug": false,
-            "progressBar": true,
+            "progressBar": false,
             "positionClass": "toast-bottom-left",
             "showDuration": "400",
             "hideDuration": "1000",
@@ -80,32 +80,6 @@
                 load_condition[key] = params[key]
             }
         });
-
-        // 搜索重写
-        if (Object.keys(load_condition).length > 0) {
-            var search_input_value = "";
-            $.each(load_condition, function (key, value) {
-                if (key == "tags") {
-                    value = value.replace(new RegExp(toolbar.utils.getItsMultipleMatch_Separator(key), "g"), '#');
-                    value = value.replace(/\[\[:<:\]\]/g, '{s}');
-                    value = value.replace(/\[\[:>:\]\]/g, '{e}');
-                    if (/^\((.+)\.\*(.+)\)\|\(\2\.\*\1\)$/.test(value)) {
-                        var matchForTwo = value.match(/^\((.+)\.\*(.+)\)\|/);
-                        value = matchForTwo[1] + "#" + matchForTwo[2];
-                    }
-                }
-                search_input_value += "," + key + ":";
-                if (toolbar.config.special_pair_separator.test(value) || toolbar.config.special_value_separator.test(value)) {
-                    search_input_value += '"' + value + '"';
-                } else {
-                    search_input_value += value;
-                }
-            });
-            search_input_value = search_input_value && search_input_value.substring(1);
-            toolbar.rewriteSearch({
-                inputInitialValue: search_input_value
-            });
-        }
 
         var title_prefix = params.tags || params.name || params.description || "";
         if (title_prefix && title_prefix == "_") {
@@ -139,11 +113,18 @@
             zipPhoto_groupWithAlbum: false,
             callback: {
                 "loadPhotos_callback": function (config, success) {
+                    common_utils.notify({
+                        "progressBar": false,
+                        "hideDuration": 0,
+                        "timeOut": 0,
+                        "closeButton": false
+                    }).success("正在加载数据", "", "notify_photos_loading");
                     var object = $.extend(true, {}, config.load_condition);
                     delete object.method;
                     object.query_size = config.query_size;
                     object.query_start = config.query_start;
                     $.get("photo.do?method=photoListByAjax", object, function (data) {
+                        common_utils.removeNotify("notify_photos_loading");
                         if (data.flag == 200) {
                             var album = {};
                             album.photos = data.photos || [];
@@ -282,6 +263,9 @@
                 },
                 "updateCompleted": function (context, photo) {
                     album_photo_page_handle.utils.updatePhotoInPage(photo);
+                    if (photo.path) { // 如果更新了图片文件
+                        album_photo_page_handle.jumpPage(album_photo_page_handle.config.page_params.pageNum);
+                    }
                     if (photo.iscover == 1) {
                         PeriodCache.utils.removeCache("user_albums_cache", login_handle.getCurrentUserId());
                         PeriodCache.utils.removeCache("user_albums_cache", "0_" + login_handle.getCurrentUserId());
@@ -338,6 +322,38 @@
         $('#uploadPhoto').click(function () {
             album_photo_handle.openUploadPhotoModal();
         });
+
+        // 搜索重写
+        if (Object.keys(load_condition).length > 0) {
+            var search_input_value = "";
+            $.each(load_condition, function (key, value) {
+                if (key == "tags") {
+                    value = value.replace(new RegExp(toolbar.utils.getItsMultipleMatch_Separator(key), "g"), '#');
+                    if (/^\((.+)\.\*(.+)\)\|\(\2\.\*\1\)$/.test(value)) {
+                        var matchForTwo = value.match(/^\((.+)\.\*(.+)\)\|/);
+                        value = matchForTwo[1] + "#" + matchForTwo[2];
+                    }
+                    value = value.replace(/\[\[:<:\]\]/g, '<');
+                    value = value.replace(/\[\[:>:\]\]/g, '>');
+                    if (value.indexOf("[[.") != -1) {
+                        value = common_utils.replaceByEL(value, function (index, key) { // 还原被转义的MySQL特殊字符
+                            return /^[^\w]+$/.test(key) ? "{" + key + "}" : this[0];
+                        }, "\\[\\[\\.", "\\.\\]\\]")
+                    }
+                    document.title = value + " | dashboard - 相册";
+                }
+                search_input_value += "," + key + ":";
+                if (toolbar.config.special_pair_separator.test(value) || toolbar.config.special_value_separator.test(value)) {
+                    search_input_value += '"' + value + '"';
+                } else {
+                    search_input_value += value;
+                }
+            });
+            search_input_value = search_input_value && search_input_value.substring(1);
+            toolbar.rewriteSearch({
+                inputInitialValue: search_input_value
+            });
+        }
 
         bindBlowup();
     });

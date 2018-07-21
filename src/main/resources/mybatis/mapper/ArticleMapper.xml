@@ -117,7 +117,8 @@
                             or
                             ( a.permission = 1
                             and
-                            (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid = #{loginUser.uid}) )
+                            (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid =
+                            #{loginUser.uid}) )
                             )
                             or
                             ( a.permission = 2 and a.uid = #{loginUser.uid} )
@@ -131,23 +132,26 @@
             </choose>
             <if test="condition!=null">
                 and ( (1=1)
+                <if test="condition.aid != 0">
+                    and a.aid = #{condition.aid}
+                </if>
                 <if test="condition.author != null">
-                    <if test="condition.author.uid!= 0">
+                    <if test="condition.author.uid != 0">
                         and a.uid = #{condition.author.uid}
                     </if>
                 </if>
                 <if test="condition.category != null">
-                    <if test="condition.category.atid!= 0">
+                    <if test="condition.category.atid != 0">
                         and a.atid = #{condition.category.atid}
                     </if>
                 </if>
-                <if test="condition.title != null and condition.title!='' ">
+                <if test="condition.title != null and condition.title != '' ">
                     and a.title rlike #{condition.title}
                 </if>
-                <if test="condition.tags != null and condition.tags!='' ">
+                <if test="condition.tags != null and condition.tags != '' ">
                     and a.tags rlike '${condition.tags}'
                 </if>
-                <if test="condition.summary != null and condition.summary!='' ">
+                <if test="condition.summary != null and condition.summary != '' ">
                     and a.summary like concat('%', #{condition.summary} ,'%')
                 </if>
                 <if test="condition.create_time != null ">
@@ -161,10 +165,10 @@
                 <if test="condition.click != 0">
                     and a.click >= #{condition.click}
                 </if>
-                <if test="condition.top!= 0">
+                <if test="condition.top != 0">
                     and a.top >= #{condition.top}
                 </if>
-                <if test="condition.recommend!= 0">
+                <if test="condition.recommend != 0">
                     and a.recommend = #{condition.recommend}
                 </if>
                 )
@@ -245,7 +249,8 @@
                             or
                             ( a.permission = 1
                             and
-                            (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid = #{loginUser.uid} ) )
+                            (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid =
+                            #{loginUser.uid} ) )
                             )
                             or
                             ( a.permission = 2 and a.uid = #{loginUser.uid} )
@@ -259,23 +264,26 @@
             </choose>
             <if test="condition!=null">
                 and ( (1=1)
+                <if test="condition.aid != 0">
+                    and a.aid = #{condition.aid}
+                </if>
                 <if test="condition.author != null">
-                    <if test="condition.author.uid!= 0">
+                    <if test="condition.author.uid != 0">
                         and a.uid = #{condition.author.uid}
                     </if>
                 </if>
                 <if test="condition.category != null">
-                    <if test="condition.category.atid!= 0">
+                    <if test="condition.category.atid != 0">
                         and a.atid = #{condition.category.atid}
                     </if>
                 </if>
-                <if test="condition.title != null and condition.title!='' ">
+                <if test="condition.title != null and condition.title != '' ">
                     and a.title rlike #{condition.title}
                 </if>
-                <if test="condition.tags != null and condition.tags!='' ">
+                <if test="condition.tags != null and condition.tags != '' ">
                     and a.tags rlike '${condition.tags}'
                 </if>
-                <if test="condition.summary != null and condition.summary!='' ">
+                <if test="condition.summary != null and condition.summary != '' ">
                     and a.summary like concat('%', #{condition.summary} ,'%')
                 </if>
                 <if test="condition.create_time != null ">
@@ -289,10 +297,10 @@
                 <if test="condition.click != 0">
                     and a.click >= #{condition.click}
                 </if>
-                <if test="condition.top!= 0">
+                <if test="condition.top != 0">
                     and a.top >= #{condition.top}
                 </if>
-                <if test="condition.recommend!= 0">
+                <if test="condition.recommend != 0">
                     and a.recommend = #{condition.recommend}
                 </if>
                 )

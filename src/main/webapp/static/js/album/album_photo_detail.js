@@ -6,12 +6,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'blowup', 'common_utils', 'login_handle', 'period_cache', 'album_photo_handle', 'album_photo_page_handle'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'blowup', 'common_utils', 'login_handle', 'period_cache', 'album_photo_handle', 'album_photo_page_handle', 'album_handle'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, null, common_utils, login_handle, PeriodCache, album_photo_handle, album_photo_page_handle);
+        factory(window.jQuery, null, $(document).ready, toastr, null, common_utils, login_handle, PeriodCache, album_photo_handle, album_photo_page_handle, album_handle);
     }
-})(function ($, bootstrap, domReady, toastr, blowup, common_utils, login_handle, PeriodCache, album_photo_handle, album_photo_page_handle) {
+})(function ($, bootstrap, domReady, toastr, blowup, common_utils, login_handle, PeriodCache, album_photo_handle, album_photo_page_handle, album_handle) {
 
     /**
      * 放大镜
@@ -125,7 +125,7 @@
         toastr.options = {
             "closeButton": true,
             "debug": false,
-            "progressBar": true,
+            "progressBar": false,
             "positionClass": "toast-bottom-left",
             "showDuration": "400",
             "hideDuration": "1000",
@@ -145,6 +145,7 @@
         var col = params.col;
         var checkPhotoId = params.check ? parseInt(params.check) : 0;
 
+        // 照片页面布局模块初始化
         album_photo_page_handle.init({
             path_params: {
                 "basePath": $("#basePath").attr("href"),
@@ -169,9 +170,16 @@
             },
             callback: {
                 "loadPhotos_callback": function (config, success) {
+                    common_utils.notify({
+                        "progressBar": false,
+                        "hideDuration": 0,
+                        "timeOut": 0,
+                        "closeButton": false
+                    }).success("正在加载数据", "", "notify_photos_loading");
                     var object = $.extend(true, {}, config.load_condition);
                     // Object.keys(object).length
                     $.get("photo.do?method=albumByAjax", {"id": object.album_id}, function (data) {
+                        common_utils.removeNotify("notify_photos_loading");
                         if (data.flag == 200) {
                             success(data);
                             // 添加精选按钮
@@ -193,7 +201,7 @@
             }
         });
 
-        // 相册处理模块初始化
+        // 相册照片处理模块初始化
         album_photo_handle.init({
             "selector": {
                 "uploadModal": "#uploadPhotoModal",
@@ -214,7 +222,17 @@
                 },
                 "updateCompleted": function (context, photo) {
                     album_photo_page_handle.utils.updatePhotoInPage(photo);
+                    if (photo.path) { // 如果更新了图片文件
+                        album_photo_page_handle.jumpPage(album_photo_page_handle.config.page_params.pageNum);
+                    }
                     if (photo.iscover == 1) {
+                        var photo_source = album_photo_page_handle.utils.getPhotoByCache(photo.photo_id);
+                        album_photo_page_handle.pointer.album.cover = JSON.stringify({
+                            "photo_id": photo_source.photo_id,
+                            "path": photo_source.path,
+                            "width": photo_source.width,
+                            "height": photo_source.height
+                        });
                         PeriodCache.utils.removeCache("user_albums_cache", login_handle.getCurrentUserId());
                         PeriodCache.utils.removeCache("user_albums_cache", "0_" + login_handle.getCurrentUserId());
                     }
@@ -267,6 +285,46 @@
                 common_utils.removeNotify("dragUpload_notify");
                 album_photo_handle.openUploadPhotoModal(files);
             }
+        });
+
+        // 相册处理模块初始化
+        album_handle.init({
+            path_params: {
+                "basePath": $("#basePath").attr("href"),
+                "cloudPath": $("#cloudPath").attr("href"),
+                "staticPath": $("#staticPath").attr("href")
+            },
+            selector: {
+                "createAlbumModal": "#createAlbumModal",
+                "updateAlbumModal": "#updateAlbumModal"
+            },
+            callback: {
+                "createCompleted": function (album) {  // 在相册创建完成后回调
+
+                },
+                "updateCompleted": function (album) {  // 在相册更新完成后回调
+                    album.cover = ((typeof album.cover == "object") ? JSON.stringify(album.cover) : album.cover);
+                    var cacheAlbum = album_photo_page_handle.pointer.album;
+                    $.extend(cacheAlbum, album);
+                    $("#first .album_name").text(cacheAlbum.name);
+                    $("#first .album_description").text(cacheAlbum.description);
+                    PeriodCache.utils.removeCache("user_albums_cache", cacheAlbum.user.uid);
+                    PeriodCache.utils.removeCache("user_albums_cache", "0_" + cacheAlbum.user.uid);
+                },
+                "deleteCompleted": function (album_id) {  // 在相册删除完成后回调
+
+                },
+                "beforeCreateModalOpen": function (createModal, openCreateModal_callback) {  // 创建窗口打开前回调
+                    openCreateModal_callback();
+                },
+                "beforeUpdateModalOpen": function (updateModal, formatAlbumToModal_callback, album) {  // 更新窗口打开前回调
+                    formatAlbumToModal_callback(album);
+                }
+            }
+        });
+
+        $('#album_create_time').click(function () {
+            album_handle.openUpdateAlbumModal(album_photo_page_handle.pointer.album);
         });
 
         // 添加精选按钮   replaceWith addFeaturedBtnBasedLocal(album)

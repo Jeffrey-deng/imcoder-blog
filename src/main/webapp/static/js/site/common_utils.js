@@ -228,7 +228,13 @@
         "showEasing": "swing",
         "hideEasing": "linear",
         "showMethod": "fadeIn",
-        "hideMethod": "fadeOut"
+        "hideMethod": "fadeOut",
+        "iconClasses": {
+            error: 'toast-error',
+            info: 'toast-info-no-icon',
+            success: 'toast-success',
+            warning: 'toast-warning-no-icon'
+        }
     };
 
     var parseURL = function (url) {
@@ -320,24 +326,35 @@
     };
 
     /**
-     *  用JS实现EL表达式功能，支持 " "、{ }、${ } 包裹
+     *  用JS实现EL表达式功能，默认支持 " "、{ }、${ }、“”包裹，
+     *  可通过设置 sepLeft，sepRight 自定义, 如果想自定义匹配正则，那么设置sepLeft为你需要的正则
+     *  不允许嵌套
      *  eg:
-     *  var str = "path:\"Jeffrey\";name:{Jeffrey},attr:${Jeffrey},desc:”Jeffrey“";
+     *  <pre>
+     *  var str = "path:\"Jeffrey\";name:{Jeffrey},attr:${Jeffrey},desc:“Jeffrey”";
      *  var result = replaceByEL(str, function(index, key){
      *      return "replace_" + key + "_" + index;
      *  });
-     *  result: "path:replace_Jeffrey_1;name:replace_Jeffrey_2,attr:replace_Jeffrey_3,desc:replace_Jeffrey_4"
-     *
+     *  result: "path:replace_Jeffrey_1;name:replace_Jeffrey_2,attr:replace_Jeffrey_3,desc:replace_Jeffrey_4" </pre>
      * @author Jeffrey.deng
-     * @param str
-     * @param replace
+     * @param {String} str
+     * @param {Function} replace 替换函数，将匹配到的表达式替换成你想要的
+     * @param {String|RegExp} sepLeft - 自定义分隔符左，特殊字符自己转义（分割符前面加“\\”）, 如果想自定义匹配正则，那么设置sepLeft为你需要的正则
+     * @param {String|optional} sepRight - 自定义分隔符右，特殊字符自己转义, 如果想自定义匹配正则，那么设置sepRight为不需要设置
      * @returns {string}
      */
-    var replaceByEL = function (str, replace) {
+    var replaceByEL = function (str, replace, sepLeft, sepRight) {
         if (!str) {
             return str;
         }
-        var regex = /\$\{(.*?)\}|\{(.*?)\}|"(.*?)"|”(.*?)“/ig;
+        var regex = null;
+        if (sepLeft && sepLeft instanceof RegExp) {
+            regex = sepLeft;
+        } else if (sepLeft && sepRight) {
+            regex = new RegExp(sepLeft + "(.*?)" + sepRight, "g")
+        } else {
+            regex = /\$\{(.*?)\}|\{(.*?)\}|"(.*?)"|“(.*?)”|”(.*?)“/g;
+        }
         var result;
         var lastMatchEndIndex = 0;
         var partArr = [];
@@ -727,15 +744,21 @@
             "lastNotifyName": null,
             "success": function (content, title, notifyName) {
                 context.lastNotifyName = notifyName = notifyName || "default";
-                notifyPool[notifyName] = toastr.success(content, title, notify_options);
+                var toastElement = toastr.success(content, title, notify_options);
+                notifyPool[notifyName] = toastElement;
+                return toastElement;
             },
             "error": function (content, title, notifyName) {
                 context.lastNotifyName = notifyName = notifyName || "default";
-                notifyPool[notifyName] = toastr.error(content, title, notify_options);
+                var toastElement = toastr.error(content, title, notify_options);
+                notifyPool[notifyName] = toastElement;
+                return toastElement;
             },
             "info": function (content, title, notifyName) {
                 context.lastNotifyName = notifyName = notifyName || "default";
-                notifyPool[notifyName] = toastr.info(content, title, notify_options);
+                var toastElement = toastr.info(content, title, notify_options);
+                notifyPool[notifyName] = toastElement;
+                return toastElement;
             }
         };
         return context;
@@ -743,7 +766,7 @@
 
     /**
      * 返回通知对象
-     * @param options - json 或 boolean, json为配置，boolean设置为true则为继承上次通知配置
+     * @param {Object|Boolean} options - json为配置，boolean设置为true则为继承上次通知配置
      * @returns notifyObject - {config, default, lastNotifyName, success, error, info}
      */
     var notify = function (options) {

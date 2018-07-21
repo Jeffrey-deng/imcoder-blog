@@ -18,7 +18,7 @@
         toastr.options = {
             "closeButton": true,
             "debug": false,
-            "progressBar": true,
+            "progressBar": false,
             "positionClass": "toast-bottom-left",
             "showDuration": "400",
             "hideDuration": "1000",
@@ -64,21 +64,22 @@
                                 common_utils.removeNotify("notify_photos_loading");
                                 return;
                             }
-                            var isSearchTags = false;
-                            if (config.load_condition.tags) {
-                                if (Object.keys(config.load_condition).length == 1) {
-                                    isSearchTags = true;
-                                } else if (Object.keys(config.load_condition).length == 2 && config.load_condition.album_id) {
-                                    isSearchTags = true;
-                                }
+                            var isFilterTags = false; //标记是显示该条件下，所有标签还是利用filter值过滤标签后的标签
+                            var filterTagRegex = null;
+                            if (config.load_condition.filter) {
+                                isFilterTags = true;
+                                filterTagRegex = new RegExp(config.load_condition.filter);
                             }
-                            config.isSearchTags = isSearchTags;
+                            if (config.load_condition.hasOwnProperty("filter")) {
+                                delete config.load_condition.filter;
+                            }
+                            config.isFilterTags = isFilterTags;
                             var tagsMap = {};
                             $.each(data.photos, function (i, photo) {
                                 var tags = photo.tags ? photo.tags.split('#') : [];
                                 $.each(tags, function (i, tag) {
                                     if (tag) {
-                                        if (isSearchTags && tag.indexOf(config.load_condition.tags) == -1) {
+                                        if (isFilterTags && !filterTagRegex.test(tag)) {    //正则过滤标签
                                             return true;
                                         }
                                         var tagInfo = tagsMap[tag];
@@ -87,7 +88,12 @@
                                                 "album_id": tag,
                                                 "name": tag,
                                                 "count": 0,
-                                                "cover": {"photo_id": photo.photo_id, "path": photo.path, "width": photo.width, "height": photo.height},
+                                                "cover": {
+                                                    "photo_id": photo.photo_id,
+                                                    "path": photo.path,
+                                                    "width": photo.width,
+                                                    "height": photo.height
+                                                }
                                             };
                                             tagsMap[tag] = tagInfo;
                                         }
@@ -104,6 +110,14 @@
                             });
                             common_utils.removeNotify("notify_photos_loading");
                             success({"albums": tagInfos});
+                            if (tagInfos.length == 0) {
+                                common_utils.notify({
+                                    "progressBar": false,
+                                    "hideDuration": 0,
+                                    "timeOut": 10000,
+                                    "closeButton": false
+                                }).success("抱歉，未找到您要的内容", "", "notify_tags_loading_empty");
+                            }
                         } else {
                             common_utils.removeNotify("notify_photos_loading");
                             toastr.error(data.info, "加载相册失败!");
@@ -112,34 +126,36 @@
                     });
                 },
                 "actionForEditAlbum": function (album) {
-                    var album_href_suffix = this.config.album_href_suffix;
-                    if (album_href_suffix == undefined) {
-                        album_href_suffix = "";
-                        if (!this.config.isSearchTags) {
-                            $.each(this.config.load_condition, function (key, value) {
-                                album_href_suffix += "&" + key + "=" + value;
-                            });
-                        }
-                        this.config.album_href_suffix = album_href_suffix;
-                    }
-                    window.open(this.config.album_href_prefix + album.album_id + album_href_suffix);
+                    var album_node = this.utils.getAlbumDom(album.album_id);
+                    album_node.find("img").click();
                 },
                 "makeupNode_callback": function (album_node, album) {
+                    var context = this;
                     var album_href_suffix = this.config.album_href_suffix;
                     if (album_href_suffix == undefined) {
                         album_href_suffix = "";
-                        if (!this.config.isSearchTags) {
-                            $.each(this.config.load_condition, function (key, value) {
+                        $.each(context.config.load_condition, function (key, value) {
+                            if (!value) {
+                                return true;
+                            }
+                            if (key == "tags") {
+                                context.config.album_href_tags_regex = toolbar.utils.encodeRegexSearch("tags", "@ANOTHER#" + value);
+                            } else {
                                 album_href_suffix += "&" + key + "=" + value;
-                            });
-                        }
+                            }
+
+                        });
                         this.config.album_href_suffix = album_href_suffix;
                     }
                     var a = album_node.querySelector("a");
-                    a.href = this.config.album_href_prefix + album.album_id + album_href_suffix;
-                    a.title = album_href_suffix ? ("查看该相册(用户)下的" + album.album_id + "标签") : "点击查看照片";
+                    if (context.config.album_href_tags_regex && context.config.load_condition.tags != album.album_id) {
+                        a.href = this.config.album_href_prefix + context.config.album_href_tags_regex.replace(new RegExp(encodeURIComponent("@ANOTHER"), "g"), album.album_id) + album_href_suffix;
+                    } else {
+                        a.href = this.config.album_href_prefix + album.album_id + album_href_suffix;
+                    }
+                    a.title = (album_href_suffix || context.config.album_href_tags_regex) ? ("查看该条件下的" + album.album_id + "标签") : "点击查看照片";
                     var span = album_node.querySelector("span");
-                    span.title = album_href_suffix ? ("查看该相册(用户)下的" + album.album_id + "标签") : "点击查看照片";
+                    span.title = (album_href_suffix || context.config.album_href_tags_regex) ? ("查看该条件下的" + album.album_id + "标签") : "点击查看照片";
                     span.innerText = span.innerText + "（" + album.count + "张）";
                 },
                 "photosOnLoad_callback": function (masonryInstance) {
@@ -172,14 +188,16 @@
             album_href_prefix: "photo.do?method=dashboard&mode=photo&tags="
         });
 
-        var isInAlbum = params.album_id ? true : false; //判断当前页面是不是在查看某个相册的标签索引
+        var isHomePage = Object.keys(load_condition).length == 0 ? true : false; //判断当前页面是不是在查看某个相册的标签索引
         var lastSearchKey = null;   //上一次搜索的key
         var nextViewIndex = 0;  //当前准备查看的搜索结果数组index
         toolbar.rewriteSearch({
-            placeholder: (isInAlbum ? "搜索该相册标签" : "输入关键字搜索标签"),
+            placeholder: (isHomePage ? "输入关键字搜索标签" : "搜索本页面标签"),
             mode_action: function (key) {
+                lastSearchKey = key;
+                var context = this;
                 key = key.trim();
-                if (isInAlbum) {
+                if (!isHomePage) {
                     if (key == "") {
                         toastr.info("请输入！", "", {"progressBar": false});
                         return;
@@ -189,6 +207,14 @@
                         "timeOut": 0,
                         "closeButton": false
                     }).success("正在查找。。", "", "search_tags_in_album");
+
+                    // 还原el
+                    var match = key.match(new RegExp(context.config.special_replace_prefix + "\\d{1}", "g"));
+                    if (match) {
+                        for (var i = 0; i < match.length; i++) {
+                            key = key.replace(match[i], context.config.elMap[match[i]]);
+                        }
+                    }
 
                     var results = [];
                     var complete = album_page_handle.utils.getAlbumByCache(key);
@@ -232,11 +258,10 @@
                     calls.push(indexAlbum);
                     album_page_handle.jumpPage(pageNum);
                 } else {
-                    window.open("photo.do?method=tags_square&tags=" + encodeURIComponent(key));
+                    this.config.callback.tags_square_search.call(this, key);
                 }
-                lastSearchKey = key;
             },
-            modeMapping: ["tag", "tags"],
+            modeMapping: ["page"],
             setDefaultMapping: true
         });
     });

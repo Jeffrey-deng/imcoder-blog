@@ -45,10 +45,6 @@
 
     var init = function (options) {
         $.extend(true, config, options);
-        if (!$(config.selector.uid_element).attr("uid") && common_utils.cookieUtil.get("login_status") == "true") {
-            common_utils.cookieUtil.set("login_status", "false");
-            common_utils.cookieUtil.delete("uid");
-        }
         pointer.login_form = $(config.selector.login_form);
         pointer.login_modal = $(config.selector.login_modal);
         pointer.login_form.find('input[name="remember"]').prop("checked", true);
@@ -58,6 +54,7 @@
     };
 
     /**
+     * @deprecated
      * 自动登陆, 手动提交token
      * @param {Boolean} refresh - 自动登录后是否刷新页面，默认true
      * @param {Function} callback(isLogin) - callback为空时为ajax同步请求
@@ -112,7 +109,7 @@
             e.defaultPrevented;
             var theEvent = e || window.event;
             var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
-            if (code == "13") {//keyCode=13是回车键
+            if (code == 13) {//keyCode=13是回车键
                 $(this).find('.login_submit').click();
                 //防止触发表单提交 返回false
                 return false;
@@ -126,9 +123,9 @@
                 var remember = $(e.currentTarget).prop('checked');
                 if (remember) {
                     //toastr.success("关闭记住密码请点击导航栏退出登录", {"timeOut": "8000"});
-                    toastr.success("同一IP下会保持登录状态", "已开启自动登录", {"timeOut": "6000"});
+                    toastr.success("同一IP下会保持登录状态", "已开启自动登录", {"timeOut": "6000", "closeButton": false});
                 } else {
-                    toastr.success("登录后会清除之前的令牌", "将会关闭自动登录", {"timeOut": "5000"});
+                    toastr.success("登录后会清除本地的令牌", "将会关闭自动登录", {"timeOut": "5000", "closeButton": false});
                 }
             });
         }
@@ -301,6 +298,7 @@
     };
 
     /**
+     * @deprecated
      * 登录后运行
      * @param {Function} callback(isLogin)
      * @param {Boolean} force - 严格模式
@@ -322,6 +320,7 @@
     };
 
     /**
+     * @deprecated
      * 发生请求检查登陆状态
      * @param {Function} callback(isLogin) - callback为空时为ajax同步请求
      */

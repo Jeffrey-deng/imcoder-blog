@@ -577,8 +577,8 @@ String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
                         </span>
                             </div>
                             <div class="form-group note-group-select-from-files">
-                                <label>从本地上传</label>
-                                <input class="note-image-input form-control" type="file" name="photos" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif" multiple="multiple">
+                                <label title="不选择则不更新">更新图片文件</label>
+                                <input class="note-image-input form-control" type="file" name="photo_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
                             </div>
                             <div class="form-group">
                                 <label>名称：</label>

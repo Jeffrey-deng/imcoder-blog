@@ -127,9 +127,10 @@
                 toastr.error("描述字数" + photo.description.length + "过长, 应在1000字内", "错误", {"progressBar": false});
                 return;
             }
+            var file = pointer.updateModal.find('input[name="photo_file"]')[0].files[0];
             login_handle.runOnLogin(function (isLogin) {
                 if (isLogin) {
-                    updatePhoto(photo);
+                    updatePhoto(photo, file);
                 } else {
                     toastr.error("登陆状态失效，请重新登录！");
                 }
@@ -159,7 +160,7 @@
             e.defaultPrevented;
             var theEvent = e || window.event;
             var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
-            if (code == "13") {
+            if (code == 13) {
                 utils.addTagFromInput(upload_tags_modify_dom, $(e.currentTarget));
                 //防止触发表单提交 返回false
                 return false;
@@ -234,7 +235,7 @@
 
         var file = files[index];
         if (file.size > config.maxUploadSize) {
-            toastr.error("换个小的，最大" + (config.maxUploadSize/(1024*1024)) + "M", file['name'], {timeOut: 0});
+            toastr.error("换个小的，最大" + (config.maxUploadSize / (1024 * 1024)) + "M", file['name'], {timeOut: 0});
             console.log("Error : 文件超过大小 - " + file['name']);
             index++;
             pointer.failUploadNum += 1;
@@ -248,8 +249,7 @@
                 pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
                 pointer.uploadModal.find('input[name="photo_cover"][value="0"]').prop("checked", true);
                 pointer.uploadModal.find('input[name="photos"]').val("");
-                pointer.uploadModal.find('.tags-modify').find(".tag-single").remove();
-                config.callback.allUploadCompleted(context, photos); // 回调
+                config.callback.allUploadCompleted.call(context, context, photos); // 回调
                 pointer.uploadPhotos = null;
             } else {
                 uploadPhoto(files, photoInfo, index, photos);
@@ -258,7 +258,7 @@
         }
         var data = new FormData();
         data.append("file", file);
-        data.append("originName", file['name']);
+        data.append("originName", (file.name.lastIndexOf(".") != -1 ? file.name : (file.name + ".jpg")));
         data.append("album_id", photoInfo.album_id);
         data.append("name", photoInfo.name);
         data.append("description", photoInfo.description);
@@ -284,7 +284,7 @@
             processData: false,
             success: function (data) {
                 if (data.flag == 200) {
-                    config.callback.eachUploadCompleted(context, data.photo); // 回调
+                    config.callback.eachUploadCompleted.call(context, context, data.photo); // 回调
                     photos.push(data.photo);
                     index++;
                     if (index > files.length - 1) {
@@ -297,8 +297,7 @@
                         pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
                         pointer.uploadModal.find('input[name="photo_cover"][value="0"]').prop("checked", true);
                         pointer.uploadModal.find('input[name="photos"]').val("");
-                        pointer.uploadModal.find('.tags-modify').find(".tag-single").remove();
-                        config.callback.allUploadCompleted(context, photos); // 回调
+                        config.callback.allUploadCompleted.call(context, context, photos); // 回调
                         pointer.uploadPhotos = null;
                     } else {
                         uploadPhoto(files, photoInfo, index, photos);
@@ -318,18 +317,53 @@
             }
         });
     };
-    var updatePhoto = function (photo) {
+    var updatePhoto = function (photo, file) {
         if (photo != null && photo.photo_id > 0) {
-            $.post("photo.do?method=update", photo, function (data) {
-                if (data.flag == 200) {
-                    toastr.success("更新成功", "", {"progressBar": false});
-                    pointer.updateModal.modal('hide');
-                    config.callback.updateCompleted(context, photo); // 回调
-                } else {
-                    toastr.error(data.info, "错误", {"progressBar": false});
-                    console.warn("Error Code: " + data.flag);
-                }
-            });
+            if (file && /^image.*/.test(file.type)) { // 如果指定了文件，则更新图片文件
+                var formData = new FormData();
+                formData.append("file", file);
+                formData.append("originName", (file.name.lastIndexOf(".") != -1 ? file.name : (file.name + ".jpg")));
+                $.each(photo, function (key, value) {
+                    formData.append(key, value);
+                });
+                $.ajax({
+                    url: "photo.do?method=update",
+                    data: formData,
+                    type: "POST",
+                    contentType: false,
+                    cache: false,
+                    processData: false,
+                    success: function (data) {
+                        if (data.flag == 200) {
+                            toastr.success("更新成功", "", {"progressBar": false});
+                            loadPhoto(photo.photo_id, function (data) {
+                                config.callback.updateCompleted.call(context, context, data.photo);
+                            });
+                            pointer.updateModal.modal('hide');
+                        } else {
+                            toastr.error(data.info, "错误", {"progressBar": false});
+                            console.warn("Error Code: " + data.flag);
+                        }
+                        pointer.updateModal.find('input[name="photo_file"]').val("");
+                    },
+                    error: function (XHR, TS) {
+                        toastr.error(data.info, "错误", {"progressBar": false});
+                        console.warn("Error Code: " + TS);
+                    }
+                });
+            } else { // 如果没有指定了文件
+                $.post("photo.do?method=update", photo, function (data) {
+                    if (data.flag == 200) {
+                        toastr.success("更新成功", "", {"progressBar": false});
+                        pointer.updateModal.modal('hide');
+                        config.callback.updateCompleted.call(context, context, photo); // 回调
+                    } else {
+                        toastr.error(data.info, "错误", {"progressBar": false});
+                        console.warn("Error Code: " + data.flag);
+                    }
+                    pointer.updateModal.find('input[name="photo_file"]').val("")
+                });
+            }
         }
     };
     var deletePhoto = function (photo_id) {
@@ -338,7 +372,7 @@
                 if (data.flag == 200) {
                     toastr.success("删除成功", "", {"progressBar": false});
                     pointer.updateModal.modal('hide');
-                    config.callback.deleteCompleted(context, photo_id); // 回调
+                    config.callback.deleteCompleted.call(context, context, photo_id); // 回调
                 } else {
                     toastr.error(data.info, "错误", {"progressBar": false});
                     console.warn("Error Code: " + data.flag);
@@ -402,7 +436,7 @@
             pointer.failUploadNum = 0;
             pointer.uploadModal.modal('show');
         };
-        config.callback.beforeUploadModalOpen(context, pointer.uploadModal, openUploadModal_callback); // 回调
+        config.callback.beforeUploadModalOpen.call(context, context, pointer.uploadModal, openUploadModal_callback); // 回调
         return true;
     };
     /**
@@ -441,7 +475,7 @@
             // define btn by user type
             var fileStyle = isAuthor ? "block" : "none";
             var btnStyle = isAuthor ? "inline-block" : "none";
-            pointer.updateModal.find('input[name="photos"]').parent().css("display", fileStyle);
+            pointer.updateModal.find('input[name="photo_file"]').val("").parent().css("display", fileStyle);
             pointer.updateModal.find('button[name="deletePhoto_trigger"]').css("display", btnStyle);
             pointer.updateModal.find('button[name="updatePhoto_trigger"]').css("display", btnStyle);
 
@@ -474,7 +508,7 @@
                     e.defaultPrevented;
                     var theEvent = e || window.event;
                     var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
-                    if (code == "13") {
+                    if (code == 13) {
                         utils.addTagFromInput(tags_modify_dom, $(e.currentTarget));
                         //防止触发表单提交 返回false
                         return false;
@@ -527,7 +561,7 @@
             });
             pointer.updateModal.modal('show');
         };
-        config.callback.beforeUpdateModalOpen(context, pointer.updateModal, formatPhotoToModal_callback, photo); // 回调
+        config.callback.beforeUpdateModalOpen.call(context, context, pointer.updateModal, formatPhotoToModal_callback, photo); // 回调
     };
     var initClipboard = function (bindElementSelector, containerId) {
         var clipboard = new Clipboard(bindElementSelector, {

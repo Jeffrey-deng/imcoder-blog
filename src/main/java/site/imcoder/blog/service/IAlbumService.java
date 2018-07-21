@@ -100,10 +100,11 @@ public interface IAlbumService {
      * 更新照片
      *
      * @param photo
+     * @param file      可选，有则更新
      * @param loginUser
      * @return flag - 200：成功，401：需要登录，403：没有权限，404: 照片未找到，500：服务器错误
      */
-    public int updatePhoto(Photo photo, User loginUser);
+    public int updatePhoto(Photo photo, MultipartFile file, User loginUser);
 
     /**
      * 删除照片

@@ -77,6 +77,11 @@ public class Cache {
     public Map<String, Object> siteBuffer;
 
     /**
+     * 映射加密的token与未加密的token
+     */
+    public Map<String, String> loginTokensMap;
+
+    /**
      * 常量 ：读操作
      */
     public static final int READ = 0;
@@ -119,6 +124,7 @@ public class Cache {
         hasUpdateArticle = new HashSet<Integer>();
         hasUpdateUser = new HashSet<Integer>();
         siteBuffer = new HashMap<String, Object>();
+        loginTokensMap = new HashMap<String, String>();
 
         categoryCount = initTool.initCategoryCount();
         followBuffer = initTool.initFollowBuffer();
@@ -736,6 +742,42 @@ public class Cache {
         if (_user != null) {
             _user.setFansCount(_user.getFansCount() + step);
         }
+    }
+
+    /**
+     * 插入token映射关系
+     *
+     * @param encryptedToken 加密的token
+     * @param token          提交的token
+     */
+    public void putTokenEntry(String encryptedToken, String token) {
+        this.loginTokensMap.put(encryptedToken, token);
+    }
+
+    /**
+     * 得到token映射关系
+     *
+     * @param encryptedToken
+     * @return
+     */
+    public String getTokenEntry(String encryptedToken) {
+        if (encryptedToken == null || encryptedToken.length() == 0) {
+            return null;
+        }
+        String token = this.loginTokensMap.get(encryptedToken);
+        if ("".equals(token)) {
+            token = null;
+        }
+        return token;
+    }
+
+    /**
+     * 移除token映射关系
+     *
+     * @param encryptedToken
+     */
+    public void removeTokenEntry(String encryptedToken) {
+        this.loginTokensMap.remove(encryptedToken);
     }
 
 }

@@ -148,7 +148,7 @@
                 } else if (page == "album_detail") {
 
                     require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "clipboard",
-                        "magnificPopup", "common_utils", "login_handle", "toolbar", "blowup", "jszip", "period_cache", "album_photo_handle", "album_photo_page_handle", "album_photo_detail"]);
+                        "magnificPopup", "common_utils", "login_handle", "toolbar", "blowup", "jszip", "period_cache", "album_photo_handle", "album_photo_page_handle", "album_photo_detail", "album_handle"]);
 
                 } else if (page == "album_photo_dashboard") {
 

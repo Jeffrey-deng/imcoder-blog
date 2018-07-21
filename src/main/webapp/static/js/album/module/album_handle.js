@@ -38,7 +38,7 @@
             "deleteCompleted": function (album_id) {  // 在相册删除完成后回调
                 return;
             },
-            "beforeCreateModalOpen": function (createModal, openCreateModal_callback) {  // 上传窗口打开前回调
+            "beforeCreateModalOpen": function (createModal, openCreateModal_callback) {  // 创建窗口打开前回调
                 openCreateModal_callback();
             },
             "beforeUpdateModalOpen": function (updateModal, formatAlbumToModal_callback, album) {  // 更新窗口打开前回调
@@ -53,7 +53,8 @@
                     });
                 }
             }
-        }
+        },
+        "album_default_col": 4
     };
 
     var init = function (options) {
@@ -184,6 +185,11 @@
     var loadAlbum = function (album_id, success) {
         $.get("photo.do?method=albumByAjax", {"id": album_id}, function (data) {
             if (data.flag == 200) {
+                try {
+                    data.album.cover = JSON.parse(data.album.cover);
+                } catch (e) {
+                    data.album.cover = {"path": data.album.cover};
+                }
                 success(data);
             } else {
                 toastr.error(data.info, "加载相册信息失败!");
@@ -222,7 +228,7 @@
         }
         var openCreateModal_callback = function () {
             pointer.createModal.find('input[name="album_permission"][value="0"]').prop("checked", true);
-            pointer.createModal.find('input[name="album_show_col"]').val(4);
+            pointer.createModal.find('input[name="album_show_col"]').val(config.album_default_col).parent().css("display", "none");
             pointer.createModal.modal();
         };
         config.callback.beforeCreateModalOpen.call(context, pointer.createModal, openCreateModal_callback);
