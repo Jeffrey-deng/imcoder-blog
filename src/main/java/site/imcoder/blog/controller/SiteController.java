@@ -93,6 +93,26 @@ public class SiteController {
         }
     }
 
+    @RequestMapping(params = "method=help")
+    public String about(@RequestParam(defaultValue = "search") String module, HttpServletRequest request, HttpSession session) {
+        User loginUser = (User) session.getAttribute("loginUser");
+        String configKey = ConfigConstants.HelpConfigEnum.getModuleConfigKey(module);
+        if (configKey == null) {
+            return "/error/400";
+        }
+        int aid = Config.getInt(configKey);
+        Map<String, Object> queryMap = articleService.detail(aid, loginUser);
+        Article article = (Article) queryMap.get("article");
+        if (article != null) {
+            request.setAttribute("article", article);
+            userService.hasClickArticle((User) session.getAttribute("loginUser"), article);
+            return "/site/about";
+        } else {
+            request.setAttribute("errorInfo", "站点还未设置" + module + "帮助页~");
+            return "/error/404_detail";
+        }
+    }
+
     /**
      * 发送验证码邮件
      *

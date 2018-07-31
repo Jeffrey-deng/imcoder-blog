@@ -9,17 +9,17 @@
     }
 })(function ($, domReady, toastr, common_utils, toolbar) {
 
-    window.page_jump = function (pagenum) {
+    var initPageJump = function () {
         var params = common_utils.parseURL(document.location.href).params;
         var page = "article.do?method=list";
         $.each(params, function (key, value) {
             if (key != "method" && key != "jumpPage") {
-                console.log(value);
                 page += "&" + key + "=" + value;
             }
         });
-        page += "&jumpPage=" + pagenum;
-        window.location.href = page;
+        $(".page-navigator").find(".page-trigger").each(function (i, a) {
+            a.href = page + "&jumpPage=" + a.getAttribute("page");
+        });
     };
 
     var loadTopArticle = function () {
@@ -79,7 +79,7 @@
             var search_input_value = "";
             $.each(load_condition, function (key, value) {
                 if (key == "tags" || key == "title") {
-                    value = value.replace(new RegExp(toolbar.utils.getItsMultipleMatch_Separator(key), "g"), '#');
+                    value = value.replace(new RegExp(toolbar.utils.getItsMultipleMatchJoiner(key), "g"), '#');
                     if (/^\((.+)\.\*(.+)\)\|\(\2\.\*\1\)$/.test(value)) {
                         var matchForTwo = value.match(/^\((.+)\.\*(.+)\)\|/);
                         value = matchForTwo[1] + "#" + matchForTwo[2];
@@ -110,8 +110,9 @@
 
     /* ********** main ************* */
 
+    initPageJump();
     //为首页（最首页）则查找置顶文章
-    if (/^.*(imcoder.site\/?|(\d+\.){3}\d+\/?|method=list)$/.test(document.location.href)) {
+    if (/^.*(imcoder.site\/?|(\d+\.){3}\d+\/?|method=list|localhost.*\/)$/.test(document.location.href)) {
         loadTopArticle();
     } else {    // 没有就隐藏置顶栏
         $('#top').hide();

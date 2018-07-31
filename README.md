@@ -6,6 +6,15 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
 
 ## develop log
 
+#### 2018.08.02
+
+modify `encode regex expr implement from js to java`
+
+    1、encode implement on backstage is more elegant and better friendly
+    2、add help document for user and config help article in ServerConfig.xml
+    3、add store user config in browser local
+    4、modify jump page use href instead of function
+
 #### 2018.07.31
 
 add `update photo source file` and `remember passwords in multiple terminals` support

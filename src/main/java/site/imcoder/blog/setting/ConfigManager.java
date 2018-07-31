@@ -277,8 +277,11 @@ public class ConfigManager {
         //云盘文件存储基础路径 相对于context父文件夹
         Config.set(ConfigConstants.CLOUD_FILE_BASEPATH, getRealFromConfigBasePath("blog/cloud/"));
 
-        //”关于我“ 对应的文章号
+        //“关于我”对应的文章号
         Config.set(ConfigConstants.SITE_ABOUT_ARTICLE_ID, "0");
+
+        //“搜索帮助”对应的文章号
+        Config.set(ConfigConstants.HelpConfigEnum.SEARCH.getModuleConfigKey(), "0");
 
         //登录严格模式将校验IP
         Config.set(ConfigConstants.USER_LOGIN_STRICT, "false");

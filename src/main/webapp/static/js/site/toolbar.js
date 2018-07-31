@@ -31,7 +31,7 @@
             "article_schema": ["logic_conn", "id", "aid", "author.uid", "uid", "category.atid", "atid", "title", "tags", "summary", "create_time", "update_time", "click", "top", "recommend"],
             "album_schema": ["id", "album_id", "name", "description", "desc", "user.uid", "uid"]
         },
-        "special_multiple_match_separator": "' and ${column} rlike '",    //多重匹配,
+        "special_multiple_match_joiner": "' and ${column} rlike '",    //多重匹配,
         "callback": {
             "action_search": function (key) {
                 var context = this;
@@ -167,7 +167,7 @@
                 context.utils.eachEntry(key, ["filter", "f"], function (entry) {
                     filterPairRegex = entry[0] + context.config.special_value_separator.toString().replace(/\//g, "") +
                         entry[1] + context.config.special_pair_separator.toString().replace(/\//g, "") + "{0,1}";
-                    context.utils.revertELReplaceContent(entry, ["filter", "f"]);
+                    context.utils.revertELReplaceContent(entry, ["filter", "f"]); // 利用el表达式忽略的filter中的正则
                     filterKeyWord = entry[1].trim();
                 });
                 // 去掉标记过滤的字段
@@ -197,7 +197,8 @@
             }
         },
         "placeholder": null,
-        "inputInitialValue": null
+        "inputInitialValue": null,
+        "hasReadHelp": true
     };
 
     var init_search = function () {
@@ -206,8 +207,9 @@
         } else {
             config.placeholder = "输入关键字搜索"
         }
-        _self.find('.toolbar_search_input').attr("placeholder", config.placeholder);
-        config.inputInitialValue && _self.find(".toolbar_search_input").val(config.inputInitialValue);
+        var searchInputBox = _self.find('.toolbar_search_input');
+        searchInputBox.attr("placeholder", config.placeholder);
+        config.inputInitialValue && searchInputBox.val(config.inputInitialValue);
         config.special_mode_mapping = {
             "default": function (key) {
                 if (config.location_info.file == "photo.do") {
@@ -223,6 +225,29 @@
             "a": config.callback.article_search,
             "album": config.callback.album_search,
             "ts": config.callback.tags_square_search
+        };
+        var searchConfig = common_utils.getLocalConfig("search");
+        if (!searchConfig.hasReadHelp) {
+            searchInputBox.focus(function (e) {
+                try {
+                    var searchConfig = common_utils.getLocalConfig("search");
+                    if (!searchConfig.hasReadHelp) {
+                        common_utils.notify({
+                            "timeOut": 10000,
+                            "progressBar": false,
+                            "iconClass": "toast-success-no-icon",
+                            "positionClass": "toast-top-right",
+                            "onclick": function () {
+                                window.open("site.do?method=help&module=search");
+                                searchConfig.hasReadHelp = true;
+                                common_utils.setLocalConfig("search", searchConfig);
+                            }
+                        }).success("点击查看搜索帮助", "提示", "notify_search_help");
+                    }
+                } catch (e) {
+                    console.warn("搜索帮助配置出现错误", e);
+                }
+            });
         }
     };
 
@@ -312,6 +337,8 @@
         });
 
         _self.find('.toolbar_jump_albums').attr("href", "photo.do?method=dashboard&mode=photo");
+
+        _self.find('.toolbar_jump_help').attr("href", "site.do?method=help");
     }
 
     // bind search btn
@@ -380,6 +407,7 @@
             $.each(key.split(context.config.special_pair_separator), function (index, pair) {
                 if (pair) {
                     var entry = pair.split(context.config.special_value_separator);
+                    entry[0] = entry[0].trim();
                     if (entry.length > 1 && schema.indexOf(entry[0]) != -1) {
                         if (entryCallBack(entry) == false) {
                             return false;
@@ -389,14 +417,28 @@
             });
         },
         "encodeRegexSearch": function (key, value) {
-            value.indexOf("<") != -1 && (value = value.replace(/\\{<\\}/g, "@WD_BR_L").replace(/</g, "[[:<:]]").replace(/@WD_BR_L/g, "{<}")); // 替换 < 为单词头
-            value.indexOf(">") != -1 && (value = value.replace(/\\{>\\}/g, "@WD_BR_R").replace(/>/g, "[[:>:]]").replace(/@WD_BR_R/g, "{>}")); // 替换 > 为单词尾
+            //在前端转义匹配逻辑为数据库可识别的正则字符串
+            //由于在后端又实现了转义，所以此方法失效
+            // value = utils.encodeRegexSearchInWeb(key, value);
+            value = value.replace(/(^[\|#])|([\|]$)/g, "");  // 去掉首尾|与首#
+            value = encodeURIComponent(value);  // 转义
+            return value;
+        },
+        /**
+         * @deprecated 失效
+         * 在前端转义匹配逻辑为数据库可识别的正则字符串
+         * @param key
+         * @param value
+         */
+        "encodeRegexSearchInWeb": function (key, value) {
+            value.indexOf("<") != -1 && (value = value.replace(/\{<\}|\\\\</g, "@WD_BR_L").replace(/</g, "[[:<:]]").replace(/@WD_BR_L/g, "{<}")); // 替换 < 为单词头
+            value.indexOf(">") != -1 && (value = value.replace(/\{>\}|\\\\>/g, "@WD_BR_R").replace(/>/g, "[[:>:]]").replace(/@WD_BR_R/g, "{>}")); // 替换 > 为单词尾
             if (value.indexOf("{") != -1) {
                 value = common_utils.replaceByEL(value, function (index, key) { // 转义MySQL特殊字符
-                    return /^[^\w]+$/.test(key) ? "[[." + key + ".]]" : this[0];
+                    return /^.*[^\d,].*$/.test(key) ? (key.length == 1 ? "[[." + key + ".]]" : key) : this[0];
                 }, "\\{", "\\}");
             }
-            value = value.replace(/\[\[\.\#\.\]\]/g, "@NUMBER_SIGN");
+            value = value.replace(/\[\[\.\#\.\]\]|\\\\#/g, "@NUMBER_SIGN");
             if (value.indexOf("#") != -1 && value.indexOf("|") == -1) { // #替换为与正则
                 var matchArr = [];
                 $.each(value.split("#"), function (i, tag) {
@@ -412,20 +454,19 @@
                     value = "(" + matchArr[0] + ".*" + matchArr[1] + ")|(" + matchArr[1] + ".*" + matchArr[0] + ")";
                 } else {
                     var three = "";
-                    var separator = context.utils.getItsMultipleMatch_Separator(key);
+                    var joiner = context.utils.getItsMultipleMatchJoiner(key);
                     $.each(matchArr, function (index, matchKey) {
-                        three += separator + matchKey;
+                        three += joiner + matchKey;
                     });
-                    value = three.replace(new RegExp("^" + separator), '');
+                    value = three.replace(new RegExp("^" + joiner), '');
                 }
             }
             value = value.replace(/@NUMBER_SIGN/g, "[[.#.]]");
             value = value.replace(/(^\|)|(\|$)/g, "");  // 去掉首尾 |
-            value = encodeURIComponent(value);  // 转义
             return value;
         },
-        "getItsMultipleMatch_Separator": function (key) {
-            return common_utils.replaceByEL(context.config.special_multiple_match_separator, function (i, value) {
+        "getItsMultipleMatchJoiner": function (key) {
+            return common_utils.replaceByEL(context.config.special_multiple_match_joiner, function (i, value) {
                 return key;
             });
         }

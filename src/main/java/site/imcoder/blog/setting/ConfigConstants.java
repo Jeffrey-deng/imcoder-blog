@@ -151,4 +151,56 @@ public class ConfigConstants {
      */
     public static final String TOOL_SPEECH_TOKEN_SECRET_KEY = "tool_speech_token_secret_key";
 
+    /**
+     * 帮助模块枚举类
+     */
+    public enum HelpConfigEnum {
+
+        SEARCH("search", "help_search_article_id"),
+        ARTICLE("article", "help_article_detail_article_id"),
+        ARTICLE_DETAIL("article_detail", "help_article_detail_article_id"),
+        ARTICLE_EDIT("article_edit", "help_article_edit_article_id"),
+        ALBUM("album", "help_album_article_id"),
+        TOOL("tool", "help_tool_article_id");
+
+        private String moduleName;
+        private String moduleConfigKey;
+
+        HelpConfigEnum(String moduleName, String moduleConfigKey) {
+            this.moduleName = moduleName;
+            this.moduleConfigKey = moduleConfigKey;
+        }
+
+        public String getModuleAlias() {
+            return moduleName;
+        }
+
+        public String getModuleConfigKey() {
+            return moduleConfigKey;
+        }
+
+        // 由模块别名得到配置名
+        public static String getModuleConfigKey(String moduleAlias) {
+            HelpConfigEnum helpConfigEnum = null;
+            for (HelpConfigEnum module : values()) {
+                if (module.getModuleAlias().equals(moduleAlias)) {
+                    helpConfigEnum = module;
+                }
+            }
+            if (helpConfigEnum != null) {
+                return helpConfigEnum.getModuleConfigKey();
+            } else {
+                return null;
+            }
+        }
+
+        public static HelpConfigEnum valueOfName(String moduleName) {
+            for (HelpConfigEnum module : values()) {
+                if (module.getModuleConfigKey().equals(moduleName)) {
+                    return module;
+                }
+            }
+            return null;
+        }
+    }
 }

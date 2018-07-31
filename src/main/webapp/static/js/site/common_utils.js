@@ -799,6 +799,35 @@
         return notify;
     };
 
+    /**
+     * 客户端本地配置
+     */
+    var getLocalConfig = function (module) {
+        var localConfig = localStorage.getItem("blog_local_config");
+        if (!localConfig) {
+            localConfig = {};
+            localConfig.search = {}; //搜索帮助
+            localConfig.search.hasReadHelp = false; // 是否查看过搜索帮助
+            localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
+        } else {
+            localConfig = JSON.parse(localConfig);
+        }
+        return module ? localConfig[module] : localConfig;
+    };
+
+    /**
+     * 保存配置
+     * @param moduleName
+     * @param moduleValue
+     */
+    var setLocalConfig = function (moduleName, moduleValue) {
+        if (moduleName) {
+            var localConfig = getLocalConfig();
+            localConfig[moduleName] = moduleValue;
+            localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
+        }
+    };
+
     var context = {
         "addStyle": addStyle,
         "encodeHTML": encodeHTML,
@@ -816,7 +845,9 @@
         "formatJson": formatJson,
         "notify": notify,
         "removeNotify": removeNotify,
-        "getNotify": getNotify
+        "getNotify": getNotify,
+        "getLocalConfig": getLocalConfig,
+        "setLocalConfig": setLocalConfig
     };
 
     return context;

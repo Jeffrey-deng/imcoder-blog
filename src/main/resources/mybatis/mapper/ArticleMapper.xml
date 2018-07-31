@@ -149,7 +149,7 @@
                     and a.title rlike #{condition.title}
                 </if>
                 <if test="condition.tags != null and condition.tags != '' ">
-                    and a.tags rlike '${condition.tags}'
+                    and (a.tags rlike '${condition.tags}')
                 </if>
                 <if test="condition.summary != null and condition.summary != '' ">
                     and a.summary like concat('%', #{condition.summary} ,'%')
@@ -281,7 +281,7 @@
                     and a.title rlike #{condition.title}
                 </if>
                 <if test="condition.tags != null and condition.tags != '' ">
-                    and a.tags rlike '${condition.tags}'
+                    and (a.tags rlike '${condition.tags}')
                 </if>
                 <if test="condition.summary != null and condition.summary != '' ">
                     and a.summary like concat('%', #{condition.summary} ,'%')

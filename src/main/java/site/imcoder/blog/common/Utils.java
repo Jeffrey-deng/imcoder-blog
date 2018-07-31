@@ -9,7 +9,9 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -260,6 +262,27 @@ public class Utils {
             result = matcher.group(1);
         }
         return result;
+    }
+
+    /**
+     * split去除空字符串
+     *
+     * @param str
+     * @param separator
+     * @return
+     */
+    public static String[] splitNotEmpty(String str, String separator) {
+        if (str == null) {
+            return null;
+        }
+        List<String> list = new ArrayList();
+        String[] splits = str.split(separator);
+        for (String split : splits) {
+            if (split.length() > 0) {
+                list.add(split);
+            }
+        }
+        return list.toArray(new String[list.size()]);
     }
 
 }

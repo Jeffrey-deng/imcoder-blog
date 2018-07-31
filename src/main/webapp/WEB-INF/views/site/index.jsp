@@ -303,25 +303,25 @@
 					<ol class="page-navigator">
 						<c:if test="${ not empty page }">
 							<c:if test="${page.currentPage != 1}">
-								<li class="prev"><a href="javascript:page_jump(${page.currentPage-1});">« 前一页</a></li>
+								<li class="prev"><a class="page-trigger" page="${page.currentPage-1}">« 前一页</a></li>
 							</c:if>
 							<c:if test="${page.currentPage-3 >= 1+2}">
-								<li><a href="javascript:page_jump(1);">1</a></li>
+								<li><a class="page-trigger" page="1">1</a></li>
 								<li><span>...</span></li>
 							</c:if>
 							<c:forEach begin="${(page.currentPage-3 >= 1+2)?page.currentPage-3:1}" end="${page.currentPage-1}" var="pagenum">
-								<li><a href="javascript:page_jump(${pagenum});">${pagenum}</a></li>
+								<li><a class="page-trigger" page="${pagenum}">${pagenum}</a></li>
 							</c:forEach>
-							<li class="current"><a href="javascript:page_jump(${page.currentPage});">${page.currentPage}</a></li>
+							<li class="current"><a class="page-trigger" page="${page.currentPage}">${page.currentPage}</a></li>
 							<c:forEach begin="${page.currentPage+1}" end="${(page.currentPage+3 <= page.pageCount-2)?page.currentPage+3:page.pageCount}" var="pagenum">
-								<li><a href="javascript:page_jump(${pagenum});">${pagenum}</a></li>
+								<li><a class="page-trigger" page="${pagenum}">${pagenum}</a></li>
 							</c:forEach>
 							<c:if test="${page.currentPage+3 <= page.pageCount-2}">
 								<li><span>...</span></li>
-								<li><a href="javascript:page_jump(${ page.pageCount });">${ page.pageCount }</a></li>
+								<li><a class="page-trigger" page="${ page.pageCount}">${ page.pageCount}</a></li>
 							</c:if>
 							<c:if test="${page.currentPage != page.pageCount }">
-								<li class="next"><a href="javascript:page_jump(${page.currentPage+1});">后一页 »</a></li>
+								<li class="next"><a class="page-trigger" page="${page.currentPage+1}">后一页 »</a></li>
 							</c:if>
 						</c:if>
 					</ol>

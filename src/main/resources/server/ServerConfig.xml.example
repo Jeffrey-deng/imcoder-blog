@@ -44,10 +44,16 @@
         <value>blog/cloud/</value>
     </property>
 
-    <!-- ”关于我“ 对应的文章号 -->
+    <!-- “关于我”对应的文章号 -->
     <property>
         <param>site_about_article_id</param>
-        <value>2</value>
+        <value>0</value>
+    </property>
+
+    <!-- “搜索帮助”对应的文章号 -->
+    <property>
+        <param>help_search_article_id</param>
+        <value>0</value>
     </property>
 
     <!-- 登录严格模式将校验IP -->

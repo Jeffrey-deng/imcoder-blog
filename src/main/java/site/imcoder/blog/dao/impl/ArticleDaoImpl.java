@@ -11,6 +11,7 @@ import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.Comment;
 import site.imcoder.blog.entity.User;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,10 @@ import java.util.Map;
 public class ArticleDaoImpl extends CommonDao implements IArticleDao {
 
     private static Logger logger = Logger.getLogger(ArticleDaoImpl.class);
+
+    public final static String regex_filed_article_title = "title"; // 支持正则表达式的字段
+
+    public final static String regex_filed_article_tags = "tags";
 
     /** --------article dml start----------------- */
     /**
@@ -90,10 +95,26 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
      * @return
      */
     public int findCount(Article condition, User loginUser) {
+        String title = null, tags = null;
+        if (condition != null) {
+            title = condition.getTitle();
+            tags = condition.getTags();
+            if (condition.getTitle() != null && condition.getTitle().length() != 0) {
+                condition.setTitle(encodeRegexField(regex_filed_article_title, title, false));
+            }
+            if (condition.getTags() != null && condition.getTags().length() != 0) {
+                condition.setTags(encodeRegexField(regex_filed_article_tags, tags));
+            }
+        }
         HashMap<String, Object> map = new HashMap<String, Object>();
         map.put("condition", condition);
         map.put("loginUser", loginUser);
-        return this.getSqlSession().selectOne("article.findCount", map);
+        int count = this.getSqlSession().selectOne("article.findCount", map);
+        if (condition != null) {
+            condition.setTitle(title);
+            condition.setTags(tags);
+        }
+        return count;
     }
 
     /**
@@ -105,12 +126,28 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
      * @return
      */
     public List<Article> findList(PageUtil page, Article condition, User loginUser) {
+        String title = null, tags = null;
+        if (condition != null) {
+            title = condition.getTitle();
+            tags = condition.getTags();
+            if (condition.getTitle() != null && condition.getTitle().length() != 0) {
+                condition.setTitle(encodeRegexField(regex_filed_article_title, title, false));
+            }
+            if (condition.getTags() != null && condition.getTags().length() != 0) {
+                condition.setTags(encodeRegexField(regex_filed_article_tags, tags));
+            }
+        }
         HashMap<String, Object> map = new HashMap<String, Object>();
         map.put("condition", condition);
         map.put("loginUser", loginUser);
         map.put("startRow", page.getStartRow());
         map.put("pageSize", page.getPageSize());
-        return this.getSqlSession().selectList("article.findArticleList", map);
+        List<Article> list = this.getSqlSession().selectList("article.findArticleList", map);
+        if (condition != null) {
+            condition.setTitle(title);
+            condition.setTags(tags);
+        }
+        return list;
     }
 
     /**

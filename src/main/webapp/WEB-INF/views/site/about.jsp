@@ -15,7 +15,7 @@ String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 	<meta name="renderer" content="webkit">
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-	<title>关于 - CODER 博客</title>
+	<title>${article.title} - CODER 博客</title>
 	<meta name="description" content="imcoder.site -- 关于我" >
 	<meta name="keywords" content="此site为大学学完Java后，为练习而开发的，后面发现可以用来总结下平时所学的知识，便一直在维护。欢迎一起学习交流！ contact me ~ chao.devin@gmail.com" >
 	<!-- 使用url函数转换相关路径 -->
@@ -142,7 +142,7 @@ String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
 					</ul>
 				</li>
 				<li><a href="<%=basePath%>">首页</a></li>
-				<li class="active"><a>关于</a></li>
+				<li class="active"><a>${article.title}</a></li>
 			</ul>
 			<ul class="nav navbar-nav navbar-right">
 				<form class="navbar-form navbar-left" role="search">

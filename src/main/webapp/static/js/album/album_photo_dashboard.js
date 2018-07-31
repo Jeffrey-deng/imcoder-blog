@@ -328,7 +328,7 @@
             var search_input_value = "";
             $.each(load_condition, function (key, value) {
                 if (key == "tags") {
-                    value = value.replace(new RegExp(toolbar.utils.getItsMultipleMatch_Separator(key), "g"), '#');
+                    value = value.replace(new RegExp(toolbar.utils.getItsMultipleMatchJoiner(key), "g"), '#');
                     if (/^\((.+)\.\*(.+)\)\|\(\2\.\*\1\)$/.test(value)) {
                         var matchForTwo = value.match(/^\((.+)\.\*(.+)\)\|/);
                         value = matchForTwo[1] + "#" + matchForTwo[2];

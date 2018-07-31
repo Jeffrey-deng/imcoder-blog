@@ -202,7 +202,7 @@
         if (Object.keys(load_condition).length > 0) {
             $.each(load_condition, function (key, value) {
                 if (key == "name") {
-                    value = value.replace(new RegExp(toolbar.utils.getItsMultipleMatch_Separator(key), "g"), '#');
+                    value = value.replace(new RegExp(toolbar.utils.getItsMultipleMatchJoiner(key), "g"), '#');
                     if (/^\((.+)\.\*(.+)\)\|\(\2\.\*\1\)$/.test(value)) {
                         var matchForTwo = value.match(/^\((.+)\.\*(.+)\)\|/);
                         value = matchForTwo[1] + "#" + matchForTwo[2];

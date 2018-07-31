@@ -11,7 +11,19 @@
         factory(window.jQuery, null, toastr, common_utils);
     }
 })(function ($, bootstrap, toastr, common_utils) {
-    window.page_jump = function (pagenum) {
-        document.location.href = "site.do?method=list&jumpPage=" + pagenum;
+
+    var initPageJump = function () {
+        var params = common_utils.parseURL(document.location.href).params;
+        var page = "site.do?method=list";
+        $.each(params, function (key, value) {
+            if (key != "method" && key != "jumpPage") {
+                page += "&" + key + "=" + value;
+            }
+        });
+        $(".page-navigator").find(".page-trigger").each(function (i, a) {
+            a.href = page + "&jumpPage=" + a.getAttribute("page");
+        });
     };
+
+    initPageJump();
 });

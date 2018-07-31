@@ -1,4 +1,5 @@
 <%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page import="site.imcoder.blog.setting.Config" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ page isErrorPage="true" %>  
@@ -36,7 +37,9 @@ String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
             <br/>
             <a href="<%=basePath%>" class="btn btn-primary m-t">主页</a>
             <br/><br/>
-            <p ><code style="white-space: normal;">${pageContext.exception}</code></p>
+            <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
+                <p><code style="white-space: normal;">${pageContext.exception}</code></p>
+            </c:if>
         </div>
     </div>
 </body>

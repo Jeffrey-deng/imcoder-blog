@@ -12,21 +12,22 @@
     }
 })(function ($, bootstrap, domReady, toastr, common_utils) {
 
-    var params = common_utils.parseURL(window.location.href).params;
-
-    window.page_jump = function (pagenum) {
-        var $auid = $('#h_auid').attr("auid");
-        var page = "user.do?method=home&uid=" + $auid;
+    var initPageJump = function () {
+        var params = common_utils.parseURL(document.location.href).params;
+        var page = "user.do?method=home";
         $.each(params, function (key, value) {
-            if (key != "method" && key != "jumpPage" && key != "uid") {
+            if (key != "method" && key != "jumpPage") {
                 page += "&" + key + "=" + value;
             }
         });
-        page += "&jumpPage=" + pagenum;
-        window.location.href = page;
+        $(".page-navigator").find(".page-trigger").each(function (i, a) {
+            a.href = page + "&jumpPage=" + a.getAttribute("page");
+        });
     };
 
     domReady(function () {
+
+        initPageJump();
 
         $('#userInfo_trigger').click(function () {
             var uid = $(this).attr('uid');
