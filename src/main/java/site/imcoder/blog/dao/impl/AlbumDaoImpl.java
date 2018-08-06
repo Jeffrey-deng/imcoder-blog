@@ -1,5 +1,6 @@
 package site.imcoder.blog.dao.impl;
 
+import org.apache.ibatis.session.SqlSession;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
@@ -107,8 +108,9 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
      */
     public int updateCoverForAlbum(Album album) {
         try {
-            this.getSqlSession().update("album.clearCoverForAlbum", album);
-            return this.getSqlSession().update("album.updateCoverForAlbum", album);
+            SqlSession session = this.getSqlSession();
+            session.update("album.clearCoverForAlbum", album);
+            return session.update("album.updateCoverForAlbum", album);
         } catch (Exception e) {
             e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
@@ -126,7 +128,9 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
     @Override
     public int deleteAlbum(Album album) {
         try {
-            return this.getSqlSession().delete("album.deleteAlbum", album);
+            SqlSession session = this.getSqlSession();
+            session.delete("album.deleteAlbumPhotos", album);
+            return session.delete("album.deleteAlbum", album);
         } catch (Exception e) {
             e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();

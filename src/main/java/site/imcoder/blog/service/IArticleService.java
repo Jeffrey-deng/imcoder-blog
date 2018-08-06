@@ -1,5 +1,6 @@
 package site.imcoder.blog.service;
 
+import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.Category;
 import site.imcoder.blog.entity.Comment;
@@ -111,4 +112,37 @@ public interface IArticleService {
      * @return Map<String,List>
      */
     public Map<String, Object> listRanking(int uid, int size);
+
+    /**
+     * 图片或附件上传
+     *
+     * @param file
+     * @param fileName  重命名名字
+     * @param isImage   是否是图片
+     * @param loginUser
+     * @return flag - 200：成功，400: 参数错误，401：需要登录，500: 失败
+     * info - 提示
+     */
+
+    public Map<String, Object> uploadAttachment(MultipartFile file, String fileName, String isImage, User loginUser);
+
+    /**
+     * 互联网图片本地化
+     *
+     * @param url
+     * @param fileName
+     * @param loginUser
+     * @return
+     */
+    public Map<String, Object> localImage(String url, String fileName, User loginUser);
+
+    /**
+     * 删除文件
+     *
+     * @param file_url
+     * @param isImage   是否时图片
+     * @param loginUser
+     * @return flag: [200:服务器删除成功] [404:文章插入的图片为链接，不需要删除，返回成功] [500:图片删除失败]
+     */
+    public Map<String, Object> deleteAttachment(String file_url, String isImage, User loginUser);
 }

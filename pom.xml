@@ -197,10 +197,10 @@
                 <version>7.0</version>
         </dependency> -->
 
-        <!-- 邮件 -->
+        <!-- 邮件 use the sun implementation for javax.mail.api -->
         <dependency>
-            <groupId>javax.mail</groupId>
-            <artifactId>javax.mail-api</artifactId>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>javax.mail</artifactId>
             <version>1.6.1</version>
         </dependency>
 

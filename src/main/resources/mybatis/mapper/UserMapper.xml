@@ -194,7 +194,7 @@
     </select>
 
     <!-- 检查是否为好友 -->
-    <select id="checkFriendRalationship" parameterType="friend" resultType="int">
+    <select id="checkFriendRelationship" parameterType="friend" resultType="int">
         select count(*) as cnt from friends where
         ( uid=#{uid} and fid=#{fid} ) or ( uid=#{fid} and fid=#{uid} )
     </select>

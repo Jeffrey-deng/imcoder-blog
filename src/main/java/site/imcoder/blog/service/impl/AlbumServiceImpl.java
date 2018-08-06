@@ -1,5 +1,7 @@
 package site.imcoder.blog.service.impl;
 
+import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.log4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.cache.Cache;
@@ -25,6 +27,12 @@ import java.util.regex.Pattern;
  */
 @Service("albumService")
 public class AlbumServiceImpl implements IAlbumService {
+
+    private static Logger logger = Logger.getLogger(AlbumServiceImpl.class);
+
+    private static char COMMA = ',';
+
+    private static char QUOTE = '\'';
 
     @Resource
     private IAlbumDao albumDao;
@@ -191,14 +199,27 @@ public class AlbumServiceImpl implements IAlbumService {
         if (loginUser == null) {
             return 401;
         }
-        Map<String, Object> map = this.findAlbumInfo(album, loginUser);
+        Map<String, Object> map = this.findAlbumWithPhotos(album, loginUser);
         int flag = (Integer) map.get("flag");
         if (flag == 200) {
             Album db_album = (Album) map.get("album");
-            if (db_album.getUser().getUid() == loginUser.getUid()) {
-                // 此处硬盘上删除照片
-                int index = albumDao.deleteAlbum(album);
-                return index > 0 ? 200 : 500;
+            int uid = db_album.getUser().getUid();
+            if (uid == loginUser.getUid() && db_album.getName().equals(album.getName())) {
+                String relativePath = Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + uid + "/album/" + db_album.getAlbum_id() + "/";
+                boolean rs = false;
+                if (deleteFromDisk) {
+                    // 回收相册文件夹
+                    rs = fileService.recycleTrash(relativePath, null, false, Config.get(ConfigConstants.CLOUD_FILE_BASEPATH));
+                }
+                if (rs || !deleteFromDisk) {
+                    String sqlBackupPath = Config.get(ConfigConstants.TRASH_RECYCLE_BASEPATH) + relativePath + "album_data_" + new Date().getTime() + ".sql";
+                    fileService.saveText(convertAlbumToInsertSQL(db_album), sqlBackupPath); // 备份SQL文件
+                    logger.info("FileRecycle backup album(" + db_album.getAlbum_id() + ") sql file in \"" + sqlBackupPath + "\"");
+                    int index = albumDao.deleteAlbum(album);
+                    return index > 0 ? 200 : 500;
+                } else {
+                    return 500;
+                }
             } else {
                 return 403;
             }
@@ -253,10 +274,7 @@ public class AlbumServiceImpl implements IAlbumService {
                         } else {
                             map.put("flag", 500);
                             String diskPath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + photo.getPath();
-                            File tempFile = new File(diskPath);
-                            if (tempFile.exists() && !tempFile.isDirectory()) {
-                                fileService.delete(diskPath);
-                            }
+                            fileService.delete(diskPath);
                         }
                     } else {
                         map.put("flag", 500);
@@ -343,8 +361,7 @@ public class AlbumServiceImpl implements IAlbumService {
                 int left = albumDao.deletePhoto(db_photo);
                 if (deleteFromDisk) {
                     // int right = fileService.deleteFileByUrl(db_photo.getPath(), "cloud", request);
-                    String diskPath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + db_photo.getPath();
-                    int right = fileService.delete(diskPath);
+                    int right = fileService.recycleTrash(db_photo.getPath(), null, true, Config.get(ConfigConstants.CLOUD_FILE_BASEPATH)) ? 1 : 0; //回收
                     left = left * right;
                 }
                 return left > 0 ? 200 : 500;
@@ -391,7 +408,7 @@ public class AlbumServiceImpl implements IAlbumService {
                     String newPathFileName = matcher.group(2) + new Date().getTime() + newPathExt; // 新文件名
                     if (fileService.savePhotoFile(file, photo, newPathDir, newPathFileName)) { //保存新文件到磁盘
                         photo.setPath(newPathDir + newPathFileName);
-                        fileService.delete(Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + oldPath); // 删除就文件
+                        fileService.recycleTrash(oldPath, oldPath, true, Config.get(ConfigConstants.CLOUD_FILE_BASEPATH)); // 回收旧文件
                     } else {
                         return 500;
                     }
@@ -480,6 +497,38 @@ public class AlbumServiceImpl implements IAlbumService {
         String json = "{\"path\": \"" + photo.getPath() + "\", \"photo_id\": " + photo.getPhoto_id() + ", \"width\": " + photo.getWidth() + ", \"height\": " + photo.getHeight() + "}";
         album.setCover(json);
         albumDao.updateCoverForAlbum(album);
+    }
+
+    /**
+     * 将相册对象转成sql，用于恢复删除的相册
+     *
+     * @param album
+     * @return
+     */
+    private String convertAlbumToInsertSQL(Album album) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("INSERT INTO `album` (`ALBUM_ID`, `UID`, `name`, `cover`, `description`, `create_time`, `permission`, `size`, `show_col`) VALUES (");
+        sb.append(album.getAlbum_id()).append(COMMA).append(album.getUser().getUid()).append(COMMA).append(escapeSql(album.getName())).append(COMMA);
+        sb.append(escapeSql(album.getCover())).append(COMMA).append(escapeSql(album.getDescription())).append(COMMA);
+        sb.append(album.getCreate_time().getTime()).append(COMMA).append(album.getPermission()).append(COMMA).append(album.getSize()).append(COMMA).append(album.getShow_col()).append(");\r\n");
+        sb.append("\r\n");
+        List<Photo> photos = album.getPhotos();
+        for (Photo photo : photos) {
+            sb.append("INSERT INTO `photo` (`PHOTO_ID`, `UID`, `ALBUM_ID`, `name`, `path`, `description`, `tags`, `upload_time`, `width`, `height`, `size`, `image_type`, `iscover`, `originName`) VALUES (");
+            sb.append(photo.getPhoto_id()).append(COMMA).append(photo.getUid()).append(COMMA).append(photo.getAlbum_id()).append(COMMA).append(escapeSql(photo.getName())).append(COMMA);
+            sb.append(escapeSql(photo.getPath())).append(COMMA).append(escapeSql(photo.getDescription())).append(COMMA).append(escapeSql(photo.getTags())).append(COMMA);
+            sb.append(photo.getUpload_time().getTime()).append(COMMA).append(photo.getWidth()).append(COMMA).append(photo.getHeight()).append(COMMA).append(photo.getSize()).append(COMMA).append(escapeSql(photo.getImage_type())).append(COMMA);
+            sb.append(photo.getIscover()).append(COMMA).append(escapeSql(photo.getOriginName())).append(");\r\n");
+        }
+        return sb.toString();
+    }
+
+    private String escapeSql(String str) {
+        if (str == null) {
+            return "''";
+        } else {
+            return QUOTE + StringEscapeUtils.escapeSql(str) + QUOTE;
+        }
     }
 
 }

@@ -339,6 +339,8 @@
         _self.find('.toolbar_jump_albums').attr("href", "photo.do?method=dashboard&mode=photo");
 
         _self.find('.toolbar_jump_help').attr("href", "site.do?method=help");
+
+        _self.find('.toolbar_jump_notice').attr("href", "site.do?method=notices");
     }
 
     // bind search btn

@@ -562,23 +562,11 @@
         }
 
         $('a[href="#messages"]').click(function () {
-            var smids = "";
-            $.each(unreadList.sysMsgs, function (i, sysMsg) {
-                if (sysMsg.status == 0) {
-                    smids = smids + "_" + sysMsg.smid;
-                }
-            });
-            if (smids != "") {
-                smids = smids.substring(1);
-                $.post("site.do?method=clearSysMsgStatus", {"smids": smids}, function (data) {
-                    if (data.flag == 200) {
-                        console.log("清除未读系统消息成功！");
-                    } else {
-                        console.log("清除未读系统消息成功！" + data.info);
-                        console.warn("Error Code: " + data.flag);
-                    }
-                });
-            }
+            clearSysMsgStatus();
+        });
+
+        $('a[href="#listSysMsgs"]').click(function () {
+            clearSysMsgStatus();
         });
     }
 
@@ -836,6 +824,26 @@
             });
         } else {
             toastr.error('请输入内容！');
+        }
+    }
+
+    function clearSysMsgStatus() {
+        var smids = "";
+        $.each(unreadList.sysMsgs, function (i, sysMsg) {
+            if (sysMsg.status == 0) {
+                smids = smids + "_" + sysMsg.smid;
+            }
+        });
+        if (smids != "") {
+            smids = smids.substring(1);
+            $.post("site.do?method=clearSysMsgStatus", {"smids": smids}, function (data) {
+                if (data.flag == 200) {
+                    console.log("清除未读系统消息成功！");
+                } else {
+                    console.log("清除未读系统消息成功！" + data.info);
+                    console.warn("Error Code: " + data.flag);
+                }
+            });
         }
     }
 

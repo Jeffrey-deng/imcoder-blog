@@ -114,7 +114,15 @@
         //删除相册事件
         pointer.updateModal.find('button[name="deleteAlbum_trigger"]').click(function () {
             var album_id = pointer.updateModal.find('span[name="album_id"]').html();
-            deleteAlbum(album_id)
+            var album_name = pointer.updateModal.find('input[name="album_name"]').val();
+            var input = prompt("为防止误删，请输入本相册完整名称", "");
+            if (input != null) {
+                if (input == album_name) {
+                    deleteAlbum(album_id, input)
+                } else {
+                    toastr.error("输入错误");
+                }
+            }
         });
 
         // div 自适应高度
@@ -170,9 +178,9 @@
                 toastr.success("创建成功 ");
                 pointer.createModal.modal('hide');
                 try {
-                    album.cover = JSON.parse(album.cover);
+                    data.album.cover = JSON.parse(data.album.cover);
                 } catch (e) {
-                    album.cover = {"path": album.cover};
+                    data.album.cover = {"path": data.album.cover};
                 }
                 config.callback.createCompleted.call(context, data.album);
             } else {
@@ -198,9 +206,29 @@
         });
     };
 
-    var deleteAlbum = function (album_id) {
-        toastr.error("开发中。。。");
-        config.callback.deleteCompleted.call(context, album_id);
+    var deleteAlbum = function (album_id, album_name) {
+        common_utils.notify({
+            "progressBar": false,
+            "hideDuration": 0,
+            "timeOut": 0,
+            "closeButton": false
+        }).success("正在移动到回收站~", "删除中", "notify_delete_album");
+        var postData = {
+            "album_id": album_id,
+            "name": album_name,
+            "deleteFromDisk": true
+        };
+        $.post("photo.do?method=deleteAlbum", postData, function (data) {
+            common_utils.removeNotify("notify_delete_album");
+            if (data.flag == 200) {
+                toastr.success("已移至回收站，可请求管理员恢复~", "相册删除成功", {"timeOut": 10000});
+                pointer.updateModal.modal('hide');
+                config.callback.deleteCompleted.call(context, album_id);
+            } else {
+                toastr.error(data.info, "相册删除失败!");
+                console.warn("Error Code: " + data.flag);
+            }
+        });
     };
 
     var updateAlbum = function (album) {

@@ -44,6 +44,12 @@
         <value>blog/cloud/</value>
     </property>
 
+    <!-- 垃圾回收路径 -->
+    <property>
+        <param>trash_recycle_basepath</param>
+        <value>blog/cloud/.trash/</value>
+    </property>
+
     <!-- “关于我”对应的文章号 -->
     <property>
         <param>site_about_article_id</param>
@@ -90,13 +96,13 @@
 
     <!-- ******************************************* -->
 
-    <!-- 邮件推送服务 *****************************  -->
-
-    <!-- 邮件推送线程池的线程数 -->
+    <!-- 消息推送线程池的线程数 -->
     <property>
-        <param>emailpush_thread_num</param>
+        <param>notifyservice_thread_num</param>
         <value>4</value>
     </property>
+
+    <!-- 邮件推送服务 *****************************  -->
 
     <!-- 邮件推送的smtp地址 -->
     <property>

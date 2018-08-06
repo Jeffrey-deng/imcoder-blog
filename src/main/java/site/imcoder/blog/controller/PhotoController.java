@@ -201,6 +201,30 @@ public class PhotoController {
     }
 
     /**
+     * 删除相册
+     *
+     * @param album
+     * @param request
+     * @param session
+     * @return flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册ID未找到，500：服务器错误
+     */
+    @LoginRequired
+    @RequestMapping(params = "method=deleteAlbum")
+    @ResponseBody
+    public Map<String, Object> deleteAlbum(Album album, Boolean deleteFromDisk, HttpServletRequest request, HttpSession session) {
+        Map<String, Object> map = new HashMap<>();
+        User loginUser = (User) session.getAttribute("loginUser");
+        int flag = albumService.deleteAlbum(album, loginUser, deleteFromDisk);
+        map.put("flag", flag);
+        if (flag == 200) {
+            map.put("info", "删除相册相册成功！");
+        } else {
+            convertAlbumStatusCodeToWord(map, "flag", "info");
+        }
+        return map;
+    }
+
+    /**
      * 上传照片
      *
      * @param file

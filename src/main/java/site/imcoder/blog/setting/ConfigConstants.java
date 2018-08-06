@@ -47,6 +47,11 @@ public class ConfigConstants {
     public static final String CLOUD_FILE_BASEPATH = "cloud_file_basepath";
 
     /**
+     * 垃圾回收路径
+     */
+    public static final String TRASH_RECYCLE_BASEPATH = "trash_recycle_basepath";
+
+    /**
      * ”关于我“ 对应的文章号
      */
     public static final String SITE_ABOUT_ARTICLE_ID = "site_about_article_id";
@@ -74,7 +79,7 @@ public class ConfigConstants {
     /**
      * 邮件推送线程池的线程数
      */
-    public static final String EMAILPUSH_THREAD_NUM = "emailpush_thread_num";
+    public static final String NOTIFYSERVICE_THREAD_NUM = "notifyservice_thread_num";
 
     /**
      * 邮件服务器地址

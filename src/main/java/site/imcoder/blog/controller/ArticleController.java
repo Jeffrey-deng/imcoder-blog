@@ -352,33 +352,20 @@ public class ArticleController {
      * info - 提示
      */
     @LoginRequired
-    @RequestMapping(params = "method=attachmentUpload")
+    @RequestMapping(params = "method=uploadAttachment")
     @ResponseBody
-    public Map<String, Object> attachmentUpload(@RequestParam(value = "file", required = false) MultipartFile file, String fileName, String isImage, HttpServletRequest request, HttpSession session) {
-        Map<String, Object> map = new HashMap<String, Object>();
+    public Map<String, Object> uploadAttachment(@RequestParam(value = "file", required = false) MultipartFile file, String fileName, String isImage, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
-        if (loginUser == null) {
-            map.put("flag", 401);
-            map.put("info", "你未登录，或登录状态失效");
-        } else if (file != null) {
-            boolean isSave = false;
-            if (isImage.equalsIgnoreCase("true")) {
-                isSave = fileService.saveArticleAttachment(file, Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/article/", fileName, true, map);
-            } else {
-                int uid = loginUser.getUid();
-                isSave = fileService.saveArticleAttachment(file, Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + uid + "/attachment/", fileName, false, map);
-            }
-
-            if (isSave) {
-                map.put("flag", 200);
-                map.put("info", "上传成功");
-            } else {
-                map.put("flag", 500);
-                map.put("info", "服务器异常");
-            }
-        } else {
-            map.put("flag", 400);
+        Map<String, Object> map = articleService.uploadAttachment(file, fileName, isImage, loginUser);
+        int flag = (int) map.get("flag");
+        if (flag == 400) {
             map.put("info", "文件为空，或你网络问题");
+        } else if (flag == 401) {
+            map.put("info", "你未登录，或登录状态失效");
+        } else if (flag == 500) {
+            map.put("info", "服务器异常");
+        } else if (flag == 200) {
+            map.put("info", "上传成功");
         }
         return map;
     }
@@ -395,20 +382,17 @@ public class ArticleController {
     @RequestMapping(params = "method=localImage")
     @ResponseBody
     public Map<String, Object> localImage(String url, String fileName, HttpServletRequest request, HttpSession session) {
-        Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
-        if (loginUser == null) {
-            map.put("flag", 401);
+        Map<String, Object> map = articleService.localImage(url, fileName, loginUser);
+        int flag = (int) map.get("flag");
+        if (flag == 400) {
+            map.put("info", "链接为空");
+        } else if (flag == 401) {
             map.put("info", "你未登录，或登录状态失效");
-            return map;
-        }
-        boolean isDownload = fileService.downloadInternetImage(url, Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/article/", fileName, map);
-        if (isDownload) {
-            map.put("flag", 200);
-            map.put("info", "成功");
-        } else {
-            map.put("flag", 500);
+        } else if (flag == 500) {
             map.put("info", "图片下载失败,或该网站禁止下载");
+        } else if (flag == 200) {
+            map.put("info", "成功");
         }
         return map;
     }
@@ -422,30 +406,21 @@ public class ArticleController {
      * @return flag: [200:服务器删除成功] [404:文章插入的图片为链接，不需要删除，返回成功] [500:图片删除失败]
      */
     @LoginRequired
-    @RequestMapping(params = "method=attachmentDelete")
+    @RequestMapping(params = "method=deleteAttachment")
     @ResponseBody
-    public Map<String, Object> attachmentDelete(String file_url, String isImage, HttpServletRequest request, HttpSession session) {
-        //String contextPath = request.getContextPath() ;
-        //int index = file_url.indexOf( contextPath ) + contextPath.length();
-        Map<String, Object> map = new HashMap<String, Object>();
+    public Map<String, Object> deleteAttachment(String file_url, String isImage, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
-        if (loginUser == null) {
-            map.put("flag", 401);
-            map.put("info", "你未登录，或登录状态失效");
-            return map;
-        }
-        int flag = 0;
-        if (isImage.equalsIgnoreCase("true")) {
-            flag = fileService.deleteFileByUrl(file_url, Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/article/", request);
-        } else {
-            flag = fileService.deleteFileByUrl(file_url, Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + loginUser.getUid() + "/attachment/", request);
-        }
-        map.put("flag", flag);
+        Map<String, Object> map = articleService.deleteAttachment(file_url, isImage, loginUser);
+        int flag = (int) map.get("flag");
         if (flag == 200) {
             map.put("info", "删除成功");
+        } else if (flag == 400) {
+            map.put("info", "链接为空");
+        } else if (flag == 401) {
+            map.put("info", "你未登录，或登录状态失效");
         } else if (flag == 404) {
-            map.put("info", "文件不存在 或 该链接不属于本站");
-        } else {
+            map.put("info", "链接为空文件不存在 或 该链接不属于本站");
+        } else if (flag == 500) {
             map.put("info", "错误");
         }
         return map;

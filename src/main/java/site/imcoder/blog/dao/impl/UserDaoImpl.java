@@ -144,8 +144,8 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
      * @param friend
      * @return 不是返回0 是返回2
      */
-    public int checkFriendRalationship(Friend friend) {
-        return this.getSqlSession().selectOne("user.checkFriendRalationship", friend);
+    public int checkFriendRelationship(Friend friend) {
+        return this.getSqlSession().selectOne("user.checkFriendRelationship", friend);
     }
 
     /**
@@ -189,7 +189,7 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
                 if (fw_row == 2) {
                     Friend friend1 = new Friend(follow.getUid(), follow.getFuid());
                     //是否已经是好友
-                    int fr_row = session.selectOne("user.checkFriendRalationship", friend1);
+                    int fr_row = session.selectOne("user.checkFriendRelationship", friend1);
                     if (fr_row != 2) {
                         //插入两条记录
                         int f1 = session.insert("user.beFriend", friend1);
@@ -249,7 +249,7 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
             SqlSession session = this.getSqlSession();
             int a = session.delete("user.deleteFollow", follow);
             Friend friend = new Friend(follow.getUid(), follow.getFuid());
-            int friendCount = session.selectOne("user.checkFriendRalationship", friend);
+            int friendCount = session.selectOne("user.checkFriendRelationship", friend);
             if (friendCount == 2) {
                 int b = session.delete("user.deleteFriend", friend);
                 return b * a > 0 ? 2 : 0;

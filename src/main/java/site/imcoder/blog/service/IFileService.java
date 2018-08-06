@@ -4,7 +4,6 @@ import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.entity.Photo;
 
 import javax.servlet.http.HttpServletRequest;
-import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -13,15 +12,23 @@ import java.util.Map;
  */
 public interface IFileService {
 
-    public void copy(String formPath, String toPath) throws IOException;
+    public boolean copy(String formPath, String toPath);
 
-    public void move(String formPath, String toPath) throws IOException;
+    public boolean move(String formPath, String toPath, boolean isFile);
 
-    public int delete(String path);
+    public boolean delete(String path);
 
-    public int deleteDirectory(String path);
+    public boolean deleteDirectory(String path);
 
     public void createDirs(String path);
+
+    /**
+     * 保存文本
+     *
+     * @param text
+     * @param filePath
+     */
+    public boolean saveText(String text, String filePath);
 
     /**
      * 保存文章中上传的图片或附件
@@ -88,4 +95,23 @@ public interface IFileService {
      * @return
      */
     public void createAlbumFolder(String relativePath);
+
+    /**
+     * 回收文件
+     *
+     * @param sourceRelativePath 相对路径
+     * @param trashPath          回收相对路径，为空时取path得值
+     * @param isFile             是否是文件
+     * @param sourceBasePath     物理相对路径
+     */
+    public boolean recycleTrash(String sourceRelativePath, String trashPath, boolean isFile, String sourceBasePath);
+
+    /**
+     * 回收文件
+     *
+     * @param sourceFullPath 全路径
+     * @param trashPath      回收路径
+     * @param isFile         trashPath是否是文件
+     */
+    public boolean recycleTrash(String sourceFullPath, String trashPath, boolean isFile);
 }

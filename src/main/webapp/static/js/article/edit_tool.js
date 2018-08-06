@@ -1995,7 +1995,7 @@
         $.ajax({
             data: data,
             type: "POST",
-            url: "article.do?method=attachmentUpload", //图片上传出来的url，返回的是图片上传后的路径，http格式
+            url: "article.do?method=uploadAttachment", //图片上传出来的url，返回的是图片上传后的路径，http格式
             contentType: false,
             dataType: "json",
             cache: false,
@@ -2129,7 +2129,7 @@
             var image_url = $(image).attr('src');
             //image_url = encodeURIComponent(image_url);
             $.ajax({
-                url: "article.do?method=attachmentDelete",
+                url: "article.do?method=deleteAttachment",
                 data: {"file_url": image_url, "isImage": true},
                 type: "POST",
                 dataType: 'json',

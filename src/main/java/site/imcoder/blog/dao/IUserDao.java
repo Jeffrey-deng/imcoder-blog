@@ -87,7 +87,7 @@ public interface IUserDao {
      * @param friend
      * @return 不是返回0 是返回2
      */
-    public int checkFriendRalationship(Friend friend);
+    public int checkFriendRelationship(Friend friend);
 
     /**
      * 查询用户好友 List

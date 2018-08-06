@@ -2,14 +2,17 @@ package site.imcoder.blog.service.impl;
 
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.common.PageUtil;
 import site.imcoder.blog.dao.IArticleDao;
 import site.imcoder.blog.entity.*;
 import site.imcoder.blog.event.IEventTrigger;
 import site.imcoder.blog.service.IArticleService;
-import site.imcoder.blog.service.IEmailService;
-import site.imcoder.blog.service.ISiteService;
+import site.imcoder.blog.service.IFileService;
+import site.imcoder.blog.service.INotifyService;
+import site.imcoder.blog.setting.Config;
+import site.imcoder.blog.setting.ConfigConstants;
 
 import javax.annotation.Resource;
 import java.util.Date;
@@ -33,10 +36,10 @@ public class ArticleServiceImpl implements IArticleService {
     private IArticleDao articleDao;
 
     @Resource
-    private IEmailService emailService;
+    private INotifyService notifyService;
 
     @Resource
-    private ISiteService siteService;
+    private IFileService fileService;
 
     @Resource
     private Cache cache;
@@ -119,7 +122,7 @@ public class ArticleServiceImpl implements IArticleService {
                 if (loginUser != null) {
                     //权限--仅好友可见时
                     if (permission == 1 && article.getAuthor().getUid() != loginUser.getUid()) {
-                        //userDao.checkFriendRalationship(new Friend(loginUser.getUid(),article.getAuthor().getUid()));
+                        //userDao.checkFriendRelationship(new Friend(loginUser.getUid(),article.getAuthor().getUid()));
                         if (cache.containsFriend(new Friend(loginUser.getUid(), article.getAuthor().getUid())) != 2) {
                             flag = 403;
                         }
@@ -236,19 +239,12 @@ public class ArticleServiceImpl implements IArticleService {
         comment.setSend_time(new Date().getTime());
         int index = articleDao.saveComment(comment);
         if (index > 0) {
-            //触发发送新评论邮件
-            emailService.receivedCommentMail(comment);
+            //触发发送新评论通知
+            notifyService.receivedComment(comment);
 
             //增加评论数
             //articleDao.raiseCommentCnt(comment);
             trigger.addComment(comment);
-
-            //系统通知
-            User sendUser = comment.getUser();
-            User recvUser = cache.getUser(comment.getReplyuid(), Cache.READ);
-            String message = recvUser.getNickname() + "你好，你收到了一条来自 " + sendUser.getNickname() + " 评论! ：<a style=\"color:#18a689;\" href=\"article.do?method=detail&aid=" + comment.getAid() + "#comments\" target=\"_balnk\" >点击查看</a>";
-            SysMsg sysMsg = new SysMsg(recvUser.getUid(), message, new Date().getTime(), 0);
-            siteService.sendSystemMessage(sysMsg);
         }
         return convertRowToHttpCode(index);
     }
@@ -311,6 +307,85 @@ public class ArticleServiceImpl implements IArticleService {
         map.put("clickRankList", clickRankList);
         map.put("newestList", newestList);
         map.put("hotTagList", hotTagList);
+        return map;
+    }
+
+    /**
+     * 图片或附件上传
+     *
+     * @param file
+     * @param fileName  重命名名字
+     * @param isImage   是否是图片
+     * @param loginUser
+     * @return flag - 200：成功，400: 参数错误，401：需要登录，500: 失败
+     * info - 提示
+     */
+
+    public Map<String, Object> uploadAttachment(MultipartFile file, String fileName, String isImage, User loginUser) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        if (loginUser == null) {
+            map.put("flag", 401);
+        } else if (file != null) {
+            boolean isSave = false;
+            if (isImage.equalsIgnoreCase("true")) {
+                isSave = fileService.saveArticleAttachment(file, Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/article/", fileName, true, map);
+            } else {
+                int uid = loginUser.getUid();
+                isSave = fileService.saveArticleAttachment(file, Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + uid + "/attachment/", fileName, false, map);
+            }
+            map.put("flag", isSave ? 200 : 500);
+        } else {
+            map.put("flag", 400);
+        }
+        return map;
+    }
+
+    /**
+     * 互联网图片本地化
+     *
+     * @param url
+     * @param fileName
+     * @param loginUser
+     * @return
+     */
+    public Map<String, Object> localImage(String url, String fileName, User loginUser) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        if (loginUser == null) {
+            map.put("flag", 401);
+        } else if (url == null || url.length() == 0) {
+            map.put("flag", 400);
+        } else {
+            boolean isDownload = fileService.downloadInternetImage(url, Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/article/", fileName, map);
+            map.put("flag", isDownload ? 200 : 500);
+        }
+        return map;
+    }
+
+    /**
+     * 删除文件
+     *
+     * @param file_url
+     * @param isImage   是否时图片
+     * @param loginUser
+     * @return flag: [200:服务器删除成功] [404:文章插入的图片为链接，不需要删除，返回成功] [500:图片删除失败]
+     */
+    public Map<String, Object> deleteAttachment(String file_url, String isImage, User loginUser) {
+        //String contextPath = request.getContextPath() ;
+        //int index = file_url.indexOf( contextPath ) + contextPath.length();
+        Map<String, Object> map = new HashMap<String, Object>();
+        if (loginUser == null) {
+            map.put("flag", 401);
+        } else if (file_url == null || file_url.length() == 0) {
+            map.put("flag", 400);
+        } else {
+            int flag = 0;
+            if (isImage.equalsIgnoreCase("true")) {
+                flag = fileService.deleteFileByUrl(file_url, Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/article/", null);
+            } else {
+                flag = fileService.deleteFileByUrl(file_url, Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + loginUser.getUid() + "/attachment/", null);
+            }
+            map.put("flag", flag);
+        }
         return map;
     }
 

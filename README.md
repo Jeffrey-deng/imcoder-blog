@@ -6,6 +6,16 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
 
 ## develop log
 
+#### 2018.08.07
+
+add `file recycle bin support for data recovery`
+
+    1、add file recycle bin support for data recovery.
+    2、provides recovery when deleting file images, deleting photos, updating image source files, and deleting albums.
+    3、backup sql file when deleting album.
+    4、reorganize the message push service.
+    5、fixed send email error.
+
 #### 2018.08.02
 
 modify `encode regex expr implement from js to java`

@@ -170,7 +170,7 @@
                     PeriodCache.utils.removeCache("user_albums_cache", "0_" + login_handle.getCurrentUserId());
                 },
                 "deleteCompleted": function (album_id) {  // 在相册删除完成后回调
-                    //album_page_handle.utils.deleteAlbumInPage(album_id);
+                    album_page_handle.utils.deleteAlbumInPage(album_id);
                 },
                 "beforeCreateModalOpen": function (createModal, openCreateModal_callback) {  // 创建窗口打开前回调
                     openCreateModal_callback();

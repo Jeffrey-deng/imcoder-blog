@@ -8,9 +8,8 @@ import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.dao.IUserDao;
 import site.imcoder.blog.entity.*;
 import site.imcoder.blog.event.IEventTrigger;
-import site.imcoder.blog.service.IEmailService;
 import site.imcoder.blog.service.IFileService;
-import site.imcoder.blog.service.ISiteService;
+import site.imcoder.blog.service.INotifyService;
 import site.imcoder.blog.service.IUserService;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
@@ -38,13 +37,10 @@ public class UserServiceImpl implements IUserService {
     private Cache cache;
 
     @Resource
-    private IEmailService emailService;
+    private INotifyService notifyService;
 
     @Resource
     private IFileService fileService;
-
-    @Resource
-    private ISiteService siteService;
 
     @Resource
     private IEventTrigger trigger;
@@ -86,11 +82,11 @@ public class UserServiceImpl implements IUserService {
         int row = userDao.saveUser(user);
         if (row > 0) {
             trigger.newUser(user);
-            //欢迎邮件
-            emailService.welcomeMail(user);
+            //欢迎通知
+            notifyService.welcomeNewUser(user);
             List<User> managers = cache.getManagers();
             if (managers.size() > 0) {
-                emailService.notifyManagerNewUserMail(managers, user);
+                notifyService.notifyManagerNewUser(managers, user); //通知管理员
             }
         }
         return row > 0 ? 200 : 500;
@@ -349,22 +345,14 @@ public class UserServiceImpl implements IUserService {
             return 204;
         } else if (index == 1) {
             trigger.follow(follow);
-            //系统通知
-            String message = hostUser.getNickname() + "你好，有新的用户关注了你：<a style=\"color:#18a689;\" href=\"user.do?method=home&uid=" + loginUser.getUid() + "\" target=\"_balnk\" >" + loginUser.getNickname() + "</a>";
-            SysMsg sysMsg = new SysMsg(hostUser.getUid(), message, new Date().getTime(), 0);
-            siteService.sendSystemMessage(sysMsg);
-            //新关注者邮件通知
-            emailService.theNewFollowerMail(cache.getUser(hostUser.getUid(), Cache.READ), loginUser);
+            //发送通知
+            notifyService.theNewFollower(cache.getUser(hostUser.getUid(), Cache.READ), loginUser, false);
             return 200;
         } else if (index == 2) {
             trigger.follow(follow);
             trigger.friend(new Friend(loginUser.getUid(), hostUser.getUid()));
-            //系统通知
-            String message = hostUser.getNickname() + "你好，有新的用户关注了你：<a style=\"color:#18a689;\" href=\"user.do?method=home&uid=" + loginUser.getUid() + "\" target=\"_balnk\" >" + loginUser.getNickname() + "</a>，由于相互关注你们成为了好友。";
-            SysMsg sysMsg = new SysMsg(hostUser.getUid(), message, new Date().getTime(), 0);
-            siteService.sendSystemMessage(sysMsg);
-            //新关注者邮件通知
-            emailService.theNewFollowerMail(cache.getUser(hostUser.getUid(), Cache.READ), loginUser);
+            //发送通知
+            notifyService.theNewFollower(cache.getUser(hostUser.getUid(), Cache.READ), loginUser, true);
             return 201;
         } else {
             return 500;
@@ -447,8 +435,8 @@ public class UserServiceImpl implements IUserService {
         User user = cache.getUser(letter.getR_uid(), Cache.READ);
         int row = userDao.saveLetter(letter);
         if (row > 0) {
-            //收到私信邮件通知
-            emailService.receivedLetterMail(user, sendUser);
+            //收到私信通知
+            notifyService.receivedLetter(user, sendUser);
         }
         return row > 0 ? 200 : 500;
     }
@@ -518,12 +506,8 @@ public class UserServiceImpl implements IUserService {
         if (index == 1) {
             //文章收藏数加1
             trigger.addCollection(article, user);
-
-            //系统通知
-            Article article_cache = cache.getArticle(article.getAid(), Cache.READ);
-            String message = article_cache.getAuthor().getNickname() + "你好，有以下用户收藏了你的文章（" + article_cache.getTitle() + "）：<a style=\"color:#18a689;\" href=\"user.do?method=home&uid=" + user.getUid() + "\" target=\"_balnk\" >" + user.getNickname() + "</a>";
-            SysMsg sysMsg = new SysMsg(article_cache.getAuthor().getUid(), message, new Date().getTime(), 0);
-            siteService.sendSystemMessage(sysMsg);
+            //发送通知
+            notifyService.collectedByUser(user, article);
         } else if (index == 2) {
             return 204;
         }

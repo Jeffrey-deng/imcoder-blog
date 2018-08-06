@@ -83,6 +83,16 @@
 		where album_id = #{album_id}
 	</update>
 
+    <!-- 删除相册照片  -->
+    <delete id="deleteAlbumPhotos" parameterType="album">
+        delete from photo where album_id = #{album_id}
+    </delete>
+
+    <!-- 删除相册  -->
+    <delete id="deleteAlbum" parameterType="album">
+        delete from album where album_id = #{album_id}
+    </delete>
+
     <!-- 更新封面  -->
     <update id="updateCoverForAlbum" parameterType="album">
 		update album set cover = #{cover} where album_id = #{album_id}

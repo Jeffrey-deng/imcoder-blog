@@ -53,7 +53,7 @@ public class FlushCacheTool {
         if (statsDao.saveArticleBuffer(articleList) > 0) {
 
             logger.debug("FlushArticleCache: 重置 hasUpdateArticle");
-            logger.info("FlushArticleCache: flush success!");
+            logger.debug("FlushArticleCache: flush success!");
 
             hasUpdateArticle.clear();
         } else {

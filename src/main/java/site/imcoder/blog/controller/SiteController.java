@@ -11,11 +11,12 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
 import site.imcoder.blog.Interceptor.LoginRequired;
-import site.imcoder.blog.common.AudioUtil;
 import site.imcoder.blog.controller.propertyeditors.IntEditor;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.User;
+import site.imcoder.blog.entity.UserGroup;
 import site.imcoder.blog.service.IArticleService;
+import site.imcoder.blog.service.INotifyService;
 import site.imcoder.blog.service.ISiteService;
 import site.imcoder.blog.service.IUserService;
 import site.imcoder.blog.setting.Config;
@@ -24,7 +25,6 @@ import site.imcoder.blog.setting.ConfigConstants;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
-import java.io.File;
 import java.util.*;
 
 /**
@@ -47,6 +47,9 @@ public class SiteController {
     @Resource
     private ISiteService siteService;
 
+    @Resource
+    private INotifyService notifyService;
+
     @RequestMapping()
     public ModelAndView defaultHandle() {
         RedirectView redirectView = new RedirectView("site.do?method=about", true);
@@ -62,10 +65,18 @@ public class SiteController {
      * @param session
      * @return 通过权限检查的列表
      */
-    @RequestMapping(params = "method=list")
+    @RequestMapping(params = "method=notices")
     public String list(@RequestParam(defaultValue = "5") int pageSize, @RequestParam(defaultValue = "1") int jumpPage, Article condition, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
-
+        if (condition == null) {
+            condition = new Article();
+        }
+        condition.setTags("公告|notice");
+        UserGroup group = new UserGroup();
+        group.setGid(1);
+        User author = new User();
+        author.setUserGroup(group);
+        condition.setAuthor(author);
         Map<String, Object> map = articleService.list(pageSize, jumpPage, condition, loginUser);
         if (map != null) {
             request.setAttribute("articleList", map.get("articleList"));
@@ -124,7 +135,7 @@ public class SiteController {
     @ResponseBody
     public String sendValidateMail(HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
-        String code = siteService.sendValidateMail(loginUser);
+        String code = notifyService.validateCode(loginUser);
         if (code != null) {
             session.setAttribute("validateCode", code);
         }
@@ -148,7 +159,7 @@ public class SiteController {
                 list.add(Integer.valueOf(id));
             }
             User loginUser = (User) session.getAttribute("loginUser");
-            int flag = siteService.updateSystemMessageStatus(list);
+            int flag = notifyService.updateSystemMessageStatus(list);
             map.put("flag", flag);
             convertStatusCodeToWord(map, "flag", "info");
         } else {
@@ -168,39 +179,17 @@ public class SiteController {
     @RequestMapping(params = "method=runTextToVoice")
     @ResponseBody
     public Map<String, Object> textToVoice(HttpServletRequest request, String text, HttpSession session) {
-        Map<String, Object> map = new HashMap<>();
         User loginUser = (User) session.getAttribute("loginUser");
-        if (loginUser == null) {
-            map.put("flag", 401);
-            map.put("info", "未登录");
-        } else if (text != null && !text.equals("")) {
-            String dir = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + loginUser.getUid() + "/files/text_to_voice/";
-            File dirFile = new File(dir);
-            if (!dirFile.exists()) {
-                dirFile.mkdirs();
-            }
-            String fileName = "text-to-voice_" + new Date().getTime() + ".mp3";
-
-            // to HashMap
-            HashMap<String, Object> options = new HashMap<String, Object>();
-            for (Iterator iter = request.getParameterMap().entrySet().iterator(); iter.hasNext(); ) {
-                Map.Entry element = (Map.Entry) iter.next();
-                String strKey = (String) element.getKey();
-                String strValue = ((String[]) (element.getValue()))[0];
-                options.put(strKey, strValue);
-            }
-
-            int flag = AudioUtil.textToVoice(text, options, dir + fileName);
-            //AudioUtil.textToVoice(text, modelAndView.getModel(), dir + fileName);
-            map.put("flag", flag);
-            map.put("fileName", fileName);
-            map.put("mp3_url", Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + loginUser.getUid() + "/files/text_to_voice/" + fileName);
-            map.put("flag", 200);
-            map.put("info", "成功");
-        } else {
-            map.put("flag", 400);
-            map.put("info", "参数错误");
+        // to HashMap
+        HashMap<String, Object> options = new HashMap<String, Object>();
+        for (Iterator itr = request.getParameterMap().entrySet().iterator(); itr.hasNext(); ) {
+            Map.Entry element = (Map.Entry) itr.next();
+            String strKey = (String) element.getKey();
+            String strValue = ((String[]) (element.getValue()))[0];
+            options.put(strKey, strValue);
         }
+        Map<String, Object> map = siteService.textToVoice(text, options, loginUser);
+        convertStatusCodeToWord(map, "flag", "info");
         return map;
     }
 

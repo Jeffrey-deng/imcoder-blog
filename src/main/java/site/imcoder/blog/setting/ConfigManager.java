@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import site.imcoder.blog.common.AudioUtil;
 import site.imcoder.blog.common.Utils;
-import site.imcoder.blog.common.mail.EmailUtil;
 
 import javax.servlet.ServletContext;
 import java.io.*;
@@ -107,7 +106,6 @@ public class ConfigManager {
         setDefault();
         loadConfigFromXML(Config.get(ConfigConstants.SERVER_CONFIG_LOCATION), "init");
         initLogFilePath();
-        EmailUtil.updateAccountInfo();
         AudioUtil.updateTokenInfo();
         for (Map.Entry<String, String> entry : Config.getAll().entrySet()) {
             // 输出日志
@@ -173,14 +171,14 @@ public class ConfigManager {
     }
 
     private void initAssignment(String key, String value) {
-        if (key.equals(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) || key.equals(ConfigConstants.CLOUD_FILE_BASEPATH)) {
+        if (key.equals(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) || key.equals(ConfigConstants.CLOUD_FILE_BASEPATH) || key.equals(ConfigConstants.TRASH_RECYCLE_BASEPATH)) {
             value = getRealFromConfigBasePath(value);
         }
         Config.set(key, value);
     }
 
     private void updateAssignment(String key, String value) {
-        if (key.equals(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) || key.equals(ConfigConstants.CLOUD_FILE_BASEPATH)) {
+        if (key.equals(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) || key.equals(ConfigConstants.CLOUD_FILE_BASEPATH) || key.equals(ConfigConstants.TRASH_RECYCLE_BASEPATH)) {
             value = getRealFromConfigBasePath(value);
         }
         String preValue = Config.get(key);
@@ -193,10 +191,10 @@ public class ConfigManager {
                 logger.info("更新配置 \"" + key + "\" : " + getPublicValue(key, value));
             }
             Config.set(key, value);
-            if (key.equals(ConfigConstants.EMAILPUSH_THREAD_NUM)) {
+            if (key.equals(ConfigConstants.NOTIFYSERVICE_THREAD_NUM)) {
 
             } else if (key.indexOf("_") != -1 && key.startsWith(emailPushPrefix)) {
-                EmailUtil.updateAccountInfo();
+
             } else if (key.indexOf("_") != -1 && key.startsWith(toolSpeechPrefix)) {
                 AudioUtil.updateTokenInfo();
             }
@@ -277,6 +275,9 @@ public class ConfigManager {
         //云盘文件存储基础路径 相对于context父文件夹
         Config.set(ConfigConstants.CLOUD_FILE_BASEPATH, getRealFromConfigBasePath("blog/cloud/"));
 
+        //垃圾回收路径
+        Config.set(ConfigConstants.TRASH_RECYCLE_BASEPATH, getRealFromConfigBasePath("blog/cloud/.trash/"));
+
         //“关于我”对应的文章号
         Config.set(ConfigConstants.SITE_ABOUT_ARTICLE_ID, "0");
 
@@ -296,7 +297,7 @@ public class ConfigManager {
         Config.set(ConfigConstants.CACHEFLUSH_TIMER_DELAY, String.valueOf(5 * 60 * 1000L));
 
         //邮件推送线程池的线程数
-        Config.set(ConfigConstants.EMAILPUSH_THREAD_NUM, "4");
+        Config.set(ConfigConstants.NOTIFYSERVICE_THREAD_NUM, "4");
 
         //邮件服务器地址
         Config.set(ConfigConstants.EMAILPUSH_SMTP_ADDR, "smtpdm.aliyun.com");
@@ -328,8 +329,6 @@ public class ConfigManager {
         Config.set(ConfigConstants.TOOL_SPEECH_TOKEN_API_KEY, "");
 
         Config.set(ConfigConstants.TOOL_SPEECH_TOKEN_SECRET_KEY, "");
-
-        EmailUtil.updateAccountInfo();
 
         AudioUtil.updateTokenInfo();
     }

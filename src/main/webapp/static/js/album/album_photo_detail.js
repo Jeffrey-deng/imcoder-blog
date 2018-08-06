@@ -312,7 +312,7 @@
                     PeriodCache.utils.removeCache("user_albums_cache", "0_" + cacheAlbum.user.uid);
                 },
                 "deleteCompleted": function (album_id) {  // 在相册删除完成后回调
-
+                    toastr.success("此页面刷新后将不可用~", "", {"timeOut": 0});
                 },
                 "beforeCreateModalOpen": function (createModal, openCreateModal_callback) {  // 创建窗口打开前回调
                     openCreateModal_callback();

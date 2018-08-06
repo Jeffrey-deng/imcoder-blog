@@ -27,36 +27,64 @@ public class FileServiceImpl implements IFileService {
     private static Logger logger = Logger.getLogger(FileServiceImpl.class);
 
     @Override
-    public void copy(String formPath, String toPath) throws IOException {
+    public boolean copy(String formPath, String toPath) {
+        boolean rs = false;
         File source = new File(formPath);
-        File targe = new File(toPath);
-        FileUtils.copyFile(source, targe);
+        File target = new File(toPath);
+        try {
+            FileUtils.copyFile(source, target);
+            rs = true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            rs = false;
+            logger.warn("FileMove found exception " + e.getMessage() + " , formPath: \"" + formPath + "\", toPath: \"" + toPath + "\"");
+        }
+        return rs;
     }
 
     @Override
-    public void move(String formPath, String toPath) throws IOException {
+    public boolean move(String formPath, String toPath, boolean isFile) {
+        boolean rs = false;
         File source = new File(formPath);
-        File targe = new File(toPath);
-        FileUtils.moveFile(source, targe);
+        File target = new File(toPath);
+        try {
+            if (isFile) {
+                FileUtils.moveFile(source, target);
+            } else {
+                if (target.getCanonicalPath().startsWith(source.getCanonicalPath())) {
+                    throw new IOException("Cannot move directory to a subdirectory of itself");
+                }
+                FileUtils.copyDirectory(source, target); // 复制source下的文件，复制到target下
+                FileUtils.deleteDirectory(source);
+                //FileUtils.moveDirectoryToDirectory(source, target, true); //这个方法是将source移动到target的目录下，所以不符合要求
+                //FileUtils.moveDirectory(source, target); //这个方法相当于将source重命名为target，需要target不存在，所以不符合要求
+            }
+            rs = true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            rs = false;
+            logger.warn("FileMove found exception " + e.getMessage() + " , formPath: \"" + formPath + "\", toPath: \"" + toPath + "\"");
+        }
+        return rs;
     }
 
     @Override
-    public int delete(String path) {
+    public boolean delete(String path) {
         File file = new File(path);
         if (file.exists() && file.isFile()) {
             logger.info("FileDelete from " + path);
-            return FileUtils.deleteQuietly(file) == true ? 1 : 0;
+            return FileUtils.deleteQuietly(file);
         } else {
             logger.warn("FileDelete path is directory, so not delete:  " + path);
-            return 0;
+            return false;
         }
     }
 
     @Override
-    public int deleteDirectory(String path) {
+    public boolean deleteDirectory(String path) {
         File file = new File(path);
         logger.info("FileDelete from " + path);
-        return FileUtils.deleteQuietly(file) == true ? 1 : 0;
+        return FileUtils.deleteQuietly(file);
     }
 
     @Override
@@ -66,6 +94,25 @@ public class FileServiceImpl implements IFileService {
             dir.mkdirs();
         }
 
+    }
+
+    /**
+     * 保存文本
+     *
+     * @param text
+     * @param filePath
+     */
+    @Override
+    public boolean saveText(String text, String filePath) {
+        boolean rs = false;
+        try {
+            FileUtils.write(new File(filePath), text);
+            rs = true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            rs = false;
+        }
+        return rs;
     }
 
     /**
@@ -149,7 +196,7 @@ public class FileServiceImpl implements IFileService {
             return isDownload;
         }
 
-        logger.info("ImageLocal into " + realPath + fileName);
+        logger.info("ImageLocal into \"" + realPath + fileName + "\"");
 
         //保存的目标文件对象
         File targetFile = new File(realPath, fileName);
@@ -183,22 +230,24 @@ public class FileServiceImpl implements IFileService {
         }
         file_url = file_url.substring(index);
 
-        File file = new File(Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + file_url);
+        String basePath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH);
+        File file = new File(basePath + file_url);
         if (!file.exists()) {
-            file = new File(Config.get(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) + file_url);
+            basePath = Config.get(ConfigConstants.ARTICLE_UPLOAD_BASEPATH);
+            file = new File(basePath + file_url);
         }
         if (file.exists()) {
             if (file.isDirectory()) {
                 logger.warn("FileDelete submit is a directory! so not delete：" + file.getPath());
                 result = 404;
-            } else if (file.delete()) {
-                logger.info("FileDelete from " + file.getPath());
+            } else if (recycleTrash(file_url, null, true, basePath)) {
+                //logger.info("FileDelete from " + file.getPath());
                 result = 200;
             } else {
                 logger.warn("FileDelete error path: " + file.getPath());
                 result = 500;
             }
-        } else {
+        } else if (request != null) {
             String realPath = request.getSession().getServletContext().getRealPath(file_url);
             //如果等于空  说明文件不存在 或  插入的图片是链接
             if (realPath != null) {
@@ -206,9 +255,9 @@ public class FileServiceImpl implements IFileService {
                 if (thefile.isDirectory()) {
                     logger.warn("FileDelete submit is a directory! so not delete：" + file.getPath());
                     result = 404;
-                } else if (thefile.delete()) {
+                } else if (recycleTrash(realPath, "upload/image/article/deleteByRequest/", false)) {
                     //返回成功
-                    logger.info("FileDelete from " + realPath);
+                    //logger.info("FileDelete from " + realPath);
                     result = 200;
                 } else {
                     //返回失败
@@ -218,6 +267,8 @@ public class FileServiceImpl implements IFileService {
             } else {
                 result = 404;
             }
+        } else {
+            result = 404;
         }
         return result;
     }
@@ -338,6 +389,50 @@ public class FileServiceImpl implements IFileService {
     public void createAlbumFolder(String relativePath) {
         String realPath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath;
         this.createDirs(realPath);
+    }
+
+    /**
+     * 回收文件
+     *
+     * @param sourceRelativePath 相对路径
+     * @param trashPath          回收相对路径，为空时取path得值
+     * @param isFile             是否是文件
+     * @param sourceBasePath     物理相对路径
+     */
+    public boolean recycleTrash(String sourceRelativePath, String trashPath, boolean isFile, String sourceBasePath) {
+        if (sourceBasePath == null || sourceBasePath == null) {
+            return false;
+        }
+        String fullPath = sourceBasePath + sourceRelativePath;
+        if (trashPath == null) {
+            trashPath = sourceRelativePath;
+        }
+        return recycleTrash(fullPath, trashPath, isFile);
+    }
+
+    /**
+     * 回收文件
+     *
+     * @param sourceFullPath 全路径
+     * @param trashPath      回收路径
+     * @param isFile         trashPath是否是文件
+     */
+    public boolean recycleTrash(String sourceFullPath, String trashPath, boolean isFile) {
+        if (sourceFullPath == null || trashPath == null) {
+            return false;
+        }
+        boolean rs = false;
+        File file = new File(sourceFullPath);
+        if (file.exists()) {
+            if (!Utils.isAbsolutePath(trashPath)) {
+                trashPath = Config.get(ConfigConstants.TRASH_RECYCLE_BASEPATH) + trashPath;
+            }
+            rs = move(file.getAbsolutePath(), trashPath, isFile);
+            if (rs) {
+                logger.info("FileRecycle from \"" + sourceFullPath + "\" to \"" + trashPath + "\"");
+            }
+        }
+        return rs;
     }
 
 }

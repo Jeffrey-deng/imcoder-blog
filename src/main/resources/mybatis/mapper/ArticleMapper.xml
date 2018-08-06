@@ -139,6 +139,11 @@
                     <if test="condition.author.uid != 0">
                         and a.uid = #{condition.author.uid}
                     </if>
+                    <if test="condition.author.userGroup != null">
+                        <if test="condition.author.userGroup.gid != 0">
+                            and u.gid = #{condition.author.userGroup.gid}
+                        </if>
+                    </if>
                 </if>
                 <if test="condition.category != null">
                     <if test="condition.category.atid != 0">
@@ -196,7 +201,7 @@
 		at.atid,at.atname,
 		u.uid as auid,u.gid,username,nickname,sex,head_photo,lock_status,
 		ug.group_name
-		from ( article a left join article_type at on a.atid=at.atid )
+		from ( article a left join article_type at on a.atid = at.atid )
 		     left join ( user u left join user_group ug on u.gid = ug.gid ) 
 		     on a.uid = u.uid 
 		where recommend=1 order by top desc
@@ -236,7 +241,7 @@
 
     <!-- 根据文章条件查询文章数量 -->
     <select id="findCount" parameterType="hashMap" resultType="int">
-        select count(*) as count from article a
+        select count(*) as count from article a left join user u on a.uid = u.uid
         <where>
             <choose>
                 <when test="loginUser!= null and loginUser.uid>0">
@@ -270,6 +275,11 @@
                 <if test="condition.author != null">
                     <if test="condition.author.uid != 0">
                         and a.uid = #{condition.author.uid}
+                    </if>
+                    <if test="condition.author.userGroup != null">
+                        <if test="condition.author.userGroup.gid != 0">
+                            and u.gid = #{condition.author.userGroup.gid}
+                        </if>
                     </if>
                 </if>
                 <if test="condition.category != null">
