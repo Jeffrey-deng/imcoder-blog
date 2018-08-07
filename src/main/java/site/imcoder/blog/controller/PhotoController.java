@@ -30,7 +30,7 @@ import java.util.Map;
  */
 @Controller
 @RequestMapping("/photo.do")
-public class PhotoController {
+public class PhotoController extends BaseController {
 
     @Resource
     private IAlbumService albumService;
@@ -39,10 +39,17 @@ public class PhotoController {
     private IUserService userService;
 
     @RequestMapping()
-    public ModelAndView defaultHandle() {
-        RedirectView redirectView = new RedirectView("photo.do?method=dashboard&mode=photo", true);
-        redirectView.setStatusCode(HttpStatus.MOVED_PERMANENTLY);
-        return new ModelAndView(redirectView);
+    public ModelAndView defaultHandle(HttpServletRequest request) {
+        String queryString = request.getQueryString();
+        ModelAndView mv = new ModelAndView();
+        if (queryString == null || queryString.length() == 0) {
+            RedirectView redirectView = new RedirectView("photo.do?method=dashboard&model=photo", true);
+            redirectView.setStatusCode(HttpStatus.MOVED_PERMANENTLY);
+            mv.setView(redirectView);
+        } else {
+            mv.setViewName(PAGE_NOT_FOUND_ERROR);
+        }
+        return mv;
     }
 
     /**
@@ -59,11 +66,11 @@ public class PhotoController {
     public Map<String, Object> createAlbum(Album album, HttpSession session, HttpServletRequest request) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = albumService.createAlbum(album, loginUser);
-        int flag = (Integer) map.get("flag");
+        int flag = (Integer) map.get(KEY_STATUS);
         if (flag == 200) {
-            map.put("info", "相册创建成功！");
+            map.put(KEY_STATUS_FRIENDLY, "相册创建成功！");
         } else {
-            convertAlbumStatusCodeToWord(map, "flag", "info");
+            convertAlbumStatusCodeToWord(map);
         }
         return map;
     }
@@ -82,19 +89,19 @@ public class PhotoController {
         album.setAlbum_id(id);
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = albumService.findAlbumInfo(album, loginUser);
-        int flag = (int) map.get("flag");
+        int flag = (int) map.get(KEY_STATUS);
         if (flag == 200) {
             request.setAttribute("album", map.get("album"));
             return "/album/album_detail";
         } else if (flag == 401) {
             request.setAttribute("http_code", 403);
-            return "/site/login";
+            return PAGE_LOGIN;
         } else if (flag == 403) {
-            return "/error/403";
+            return PAGE_FORBIDDEN_ERROR;
         } else if (flag == 404) {
-            return "/error/404";
+            return PAGE_NOT_FOUND_ERROR;
         } else {
-            return "/error/400";
+            return PAGE_PARAM_ERROR;
         }
     }
 
@@ -118,11 +125,11 @@ public class PhotoController {
         } else {
             map = albumService.findAlbumInfo(album, loginUser);
         }
-        int flag = (int) map.get("flag");
+        int flag = (int) map.get(KEY_STATUS);
         if (flag == 200) {
-            map.put("info", "查找成功！");
+            map.put(KEY_STATUS_FRIENDLY, "查找成功！");
         } else {
-            convertAlbumStatusCodeToWord(map, "flag", "info");
+            convertAlbumStatusCodeToWord(map);
         }
         return map;
     }
@@ -141,7 +148,7 @@ public class PhotoController {
 
         if (uid == 0) {
             if (loginUser == null)
-                return "/site/login";
+                return PAGE_LOGIN;
             else
                 return "redirect:/photo.do?method=user_albums&uid=" + loginUser.getUid();
         }
@@ -150,7 +157,7 @@ public class PhotoController {
         hostUser.setUid(uid);
         hostUser = userService.findUser(hostUser, loginUser);
         if (hostUser == null) {
-            return "/error/404";
+            return PAGE_NOT_FOUND_ERROR;
         } else {
             request.setAttribute("hostUser", hostUser);
             return "/album/album_list";
@@ -172,7 +179,7 @@ public class PhotoController {
         Map<String, Object> map = new HashMap<>();
         List<Album> albumList = albumService.findAlbumList(album, loginUser);
         map.put("albums", albumList);
-        map.put("flag", 200);
+        map.put(KEY_STATUS, 200);
         return map;
     }
 
@@ -191,11 +198,11 @@ public class PhotoController {
         Map<String, Object> map = new HashMap<>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = albumService.updateAlbum(album, loginUser);
-        map.put("flag", flag);
+        map.put(KEY_STATUS, flag);
         if (flag == 200) {
-            map.put("info", "更新相册成功！");
+            map.put(KEY_STATUS_FRIENDLY, "更新相册成功！");
         } else {
-            convertAlbumStatusCodeToWord(map, "flag", "info");
+            convertAlbumStatusCodeToWord(map);
         }
         return map;
     }
@@ -215,11 +222,11 @@ public class PhotoController {
         Map<String, Object> map = new HashMap<>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = albumService.deleteAlbum(album, loginUser, deleteFromDisk);
-        map.put("flag", flag);
+        map.put(KEY_STATUS, flag);
         if (flag == 200) {
-            map.put("info", "删除相册相册成功！");
+            map.put(KEY_STATUS_FRIENDLY, "删除相册相册成功！");
         } else {
-            convertAlbumStatusCodeToWord(map, "flag", "info");
+            convertAlbumStatusCodeToWord(map);
         }
         return map;
     }
@@ -241,11 +248,11 @@ public class PhotoController {
     public Map<String, Object> uploadPhoto(@RequestParam(value = "file") MultipartFile file, Photo photo, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = albumService.savePhoto(file, photo, loginUser);
-        int flag = (Integer) map.get("flag");
+        int flag = (Integer) map.get(KEY_STATUS);
         if (flag == 200) {
-            map.put("info", "照片保存成功！");
+            map.put(KEY_STATUS_FRIENDLY, "照片保存成功！");
         } else {
-            convertAlbumStatusCodeToWord(map, "flag", "info");
+            convertAlbumStatusCodeToWord(map);
         }
         return map;
     }
@@ -267,11 +274,11 @@ public class PhotoController {
         Photo photo = new Photo();
         photo.setPhoto_id(id);
         Map<String, Object> map = albumService.findPhoto(photo, loginUser);
-        int flag = (int) map.get("flag");
+        int flag = (int) map.get(KEY_STATUS);
         if (flag == 200) {
-            map.put("info", "查找成功！");
+            map.put(KEY_STATUS_FRIENDLY, "查找成功！");
         } else {
-            convertPhotoStatusCodeToWord(map, "flag", "info");
+            convertPhotoStatusCodeToWord(map);
         }
         return map;
     }
@@ -301,7 +308,7 @@ public class PhotoController {
         User loginUser = (User) session.getAttribute("loginUser");
         List<Photo> photos = albumService.findPhotoList(photo, logic_conn, query_start, query_size, loginUser);
         map.put("photos", photos);
-        map.put("flag", 200);
+        map.put(KEY_STATUS, 200);
         return map;
     }
 
@@ -322,11 +329,11 @@ public class PhotoController {
         Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = albumService.updatePhoto(photo, file, loginUser);
-        map.put("flag", flag);
+        map.put(KEY_STATUS, flag);
         if (flag == 200) {
-            map.put("info", "更新成功！");
+            map.put(KEY_STATUS_FRIENDLY, "更新成功！");
         } else {
-            convertPhotoStatusCodeToWord(map, "flag", "info");
+            convertPhotoStatusCodeToWord(map);
         }
         return map;
     }
@@ -348,11 +355,11 @@ public class PhotoController {
         Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = albumService.deletePhoto(photo, loginUser, deleteFromDisk);
-        map.put("flag", flag);
+        map.put(KEY_STATUS, flag);
         if (flag == 200) {
-            map.put("info", "删除成功！");
+            map.put(KEY_STATUS_FRIENDLY, "删除成功！");
         } else {
-            convertPhotoStatusCodeToWord(map, "flag", "info");
+            convertPhotoStatusCodeToWord(map);
         }
         return map;
     }
@@ -360,19 +367,19 @@ public class PhotoController {
     /**
      * 打开dashboard
      *
-     * @param mode    photo、album
+     * @param model   photo、album
      * @param session
      * @param request
      * @return
      */
     @RequestMapping(params = "method=dashboard")
-    public String albumList(@RequestParam(defaultValue = "photo") String mode, HttpSession session, HttpServletRequest request) {
-        if (mode.equalsIgnoreCase("photo")) {
-            request.setAttribute("dashboard_mode", "photo");
-        } else if (mode.equalsIgnoreCase("album")) {
-            request.setAttribute("dashboard_mode", "album");
+    public String albumList(@RequestParam(defaultValue = "photo") String model, HttpSession session, HttpServletRequest request) {
+        if (model.equalsIgnoreCase("photo")) {
+            request.setAttribute("dashboard_model", "photo");
+        } else if (model.equalsIgnoreCase("album")) {
+            request.setAttribute("dashboard_model", "album");
         } else {
-            return "redirect:/photo.do?method=dashboard&mode=photo";
+            return "redirect:/photo.do?method=dashboard&model=photo";
         }
         return "/album/album_dashboard";
     }
@@ -389,26 +396,20 @@ public class PhotoController {
         return "/album/album_tags_square";
     }
 
-    private void convertPhotoStatusCodeToWord(Map<String, Object> map, String codeKey, String wordKey) {
-        int flag = (Integer) map.get(codeKey);
-        if (flag == 400) {
-            map.put(wordKey, "参数错误");
-        } else if (flag == 401) {
-            map.put(wordKey, "需要登录");
-        } else if (flag == 403) {
-            map.put(wordKey, "没有权限");
-        } else if (flag == 404) {
-            map.put(wordKey, "照片ID不存在");
-        } else {
-            map.put(wordKey, "服务器错误");
+    protected void convertPhotoStatusCodeToWord(Map<String, Object> map) {
+        super.convertStatusCodeToWord(map, KEY_STATUS, KEY_STATUS_FRIENDLY);
+        int flag = (Integer) map.get(KEY_STATUS);
+        if (flag == 404) {
+            map.put(KEY_STATUS_FRIENDLY, "照片ID不存在");
         }
     }
 
-    private void convertAlbumStatusCodeToWord(Map<String, Object> map, String codeKey, String wordKey) {
-        this.convertPhotoStatusCodeToWord(map, codeKey, wordKey);
-        int flag = (Integer) map.get(codeKey);
+    protected void convertAlbumStatusCodeToWord(Map<String, Object> map) {
+        super.convertStatusCodeToWord(map, KEY_STATUS, KEY_STATUS_FRIENDLY);
+        int flag = (Integer) map.get(KEY_STATUS);
         if (flag == 404) {
-            map.put(wordKey, "相册ID不存在");
+            map.put(KEY_STATUS_FRIENDLY, "相册ID不存在");
         }
     }
+
 }

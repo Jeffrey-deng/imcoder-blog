@@ -101,6 +101,14 @@
         <location>/WEB-INF/views/error/500.jsp</location>
     </error-page>
 
+    <!-- 去掉jsp多余空格 -->
+    <jsp-config>
+        <jsp-property-group>
+            <url-pattern>*.jsp</url-pattern>
+            <trim-directive-whitespaces>true</trim-directive-whitespaces>
+        </jsp-property-group>
+    </jsp-config>
+
     <!-- Cache-Control -->
     <!--	<filter>
             <filter-name>CacheControlFilter</filter-name>

@@ -2,6 +2,7 @@ package site.imcoder.blog.service;
 
 import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.entity.Photo;
+import site.imcoder.blog.entity.Video;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
@@ -12,7 +13,7 @@ import java.util.Map;
  */
 public interface IFileService {
 
-    public boolean copy(String formPath, String toPath);
+    public boolean copy(String formPath, String toPath, boolean isFile);
 
     public boolean move(String formPath, String toPath, boolean isFile);
 
@@ -100,7 +101,7 @@ public interface IFileService {
      * 回收文件
      *
      * @param sourceRelativePath 相对路径
-     * @param trashPath          回收相对路径，为空时取path得值
+     * @param trashPath          回收相对路径，为空时取path的值
      * @param isFile             是否是文件
      * @param sourceBasePath     物理相对路径
      */
@@ -114,4 +115,15 @@ public interface IFileService {
      * @param isFile         trashPath是否是文件
      */
     public boolean recycleTrash(String sourceFullPath, String trashPath, boolean isFile);
+
+    /**
+     * 保存用户视频
+     *
+     * @param file
+     * @param video
+     * @param relativePath
+     * @param fileName
+     * @return
+     */
+    public boolean saveVideoFile(MultipartFile file, Video video, String relativePath, String fileName);
 }

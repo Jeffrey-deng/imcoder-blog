@@ -5,12 +5,19 @@ import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.dao.IVideoDao;
 import site.imcoder.blog.entity.Friend;
+import site.imcoder.blog.entity.Photo;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.entity.Video;
+import site.imcoder.blog.service.IAlbumService;
+import site.imcoder.blog.service.IFileService;
 import site.imcoder.blog.service.IVideoService;
+import site.imcoder.blog.setting.Config;
+import site.imcoder.blog.setting.ConfigConstants;
 
 import javax.annotation.Resource;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -21,6 +28,12 @@ public class VideoServiceImpl implements IVideoService {
 
     @Resource
     private IVideoDao videoDao;
+
+    @Resource
+    private IAlbumService albumService;
+
+    @Resource
+    private IFileService fileService;
 
     @Resource
     private Cache cache;
@@ -41,14 +54,51 @@ public class VideoServiceImpl implements IVideoService {
         map.put("video", video);
         if (loginUser == null) {
             map.put("flag", 401);
-        } else if (file == null || video == null) {
+        } else if (video == null) {
             map.put("flag", 400);
         } else {
+            video.setUpload_time(new Date());
             video.setUser(loginUser);
-            video.getCover().setImage_type("video/mp4");
-            //todo save disk
-            int row = videoDao.saveVideo(video);
-            map.put("flag", convertRowToHttpCode(row));
+            Photo cover = video.getCover();
+            cover.setImage_type("video/mp4");
+            albumService.updatePhoto(cover, null, loginUser);
+            int sourceType = video.getSource_type();
+            if (sourceType == 0) {
+                if (file == null || file.isEmpty()) {
+                    map.put("flag", 400);
+                    return map;
+                }
+                String relativePath = Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + loginUser.getUid() + "/video/" + cover.getAlbum_id() + "/";
+                String fileName = generateVideoName(video);
+                boolean isSave = fileService.saveVideoFile(file, video, relativePath, fileName);
+                if (isSave) {
+                    video.setPath(relativePath + fileName);
+                    video.setCode("");
+                    int row = videoDao.saveVideo(video);
+                    if (row <= 0) {
+                        String diskPath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + video.getPath();
+                        fileService.delete(diskPath);
+                    }
+                    map.put("flag", convertRowToHttpCode(row));
+                } else {
+                    map.put("flag", 500);
+                }
+            } else if (sourceType == 1 || sourceType == 2) {
+                if (sourceType == 1) {
+                    video.setCode("");
+                } else {
+                    video.setPath("");
+                }
+                video.setWidth(cover.getWidth());
+                video.setHeight(cover.getHeight());
+                video.setVideo_type("video/mp4");
+                video.setSize(0.00f);
+                video.setOriginName("");
+                int row = videoDao.saveVideo(video);
+                map.put("flag", convertRowToHttpCode(row));
+            } else {
+                map.put("flag", 400);
+            }
         }
         return map;
     }
@@ -56,7 +106,7 @@ public class VideoServiceImpl implements IVideoService {
     /**
      * 返回视频
      *
-     * @param video
+     * @param video 视频id，或者封面id
      * @param loginUser
      * @return map
      * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 视频ID未找到
@@ -104,6 +154,18 @@ public class VideoServiceImpl implements IVideoService {
         return map;
     }
 
+    /**
+     * 通过封面列表返回视频列表
+     *
+     * @param covers
+     * @param loginUser
+     * @return videoList
+     */
+    @Override
+    public List<Video> findVideoListByCoverArray(List<Integer> covers, User loginUser) {
+        return videoDao.findVideoListByCoverArray(covers, loginUser);
+    }
+
     private int convertRowToHttpCode(int row) {
         int httpCode = 200;
         if (row == 0) {
@@ -112,5 +174,10 @@ public class VideoServiceImpl implements IVideoService {
             httpCode = 500;
         }
         return httpCode;
+    }
+
+    private String generateVideoName(Video video) {
+        String suffix = video.getOriginName().substring(video.getOriginName().lastIndexOf('.'));
+        return "video_" + video.getUser().getUid() + "_" + video.getCover().getAlbum_id() + "_" + video.getUpload_time().getTime() + suffix;
     }
 }

@@ -210,7 +210,7 @@
                             or p.iscover = #{photo.iscover}
                         </if>
                         <if test="photo.image_type != null and photo.image_type != '' ">
-                            or p.image_type = #{photo.image_type}
+                            or p.image_type like concat('%', #{photo.image_type} ,'%')
                         </if>
                         <if test="photo.upload_time != null">
                             or p.upload_time >
@@ -257,7 +257,7 @@
                             and p.iscover = #{photo.iscover}
                         </if>
                         <if test="photo.image_type != null and photo.image_type != '' ">
-                            and p.image_type = #{photo.image_type}
+                            and p.image_type like concat('%', #{photo.image_type} ,'%')
                         </if>
                         <if test="photo.upload_time != null">
                             and p.upload_time >

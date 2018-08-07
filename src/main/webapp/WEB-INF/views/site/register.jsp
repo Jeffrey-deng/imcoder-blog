@@ -1,5 +1,4 @@
-<%@ page language="java" import="java.util.*" pageEncoding="UTF-8" %>
-<%@ page import="site.imcoder.blog.setting.Config" %>
+<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%
     String path = request.getContextPath();
@@ -14,8 +13,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-
-    <title>博客注册</title>
+    <title>注册 - ImCODER's 博客</title>
     <meta name="keywords" content="imcoder.site博客注册">
     <meta name="description" content="简单几步就可以创建一个imcoder.site账号.账户信息->个人资料->条款->提交">
 

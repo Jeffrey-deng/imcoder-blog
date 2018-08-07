@@ -3,15 +3,12 @@ package site.imcoder.blog.controller;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.WebDataBinder;
-import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
 import site.imcoder.blog.Interceptor.LoginRequired;
-import site.imcoder.blog.controller.propertyeditors.IntEditor;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.Category;
 import site.imcoder.blog.entity.User;
@@ -39,7 +36,7 @@ import java.util.Map;
  */
 @Controller
 @RequestMapping("/manager.do")
-public class ManagerController {
+public class ManagerController extends BaseController {
 
     private static Logger logger = Logger.getLogger(ManagerController.class);
 
@@ -57,10 +54,17 @@ public class ManagerController {
     private IManagerService managerService;
 
     @RequestMapping()
-    public ModelAndView defaultHandle() {
-        RedirectView redirectView = new RedirectView("manager.do?method=backstage", true);
-        redirectView.setStatusCode(org.springframework.http.HttpStatus.MOVED_PERMANENTLY);
-        return new ModelAndView(redirectView);
+    public ModelAndView defaultHandle(HttpServletRequest request) {
+        String queryString = request.getQueryString();
+        ModelAndView mv = new ModelAndView();
+        if (queryString == null || queryString.length() == 0) {
+            RedirectView redirectView = new RedirectView("manager.do?method=backstage", true);
+            redirectView.setStatusCode(org.springframework.http.HttpStatus.MOVED_PERMANENTLY);
+            mv.setView(redirectView);
+        } else {
+            mv.setViewName(PAGE_NOT_FOUND_ERROR);
+        }
+        return mv;
     }
 
     /**
@@ -75,7 +79,7 @@ public class ManagerController {
     public String backstage(HttpSession session, HttpServletRequest request) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = managerService.getBlogInfo(loginUser);
-        int flag = (int) map.get("flag");
+        int flag = (int) map.get(KEY_STATUS);
         if (flag == 200) {
             request.setAttribute("articleCount", map.get("articleCount"));
             request.setAttribute("userCount", map.get("userCount"));
@@ -83,9 +87,9 @@ public class ManagerController {
             request.setAttribute("userActiveCount", session.getServletContext().getAttribute("userActiveCount"));
             return "/manager/main_manager";
         } else if (flag == 403) {
-            return "/error/403";
+            return PAGE_FORBIDDEN_ERROR;
         } else {
-            return "/site/login";
+            return PAGE_LOGIN;
         }
     }
 
@@ -94,16 +98,16 @@ public class ManagerController {
     public String userManager(HttpSession session, HttpServletRequest request) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = managerService.getUserList(loginUser);
-        int flag = (int) map.get("flag");
+        int flag = (int) map.get(KEY_STATUS);
         if (flag == 200) {
             List<User> userList = (List<User>) map.get("userList");
             request.setAttribute("userList", userList);
             request.setAttribute("userCount", userList.size());
             return "/manager/user_manager";
         } else if (flag == 403) {
-            return "/error/403";
+            return PAGE_FORBIDDEN_ERROR;
         } else {
-            return "/site/login";
+            return PAGE_LOGIN;
         }
     }
 
@@ -114,9 +118,9 @@ public class ManagerController {
         if (auth == 200) {
             return "/manager/article_manager";
         } else if (auth == 403) {
-            return "/error/403";
+            return PAGE_FORBIDDEN_ERROR;
         } else {
-            return "/site/login";
+            return PAGE_LOGIN;
         }
     }
 
@@ -126,8 +130,8 @@ public class ManagerController {
     public Map<String, Object> articleListByAjax(HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = managerService.getArticleInfoList(loginUser);
-        int flag = (int) map.get("flag");
-        convertStatusCodeToWord(map, "flag", "info");
+        int flag = (int) map.get(KEY_STATUS);
+        convertStatusCodeToWord(map);
         if (flag == 200) {
             List<Article> list = (List<Article>) map.get("articleList");
             map.put("articles", list);
@@ -145,12 +149,12 @@ public class ManagerController {
         User loginUser = (User) session.getAttribute("loginUser");
         article.setCategory(category);
         int flag = managerService.updateArticleInfo(article, loginUser);
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         if (flag == 200) {
-            map.put("info", "文章信息修改成功");
+            map.put(KEY_STATUS_FRIENDLY, "文章信息修改成功");
         } else if (flag == 404) {
-            map.put("info", "该文章不存在");
+            map.put(KEY_STATUS_FRIENDLY, "该文章不存在");
         }
         return map;
     }
@@ -162,9 +166,9 @@ public class ManagerController {
         if (auth == 200) {
             return "/manager/manager_article_modify";
         } else if (auth == 403) {
-            return "/error/403";
+            return PAGE_FORBIDDEN_ERROR;
         } else {
-            return "/site/login";
+            return PAGE_LOGIN;
         }
     }
 
@@ -176,12 +180,12 @@ public class ManagerController {
         User loginUser = (User) session.getAttribute("loginUser");
         article.setCategory(category);
         int flag = articleService.update(article, loginUser);
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         if (flag == 200) {
-            map.put("info", "文章修改成功");
+            map.put(KEY_STATUS_FRIENDLY, "文章修改成功");
         } else if (flag == 404) {
-            map.put("info", "该文章不存在");
+            map.put(KEY_STATUS_FRIENDLY, "该文章不存在");
         }
         return map;
     }
@@ -196,10 +200,10 @@ public class ManagerController {
         Map<String, Object> map = new HashMap<>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = managerService.reloadCache(loginUser);
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         if (flag == 200) {
-            map.put("info", "已重新初始化缓存");
+            map.put(KEY_STATUS_FRIENDLY, "已重新初始化缓存");
         }
         return map;
     }
@@ -214,10 +218,10 @@ public class ManagerController {
         Map<String, Object> map = new HashMap<>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = managerService.reloadConfig(loginUser);
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         if (flag == 200) {
-            map.put("info", "已重新读取配置文件");
+            map.put(KEY_STATUS_FRIENDLY, "已重新读取配置文件");
         }
         return map;
     }
@@ -232,10 +236,10 @@ public class ManagerController {
         Map<String, Object> map = new HashMap<>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = managerService.updateConfig(key, value, loginUser);
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         if (flag == 200) {
-            map.put("info", "成功更新配置项");
+            map.put(KEY_STATUS_FRIENDLY, "成功更新配置项");
         }
         return map;
     }
@@ -252,10 +256,10 @@ public class ManagerController {
     public Map<String, Object> getAllConfig(HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = managerService.getAllConfig(loginUser);
-        int flag = (int) map.get("flag");
-        convertStatusCodeToWord(map, "flag", "info");
+        int flag = (int) map.get(KEY_STATUS);
+        convertStatusCodeToWord(map);
         if (flag == 200) {
-            map.put("info", "取得配置项");
+            map.put(KEY_STATUS_FRIENDLY, "取得配置项");
         }
         return map;
     }
@@ -268,9 +272,9 @@ public class ManagerController {
         if (auth == 200) {
             return "/manager/log_view";
         } else if (auth == 403) {
-            return "/error/403";
+            return PAGE_FORBIDDEN_ERROR;
         } else {
-            return "/site/login";
+            return PAGE_LOGIN;
         }
     }
 
@@ -283,7 +287,7 @@ public class ManagerController {
     public void loadLogFile(@RequestParam(defaultValue = "error") String type, HttpSession session, HttpServletResponse response) {
         if (isAdmin(session) == 200) {
             String path = null;
-            if ("info".equalsIgnoreCase(type)) {
+            if (KEY_STATUS_FRIENDLY.equalsIgnoreCase(type)) {
                 path = Config.get(ConfigConstants.LOG_FILE_INFO_PATH);
             } else if ("warn".equalsIgnoreCase(type)) {
                 path = Config.get(ConfigConstants.LOG_FILE_WARN_PATH);
@@ -349,45 +353,12 @@ public class ManagerController {
         }
     }
 
-    //注册类型转换
-    @InitBinder
-    protected void initBinder(WebDataBinder binder) {
-        //binder.registerCustomEditor(Date.class, new CustomDateEditor(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"), true));
-        binder.registerCustomEditor(int.class, new IntEditor());
-    }
-
-    /**
-     * @param session
-     * @return int
-     * 403 ： 不是管理员
-     * 401 ： 未登录
-     * 200 ： 是管理员
-     */
-    private int isAdmin(HttpSession session) {
-        User user = (User) session.getAttribute("loginUser");
-        if (user == null) {
-            return 401;
-        } else if (user.getUserGroup().getGid() != 1) {
-            return 403;
-        } else {
-            return 200;
-        }
-    }
-
-    private void convertStatusCodeToWord(Map<String, Object> map, String codeKey, String wordKey) {
+    protected void convertStatusCodeToWord(Map<String, Object> map, String codeKey, String wordKey) {
+        super.convertStatusCodeToWord(map, codeKey, wordKey);
         int flag = (Integer) map.get(codeKey);
-        if (flag == 200) {
-            map.put(wordKey, "成功");
-        } else if (flag == 400) {
-            map.put(wordKey, "参数错误");
-        } else if (flag == 401) {
-            map.put(wordKey, "需要登录");
-        } else if (flag == 403) {
+        if (flag == 403) {
             map.put(wordKey, "你不是管理员，无权修改！");
-        } else if (flag == 404) {
-            map.put(wordKey, "无此记录");
-        } else {
-            map.put(wordKey, "服务器错误");
         }
     }
+
 }

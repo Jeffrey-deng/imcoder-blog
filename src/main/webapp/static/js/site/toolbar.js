@@ -26,9 +26,9 @@
         "special_pair_separator": /[&;；,，]/,   //每一对键值对的分隔符
         "special_value_separator": /[:：=]/,    //键与值的分隔符
         "special_search_object": {    //需要特殊处理的关键字
-            "type_schema": ["mode", "m"],
-            "photo_schema": ["logic_conn", "name", "description", "desc", "tags", "uid", "photo_id", "id", "album_id", "aid", "originName", "origin", "path"],
-            "article_schema": ["logic_conn", "id", "aid", "author.uid", "uid", "category.atid", "atid", "title", "tags", "summary", "create_time", "update_time", "click", "top", "recommend"],
+            "model_schema": ["model", "mode", "m"],
+            "photo_schema": ["logic_conn", "name", "description", "desc", "tag", "tags", "uid", "photo_id", "id", "album_id", "aid", "originName", "origin", "path"],
+            "article_schema": ["logic_conn", "id", "aid", "author.uid", "uid", "category.atid", "atid", "title", "tag", "tags", "summary", "create_time", "update_time", "click", "top", "recommend"],
             "album_schema": ["id", "album_id", "name", "description", "desc", "user.uid", "uid"]
         },
         "special_multiple_match_joiner": "' and ${column} rlike '",    //多重匹配,
@@ -36,7 +36,7 @@
             "action_search": function (key) {
                 var context = this;
                 if (!key) {
-                    config.special_mode_mapping["default"].call(context, key);
+                    config.special_model_mapping["default"].call(context, key);
                     return;
                 }
                 // 替换搜索输出中的EL表达式， 如果要使用（忽略）分割字符, 用 ""、{}、${} 包裹
@@ -48,27 +48,27 @@
                     elSourceMap[replaceFlag] = this[0];
                     return replaceFlag;
                 });
-                var mode = null;
-                var modePairRegex = null;
-                context.utils.eachEntry(key, context.config.special_search_object.type_schema, function (entry) {
-                    mode = entry[1].trim();
-                    modePairRegex = entry[0] + context.config.special_value_separator.toString().replace(/\//g, "") +
+                var model = null;
+                var modelPairRegex = null;
+                context.utils.eachEntry(key, context.config.special_search_object.model_schema, function (entry) {
+                    model = entry[1].trim();
+                    modelPairRegex = entry[0] + context.config.special_value_separator.toString().replace(/\//g, "") +
                         entry[1] + context.config.special_pair_separator.toString().replace(/\//g, "") + "{0,1}";
                     return false;
                 });
                 // 去掉标记模式的字段
-                if (modePairRegex) {
-                    key = key.replace(new RegExp(modePairRegex), "");
+                if (modelPairRegex) {
+                    key = key.replace(new RegExp(modelPairRegex), "");
                 }
-                if (mode && config.special_mode_mapping[mode]) {
-                    config.special_mode_mapping[mode].call(context, key);   // mapping module
+                if (model && config.special_model_mapping[model]) {
+                    config.special_model_mapping[model].call(context, key);   // mapping module
                 } else {
-                    config.special_mode_mapping["default"].call(context, key); // mapping default module
+                    config.special_model_mapping["default"].call(context, key); // mapping default module
                 }
             },
             "photo_search": function (key) {
                 var isFindSpecial = false; //标记是否找到特殊关键字
-                var photo_url = "photo.do?method=dashboard&mode=photo";
+                var photo_url = "photo.do?method=dashboard&model=photo";
                 if (key == "") {
                     window.open(photo_url);
                     return;
@@ -80,12 +80,13 @@
                 // 工具方法遍历pair_key每一个在schema中的pair，回调返回false跳出循环
                 context.utils.eachEntry(key, context.config.special_search_object.photo_schema, function (entry) {
                     // 还原标记位被el表达式保留的value
-                    context.utils.revertELReplaceContent(entry, ["tags"]);
+                    context.utils.revertELReplaceContent(entry, ["tags", "tag"]);
                     // 修正变量名
                     entry[0] == "desc" && (entry[0] = "description");
                     entry[0] == "origin" && (entry[0] = "originName");
                     entry[0] == "id" && (entry[0] = "photo_id");
                     entry[0] == "aid" && (entry[0] = "album_id");
+                    entry[0] == "tag" && (entry[0] = "tags");
                     // 转化图片路径为相对路径
                     entry[0] == "path" && (entry[1] = entry[1].replace(context.config.path_params.cloudPath, ""));
                     // 编码正则表达式
@@ -111,11 +112,12 @@
                 }
                 context.utils.eachEntry(key, context.config.special_search_object.article_schema, function (entry) {
                     // 还原标记位被el表达式保留的value
-                    context.utils.revertELReplaceContent(entry, ["tags", "title"]);
+                    context.utils.revertELReplaceContent(entry, ["tags", "tag", "title"]);
                     // 修正变量名
                     entry[0] == "id" && (entry[0] = "aid");
                     entry[0] == "uid" && (entry[0] = "author.uid");
                     entry[0] == "atid" && (entry[0] = "category.atid");
+                    entry[0] == "tag" && (entry[0] = "tags");
                     // 编码正则表达式
                     entry[0] == "tags" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
                     entry[0] == "title" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
@@ -131,7 +133,7 @@
             },
             "album_search": function (key) {
                 var isFindSpecial = false; //标记是否找到特殊关键字
-                var album_url = "photo.do?method=dashboard&mode=album";
+                var album_url = "photo.do?method=dashboard&model=album";
                 if (key == "") {
                     window.open(album_url);
                     return;
@@ -176,12 +178,13 @@
                 }
                 context.utils.eachEntry(key, context.config.special_search_object.photo_schema, function (entry) {
                     // 还原标记位被el表达式保留的value
-                    context.utils.revertELReplaceContent(entry, ["tags"]);
+                    context.utils.revertELReplaceContent(entry, ["tags", "tag"]);
                     // 修正变量名
                     entry[0] == "desc" && (entry[0] = "description");
                     entry[0] == "origin" && (entry[0] = "originName");
                     entry[0] == "id" && (entry[0] = "photo_id");
                     entry[0] == "aid" && (entry[0] = "album_id");
+                    entry[0] == "tag" && (entry[0] = "tags");
                     // 转化图片路径为相对路径
                     entry[0] == "path" && (entry[1] = entry[1].replace(context.config.path_params.cloudPath, ""));
                     // 编码正则表达式
@@ -210,7 +213,7 @@
         var searchInputBox = _self.find('.toolbar_search_input');
         searchInputBox.attr("placeholder", config.placeholder);
         config.inputInitialValue && searchInputBox.val(config.inputInitialValue);
-        config.special_mode_mapping = {
+        config.special_model_mapping = {
             "default": function (key) {
                 if (config.location_info.file == "photo.do") {
                     config.callback.photo_search.call(context, key);
@@ -249,6 +252,31 @@
                 }
             });
         }
+        // bind search btn
+        _self.find('.toolbar_search_trigger').click(function () {
+            var key = _self.find('.toolbar_search_input').val();
+            config.callback.action_search.call(context, key);
+        });
+        searchInputBox.parent().parent().keydown(function (e) {
+            e.defaultPrevented;
+            var theEvent = e || window.event;
+            var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
+            if (code == 13) {//keyCode=13是回车键
+                _self.find('.toolbar_search_trigger').click();
+                //防止触发表单提交 返回false
+                return false;
+            }
+        });
+        // quickly search
+        $(document).keyup(function (e) {
+            e.defaultPrevented;
+            var theEvent = e || window.event;
+            var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
+            var tagName = e.target.tagName;
+            if ((code == 83 || code == 70) && tagName != "INPUT" && tagName != "TEXTAREA" && !e.target.hasAttribute("contenteditable")) { // S键或F键
+                _self.find('.toolbar_search_input').focus(); // 将焦点定位到输入框
+            }
+        });
     };
 
     /**
@@ -256,8 +284,8 @@
      * {
      *  {String} placeholder, // 搜索框提示值
      *  {String} inputInitialValue, // 搜索框默认值
-     *  {Function} mode_action, // 搜索模块响应
-     *  {Array} modeMapping, // 搜索模块映射名称
+     *  {Function} model_action, // 搜索模块响应
+     *  {Array} modelMapping, // 搜索模块映射名称
      *  {Boolean} setDefaultMapping  // 是否设置成默认模块
      * }
      * @param options
@@ -268,12 +296,12 @@
         }
         options.placeholder && _self.find('.toolbar_search_input').attr("placeholder", options.placeholder);
         options.inputInitialValue && _self.find(".toolbar_search_input").val(options.inputInitialValue);
-        if (options.mode_action && options.modeMapping) {
-            $.each(options.modeMapping, function (i, mapping) {
-                config.special_mode_mapping[mapping] = options.mode_action;
+        if (options.model_action && options.modelMapping) {
+            $.each(options.modelMapping, function (i, mapping) {
+                config.special_model_mapping[mapping] = options.model_action;
             });
             if (options.setDefaultMapping == true) {
-                config.special_mode_mapping["default"] = options.mode_action;
+                config.special_model_mapping["default"] = options.model_action;
             }
         }
     };
@@ -336,29 +364,11 @@
             logout();
         });
 
-        _self.find('.toolbar_jump_albums').attr("href", "photo.do?method=dashboard&mode=photo");
+        _self.find('.toolbar_jump_albums').attr("href", "photo.do?method=dashboard&model=photo");
 
         _self.find('.toolbar_jump_help').attr("href", "site.do?method=help");
 
         _self.find('.toolbar_jump_notice').attr("href", "site.do?method=notices");
-    }
-
-    // bind search btn
-    function bind_search() {
-        _self.find('.toolbar_search_trigger').click(function () {
-            var key = _self.find('.toolbar_search_input').val();
-            config.callback.action_search.call(context, key);
-        });
-        _self.find('.toolbar_search_input').parent().parent().keydown(function (e) {
-            e.defaultPrevented;
-            var theEvent = e || window.event;
-            var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
-            if (code == 13) {//keyCode=13是回车键
-                _self.find('.toolbar_search_trigger').click();
-                //防止触发表单提交 返回false
-                return false;
-            }
-        });
     }
 
     //写博客
@@ -491,7 +501,6 @@
         bind_goTop();
         init_toolbar_href();
         init_search();
-        bind_search();
     });
 
     return context;

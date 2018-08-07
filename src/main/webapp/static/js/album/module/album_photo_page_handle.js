@@ -93,6 +93,12 @@
                 return;
             }
         },
+        event: { // 以事件方式添加回调，以便支持多个回调，这时定义的是事件名
+            "actionForEditPhoto": "photo.edit",
+            "pagePaginationClick": "page.jump.click",
+            "pageJumpCompleted": "page.jump.completed",
+            "pageLoadCompleted": "page.load.completed"
+        },
         path_params: {
             "basePath": "https://imcoder.site/",
             "cloudPath": "https://cloud.imcoder.site/",
@@ -189,11 +195,12 @@
         pagenum = utils.revisePageNum(pagenum);
         config.page_params.pageNum = pagenum;
 
-        pointer.notify_pageloading = toastr.success("加载中～", "第" + config.page_params.pageNum + "页", {
+        common_utils.removeNotify("notify_pageLoading");
+        common_utils.notify({
             "progressBar": false,
             "timeOut": 0,
             "closeButton": false
-        });
+        }).success("加载中～", "第" + config.page_params.pageNum + "页", "notify_pageLoading");
 
         // 组装该页的html
         assembleCurrentPageHtml(pagenum);
@@ -208,6 +215,7 @@
                 jumpPage(_self.getAttribute('jumpPage'))
             }
             config.callback.paginationClick_callback.call(context, _self.parentNode);
+            utils.triggerEvent(config.event.pagePaginationClick, _self.parentNode);
             return false;
         });
 
@@ -215,12 +223,17 @@
             var uid = parseInt(e.currentTarget.parentNode.getAttribute("data-uid"));
             var isAuthor = login_handle.equalsLoginUser(uid);
             var tips = isAuthor ? "松开鼠标打开编辑窗口~" : "松开鼠标查看图片信息~";
-            pointer.notify_drag = toastr.success(tips, "", {"progressBar": false, "timeOut": 0, "closeButton": false});
+            common_utils.notify({
+                "progressBar": false,
+                "timeOut": 0,
+                "closeButton": false
+            }).success(tips, "", "notify_drag");
         });
         $('#' + config.selector.photosContainer_id).find("img").on("dragend", function (e) {
-            toastr.remove(pointer.notify_drag, true);
+            common_utils.removeNotify("notify_drag");
             var photo = utils.getPhotoByCache(e.currentTarget.parentNode.getAttribute("data-id"));
             config.callback.actionForEditPhoto.call(context, photo);
+            utils.triggerEvent(config.event.actionForEditPhoto, photo);
         });
 
         initWaterfallFlow();
@@ -243,6 +256,7 @@
             document.title,
             location.pathname + search
         );
+        utils.triggerEvent(config.event.pageJumpCompleted, pagenum); // 页码跳转完成事件
     };
     var assembleCurrentPageHtml = function (pagenum) {
         var photos = pointer.album.photos,
@@ -299,6 +313,15 @@
         utils.calcNavLocation();
     };
     var utils = {
+        "bindEvent": function (eventName, func) {
+            $(context).bind(eventName, func);
+        },
+        "triggerEvent": function (eventName) {
+            $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
+        },
+        "unbindEvent": function (eventName, func) {
+            $(context).unbind(eventName, func);
+        },
         "createPhotoNode": function (photo) {
             var div = document.createElement("div");
             div.id = config.selector.photo_id_prefix + photo.photo_id;
@@ -554,23 +577,25 @@
             });
             pointer.masonryInstance.recalculate(true);
             pointer.masonryInstance.runOnImageLoad(function () {
-                $.each($('#' + config.selector.photosContainer_id).children(), function (i, dom) {
+                var nodes = $('#' + config.selector.photosContainer_id).children();
+                $.each(nodes, function (i, dom) {
                     var img = dom.querySelector("img");
-                    if (img.style.height) {
+                    if (img && img.style.height) {
                         img.style.height = "";
                     }
                 });
                 pointer.masonryInstance.recalculate(true);
                 console.log('第 ' + config.page_params.pageNum + ' 页加载完成！');
                 //pointer.masonryInstance.recalculate(true, true); 刷新所有（无视完成标记） / 添加完成标记
-                pointer.notify_pageloading && toastr.remove(pointer.notify_pageloading, true);
-                config.callback.photosOnLoad_callback.call(context, pointer.masonryInstance);
+                common_utils.removeNotify("notify_pageLoading");
+                config.callback.photosOnLoad_callback.call(context, pointer.masonryInstance, nodes);
+                utils.triggerEvent(config.event.pageLoadCompleted, pointer.masonryInstance, nodes);
             });
         } else {
             pointer.masonryInstance.recalculate(true);
             $.each($('#' + config.selector.photosContainer_id).children(), function (i, dom) {
                 var img = dom.querySelector("img");
-                if (!img.naturalHeight) {
+                if (img && !img.naturalHeight) {
                     var scale = img.offsetWidth / dom.getAttribute("data-width");
                     img.style.height = (dom.getAttribute("data-height") * scale) + "px";
                 }
@@ -681,13 +706,14 @@
                     $(this.content).find(".openUpdateModal").unbind().click(function () {
                         var photo = utils.getPhotoByCache(this.getAttribute("photo-id"));
                         config.callback.actionForEditPhoto.call(context, photo);
+                        utils.triggerEvent(config.event.actionForEditPhoto, photo);
                     });
                 }
             },
             gallery: {
                 enabled: true, // set to true to enable gallery
                 navigateByImgClick: true,
-                arrowMarkup: '', // markup of an arrow button
+                arrowMarkup: '<button title="%title%" type="button" class="mfp-arrow mfp-arrow-%dir%"></button>', // markup of an arrow button
                 //<button title="%title%" type="button" class="mfp-arrow mfp-arrow-%dir%"></button>
                 tPrev: '上一张', // title for left button,'Previous (Left arrow key)
                 tNext: '下一张', // title for right button,Next (Right arrow key)

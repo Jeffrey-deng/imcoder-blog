@@ -3,8 +3,6 @@ package site.imcoder.blog.controller;
 import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.WebDataBinder;
-import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -13,7 +11,6 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
 import site.imcoder.blog.Interceptor.LoginRequired;
 import site.imcoder.blog.cache.Cache;
-import site.imcoder.blog.controller.propertyeditors.IntEditor;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.Category;
 import site.imcoder.blog.entity.Comment;
@@ -27,7 +24,6 @@ import site.imcoder.blog.setting.ConfigConstants;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +36,7 @@ import java.util.Map;
  */
 @Controller
 @RequestMapping("/article.do")
-public class ArticleController {
+public class ArticleController extends BaseController {
 
     private static Logger logger = Logger.getLogger(ArticleController.class);
 
@@ -58,10 +54,17 @@ public class ArticleController {
     private Cache cache;
 
     @RequestMapping()
-    public ModelAndView defaultHandle() {
-        RedirectView redirectView = new RedirectView("article.do?method=list", true);
-        redirectView.setStatusCode(HttpStatus.MOVED_PERMANENTLY);
-        return new ModelAndView(redirectView);
+    public ModelAndView defaultHandle(HttpServletRequest request) {
+        String queryString = request.getQueryString();
+        ModelAndView mv = new ModelAndView();
+        if (queryString == null || queryString.length() == 0) {
+            RedirectView redirectView = new RedirectView("article.do?method=list", true);
+            redirectView.setStatusCode(HttpStatus.MOVED_PERMANENTLY);
+            mv.setView(redirectView);
+        } else {
+            mv.setViewName(PAGE_NOT_FOUND_ERROR);
+        }
+        return mv;
     }
 
     /**
@@ -87,8 +90,8 @@ public class ArticleController {
         } else {
             status = articleService.save(article, loginUser);
         }
-        map.put("flag", status);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, status);
+        convertStatusCodeToWord(map);
         if (status == 200) {
             map.put("aid", article.getAid());
         }
@@ -111,32 +114,24 @@ public class ArticleController {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> queryMap = articleService.detail(aid, loginUser);
         Article article = (Article) queryMap.get("article");
-        int flag = (int) queryMap.get("flag");
+        int flag = (int) queryMap.get(KEY_STATUS);
         if (flag == 401) {
             mv.addObject("http_code", 403);
-            mv.setViewName("/error/403");
+            mv.setViewName(PAGE_FORBIDDEN_ERROR);
         } else if (flag == 404) {
-            mv.addObject("errorInfo", "该文章不存在，请检查请求参数！");
-            mv.setViewName("/error/404_detail");
+            mv.addObject(KEY_ERROR_INFO, "该文章不存在，请检查请求参数！");
+            mv.setViewName(PAGE_NOT_FOUND_ERROR);
         } else if (flag == 403) {
-            mv.setViewName("/error/403");
+            mv.setViewName(PAGE_FORBIDDEN_ERROR);
         } else {
             //为文章访问次数加1 同一个session多次访问只算一次
-            @SuppressWarnings("unchecked")
-            List<Integer> openedArticle = (List<Integer>) session.getAttribute("openedArticle");
-            if (openedArticle == null) {
-                openedArticle = new ArrayList<Integer>();
-                session.setAttribute("openedArticle", openedArticle);
-            }
-            if (!openedArticle.contains(aid)) {
-                openedArticle.add(aid);
+            if (clickNewArticle(session, article)) {
                 userService.hasClickArticle(loginUser, article);
             }
             mv.addObject("article", article);
             mv.addObject("preArticle", queryMap.get("preArticle"));
             mv.addObject("nextArticle", queryMap.get("nextArticle"));
             mv.addObject("categoryCount", articleService.getCategoryCount());
-            //不是ajax返回不需要加contextPath
             mv.setViewName("/article/article_detail");
         }
         return mv;
@@ -154,9 +149,9 @@ public class ArticleController {
     public Map<String, Object> getArticle(HttpSession session, @RequestParam(defaultValue = "0") int aid) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> queryMap = articleService.detail(aid, loginUser);
-        convertStatusCodeToWord(queryMap, "flag", "info");
-        if (((int) queryMap.get("flag")) == 404) {
-            queryMap.put("info", "无此文章");
+        convertStatusCodeToWord(queryMap, KEY_STATUS, KEY_STATUS_FRIENDLY);
+        if (((int) queryMap.get(KEY_STATUS)) == 404) {
+            queryMap.put(KEY_STATUS_FRIENDLY, "无此文章");
         }
         return queryMap;
     }
@@ -170,7 +165,7 @@ public class ArticleController {
         User loginUser = (User) session.getAttribute("loginUser");
         if (flag.equals("update")) {
             Map<String, Object> map = articleService.detail(aid, loginUser);
-            int status = (int) map.get("flag");
+            int status = (int) map.get(KEY_STATUS);
             Article article = ((Article) map.get("article"));
             if (status == 200) {
                 if (loginUser == null) {
@@ -185,16 +180,16 @@ public class ArticleController {
                 }
             }
             if (status == 404) {
-                mv.setViewName("/error/404");
+                mv.setViewName(PAGE_NOT_FOUND_ERROR);
             } else if (status == 401) {
                 if (article == null) {
-                    mv.setViewName("/site/login");
+                    mv.setViewName(PAGE_LOGIN);
                 } else {
                     mv.addObject("user", article.getAuthor());
-                    mv.setViewName("/site/lockscreen");
+                    mv.setViewName(PAGE_LOGIN_EXPIRED);
                 }
             } else if (status == 403) {
-                mv.setViewName("/error/403");
+                mv.setViewName(PAGE_FORBIDDEN_ERROR);
             }
         } else if (flag.equals("new")) {
             if (loginUser != null) {
@@ -202,7 +197,7 @@ public class ArticleController {
                 session.setMaxInactiveInterval(60 * 60);
                 mv.setViewName("/article/article_edit");
             } else {
-                mv.setViewName("/site/login");
+                mv.setViewName(PAGE_LOGIN);
             }
         } else {
             RedirectView redirectView = new RedirectView("article.do?method=edit", true);
@@ -253,8 +248,8 @@ public class ArticleController {
         Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = articleService.addComment(comment, loginUser);
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         return map;
     }
 
@@ -276,8 +271,8 @@ public class ArticleController {
         Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = articleService.deleteComment(comment, loginUser);
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         return map;
     }
 
@@ -330,12 +325,12 @@ public class ArticleController {
         User loginUser = (User) session.getAttribute("loginUser");
         if (validateCode != null && validateCode.equalsIgnoreCase((String) (session.getAttribute("validateCode")))) {
             int flag = articleService.delete(article, loginUser);
-            map.put("flag", flag);
-            convertStatusCodeToWord(map, "flag", "info");
+            map.put(KEY_STATUS, flag);
+            convertStatusCodeToWord(map);
             return map;
         } else {
-            map.put("flag", 403);
-            map.put("info", "验证码错误");
+            map.put(KEY_STATUS, 403);
+            map.put(KEY_STATUS_FRIENDLY, "验证码错误");
         }
         return map;
     }
@@ -357,15 +352,15 @@ public class ArticleController {
     public Map<String, Object> uploadAttachment(@RequestParam(value = "file", required = false) MultipartFile file, String fileName, String isImage, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = articleService.uploadAttachment(file, fileName, isImage, loginUser);
-        int flag = (int) map.get("flag");
+        int flag = (int) map.get(KEY_STATUS);
         if (flag == 400) {
-            map.put("info", "文件为空，或你网络问题");
+            map.put(KEY_STATUS_FRIENDLY, "文件为空，或你网络问题");
         } else if (flag == 401) {
-            map.put("info", "你未登录，或登录状态失效");
+            map.put(KEY_STATUS_FRIENDLY, "你未登录，或登录状态失效");
         } else if (flag == 500) {
-            map.put("info", "服务器异常");
+            map.put(KEY_STATUS_FRIENDLY, "服务器异常");
         } else if (flag == 200) {
-            map.put("info", "上传成功");
+            map.put(KEY_STATUS_FRIENDLY, "上传成功");
         }
         return map;
     }
@@ -384,15 +379,15 @@ public class ArticleController {
     public Map<String, Object> localImage(String url, String fileName, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = articleService.localImage(url, fileName, loginUser);
-        int flag = (int) map.get("flag");
+        int flag = (int) map.get(KEY_STATUS);
         if (flag == 400) {
-            map.put("info", "链接为空");
+            map.put(KEY_STATUS_FRIENDLY, "链接为空");
         } else if (flag == 401) {
-            map.put("info", "你未登录，或登录状态失效");
+            map.put(KEY_STATUS_FRIENDLY, "你未登录，或登录状态失效");
         } else if (flag == 500) {
-            map.put("info", "图片下载失败,或该网站禁止下载");
+            map.put(KEY_STATUS_FRIENDLY, "图片下载失败,或该网站禁止下载");
         } else if (flag == 200) {
-            map.put("info", "成功");
+            map.put(KEY_STATUS_FRIENDLY, "成功");
         }
         return map;
     }
@@ -411,42 +406,19 @@ public class ArticleController {
     public Map<String, Object> deleteAttachment(String file_url, String isImage, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = articleService.deleteAttachment(file_url, isImage, loginUser);
-        int flag = (int) map.get("flag");
+        int flag = (int) map.get(KEY_STATUS);
         if (flag == 200) {
-            map.put("info", "删除成功");
+            map.put(KEY_STATUS_FRIENDLY, "删除成功");
         } else if (flag == 400) {
-            map.put("info", "链接为空");
+            map.put(KEY_STATUS_FRIENDLY, "链接为空");
         } else if (flag == 401) {
-            map.put("info", "你未登录，或登录状态失效");
+            map.put(KEY_STATUS_FRIENDLY, "你未登录，或登录状态失效");
         } else if (flag == 404) {
-            map.put("info", "链接为空文件不存在 或 该链接不属于本站");
+            map.put(KEY_STATUS_FRIENDLY, "链接为空文件不存在 或 该链接不属于本站");
         } else if (flag == 500) {
-            map.put("info", "错误");
+            map.put(KEY_STATUS_FRIENDLY, "错误");
         }
         return map;
     }
 
-    //注册类型转换
-    @InitBinder
-    protected void initBinder(WebDataBinder binder) {
-        //binder.registerCustomEditor(Date.class, new CustomDateEditor(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"), true));
-        binder.registerCustomEditor(int.class, new IntEditor());
-    }
-
-    private void convertStatusCodeToWord(Map<String, Object> map, String codeKey, String wordKey) {
-        int flag = (Integer) map.get(codeKey);
-        if (flag == 200) {
-            map.put(wordKey, "成功");
-        } else if (flag == 400) {
-            map.put(wordKey, "参数错误");
-        } else if (flag == 401) {
-            map.put(wordKey, "需要登录");
-        } else if (flag == 403) {
-            map.put(wordKey, "没有权限");
-        } else if (flag == 404) {
-            map.put(wordKey, "无此记录");
-        } else {
-            map.put(wordKey, "服务器错误");
-        }
-    }
 }

@@ -1,51 +1,50 @@
-﻿<%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
-<%@ page import="site.imcoder.blog.setting.Config" %>
+﻿<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
 <%
-String path = request.getContextPath();
-String basePath = request.getScheme()+"://"+request.getServerName()+":"+request.getServerPort()+path+"/";
-String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
-String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
-String cloudFromSite = basePath + "cloud/";
+    String path = request.getContextPath();
+    String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
+    String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String cloudFromSite = basePath + "cloud/";
 %>
 <!DOCTYPE html>
 <html class="no-js">
-	<head>
-	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-	<meta name="renderer" content="webkit">
-	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-	<title>文字转语音 - 工具箱 | CODER 博客</title>
-	<meta name="description" content="文字转语音" >
-	<meta name="keywords" content="此site为大学学完Java后，为练习而开发的，后面发现可以用来总结下平时所学的知识，便一直在维护。欢迎一起学习交流！ contact me ~ chao.devin@gmail.com" >
-	<!-- 使用url函数转换相关路径 -->
-	<!-- <script async="" src="http://www.google-analytics.com/analytics.js"></script> -->
-	
-	<!-- 引入文件 -->
-	<link rel="icon" href="<%=staticPath%>img/favicon.ico">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="renderer" content="webkit">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>文字转语音 - 工具箱 | ImCODER's 博客</title>
+    <meta name="description" content="文字转语音">
+    <meta name="keywords" content="文字转语音,工具,ImCODER's 博客">
+    <!-- 使用url函数转换相关路径 -->
+    <!-- <script async="" src="http://www.google-analytics.com/analytics.js"></script> -->
+
+    <!-- 引入文件 -->
+    <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-	<link rel="stylesheet" href="<%=staticPath%>css/style.css">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
 
 </head>
-<body background="<%=staticPath%>img/bg-site.png" uid="${loginUser.uid}" >
+<body background="<%=staticPath%>img/bg-site.png" uid="${loginUser.uid}">
 <!-- <body background="../../img/bg-site.png"> -->
-	<!-- START THE COVER  background-image: url(img/bg-site.png);" -->
-    <div id="first" class="" style="z-index:1000;">
-        <div class="carousel-inner">
-            <div class="">
-                <div class="container">
-                    <div class="" style="text-align:center">
-                        <br>
-                        <h1>${loginUser.nickname}</h1>
-                        <p>${loginUser.description}</p>
-                    </div>
+<!-- START THE COVER  background-image: url(img/bg-site.png);" -->
+<div id="first" class="" style="z-index:1000;">
+    <div class="carousel-inner">
+        <div class="">
+            <div class="container">
+                <div class="" style="text-align:center">
+                    <br>
+                    <h1>${loginUser.nickname}</h1>
+                    <p>${loginUser.description}</p>
                 </div>
             </div>
-        </div><!-- END COVER -->
-    </div>
+        </div>
+    </div><!-- END COVER -->
+</div>
 
 <!-- start #toolbar -->
 <nav id="header" class="navbar navbar-default toolbar" role="navigation">
@@ -169,83 +168,83 @@ String cloudFromSite = basePath + "cloud/";
     </div><!-- container-fluid end -->
 </nav>
 <!-- end #toolbar -->
-	
-	<!-- body start -->
-	<div id="body">
+
+<!-- body start -->
+<div id="body">
     <div class="container">
-    	<article class="row">
+        <article class="row">
 
-			<!-- main div start -->
-			<article class="col-md-12 col-sm-12 col-xs-12" id="main" role="main">
+            <!-- main div start -->
+            <article class="col-md-12 col-sm-12 col-xs-12" id="main" role="main">
 
-				<article class="post">
-					<section class="">
-						<form id="post_form" method="post" class="form-horizontal col-xs-12 col-sm-6 col-sm-offset-3"  style="margin-top: 30px;">
-							<div class="form-group">
+                <article class="post">
+                    <section class="">
+                        <form id="post_form" method="post" class="form-horizontal col-xs-12 col-sm-6 col-sm-offset-3" style="margin-top: 30px;">
+                            <div class="form-group">
                                 <div class="">
                                     <textarea class="form-control" id="post_val" style="overflow-x:auto;" wrap="off" rows="12"></textarea>
                                 </div>
                                 <div class="">
-                                    <input class="form-control" type="button" value="提交" id="post_trigger" />
+                                    <input class="form-control" type="button" value="提交" id="post_trigger"/>
                                 </div>
                                 <div id="audio_div" style="margin-top: 15px;">
 
                                 </div>
-							</div>
-						</form>
-					</section>
-				</article>
+                            </div>
+                        </form>
+                    </section>
+                </article>
 
-			</article><!-- main div end -->
+            </article><!-- main div end -->
 
         </article><!-- end .row -->
     </div>
 </div>
 <!-- body end -->
 
-	<div id="goTop" class="" style="bottom: 70px;">
-		<div class="arrow"></div>
-		<div class="stick"></div>
-	</div>
+<div id="goTop" class="" style="bottom: 70px;">
+    <div class="arrow"></div>
+    <div class="stick"></div>
+</div>
 
-    <!-- login modal start -->
-    <div style="margin-top:100px;" class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
-        <div style="width: 350px;" class="modal-dialog" role="document">
-            <div class="modal-content animated flipInY">
-                <div class="modal-header text-center">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <h2 class="modal-title" id="loginModalLabel">登录/<a href="user.do?method=toregister" target="_blank">注册</a></h2>
-                </div>
-                <form role="form" id="login_form">
-                    <div class="modal-body" style="height:200px;">
-                        <div class="form-group">
-                            <label>用户名</label>
-                            <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
-                        </div>
-                        <div class="form-group">
-                            <label>密码</label>
-                            <input type="password" name="password" class="form-control" placeholder="输入密码">
-                        </div>
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" name="remember">记住我
-                            </label>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
-                        <a class="btn btn-primary login_submit">登录</a>
-                    </div>
-                </form>
+<!-- login modal start -->
+<div style="margin-top:100px;" class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
+    <div style="width: 350px;" class="modal-dialog" role="document">
+        <div class="modal-content animated flipInY">
+            <div class="modal-header text-center">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h2 class="modal-title" id="loginModalLabel">登录/<a href="user.do?method=toregister" target="_blank">注册</a></h2>
             </div>
+            <form role="form" id="login_form">
+                <div class="modal-body" style="height:200px;">
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" name="password" class="form-control" placeholder="输入密码">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="remember">记住我
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                    <a class="btn btn-primary login_submit">登录</a>
+                </div>
+            </form>
         </div>
     </div>
-    <!-- login modal end -->
+</div>
+<!-- login modal end -->
 
 <footer id="footer" role="contentinfo" class="card">
-    <span>© 2016 </span><a href="https://imcoder.site" target="_blank">博客</a>
-    <span>，基于 </span><a>Java</a> / <a href="http://www.cnblogs.com/zyw-205520/p/4771253.html" target="_blank">ssm框架</a><span>&nbsp;&nbsp;技术开发</span>
-    <span>，ICP证：</span><a href="http://www.miibeian.gov.cn" target="__blank">湘ICP备17002133号</a>
+    <span>© 2016 </span><a href="https://imcoder.site" target="_blank">ImCoder</a>
+    <span>博客 ，基于 </span><a>Java</a><span> 语言开发</span>
+    <span>，ICP备案：</span><a href="http://www.miibeian.gov.cn" target="__blank">湘ICP备17002133号</a>
 </footer>
 
 <a id="basePath" href="<%=basePath%>" style="display:none;"></a>
@@ -256,6 +255,6 @@ String cloudFromSite = basePath + "cloud/";
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
 <script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="text_to_voice"></script>
- 
+
 </body>
 </html>

@@ -8,6 +8,7 @@ import site.imcoder.blog.common.FileUtil;
 import site.imcoder.blog.common.ImageUtil;
 import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.entity.Photo;
+import site.imcoder.blog.entity.Video;
 import site.imcoder.blog.service.IFileService;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
@@ -15,11 +16,12 @@ import site.imcoder.blog.setting.ConfigConstants;
 import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.Map;
 
 /**
- * Created by Jeffrey.Deng on 2018/1/3.
+ * @author Jeffrey.Deng
  */
 @Service("fileService")
 public class FileServiceImpl implements IFileService {
@@ -27,12 +29,19 @@ public class FileServiceImpl implements IFileService {
     private static Logger logger = Logger.getLogger(FileServiceImpl.class);
 
     @Override
-    public boolean copy(String formPath, String toPath) {
+    public boolean copy(String formPath, String toPath, boolean isFile) {
         boolean rs = false;
         File source = new File(formPath);
         File target = new File(toPath);
         try {
-            FileUtils.copyFile(source, target);
+            if (isFile) {
+                FileUtils.copyFile(source, target);
+            } else {
+                if (target.getCanonicalPath().startsWith(source.getCanonicalPath())) {
+                    throw new IOException("Cannot move directory to a subdirectory of itself");
+                }
+                FileUtils.copyDirectory(source, target); // 复制source下的文件，复制到target下
+            }
             rs = true;
         } catch (IOException e) {
             e.printStackTrace();
@@ -395,7 +404,7 @@ public class FileServiceImpl implements IFileService {
      * 回收文件
      *
      * @param sourceRelativePath 相对路径
-     * @param trashPath          回收相对路径，为空时取path得值
+     * @param trashPath          回收相对路径，为空时取path的值
      * @param isFile             是否是文件
      * @param sourceBasePath     物理相对路径
      */
@@ -431,8 +440,43 @@ public class FileServiceImpl implements IFileService {
             if (rs) {
                 logger.info("FileRecycle from \"" + sourceFullPath + "\" to \"" + trashPath + "\"");
             }
+        } else {
+            logger.warn("FileRecycle error: path doesn't exist! the path: " + sourceFullPath);
         }
         return rs;
+    }
+
+    /**
+     * 保存用户视频
+     *
+     * @param file
+     * @param video
+     * @param relativePath
+     * @param fileName
+     * @return
+     */
+    @Override
+    public boolean saveVideoFile(MultipartFile file, Video video, String relativePath, String fileName) {
+        boolean isSave = false;
+        String realPath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath;
+        createDirs(realPath);
+        File videoFile = new File(realPath, fileName);
+        try {
+            file.transferTo(videoFile);
+            Photo cover = video.getCover();
+            video.setWidth(cover.getWidth());
+            video.setHeight(cover.getHeight());
+            video.setVideo_type("video/mp4");
+            BigDecimal big = new BigDecimal(videoFile.length() / 1048576.00f); // MiB
+            float size = big.setScale(2, BigDecimal.ROUND_HALF_UP).floatValue();
+            video.setSize(size);
+            isSave = true;
+        } catch (IOException e) {
+            logger.error("FileUpload error path: " + realPath + " 视频上传失败");
+            e.printStackTrace();
+        } finally {
+            return isSave;
+        }
     }
 
 }

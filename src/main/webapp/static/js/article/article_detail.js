@@ -460,7 +460,7 @@
             gallery: {
                 enabled: true, // set to true to enable gallery
                 navigateByImgClick: true,
-                arrowMarkup: '', // markup of an arrow button
+                arrowMarkup: '<button title="%title%" type="button" class="mfp-arrow mfp-arrow-%dir%"></button>', // markup of an arrow button
                 //<button title="%title%" type="button" class="mfp-arrow mfp-arrow-%dir%"></button>
                 tPrev: '上一张', // title for left button,'Previous (Left arrow key)
                 tNext: '下一张', // title for right button,Next (Right arrow key)
@@ -479,7 +479,7 @@
                     var photo_name = photo_dom.title || photo_dom.getAttribute("data-filename");
                     var openUrl = "";
                     if (photo_dom.getAttribute("cloudImage")) {
-                        openUrl = "redirect.do?mode=photo&photo_id=" + photo_dom.getAttribute("photo-id");
+                        openUrl = "redirect.do?model=album&photo_id=" + photo_dom.getAttribute("photo-id");
                     } else {
                         openUrl = photo_dom.src;
                     }

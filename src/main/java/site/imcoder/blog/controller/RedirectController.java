@@ -17,7 +17,7 @@ import java.util.Map;
  */
 @Controller
 @RequestMapping("/redirect.do")
-public class RedirectController {
+public class RedirectController extends BaseController {
 
     @Resource
     private IAlbumService albumService;
@@ -25,25 +25,26 @@ public class RedirectController {
     @Resource
     private IUserService userService;
 
-    @RequestMapping(params = {"mode=photo", "photo_id"})
+    @RequestMapping(params = {"model=album", "photo_id"})
     public String findAlbumOfPhoto(int photo_id, HttpSession session) {
         if (photo_id > 0) {
             User loginUser = (User) session.getAttribute("loginUser");
             Photo photo = new Photo();
             photo.setPhoto_id(photo_id);
             Map<String, Object> map = albumService.findPhoto(photo, loginUser);
-            int flag = (int) map.get("flag");
+            int flag = (int) map.get(KEY_STATUS);
             if (flag == 200) {
                 return "redirect:/photo.do?method=album_detail&id=" + ((Photo) map.get("photo")).getAlbum_id() + "&check=" + photo_id;
             } else if (flag == 401) {
-                return "/site/login";
+                return PAGE_LOGIN;
             } else if (flag == 403) {
-                return "/error/403";
+                return PAGE_FORBIDDEN_ERROR;
             } else {
-                return "/error/404";
+                return PAGE_NOT_FOUND_ERROR;
             }
         } else {
-            return "/error/404";
+            return PAGE_NOT_FOUND_ERROR;
         }
     }
+
 }

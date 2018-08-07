@@ -39,7 +39,7 @@
         var load_condition = {};
         $.each(params, function (key, value) {
             params[key] = value && decodeURIComponent(decodeURIComponent(value));
-            if (key != "size" && key != "page" && key != "method" && key != "col" && key != "mode") {
+            if (key != "size" && key != "page" && key != "method" && key != "col" && key != "model") {
                 load_condition[key] = params[key]
             }
         });
@@ -227,10 +227,10 @@
         toolbar.rewriteSearch({
             placeholder: "输入关键字搜索相册",
             inputInitialValue: search_input_value,
-            mode_action: function (key) {
+            model_action: function (key) {
                 this.config.callback.album_search.call(this, key);
             },
-            modeMapping: ["album", "albums"],
+            modelMapping: ["album", "albums"],
             setDefaultMapping: true
         });
     });

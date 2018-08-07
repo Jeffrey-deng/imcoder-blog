@@ -1,17 +1,13 @@
 package site.imcoder.blog.controller;
 
-import org.apache.commons.lang.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.WebDataBinder;
-import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
 import site.imcoder.blog.Interceptor.LoginRequired;
-import site.imcoder.blog.controller.propertyeditors.IntEditor;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.entity.UserGroup;
@@ -24,8 +20,12 @@ import site.imcoder.blog.setting.ConfigConstants;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
  * description: 站点控制器
@@ -35,7 +35,7 @@ import java.util.*;
  */
 @Controller
 @RequestMapping("/site.do")
-public class SiteController {
+public class SiteController extends BaseController {
 
     //依赖注入[service]
     @Resource
@@ -51,10 +51,17 @@ public class SiteController {
     private INotifyService notifyService;
 
     @RequestMapping()
-    public ModelAndView defaultHandle() {
-        RedirectView redirectView = new RedirectView("site.do?method=about", true);
-        redirectView.setStatusCode(HttpStatus.MOVED_PERMANENTLY);
-        return new ModelAndView(redirectView);
+    public ModelAndView defaultHandle(HttpServletRequest request) {
+        String queryString = request.getQueryString();
+        ModelAndView mv = new ModelAndView();
+        if (queryString == null || queryString.length() == 0) {
+            RedirectView redirectView = new RedirectView("site.do?method=about", true);
+            redirectView.setStatusCode(HttpStatus.MOVED_PERMANENTLY);
+            mv.setView(redirectView);
+        } else {
+            mv.setViewName(PAGE_NOT_FOUND_ERROR);
+        }
+        return mv;
     }
 
     /**
@@ -66,7 +73,7 @@ public class SiteController {
      * @return 通过权限检查的列表
      */
     @RequestMapping(params = "method=notices")
-    public String list(@RequestParam(defaultValue = "5") int pageSize, @RequestParam(defaultValue = "1") int jumpPage, Article condition, HttpServletRequest request, HttpSession session) {
+    public String listNotices(@RequestParam(defaultValue = "5") int pageSize, @RequestParam(defaultValue = "1") int jumpPage, Article condition, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         if (condition == null) {
             condition = new Article();
@@ -83,45 +90,81 @@ public class SiteController {
             request.setAttribute("page", map.get("page"));
         }
         request.setAttribute("condition", condition);
-        return "/site/notice";
+        return "/site/notices";
+    }
+
+    @RequestMapping(params = "method=notice")
+    public String notice(@RequestParam(defaultValue = "0") int id, HttpServletRequest request, HttpServletResponse response, HttpSession session) {
+        User loginUser = getLoginUser(session);
+        Map<String, Object> queryMap = articleService.detail(id, loginUser);
+        Article article = (Article) queryMap.get("article");
+        int flag = (int) queryMap.get(KEY_STATUS);
+        String page = "/site/site_board";
+        if (flag == 401) {
+            request.setAttribute("http_code", 401);
+            page = PAGE_LOGIN;
+        } else if (flag == 404) {
+            page = setNotFoundInfo(request, "该公告不存在~");
+        } else if (flag == 403) {
+            page = PAGE_FORBIDDEN_ERROR;
+        } else if (article.getAuthor().getUserGroup().getGid() == 1 && article.getTags() != null && article.getTags().matches(".*(公告|notice).*")) {
+            if (clickNewArticle(session, article)) {
+                userService.hasClickArticle(loginUser, article);
+            }
+            request.setAttribute("article", article);
+        } else {
+            page = setNotFoundInfo(request, "该公告不存在~");
+        }
+        return page;
     }
 
     @RequestMapping(params = "method=about")
     public String about(HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
-
         int aid = Config.getInt(ConfigConstants.SITE_ABOUT_ARTICLE_ID);
         Map<String, Object> queryMap = articleService.detail(aid, loginUser);
-
         Article article = (Article) queryMap.get("article");
-        if (article != null) {
-            request.setAttribute("article", article);
-            userService.hasClickArticle((User) session.getAttribute("loginUser"), article);
-            return "/site/about";
+        int flag = (int) queryMap.get(KEY_STATUS);
+        String page = "/site/site_board";
+        if (flag == 401) {
+            request.setAttribute("http_code", 401);
+            page = PAGE_LOGIN;
+        } else if (flag == 404) {
+            page = setNotFoundInfo(request, "站点还未设置关于页~");
+        } else if (flag == 403) {
+            page = PAGE_FORBIDDEN_ERROR;
         } else {
-            request.setAttribute("errorInfo", "站点还未设置关于页~");
-            return "/error/404_detail";
+            if (clickNewArticle(session, article)) {
+                userService.hasClickArticle(loginUser, article);
+            }
+            request.setAttribute("article", article);
         }
+        return page;
     }
 
     @RequestMapping(params = "method=help")
     public String about(@RequestParam(defaultValue = "search") String module, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         String configKey = ConfigConstants.HelpConfigEnum.getModuleConfigKey(module);
-        if (configKey == null) {
-            return "/error/400";
-        }
         int aid = Config.getInt(configKey);
         Map<String, Object> queryMap = articleService.detail(aid, loginUser);
         Article article = (Article) queryMap.get("article");
-        if (article != null) {
-            request.setAttribute("article", article);
-            userService.hasClickArticle((User) session.getAttribute("loginUser"), article);
-            return "/site/about";
+        int flag = (int) queryMap.get(KEY_STATUS);
+        String page = "/site/site_board";
+        if (flag == 401) {
+            request.setAttribute("http_code", 401);
+            page = PAGE_LOGIN;
+        } else if (flag == 404) {
+            page = setNotFoundInfo(request, "站点还未设置" + module + "帮助页~");
+        } else if (flag == 403) {
+            page = PAGE_FORBIDDEN_ERROR;
         } else {
-            request.setAttribute("errorInfo", "站点还未设置" + module + "帮助页~");
-            return "/error/404_detail";
+            if (clickNewArticle(session, article)) {
+                userService.hasClickArticle(loginUser, article);
+            }
+            request.setAttribute("article", article);
         }
+        return page;
     }
 
     /**
@@ -150,21 +193,16 @@ public class SiteController {
     @LoginRequired
     @RequestMapping(params = "method=clearSysMsgStatus")
     @ResponseBody
-    public Map<String, Object> clearSystemMessageStatus(String smids, HttpSession session) {
+    public Map<String, Object> clearSystemMessageStatus(@RequestParam("smids") ArrayList<Integer> smids, HttpSession session) {
         Map<String, Object> map = new HashMap<String, Object>();
-        if (!smids.equals("")) {
-            String[] split = StringUtils.split(smids, '_');
-            List<Integer> list = new ArrayList<>();
-            for (String id : split) {
-                list.add(Integer.valueOf(id));
-            }
+        if (smids == null) {
             User loginUser = (User) session.getAttribute("loginUser");
-            int flag = notifyService.updateSystemMessageStatus(list);
-            map.put("flag", flag);
-            convertStatusCodeToWord(map, "flag", "info");
+            int flag = notifyService.updateSystemMessageStatus(smids);
+            map.put(KEY_STATUS, flag);
+            convertStatusCodeToWord(map);
         } else {
-            map.put("flag", 400);
-            map.put("info", "参数错误");
+            map.put(KEY_STATUS, 400);
+            map.put(KEY_STATUS_FRIENDLY, "参数错误");
         }
         return map;
     }
@@ -189,7 +227,7 @@ public class SiteController {
             options.put(strKey, strValue);
         }
         Map<String, Object> map = siteService.textToVoice(text, options, loginUser);
-        convertStatusCodeToWord(map, "flag", "info");
+        convertStatusCodeToWord(map);
         return map;
     }
 
@@ -203,33 +241,10 @@ public class SiteController {
     public String textToVoice(HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         if (loginUser == null) {
-            return "/site/login";
+            return PAGE_LOGIN;
         } else {
             return "/tool/text_to_voice";
         }
     }
 
-    //注册类型转换
-    @InitBinder
-    protected void initBinder(WebDataBinder binder) {
-        //binder.registerCustomEditor(Date.class, new CustomDateEditor(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"), true));
-        binder.registerCustomEditor(int.class, new IntEditor());
-    }
-
-    private void convertStatusCodeToWord(Map<String, Object> map, String codeKey, String wordKey) {
-        int flag = (Integer) map.get(codeKey);
-        if (flag == 200) {
-            map.put(wordKey, "成功");
-        } else if (flag == 400) {
-            map.put(wordKey, "参数错误");
-        } else if (flag == 401) {
-            map.put(wordKey, "需要登录或凭证错误");
-        } else if (flag == 403) {
-            map.put(wordKey, "没有权限");
-        } else if (flag == 404) {
-            map.put(wordKey, "无此记录");
-        } else {
-            map.put(wordKey, "服务器错误");
-        }
-    }
 }

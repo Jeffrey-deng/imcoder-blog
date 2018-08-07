@@ -6,6 +6,35 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
 
 ## develop log
 
+#### 2018.08.10
+
+add `video service` and `new notice page`
+
+    (1) video module
+    1、add video service.
+    2、add an event mechanism to each module.
+    3、add album_video_plugin for showing video in album.
+    >
+    (2) controller
+    1、add a base controller
+    2、modify the model keyword 'mode' to 'model'.
+    >
+    (3) site module
+    1、modify the notice page url address.
+    2、add a generic site notice page.
+    3、fixed notices page highlight.js path error.
+    4、modify new html footer.
+    5、reformat jsp code.
+    6、replace tab to four space in jsp.
+    >
+    (4) album module
+    1、add a hidden photo switch arrow
+    2、add ignore jsp space config in web.xml
+    3、fixed url is incorrect when loading full data in album_photo_dashboard.
+    >
+    (5)search box
+    1、add search box gets the focus when typing 's' or 'f'.
+
 #### 2018.08.07
 
 add `file recycle bin support for data recovery`

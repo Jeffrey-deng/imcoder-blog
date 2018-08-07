@@ -6,12 +6,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'blowup', 'common_utils', 'login_handle', 'period_cache', 'album_photo_handle', 'album_photo_page_handle', 'album_handle'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'blowup', 'common_utils', 'login_handle', 'period_cache', 'album_photo_handle', 'album_photo_page_handle', 'album_video_plugin', 'album_handle'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, null, common_utils, login_handle, PeriodCache, album_photo_handle, album_photo_page_handle, album_handle);
+        factory(window.jQuery, null, $(document).ready, toastr, null, common_utils, login_handle, PeriodCache, album_photo_handle, album_photo_page_handle, album_video_plugin, album_handle);
     }
-})(function ($, bootstrap, domReady, toastr, blowup, common_utils, login_handle, PeriodCache, album_photo_handle, album_photo_page_handle, album_handle) {
+})(function ($, bootstrap, domReady, toastr, blowup, common_utils, login_handle, PeriodCache, album_photo_handle, album_photo_page_handle, album_video_plugin, album_handle) {
 
     /**
      * 放大镜
@@ -48,7 +48,7 @@
     function addFeaturedBtnBasedRemote(album_id) {
         var callback = function (album_id) {
             $("#main .album_options .options_right").prepend(
-                '<a class="option_featured" itemtype="url" href="photo.do?method=dashboard&mode=photo&album_id=' + album_id + '&tags=精选" target="_blank">精选</a>'
+                '<a class="option_featured" itemtype="url" href="photo.do?method=dashboard&model=photo&album_id=' + album_id + '&tags=精选" target="_blank">精选</a>'
             );
         };
         var isLoadNew = true;
@@ -110,7 +110,7 @@
             });
             if (hasFeatured) {
                 $("#main .album_options .options_right").prepend(
-                    '<a class="option_featured" itemtype="url" href="photo.do?method=dashboard&mode=photo&album_id=' + album_id + '&tags=精选" target="_blank">精选</a>'
+                    '<a class="option_featured" itemtype="url" href="photo.do?method=dashboard&model=photo&album_id=' + album_id + '&tags=精选" target="_blank">精选</a>'
                 );
             }
         }

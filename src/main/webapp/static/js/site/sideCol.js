@@ -119,7 +119,10 @@
                     "closeButton": false,
                     "progressBar": false,
                     "positionClass": isUserPage ? "toast-bottom-left" : "toast-bottom-right",
-                    "iconClass": "toast-success-no-icon"
+                    "iconClass": "toast-success-no-icon",
+                    "onclick": function () {
+                        window.open("photo.do?method=album_detail&id=" + album.album_id);
+                    }
                 }).success(album.description, album.name + " by " + album.user.nickname, "notify_album_show");
             };
             var loadUid = uid; // 加载谁的相册列表

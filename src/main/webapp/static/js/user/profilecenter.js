@@ -225,10 +225,10 @@
                     enableSaveAccountBtn();
                     return;
                 }
-                var reg = /^[a-zA-Z\d][\w-]{0,20}$/;
+                var reg = /^[a-zA-Z\d][\w\.-]{0,20}$/;
                 if (!reg.test(username)) {
                     span.css('color', 'red');
-                    span.html('用户名只能包括字母、数字、横线、下划线!且不大于20个字符');
+                    span.html('用户名只能包括字母、数字、横线、下划线、英文句号!且不大于20个字符');
                     $('#submit_account').attr('disabled', "true");
                     return;
                 }
@@ -828,20 +828,28 @@
     }
 
     function clearSysMsgStatus() {
-        var smids = "";
+        var smids = [];
         $.each(unreadList.sysMsgs, function (i, sysMsg) {
             if (sysMsg.status == 0) {
-                smids = smids + "_" + sysMsg.smid;
+                smids.push(sysMsg.smid);
             }
         });
-        if (smids != "") {
-            smids = smids.substring(1);
-            $.post("site.do?method=clearSysMsgStatus", {"smids": smids}, function (data) {
-                if (data.flag == 200) {
-                    console.log("清除未读系统消息成功！");
-                } else {
-                    console.log("清除未读系统消息成功！" + data.info);
-                    console.warn("Error Code: " + data.flag);
+        if (smids.length > 0) {
+            $.ajax({
+                type: "POST",
+                url: "site.do?method=clearSysMsgStatus",
+                data: {"smids": smids.join()},
+                dataType: "json",
+                success: function (data) {
+                    if (data.flag == 200) {
+                        console.log("清除未读系统消息成功！");
+                    } else {
+                        console.log("清除未读系统消息成功！" + data.info);
+                        console.warn("Error Code: " + data.flag);
+                    }
+                },
+                error: function (xhr, ts) {
+                    console.log("Clear msg status found error, Error Code: " + ts);
                 }
             });
         }

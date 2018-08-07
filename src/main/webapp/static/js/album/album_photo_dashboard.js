@@ -5,12 +5,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'blowup', 'common_utils', 'login_handle', 'toolbar', 'period_cache', 'results_cache', 'album_photo_handle', 'album_photo_page_handle'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'blowup', 'common_utils', 'login_handle', 'toolbar', 'period_cache', 'results_cache', 'album_photo_handle', 'album_photo_page_handle', 'album_video_plugin'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, null, common_utils, login_handle, toolbar, PeriodCache, ResultsCache, album_photo_handle, album_photo_page_handle);
+        factory(window.jQuery, null, $(document).ready, toastr, null, common_utils, login_handle, toolbar, PeriodCache, ResultsCache, album_photo_handle, album_photo_page_handle, album_video_plugin);
     }
-})(function ($, bootstrap, domReady, toastr, blowup, common_utils, login_handle, toolbar, PeriodCache, ResultsCache, album_photo_handle, album_photo_page_handle) {
+})(function ($, bootstrap, domReady, toastr, blowup, common_utils, login_handle, toolbar, PeriodCache, ResultsCache, album_photo_handle, album_photo_page_handle, album_video_plugin) {
 
     /**
      * 放大镜
@@ -76,7 +76,7 @@
         var load_condition = {};
         $.each(params, function (key, value) {
             params[key] = value && decodeURIComponent(decodeURIComponent(value));
-            if (key != "method" && key != "size" && key != "col" && key != "page" && key != "check" && key != "mode") {
+            if (key != "method" && key != "size" && key != "col" && key != "page" && key != "check" && key != "model") {
                 load_condition[key] = params[key]
             }
         });
@@ -173,12 +173,25 @@
                 "paginationClick_callback": function (paginationNode) {
                     var context = this;
                     var config = context.config;
-                    if (!config.hasLoadAll && config.page_params.pageNum == config.page_params.pageCount) {
+                    if (!config.hasLoadAll && config.page_params.pageNum == config.page_params.pageCount) { // 点击加载全部图片
                         if (context.pointer.album.size == 520 && config.query_size == 520) {
                             toastr.success("点击加载更多照片", "", {
                                 timeOut: 0, onclick: function () {
                                     config.query_size = 0;
                                     config.query_start = context.pointer.album.size;
+                                    var params = common_utils.parseURL(document.location.href).params;
+                                    var search = "?method=" + config.page_method_address;
+                                    $.each(params, function (key, value) {
+                                        if (key != "method" && key != "page" && key != "query_start" && key != "query_size") {
+                                            search += "&" + key + "=" + value;
+                                        }
+                                    });
+                                    search += "&query_start=0&query_size=0&page=" + config.page_params.pageNum;
+                                    history.replaceState( // url上加上查询大小
+                                        {"flag": "page"},
+                                        document.title,
+                                        location.pathname + search
+                                    );
                                     context.loadAlbumWithPhotos(config, function (data) {
                                         var photos = context.pointer.album.photos;
                                         photos.push.apply(photos, data.album.photos);

@@ -4,6 +4,7 @@ import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.entity.Video;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,12 +29,21 @@ public interface IVideoService {
     /**
      * 返回视频
      *
-     * @param video
+     * @param video 视频id，或者封面id
      * @param loginUser
      * @return map
      * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 视频ID未找到
      * video - video
      */
     public Map<String, Object> findVideo(Video video, User loginUser);
+
+    /**
+     * 通过封面列表返回视频列表
+     *
+     * @param covers
+     * @param loginUser
+     * @return videoList
+     */
+    public List<Video> findVideoListByCoverArray(List<Integer> covers, User loginUser);
 
 }

@@ -45,8 +45,8 @@
         $.validator.addMethod("checkUsername", function (value, element, params) {
             var errormsg = '';
             var result = true;
-            var reg = /^[a-zA-Z\d][\w-]{0,20}$/;//正则
-            if (value.length > 22 || value.length === 0) {
+            var reg = /^[a-zA-Z\d][\w\.-]{0,20}$/;//正则
+            if (value.length > 21 || value.length === 0) {
                 errormsg = "长度应在1至20个字符之间";
                 result = false;
             } else if (reg.test(value)) {
@@ -68,7 +68,7 @@
                     }
                 });
             } else {
-                errormsg = "用户名只能包括字母、数字、横线、下划线";
+                errormsg = "用户名只能包括字母、数字、横线、下划线、英文句号";
                 result = false;
             }
             $.validator.messages.checkUsername = errormsg;

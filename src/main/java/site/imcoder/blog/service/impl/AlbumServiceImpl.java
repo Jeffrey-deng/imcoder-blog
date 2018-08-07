@@ -189,7 +189,7 @@ public class AlbumServiceImpl implements IAlbumService {
     /**
      * 删除相册
      *
-     * @param album
+     * @param album 相册ID，相册名
      * @param loginUser
      * @param deleteFromDisk
      * @return flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册ID未找到，500：服务器错误
@@ -212,7 +212,7 @@ public class AlbumServiceImpl implements IAlbumService {
                     rs = fileService.recycleTrash(relativePath, null, false, Config.get(ConfigConstants.CLOUD_FILE_BASEPATH));
                 }
                 if (rs || !deleteFromDisk) {
-                    String sqlBackupPath = Config.get(ConfigConstants.TRASH_RECYCLE_BASEPATH) + relativePath + "album_data_" + new Date().getTime() + ".sql";
+                    String sqlBackupPath = Config.get(ConfigConstants.TRASH_RECYCLE_BASEPATH) + relativePath + "album_data_" + db_album.getAlbum_id() + "_" + new Date().getTime() + ".sql";
                     fileService.saveText(convertAlbumToInsertSQL(db_album), sqlBackupPath); // 备份SQL文件
                     logger.info("FileRecycle backup album(" + db_album.getAlbum_id() + ") sql file in \"" + sqlBackupPath + "\"");
                     int index = albumDao.deleteAlbum(album);
@@ -263,7 +263,6 @@ public class AlbumServiceImpl implements IAlbumService {
                     boolean isSave = fileService.savePhotoFile(file, photo, relativePath, fileName);
                     if (isSave) {
                         photo.setPath(relativePath + fileName);
-
                         // 更新相册封面
                         if (photo.getIscover() == 1) {
                             updateCoverForAlbum(photo);
@@ -407,6 +406,9 @@ public class AlbumServiceImpl implements IAlbumService {
                     String newPathExt = photo.getOriginName().lastIndexOf('.') != -1 ? photo.getOriginName().substring(photo.getOriginName().lastIndexOf('.')) : ".jpg";
                     String newPathFileName = matcher.group(2) + new Date().getTime() + newPathExt; // 新文件名
                     if (fileService.savePhotoFile(file, photo, newPathDir, newPathFileName)) { //保存新文件到磁盘
+                        if (db_photo.getImage_type() != null && db_photo.getImage_type().indexOf("video") != -1) {
+                            photo.setImage_type(db_photo.getImage_type()); // 视频：更新视频封面图片文件时，避免旧类型被覆盖
+                        }
                         photo.setPath(newPathDir + newPathFileName);
                         fileService.recycleTrash(oldPath, oldPath, true, Config.get(ConfigConstants.CLOUD_FILE_BASEPATH)); // 回收旧文件
                     } else {
@@ -415,7 +417,9 @@ public class AlbumServiceImpl implements IAlbumService {
                 } else {
                     photo.setWidth(db_photo.getWidth());
                     photo.setHeight(db_photo.getHeight());
-                    photo.setImage_type(db_photo.getImage_type());
+                    if (photo.getImage_type() == null) { // 当外部传入类型时，不覆盖，以便支持视频
+                        photo.setImage_type(db_photo.getImage_type());
+                    }
                     photo.setSize(db_photo.getSize());
                     photo.setPath(oldPath);
                     photo.setOriginName(db_photo.getOriginName());

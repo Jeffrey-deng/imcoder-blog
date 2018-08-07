@@ -37,6 +37,9 @@
             "album_dashboard": ["js/album/album_dashboard"],
             "album_list": ["js/album/album_list"],
             "album_tags_square": ["js/album/album_tags_square"],
+            "video_list": ["js/video/video_list"],
+            "video_handle": ["js/video/module/video_handle"],
+            "album_video_plugin": ["js/video/module/album_video_plugin"],
             "article_detail": ["js/article/article_detail"],
             "article_edit": ["js/article/article_edit"],
             "edit_tool": ["js/article/edit_tool"],
@@ -163,6 +166,10 @@
                 } else if (page == "album_tags_square") {
 
                     require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "common_utils", "login_handle", "toolbar", "album_page_handle", "album_tags_square"]);
+
+                } else if (page == "video_list") {
+
+                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "common_utils", "login_handle", "toolbar", "period_cache", "video_handle", "video_list", "album_photo_page_handle", "album_video_plugin"]);
 
                 } else if (page == "main_manager") {
 

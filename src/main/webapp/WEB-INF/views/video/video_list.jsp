@@ -1,4 +1,4 @@
-﻿<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
+<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
@@ -14,9 +14,9 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <title>${album.name} - ${album.user.nickname}的相册 | ImCODER's 博客</title>
-    <meta name="description" content="${album.description}">
-    <meta name="keywords" content="相册,相册详情,${album.name},ImCODER's 博客">
+    <title>${hostUser.nickname}的视频 - ImCODER's 博客</title>
+    <meta name="description" content="${hostUser.nickname}的视频列表">
+    <meta name="keywords" content="${hostUser.nickname},ImCODER's 博客,视频,视频列表,">
     <!-- 使用url函数转换相关路径 -->
     <!-- <script async="" src="http://www.google-analytics.com/analytics.js"></script> -->
 
@@ -38,7 +38,7 @@
             background-color: #f2f2f2;
         }
 
-        .photo img, .photo video {
+        .photo img, video {
             border: 5px solid #FFFFFF;
             width: 100%;
             cursor: pointer;
@@ -137,8 +137,11 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center;">
-                    <h1 class="album_name" hostUid="${album.user.uid}">${album.name}</h1>
-                    <h3 class="album_description" style="color:#444;font-size:16.5px;">${album.description}</h3>
+                    <h1 hostUser="${hostUser.uid}">${hostUser.nickname}</h1>
+                    <h3 style="color:#444;font-size:16.5px;">${hostUser.description}</h3>
+                    <h3 style="color:#555">
+                        <f>${hostUser.says}</f>
+                    </h3>
                 </div>
             </div>
         </div>
@@ -238,8 +241,8 @@
                     </ul>
                 </li>
                 <li><a href="<%=basePath%>">首页</a></li>
-                <li><a href="photo.do?method=user_albums&uid=${album.user.uid}">${album.user.nickname}</a></li>
-                <li class="active"><a>${album.name}</a></li>
+                <li><a href="video.do?method=user_videos&uid=${album.user.uid}">${album.user.nickname}</a></li>
+                <li class="active"><a>视频列表</a></li>
             </ul>
             <ul class="nav navbar-nav navbar-right">
                 <form class="navbar-form navbar-left" role="search">
@@ -277,8 +280,8 @@
             <!-- main div start -->
             <article class="col-md-12 col-sm-12 col-xs-12" id="main" role="main">
 
-                <!-- 相册管理  start -->
-                <header class="post post-container album_options">
+                <!-- 视频管理  start -->
+                <header class="post post-container video_options">
                     <h1 class="post-title" itemprop="name headline">
                         <style>
                             .post-title a:hover {
@@ -290,34 +293,28 @@
                             }
                         </style>
                         <c:choose>
-                            <c:when test="${ not empty loginUser and loginUser.uid == album.user.uid }">
-                                <a class="option_upload" itemtype="url" id="uploadPhoto" albumId="${album.album_id}" author="${album.user.uid}">上传新照片</a>
+                            <c:when test="${ not empty loginUser and loginUser.uid == hostUser.uid }">
+                                <a class="option_upload" itemtype="url" id="uploadVideo" author="${hostUser.uid}">上传新视频</a>
                             </c:when>
                             <c:otherwise>
-                                <a class="option_owner_albums" itemtype="url" href="photo.do?method=user_albums&uid=${album.user.uid}" target="_blank" title="点击查看Ta的其他相册">${album.user.nickname}</a>
+                                <a>&nbsp;</a>
                             </c:otherwise>
                         </c:choose>
                         <div style="float: right" class="options_right">
-                            <a class="option_tags_index" itemtype="url" href="photo.do?method=tags_square&album_id=${album.album_id}" target="_blank">标签索引</a>
-                            <a class="option_blowup" itemtype="url" id="blowup_trigger">放大镜</a>
+                            <a class="option_time_sort" itemtype="url" href="photo.do?method=dashboard&model=photo&uid=${hostUser.uid}" target="_blank">时间序</a>
+                            <a class="option_tags_index" itemtype="url" href="photo.do?method=tags_square&uid=${hostUser.uid}" target="_blank">标签索引</a>
+                            <a class="option_photo_square" itemtype="url" href="photo.do?method=dashboard&model=photo" target="_blank">照片广场</a>
                         </div>
                     </h1>
                 </header>
-                <!-- 相册管理  end -->
+                <!-- 视频管理  end -->
 
                 <article class="post" style="background-color: #f2f2f2;box-shadow: 0px 0px 1px 0.5px #ddd;">
-                    <!-- 文章内容 start -->
                     <section>
                         <div id="masonryContainer" class="" style="margin-top: 20px;">
-                            <%--<c:forEach items="${album.photos}" var="photo"  varStatus="status">
-                                <div class="photo photo-size"  id="photo_${photo.photo_id}" data-order="${status.index}" photo-id=${photo.photo_id} title="${photo.name}" photo-desc="${photo.description}"
-                                    image-width="${photo.width}" image-height="${photo.height}" iscover="${photo.iscover}" photo-path="${photo.path}">
-                                    <img  src="<%=cloudPath%>${photo.path}" />
-                                </div>
-                            </c:forEach>--%>
+
                         </div>
                     </section>
-                    <!-- 文章内容 end -->
 
                     <!-- 标签 start -->
                     <!-- 标签 end -->
@@ -326,10 +323,7 @@
                 <!-- 评论区 start -->
                 <header class="post post-container row" style="width: 100%;background-color: #f2f2f2;box-shadow: 0px 0px 1px 0.5px #ddd;">
                     <ul class="post-meta" style="display: inline-block;margin-top: 3px;margin-bottom: 0px;font-size: 14px;">
-                        <li>数量: <a id="album_size" hostUser="${album.user.uid}" album_id="${album.album_id}">${album.size}</a></li>
-                        <li>创建时间：<a id="album_create_time">
-                            <time itemprop="datePublished"><fmt:formatDate value="${album.create_time}" pattern="yyyy-MM-dd HH:mm"/></time>
-                        </a></li>
+                        <li>数量: <a id="video_count" hostUser="${hostUser.uid}">0</a></li>
                     </ul>
                     <ul class="post-meta" style="display: inline-block;margin-top: 3px;margin-bottom: 0px;font-size: 14px;">
                         <ol class="page-navigator" style="display: inline-block;margin: 0 auto;padding:0px;"></ol>
@@ -359,37 +353,60 @@
 
 <style>
     @media (min-width: 768px) {
-        #uploadPhotoModal .modal-dialog {
+        #uploadVideoModal .modal-dialog {
             width: 500px;
         }
     }
 
     @media (max-width: 768px) {
-        #uploadPhotoModal .modal-dialog {
+        #uploadVideoModal .modal-dialog {
             width: 100%;
         }
     }
 </style>
 <div class="note-editor">
-    <div class="modal fade in" id="uploadPhotoModal" aria-hidden="false" tabindex="-1">
+    <div class="modal fade in" id="uploadVideoModal" aria-hidden="false" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
                             aria-hidden="true">×</span></button>
-                    <h4 class="modal-title">插入图片</h4></div>
+                    <h4 class="modal-title">上传视频</h4></div>
                 <div class="modal-body" style="padding-bottom: 5px;">
-                    <div class="form-group note-group-select-from-files">
-                        <label>从本地上传</label>
-                        <input class="note-image-input form-control" type="file" name="photos" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif" multiple="multiple">
+                    <div class="form-group">
+                        <label>选择视频类型</label>
+                        <select class="form-control" name="video_source_type">
+                            <option value="0">上传本地文件</option>
+                            <option value="1">引用视频链接</option>
+                            <option value="2">引用代码块（IFrame）</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>选择视频</label>
+                        <input class="note-image-input form-control" type="file" name="video_file" accept="video/mp4,video/webm">
+                    </div>
+                    <div class="form-group" style="overflow:auto;display: none">
+                        <label>代码块/链接：</label>
+                        <textarea class="form-control" type="text" name="video_code"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>选择相册</label>
+                        <select class="form-control" name="cover_album_id">
+
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>选择封面</label>
+                        <input class="note-image-input form-control" type="file" name="cover_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
+                        <input class="note-image-input form-control" name="cover_photo_id" value="0" style="margin-top: 5px;display: none;">
                     </div>
                     <div class="form-group" style="overflow:auto;">
                         <label>名称：</label>
-                        <input class="form-control" type="text" name="photo_name">
+                        <input class="form-control" type="text" name="video_name">
                     </div>
                     <div class="form-group" style="overflow:auto;">
                         <label>描述：</label>
-                        <textarea class="form-control" type="text" name="photo_desc"></textarea>
+                        <textarea class="form-control" type="text" name="video_desc"></textarea>
                     </div>
                     <div class="form-group">
                         <a href="photo.do?method=dashboard&model=photo&tags=_&logic_conn=or" target="_blank" style="color: #666; cursor: pointer" title="点击查看所有带标签的照片">
@@ -400,17 +417,20 @@
                         </span>
                     </div>
                     <div class="form-group " style="padding-top: 7px;">
-                        <label class="control-label">是否作为封面</label>
+                        <label class="control-label">可见性</label>
                         <label class="radio-inline" style="margin-left:10px;">
-                            <input type="radio" name="photo_cover" value="1"> 是
+                            <input type="radio" name="video_permission" value="0" checked="checked"> 公开
                         </label>
                         <label class="radio-inline">
-                            <input type="radio" name="photo_cover" value="0" checked="checked"> 否
+                            <input type="radio" name="video_permission" value="1"> 好友可见
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="video_permission" value="2"> 私有
                         </label>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-primary" name="uploadPhoto_trigger">插入图片</button>
+                    <button class="btn btn-primary" name="uploadVideo_trigger">插入视频</button>
                 </div>
             </div>
         </div>
@@ -419,51 +439,59 @@
 
 <style>
     @media (min-width: 768px) {
-        #updatePhotoModal .modal-dialog {
+        #updateVideoModal .modal-dialog {
             width: 500px;
         }
     }
 
     @media (max-width: 768px) {
-        #updatePhotoModal .modal-dialog {
+        #updateVideoModal .modal-dialog {
             width: 100%;
         }
     }
 </style>
 <div class="note-editor">
-    <div class="modal fade in" id="updatePhotoModal" aria-hidden="false" tabindex="-1">
+    <div class="modal fade in" id="updateVideoModal" aria-hidden="false" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
                             aria-hidden="true">×</span></button>
-                    <h4 class="modal-title">更新图片信息</h4></div>
+                    <h4 class="modal-title">更新视频信息</h4></div>
                 <div class="modal-body" style="padding-bottom: 0px;">
                     <div class="form-group">
-                        <label class="control-label">图片ID：&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                        <label class="control-label">视频ID：&nbsp;&nbsp;&nbsp;&nbsp;</label>
                         <a target="_blank" style="color: #666; cursor: pointer" title="在相册中打开">
-                            <span name="photo_id" class="control-label"></span>
+                            <span name="video_id" class="control-label"></span>
                         </a>
                     </div>
                     <div class="form-group">
-                        <label>图片地址&nbsp;&nbsp;</label>
+                        <label>选择视频类型</label>
+                        <select class="form-control" name="video_source_type">
+                            <option value="0">上传本地文件</option>
+                            <option value="1">引用视频链接</option>
+                            <option value="2">引用代码块（IFrame）</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>视频地址&nbsp;&nbsp;</label>
                         <input class="form-control copy-input" type="text" value="http://imcoder.site/"/>
                         <span class="control-label">
-                            <a class="copyPhotoUrl_btn" data-clipboard-target=".copy-input" style="cursor: pointer">点击复制</a>
-                            <a name="photo_path" style="cursor: pointer">点击下载</a>
+                            <a class="copyVideoUrl_btn" data-clipboard-target=".copy-input" style="cursor: pointer">点击复制</a>
+                            <a name="video_path" style="cursor: pointer">点击下载</a>
                         </span>
                     </div>
-                    <div class="form-group note-group-select-from-files">
-                        <label title="不选择则不更新">更新图片文件</label>
-                        <input class="note-image-input form-control" type="file" name="photo_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
+                    <div class="form-group" style="overflow:auto;display: none">
+                        <label>代码块/链接：</label>
+                        <textarea class="form-control" type="text" name="video_code"></textarea>
                     </div>
                     <div class="form-group">
                         <label>名称：</label>
-                        <input class="form-control" type="text" name="photo_name">
+                        <input class="form-control" type="text" name="video_name">
                     </div>
                     <div class="form-group">
                         <label>描述：</label>
-                        <textarea class="form-control" type="text" name="photo_desc"></textarea>
+                        <textarea class="form-control" type="text" name="video_desc"></textarea>
                     </div>
                     <div class="form-group">
                         <a href="photo.do?method=tags_square" target="_blank" style="color: #666; cursor: pointer" title="标签广场">
@@ -473,100 +501,30 @@
                             <input type="text" class="tag-input" name="tag_input"/>
                         </span>
                     </div>
-                    <div class="form-group" style="padding-top: 7px;">
-                        <label class="control-label">是否作为封面</label>
+                    <div class="form-group " style="padding-top: 7px;">
+                        <label class="control-label">可见性</label>
                         <label class="radio-inline" style="margin-left:10px;">
-                            <input type="radio" name="photo_cover" value="1"> 是
+                            <input type="radio" name="video_permission" value="0" checked="checked"> 公开
                         </label>
                         <label class="radio-inline">
-                            <input type="radio" name="photo_cover" value="0"> 否
+                            <input type="radio" name="video_permission" value="1"> 好友可见
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="video_permission" value="2"> 私有
                         </label>
                     </div>
                     <div class="form-group">
                         <label class="control-label">图片大小：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
-                        <span name="photo_size" class="control-label"></span>
+                        <span name="video_size" class="control-label"></span>
                     </div>
                     <div class="form-group">
                         <label class="control-label">上传时间：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
-                        <span name="photo_upload_time" class="control-label"></span>
+                        <span name="video_upload_time" class="control-label"></span>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-danger" name="deletePhoto_trigger">删除图片</button>
-                    <button class="btn btn-primary" name="updatePhoto_trigger">更新信息</button>
-                    <button class="btn btn-default" name="cancelBtn" data-dismiss="modal">关闭</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<style>
-    @media (min-width: 768px) {
-        #updateAlbumModal .modal-dialog {
-            width: 500px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        #updateAlbumModal .modal-dialog {
-            width: 100%;
-        }
-    }
-</style>
-<div class="note-editor">
-    <div class="modal fade in" id="updateAlbumModal" aria-hidden="false" tabindex="-1" style="padding-right: 0 !important;">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
-                            aria-hidden="true">×</span></button>
-                    <h4 class="modal-title">更新相册信息</h4></div>
-                <div class="modal-body" style="padding-bottom: 0px;">
-                    <div class="form-group">
-                        <label>相册ID：</label>
-                        <span name="album_id" class="control-label" style="display:inline-block;width: 50%;margin-left: 15px;"></span>
-                    </div>
-                    <div class="form-group">
-                        <label>名称：</label>
-                        <input class="form-control" type="text" name="album_name">
-                    </div>
-                    <div class="form-group">
-                        <label>描述：</label>
-                        <textarea class="form-control" type="text" name="album_desc"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>封面地址：</label>
-                        <input class="form-control" type="text" name="album_cover_path"/>
-                    </div>
-                    <div class="form-group" style="padding-top: 5px;">
-                        <label>相册权限：</label>
-                        <label class="radio-inline" style="margin-left:7px;">
-                            <input type="radio" name="album_permission" value="0" checked="checked"> 公开
-                        </label>
-                        <label class="radio-inline">
-                            <input type="radio" name="album_permission" value="1"> 好友
-                        </label>
-                        <label class="radio-inline">
-                            <input type="radio" name="album_permission" value="2"> 私有
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label title="一行显示图片的数量">展示列数：</label>
-                        <input class="form-control" style="display:inline-block;width: 14%;margin-left: 6px;" type="text" name="album_show_col" value="4">
-                    </div>
-                    <div class="form-group">
-                        <label>照片数量：</label>
-                        <span name="album_size" class="control-label" style="display:inline-block;width: 50%;margin-left: 7px;"></span>
-                    </div>
-                    <div class="form-group">
-                        <label>创建时间：</label>
-                        <span name="album_create_time" class="control-label" style="display:inline-block;width: 50%;margin-left: 7px;"></span>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-danger" name="deleteAlbum_trigger">删除相册</button>
-                    <button class="btn btn-primary" name="updateAlbum_trigger">更新信息</button>
+                    <button class="btn btn-danger" name="deleteVideo_trigger">删除图片</button>
+                    <button class="btn btn-primary" name="updateVideo_trigger">更新信息</button>
                     <button class="btn btn-default" name="cancelBtn" data-dismiss="modal">关闭</button>
                 </div>
             </div>
@@ -620,7 +578,7 @@
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="album_detail"></script>
+<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="video_list"></script>
 
 </body>
 </html>

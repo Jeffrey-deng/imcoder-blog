@@ -1,4 +1,4 @@
-﻿<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
+<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
@@ -14,32 +14,30 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <title>文章管理 - Website Administer System</title>
-    <meta name="description" content="文章管理 - 博客后台管理中心">
-    <meta name="keywords" content="文章管理 - 博客后台管理中心">
-    <!-- 使用url函数转换相关路径 -->
-    <!-- <script async="" src="http://www.google-analytics.com/analytics.js"></script> -->
-
+    <title>公告 - ImCODER's 博客</title>
+    <meta name="keywords" content="imcoder.site,公告,ImCODER's 博客公告">
+    <meta name="description" content="共有${page.rowCount}个公告，<c:forEach items="${articleList}" var="article">${article.title}，</c:forEach>...">
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css">
     <link rel="stylesheet" href="<%=staticPath%>css/style.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
 </head>
-<body uid="${loginUser.uid}">
-<!-- <body background="../../img/bg-site.png"> -->
-<!-- START THE COVER  background-image: url(img/bg-site.png);" -->
-<div id="first" class="" style="z-index:1000;background-image: url(<%=staticPath%>img/bg-site.png);">
+<body background="<%=staticPath%>img/bg-site.png" uid="${loginUser.uid}">
+
+<div id="first" class="" style="z-index:1000;">
     <div class="carousel-inner">
         <div class="">
             <div class="container">
-                <div class="" style="text-align:center">
-                    <br>
-                    <h1>Website Administer System</h1>
-                    <h3 style="color:#444;font-size:16.5px;">文章管理</h3>
+                <div class="" style="text-align:center;">
+                    <h1>ImCODER's 博客</h1>
+                    <h3 style="color:#444">对于攀登者来说，失掉往昔的足迹并不可惜，迷失了继续前时的方向却很危险。</h3>
+                    <p style="color:#444">Welcome to my blog</p>
+                    <p><a class="btn btn-large btn-success loginModal_trigger"><b>
+                        <c:if test="${ empty loginUser }">登录 or 注册</c:if><c:if test="${ !empty loginUser }">已登录</c:if>
+                    </b></a></p>
                 </div>
             </div>
         </div>
@@ -139,7 +137,7 @@
                     </ul>
                 </li>
                 <li><a href="<%=basePath%>">首页</a></li>
-                <li class="active"><a>文章管理</a></li>
+                <li class="active"><a>公告</a></li>
             </ul>
             <ul class="nav navbar-nav navbar-right">
                 <form class="navbar-form navbar-left" role="search">
@@ -169,165 +167,170 @@
 </nav>
 <!-- end #toolbar -->
 
-<!-- body start -->
 <div id="body">
     <div class="container">
-        <div class="row" style=" margin-top: 2em;">
+        <article class="row">
 
-            <div class="col-md-12 col-sm-12 col-xs-12">
-                <div class="panel panel-primary" id="blog_panel">
-                    <div class="panel-heading">
-                        <h3 class="panel-title">文章列表</h3>
-                    </div>
-                    <div class="panel-body">
-                        <p style="margin-left: 3%">目前文章有 <b id="articleCount"></b> 篇。</p>
-                    </div>
-                    <div style="width:100%;overflow:auto;">
-                        <table class="table table-hover" style="text-align:center;" id="article_tds">
+            <!-- 左侧区域  start -->
+            <article id="main" class="col-md-12 col-sm-12 col-xs-12" role="main">
+                <!-- 推荐区 start -->
+                <article class="post" id="top" style="display:none;">
+                    <section class="post-container">
+                        <div class="tabs-container" style="">
+                            <div class="tabs-right">
+                                <ul class="nav nav-tabs" id="top_nav">
+                                </ul>
+                                <div class="tab-content" id="top_content">
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </article>
+                <!-- 推荐区  end -->
 
-                        </table>
-                    </div>
-                </div>
-                <ol class="page-navigator"></ol>
-            </div>
-        </div><!-- end .row -->
+                <c:forEach items="${articleList}" var="article">
+                    <!-- 文章项 start -->
+                    <article class="post" itemscope="" itemtype="http://schema.org/BlogPosting">
+                        <header class="post-container">
+                            <!-- 文章标题 -->
+                            <h2 class="post-title" itemprop="name headline">
+                                <a itemtype="url" href="site.do?method=notice&id=${article.aid}" target="_blank">
+                                        ${article.title}</a>
+                            </h2>
+                            <!-- 文章头 -->
+                            <ul class="post-meta">
+                                <li>
+                                    作者: <a href="user.do?method=home&uid=${article.author.uid}" target="_blank">${article.author.nickname}</a>
+                                </li>
+                                <li>
+                                    分类: <a href="article.do?method=list&category.atid=${article.category.atid}" target="_blank">${article.category.atname}</a>
+                                </li>
+                                <li>
+                                    <time datetime="2016-01-02T04:33:00-07:00"
+                                          itemprop="datePublished">
+                                        <fmt:formatDate value="${article.create_time}" pattern="yyyy-MM-dd	HH:mm"/>
+                                    </time>
+                                </li>
+                            </ul>
+                            <!-- 文章摘要 -->
+                            <section class="post-content" itemprop="articleBody">
+                                    ${article.summary}
+                                <p class="more">
+                                    <br>
+                                    <a href="site.do?method=notice&id=${article.aid}"
+                                       title="${article.title}" target="_blank">- 阅读剩余部分 -</a>
+                                </p>
+                            </section>
+                        </header>
+                        <!-- 文章尾 -->
+                        <footer class="post-footer">
+                            <p>
+                                <span itemprop="keywords" class="tags">标签:
+                                    <c:forTokens items="${article.tags}" delims="#" var="tag">
+                                        &nbsp;&nbsp;&nbsp;<a href="article.do?method=list&tags=${tag}" target="_blank">#${tag}</a>
+                                    </c:forTokens>
+                                </span>
+                                <c:choose>
+                                    <c:when test="${article.comment == 0 }">
+                                        <a class="post-comments" itemprop="discussionUrl" href="site.do?method=notice&id=${article.aid}#addcomment" target="_blank">抢占沙发</a>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <a class="post-comments" itemprop="discussionUrl" href="site.do?method=notice&id=${article.aid}#comments" target="_blank">${article.comment} 条评论</a>
+                                    </c:otherwise>
+                                </c:choose>
+                            </p>
+                        </footer>
+                    </article>
+                    <!-- 文章项 end -->
+                </c:forEach>
 
+                <!-- 分页 start -->
+                <ol class="page-navigator">
+                    <c:if test="${ not empty page }">
+                        <c:if test="${page.currentPage != 1}">
+                            <li class="prev"><a class="page-trigger" page="${page.currentPage-1}">« 前一页</a></li>
+                        </c:if>
+                        <c:if test="${page.currentPage-3 >= 1+2}">
+                            <li><a class="page-trigger" page="1">1</a></li>
+                            <li><span>...</span></li>
+                        </c:if>
+                        <c:forEach begin="${(page.currentPage-3 >= 1+2)?page.currentPage-3:1}" end="${page.currentPage-1}" var="pagenum">
+                            <li><a class="page-trigger" page="${pagenum}">${pagenum}</a></li>
+                        </c:forEach>
+                        <li class="current"><a class="page-trigger" page="${page.currentPage}">${page.currentPage}</a></li>
+                        <c:forEach begin="${page.currentPage+1}" end="${(page.currentPage+3 <= page.pageCount-2)?page.currentPage+3:page.pageCount}" var="pagenum">
+                            <li><a class="page-trigger" page="${pagenum}">${pagenum}</a></li>
+                        </c:forEach>
+                        <c:if test="${page.currentPage+3 <= page.pageCount-2}">
+                            <li><span>...</span></li>
+                            <li><a class="page-trigger" page="${ page.pageCount}">${ page.pageCount}</a></li>
+                        </c:if>
+                        <c:if test="${page.currentPage != page.pageCount }">
+                            <li class="next"><a class="page-trigger" page="${page.currentPage+1}">后一页 »</a></li>
+                        </c:if>
+                    </c:if>
+                </ol>
+                <!-- 分页 end -->
+
+            </article>
+            <!-- 左侧区域#main  end -->
+
+        </article><!-- end .row -->
     </div>
-</div>
-<!-- body end -->
-
-<style>
-    @media (min-width: 768px) {
-        #modifyArticleModal .modal-dialog {
-            width: 500px;
-        }
-
-        #modifyArticleModal span {
-            text-align: left;
-        }
-    }
-
-    @media (max-width: 768px) {
-        #modifyArticleModal .modal-dialog {
-            width: 100%;
-        }
-
-        #modifyArticleModal span {
-            text-align: left;
-        }
-    }
-</style>
-<div class="note-editor">
-    <div class="modal fade in" id="modifyArticleModal" aria-hidden="false" tabindex="-1" style="padding-right: 5px;">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
-                            aria-hidden="true">×</span></button>
-                    <h4 class="modal-title">修改文章信息</h4></div>
-                <div class="modal-body" style="padding-bottom: 0px;">
-                    <form id="article_form" method="post" class="form-horizontal row">
-                        <div class="form-group">
-                            <label class="col-xs-offset-1 col-xs-3 col-sm-3 control-label">文章ID</label>
-                            <span name="article_aid" class="col-xs-3 col-sm-3 control-label"></span>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-xs-offset-1 control-label col-xs-3 col-sm-3">文章标题</label>
-                            <span name="article_title" class="control-label col-xs-8 col-sm-8"></span>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-xs-offset-1 col-xs-3 col-sm-3 control-label">分类</label>
-                            <div class="col-xs-5 col-sm-4">
-                                <select class="form-control m-b" name="article_category">
-                                    <option value="0" selected="selected">默认</option>
-                                    <option value="1">开发</option>
-                                    <option value="2">教程</option>
-                                    <option value="3">资源</option>
-                                    <option value="4">科技</option>
-                                    <option value="5">游戏</option>
-                                    <option value="6">段子</option>
-                                    <option value="7">杂谈</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-xs-offset-1 col-xs-3 col-sm-3 control-label">文章权限</label>
-                            <div class="col-xs-7 col-sm-8">
-                                <div class="radio-inline">
-                                    <input type="radio" checked="checked" value="0" name="article_permission">公开
-                                </div>
-                                <div class="radio-inline">
-                                    <input type="radio" value="1" name="article_permission">对好友可见
-                                </div>
-                                <div class="radio-inline">
-                                    <input type="radio" value="2" name="article_permission">私有
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-xs-offset-1 col-xs-3 col-sm-3 control-label">是否推荐</label>
-                            <div class="col-xs-8 col-sm-8">
-                                <div class="radio-inline">
-                                    <input type="radio" checked="checked" value="0" name="article_recommend">普通
-                                </div>
-                                <div class="radio-inline">
-                                    <input type="radio" value="1" name="article_recommend">推荐
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-xs-offset-1 col-xs-3 col-sm-3 control-label">推荐权重</label>
-                            <div class="col-xs-5 col-sm-4">
-                                <input name="article_top" type="text" class="form-control" requried="requried">
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-danger" name="deleteArticle_trigger">删除文章</button>
-                    <button class="btn btn-primary" name="modifyArticle_trigger">更新信息</button>
-                    <button class="btn btn-default" name="cancelBtn" data-dismiss="modal">关闭</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<div class="modal fade" tabindex="-1" role="dialog" id="modal_system_status">
-    <div class="modal-dialog" role="document" style="margin-top:10%">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title">重新初始化系统缓存</h4>
-            </div>
-            <div class="modal-body">
-                <p>你确定要从数据库重新加载文章、用户等资料以刷新缓存中的数据吗?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
-                <button type="button" class="btn btn-primary" id="modal_btn_confirm">确定</button>
-            </div>
-        </div>
-    </div>
-</div>
+</div><!-- end #body -->
 
 <div id="goTop" class="" style="bottom: 70px;">
     <div class="arrow"></div>
     <div class="stick"></div>
 </div>
 
+<!-- login modal start -->
+<div style="margin-top:100px;" class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
+    <div style="width: 350px;" class="modal-dialog" role="document">
+        <div class="modal-content animated flipInY">
+            <div class="modal-header text-center">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h2 class="modal-title" id="loginModalLabel">登录/<a href="user.do?method=toregister" target="_blank">注册</a></h2>
+            </div>
+            <form role="form" id="login_form">
+                <div class="modal-body" style="height:200px;">
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" name="password" class="form-control" placeholder="输入密码">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="remember">记住我
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                    <a class="btn btn-primary login_submit">登录</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- login modal end -->
+
 <footer id="footer" role="contentinfo" class="card">
     <span>© 2016 </span><a href="https://imcoder.site" target="_blank">ImCoder</a>
     <span>博客 ，基于 </span><a>Java</a><span> 语言开发</span>
     <span>，ICP备案：</span><a href="http://www.miibeian.gov.cn" target="__blank">湘ICP备17002133号</a>
 </footer>
+<script src="<%=staticPath%>lib/highlight/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
 
-<a id="basePath" href="<%=basePath%>" style="display:none;"></a>
-<a id="staticPath" href="<%=staticPath%>" style="display:none;"></a>
-<!-- Bootstrap & Plugins core JavaScript
-================================================== -->
+<!-- Bootstrap & Plugins core JavaScript -->
+<!-- ######################################### -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="article_manager"></script>
+
+<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="notice"></script>
+
 </body>
 </html>

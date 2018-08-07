@@ -54,6 +54,11 @@
                 }
             }
         },
+        event: { // 以事件方式添加回调，以便支持多个回调，这时定义的是事件名
+            "createCompleted": "album.create.completed",
+            "updateCompleted": "album.update.completed",
+            "deleteCompleted": "album.delete.completed"
+        },
         "album_default_col": 4
     };
 
@@ -183,6 +188,7 @@
                     data.album.cover = {"path": data.album.cover};
                 }
                 config.callback.createCompleted.call(context, data.album);
+                utils.triggerEvent(config.event.createCompleted, data.album);
             } else {
                 toastr.error(data.info, "创建失败");
                 console.warn("Error Code: " + data.flag);
@@ -224,6 +230,7 @@
                 toastr.success("已移至回收站，可请求管理员恢复~", "相册删除成功", {"timeOut": 10000});
                 pointer.updateModal.modal('hide');
                 config.callback.deleteCompleted.call(context, album_id);
+                utils.triggerEvent(config.event.deleteCompleted, album_id);
             } else {
                 toastr.error(data.info, "相册删除失败!");
                 console.warn("Error Code: " + data.flag);
@@ -242,6 +249,7 @@
                 toastr.success("更新成功 ");
                 pointer.updateModal.modal('hide');
                 config.callback.updateCompleted.call(context, album);
+                utils.triggerEvent(config.event.updateCompleted, album);
             } else {
                 toastr.error(data.info, "更新失败");
                 console.warn("Error Code: " + data.flag);
@@ -303,10 +311,24 @@
         };
         config.callback.beforeUpdateModalOpen.call(context, pointer.updateModal, formatAlbumToModal_callback, album)
     };
+
+    var utils = {
+        "bindEvent": function (eventName, func) {
+            $(context).bind(eventName, func);
+        },
+        "triggerEvent": function (eventName) {
+            $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
+        },
+        "unbindEvent": function (eventName, func) {
+            $(context).unbind(eventName, func);
+        }
+    };
+
     var context = {
         "pointer": pointer,
         "config": config,
         "init": init,
+        "utils": utils,
         "createAlbum": createAlbum,
         "loadAlbum": loadAlbum,
         "deleteAlbum": deleteAlbum,

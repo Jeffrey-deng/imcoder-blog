@@ -18,7 +18,8 @@ import java.util.Map;
 import java.util.Properties;
 
 /**
- * Created by Jeffrey.Deng on 2018/5/17.
+ * 配置管理类
+ * @author Jeffrey.Deng
  */
 @Component("configManager")
 public class ConfigManager {
@@ -33,7 +34,7 @@ public class ConfigManager {
     private String emailPushPrefix = ConfigConstants.EMAILPUSH_SMTP_ADDR.substring(0, ConfigConstants.EMAILPUSH_SMTP_ADDR.indexOf('_'));
 
     /**
-     * 邮件推送服务标识前缀
+     * 文字转语音服务标识前缀
      */
     private String toolSpeechPrefix = ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID.substring(0, ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID.indexOf('_', ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID.indexOf('_') + 1));
 
@@ -280,9 +281,6 @@ public class ConfigManager {
 
         //“关于我”对应的文章号
         Config.set(ConfigConstants.SITE_ABOUT_ARTICLE_ID, "0");
-
-        //“搜索帮助”对应的文章号
-        Config.set(ConfigConstants.HelpConfigEnum.SEARCH.getModuleConfigKey(), "0");
 
         //登录严格模式将校验IP
         Config.set(ConfigConstants.USER_LOGIN_STRICT, "false");

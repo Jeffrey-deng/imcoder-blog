@@ -1,7 +1,7 @@
 package site.imcoder.blog.setting;
 
 /**
- * Created by Jeffrey.Deng on 2018/5/17.
+ * @author Jeffrey.Deng
  * 系统配置名称_常量
  */
 public class ConfigConstants {
@@ -161,6 +161,7 @@ public class ConfigConstants {
      */
     public enum HelpConfigEnum {
 
+        TEMPLATE("template", "help_{module}_article_id"),
         SEARCH("search", "help_search_article_id"),
         ARTICLE("article", "help_article_detail_article_id"),
         ARTICLE_DETAIL("article_detail", "help_article_detail_article_id"),
@@ -186,17 +187,12 @@ public class ConfigConstants {
 
         // 由模块别名得到配置名
         public static String getModuleConfigKey(String moduleAlias) {
-            HelpConfigEnum helpConfigEnum = null;
             for (HelpConfigEnum module : values()) {
                 if (module.getModuleAlias().equals(moduleAlias)) {
-                    helpConfigEnum = module;
+                    return module.getModuleConfigKey();
                 }
             }
-            if (helpConfigEnum != null) {
-                return helpConfigEnum.getModuleConfigKey();
-            } else {
-                return null;
-            }
+            return HelpConfigEnum.TEMPLATE.getModuleConfigKey().replace("{module}", moduleAlias);
         }
 
         public static HelpConfigEnum valueOfName(String moduleName) {

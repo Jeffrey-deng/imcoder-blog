@@ -785,8 +785,11 @@
         if (!notifyName) {
             notifyPool = {};
             toastr.clear();
-        } else {
-            notifyPool.hasOwnProperty(notifyName) && toastr.remove(notifyPool[notifyName], true);
+        } else if (notifyPool.hasOwnProperty(notifyName)){
+            if (notifyPool[notifyName]) {
+                toastr.remove(notifyPool[notifyName], true);
+            }
+            delete notifyPool[notifyName];
         }
     };
 

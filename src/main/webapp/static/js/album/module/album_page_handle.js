@@ -43,6 +43,12 @@
                 return;
             }
         },
+        event: { // 以事件方式添加回调，以便支持多个回调，这时定义的是事件名
+            "actionForEditAlbum": "album.edit",
+            "pagePaginationClick": "page.jump.click",
+            "pageJumpCompleted": "page.jump.completed",
+            "pageLoadCompleted": "page.load.completed"
+        },
         path_params: {
             "basePath": "https://imcoder.site/",
             "cloudPath": "https://cloud.imcoder.site/",
@@ -133,11 +139,13 @@
                 jumpPage(_self.getAttribute('jumpPage'))
             }
             config.callback.paginationClick_callback.call(context, _self.parentNode);
+            utils.triggerEvent(config.event.pagePaginationClick, _self.parentNode);
             return false;
         });
         $("#" + config.selector.albumsContainer_id + " .album_name").unbind("click").click(function (e) {
             var album = utils.getAlbumByCache(e.currentTarget.parentNode.getAttribute("data-id"));
             config.callback.actionForEditAlbum.call(context, album);
+            utils.triggerEvent(config.event.actionForEditAlbum, album);
         });
 
         $('#' + config.selector.albumsContainer_id).find("img").on("dragstart", function (e) {
@@ -150,8 +158,10 @@
             toastr.remove(pointer.notify_drag, true);
             var album = utils.getAlbumByCache(e.currentTarget.parentNode.parentNode.getAttribute("data-id"));
             config.callback.actionForEditAlbum.call(context, album);
+            utils.triggerEvent(config.event.actionForEditAlbum, album);
         });
         initWaterfallFlow();
+        utils.triggerEvent(config.event.pageJumpCompleted, pagenum); // 页码跳转完成事件
     };
 
     var assembleCurrentPageHtml = function (pagenum) {
@@ -263,9 +273,10 @@
             });
             pointer.masonryInstance.recalculate(true);
             pointer.masonryInstance.runOnImageLoad(function () {
-                $.each($('#' + config.selector.albumsContainer_id).children(), function (i, dom) {
+                var nodes = $('#' + config.selector.albumsContainer_id).children();
+                $.each(nodes, function (i, dom) {
                     var img = dom.querySelector("img");
-                    if (img.style.height) {
+                    if (img && img.style.height) {
                         img.style.height = "";
                     }
                 });
@@ -273,7 +284,8 @@
                 console.log('第 ' + config.page_params.pageNum + ' 页加载完成！');
                 //pointer.masonryInstance.recalculate(true, true);
                 pointer.notify_pageloading && toastr.remove(pointer.notify_pageloading, true);
-                config.callback.photosOnLoad_callback.call(context, pointer.masonryInstance);
+                config.callback.photosOnLoad_callback.call(context, pointer.masonryInstance, nodes);
+                utils.triggerEvent(config.event.pageLoadCompleted, pointer.masonryInstance, nodes);
             });
         } else {
             pointer.masonryInstance.recalculate(true);
@@ -281,7 +293,7 @@
                 var img = dom.querySelector("img");
                 var width = dom.getAttribute("data-width");
                 var height = dom.getAttribute("data-height");
-                if (!img.naturalHeight && width && height) {
+                if (img && !img.naturalHeight && width && height) {
                     var scale = img.offsetWidth / width;
                     img.style.height = (height * scale) + "px";
                 }
@@ -292,6 +304,15 @@
     };
 
     var utils = {
+        "bindEvent": function (eventName, func) {
+            $(context).bind(eventName, func);
+        },
+        "triggerEvent": function (eventName) {
+            $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
+        },
+        "unbindEvent": function (eventName, func) {
+            $(context).unbind(eventName, func);
+        },
         "createAlbumNode": function (album) {
             var div = document.createElement("div");
             div.id = (config.selector.album_id_prefix + album.album_id).replace(/\s/g, "-").replace(/\./g, "_");

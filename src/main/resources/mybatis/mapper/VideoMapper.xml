@@ -4,5 +4,97 @@
 
 <mapper namespace="video">
 
+    <!-- 插入视频 -->
+    <insert id="saveVideo" parameterType="video" useGeneratedKeys="true" keyProperty="video_id">
+        insert into video (uid, cover_id, name, description, tags, source_type, path, code, width, height, size, video_type, upload_time, originName, permission)
+        values
+        (#{user.uid},#{cover.photo_id},#{name},#{description},#{tags},#{source_type},#{path},#{code},#{width},#{height},#{size},#{video_type},
+        #{upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+        ,#{originName}, #{permission})
+    </insert>
+
+    <resultMap id="videoResultMap" type="video">
+        <result column="video_id" property="video_id"/>
+        <result column="name" property="name"/>
+        <result column="description" property="description"/>
+        <result column="tags" property="tags"/>
+        <result column="source_type" property="source_type"/>
+        <result column="path" property="path"/>
+        <result column="code" property="code"/>
+        <result column="width" property="width"/>
+        <result column="height" property="height"/>
+        <result column="size" property="size"/>
+        <result column="video_type" property="video_type"/>
+        <result column="upload_time" property="upload_time" javaType="java.util.Date" jdbcType="BIGINT"
+                typeHandler="site.imcoder.blog.dao.typehandler.DateTypeHandler"/>
+        <result column="originName" property="originName"/>
+        <result column="permission" property="permission"/>
+        <association column="uid" property="user" javaType="user">
+            <result column="uid" property="uid"/>
+            <result column="nickname" property="nickname"/>
+        </association>
+        <association column="cover_id" property="cover" javaType="photo">
+            <result column="cover_id" property="photo_id"/>
+            <result column="p_path" property="path"/>
+            <result column="p_width" property="width"/>
+            <result column="p_height" property="height"/>
+        </association>
+    </resultMap>
+
+    <select id="findVideoById" parameterType="video" resultMap="videoResultMap">
+        select v.video_id, v.uid , u.nickname, v.cover_id, p.path as p_path, p.width as p_width, p.height as p_height,
+        v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
+        v.upload_time, v.originName, v.permission
+        from ( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id
+        <where>
+            <choose>
+                <when test="video_id > 0">
+                    v.video_id = #{video_id}
+                </when>
+                <when test="cover != null and cover.photo_id > 0">
+                    and v.cover_id = #{cover.photo_id}
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+        limit 1
+    </select>
+
+    <select id="findVideoListByCoverIdArray" parameterType="hashMap" resultMap="videoResultMap">
+        select v.video_id, v.uid , u.nickname, v.cover_id, p.path as p_path, p.width as p_width, p.height as p_height,
+        v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
+        v.upload_time, v.originName, v.permission
+        from ( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id
+        <where>
+            <choose>
+                <when test="loginUser != null">
+                    (
+                    ( v.permission = 0 )
+                    OR
+                    ( v.permission = 1 and (v.uid = #{loginUser.uid} or v.uid in (select f.uid from friends f where
+                    f.fid = #{loginUser.uid})) )
+                    OR
+                    ( v.permission = 2 and v.uid = #{loginUser.uid} )
+                    )
+                </when>
+                <otherwise>
+                    v.permission = 0
+                </otherwise>
+            </choose>
+            <choose>
+                <when test="coverList != null and coverList.size > 0">
+                    and v.cover_id in
+                    <foreach collection="coverList" index="index" item="item" separator="," open="(" close=")">
+                        #{item,jdbcType=INTEGER}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and 1 != 1
+                </otherwise>
+            </choose>
+        </where>
+    </select>
 
 </mapper>

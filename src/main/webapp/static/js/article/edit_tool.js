@@ -1770,7 +1770,6 @@
                             toastr.error(data.info);
                         }
                     });
-
                 }
             });
             this.$button = button.render();

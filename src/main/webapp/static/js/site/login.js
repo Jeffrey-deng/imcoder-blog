@@ -239,11 +239,11 @@
                             utils.go(config.jumpUrl);
                         }
                     } else if (data.flag == 403) {
-                        toastr.error("账号被冻结，详情联系 chao.devin@gmail.com！", "提示",
+                        toastr.error("账号被冻结，详情联系 Jeffrey.c.deng@gmail.com！", "提示",
                             {
                                 "timeOut": 0,
                                 onclick: function () {
-                                    window.open("mailto:chao.devin@gmail.com");
+                                    window.open("mailto:Jeffrey.c.deng@gmail.com");
                                 }
                             });
                     } else {

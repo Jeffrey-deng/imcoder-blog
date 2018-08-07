@@ -61,6 +61,12 @@
                 }
             }
         },
+        event: { // 以事件方式添加回调，以便支持多个回调，这时定义的是事件名
+            "eachUploadCompleted": "photo.upload.completed",
+            "allUploadCompleted": "photo.upload.all.completed",
+            "updateCompleted": "photo.update.completed",
+            "deleteCompleted": "photo.delete.completed"
+        },
         albumId: 0,
         downloadType: "url",
         maxUploadSize: 7 * 1024 * 1024
@@ -285,6 +291,7 @@
             success: function (data) {
                 if (data.flag == 200) {
                     config.callback.eachUploadCompleted.call(context, context, data.photo); // 回调
+                    utils.triggerEvent(config.event.eachUploadCompleted, data.photo);
                     photos.push(data.photo);
                     index++;
                     if (index > files.length - 1) {
@@ -298,6 +305,7 @@
                         pointer.uploadModal.find('input[name="photo_cover"][value="0"]').prop("checked", true);
                         pointer.uploadModal.find('input[name="photos"]').val("");
                         config.callback.allUploadCompleted.call(context, context, photos); // 回调
+                        utils.triggerEvent(config.event.allUploadCompleted, photos);
                         pointer.uploadPhotos = null;
                     } else {
                         uploadPhoto(files, photoInfo, index, photos);
@@ -338,6 +346,7 @@
                             toastr.success("更新成功", "", {"progressBar": false});
                             loadPhoto(photo.photo_id, function (data) {
                                 config.callback.updateCompleted.call(context, context, data.photo);
+                                utils.triggerEvent(config.event.updateCompleted, data.photo);
                             });
                             pointer.updateModal.modal('hide');
                         } else {
@@ -357,6 +366,7 @@
                         toastr.success("更新成功", "", {"progressBar": false});
                         pointer.updateModal.modal('hide');
                         config.callback.updateCompleted.call(context, context, photo); // 回调
+                        utils.triggerEvent(config.event.updateCompleted, photo);
                     } else {
                         toastr.error(data.info, "错误", {"progressBar": false});
                         console.warn("Error Code: " + data.flag);
@@ -373,6 +383,7 @@
                     toastr.success("删除成功", "", {"progressBar": false});
                     pointer.updateModal.modal('hide');
                     config.callback.deleteCompleted.call(context, context, photo_id); // 回调
+                    utils.triggerEvent(config.event.deleteCompleted, photo_id);
                 } else {
                     toastr.error(data.info, "错误", {"progressBar": false});
                     console.warn("Error Code: " + data.flag);
@@ -410,8 +421,9 @@
         }
         if (files && files.length > 0) {
             var images = [];
+            var imageRegex = /^image.*/;
             $.each(files, function (i, file) {
-                if (/^image.*/.test(file.type)) {
+                if (imageRegex.test(file.type)) {
                     images.push(file);
                 }
             });
@@ -492,7 +504,7 @@
                 var tags_str = '';
                 $.each(photo.tags.split('#'), function (i, tag) {
                     if (tag) {
-                        tags_str += '<span class="tag-single"><a class="tag-content" target="_blank" href="photo.do?method=dashboard&mode=photo&tags=' + tag + '">' + tag + '</a>' +
+                        tags_str += '<span class="tag-single"><a class="tag-content" target="_blank" href="photo.do?method=dashboard&model=photo&tags=' + tag + '">' + tag + '</a>' +
                             '<span class="tag-close">X</span></span>';
                     }
                 });
@@ -529,7 +541,7 @@
                 var tags_str = '';
                 $.each(photo.tags.split('#'), function (i, tag) {
                     if (tag) {
-                        tags_str += '<span class="tag-single" style="margin-right: 6px;"><a class="tag-content"  target="_blank" href="photo.do?method=dashboard&mode=photo&tags=' + tag + '">' + tag + '</a></span>';
+                        tags_str += '<span class="tag-single" style="margin-right: 6px;"><a class="tag-content"  target="_blank" href="photo.do?method=dashboard&model=photo&tags=' + tag + '">' + tag + '</a></span>';
                     }
                 });
                 tags_modify_dom.html(tags_str);
@@ -584,6 +596,15 @@
         });
     };
     var utils = {
+        "bindEvent": function (eventName, func) {
+            $(context).bind(eventName, func);
+        },
+        "triggerEvent": function (eventName) {
+            $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
+        },
+        "unbindEvent": function (eventName, func) {
+            $(context).unbind(eventName, func);
+        },
         "calcTagInputWidth": function (tags_modify_dom) {
             var tag_single_nodes = tags_modify_dom.find(".tag-single");
             var maxOffset = 0;
@@ -618,7 +639,7 @@
                         // 标记处还原原始值
                         var match = value.match(/replaceEL_[\d]{1}/);
                         match && (value = value.replace(match[0], elMap[match[0]]));
-                        insert_text += '<span class="tag-single"><a class="tag-content"  target="_blank" href="photo.do?method=dashboard&mode=photo&tags=' + value + '">' + value + '</a><span class="tag-close"">X</span></span>';
+                        insert_text += '<span class="tag-single"><a class="tag-content"  target="_blank" href="photo.do?method=dashboard&model=photo&tags=' + value + '">' + value + '</a><span class="tag-close"">X</span></span>';
                     }
                 });
                 if (insert_text) {
@@ -647,6 +668,7 @@
         "pointer": pointer,
         "config": config,
         "init": init,
+        "utils": utils,
         "uploadPhoto": uploadPhoto,
         "updatePhoto": updatePhoto,
         "deletePhoto": deletePhoto,

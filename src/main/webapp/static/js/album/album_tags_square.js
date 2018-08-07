@@ -185,7 +185,7 @@
                 "col": col
             },
             load_condition: load_condition,
-            album_href_prefix: "photo.do?method=dashboard&mode=photo&tags="
+            album_href_prefix: "photo.do?method=dashboard&model=photo&tags="
         });
 
         var isHomePage = Object.keys(load_condition).length == 0 ? true : false; //判断当前页面是不是在查看某个相册的标签索引
@@ -193,7 +193,7 @@
         var nextViewIndex = 0;  //当前准备查看的搜索结果数组index
         toolbar.rewriteSearch({
             placeholder: (isHomePage ? "输入关键字搜索标签" : "搜索本页面标签"),
-            mode_action: function (key) {
+            model_action: function (key) {
                 lastSearchKey = key;
                 var context = this;
                 key = key.trim();
@@ -261,7 +261,7 @@
                     this.config.callback.tags_square_search.call(this, key);
                 }
             },
-            modeMapping: ["page"],
+            modelMapping: ["page"],
             setDefaultMapping: true
         });
     });

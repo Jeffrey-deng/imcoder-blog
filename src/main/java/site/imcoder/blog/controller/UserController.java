@@ -1,5 +1,6 @@
 package site.imcoder.blog.controller;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -28,7 +29,7 @@ import java.util.Map;
  */
 @Controller
 @RequestMapping("**/user.do")
-public class UserController {
+public class UserController extends BaseController {
 
     //依赖注入[service]
     @Resource
@@ -36,13 +37,19 @@ public class UserController {
     @Resource
     private IArticleService articleService;
 
-    @LoginRequired
     @RequestMapping()
-    public ModelAndView defaultHandle(HttpSession session) {
-        User loginUser = (User) session.getAttribute("loginUser");
-        RedirectView redirectView = new RedirectView("user.do?method=home&uid=" + loginUser.getUid(), true);
-        redirectView.setStatusCode(org.springframework.http.HttpStatus.MOVED_PERMANENTLY);
-        return new ModelAndView(redirectView);
+    public ModelAndView defaultHandle(HttpServletRequest request, HttpSession session) {
+        String queryString = request.getQueryString();
+        User loginUser = getLoginUser(session);
+        ModelAndView mv = new ModelAndView();
+        if ((queryString == null || queryString.length() == 0) && loginUser != null) {
+            RedirectView redirectView = new RedirectView("user.do?method=home&uid=" + loginUser.getUid(), true);
+            redirectView.setStatusCode(HttpStatus.MOVED_PERMANENTLY);
+            mv.setView(redirectView);
+        } else {
+            mv.setViewName(PAGE_NOT_FOUND_ERROR);
+        }
+        return mv;
     }
 
     /**
@@ -55,8 +62,8 @@ public class UserController {
     @ResponseBody
     public Map<String, Object> register(User user) {
         Map<String, Object> map = new HashMap<String, Object>();
-        map.put("flag", userService.register(user));
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, userService.register(user));
+        convertStatusCodeToWord(map);
         return map;
     }
 
@@ -88,7 +95,7 @@ public class UserController {
             user.setToken(session.getId());
         }
         Map<String, Object> map = userService.login(user, remember);
-        int flag = (int) map.get("flag");
+        int flag = (int) map.get(KEY_STATUS);
         if (flag == 200) {
             //登陆成功
             User loginUser = (User) map.get("user");
@@ -101,13 +108,13 @@ public class UserController {
             }
             map.put("continue", "article.do?method=list");
         } else if (flag == 400) {
-            map.put("info", "参数错误");
+            map.put(KEY_STATUS_FRIENDLY, "参数错误");
         } else if (flag == 401) {
-            map.put("info", "凭证错误");
+            map.put(KEY_STATUS_FRIENDLY, "凭证错误");
         } else if (flag == 403) {
-            map.put("info", "账号为锁定状态");
+            map.put(KEY_STATUS_FRIENDLY, "账号为锁定状态");
         } else {
-            map.put("info", "该用户不存在");
+            map.put(KEY_STATUS_FRIENDLY, "该用户不存在");
         }
         return map;
     }
@@ -134,11 +141,11 @@ public class UserController {
                 userInfo.setUsername(cacheUser.getUsername());
                 userInfo.setHead_photo(cacheUser.getHead_photo());
                 mv.addObject("user", userInfo);
-                mv.setViewName("/site/lockscreen");
+                mv.setViewName(PAGE_LOGIN_EXPIRED);
                 return mv;
             }
         }
-        mv.setViewName("/site/login");
+        mv.setViewName(PAGE_LOGIN);
         return mv;
     }
 
@@ -181,7 +188,7 @@ public class UserController {
             request.setAttribute("categoryCount", articleService.getCategoryCount());
             return "/user/user_home";
         } else {
-            return jumpErrorInfo(request, "/error/404_detail", "该用户不存在！请检查请求参数");
+            return setNotFoundInfo(request, "该用户不存在！请检查请求参数");
         }
     }
 
@@ -195,7 +202,7 @@ public class UserController {
     public String contact(@RequestParam(defaultValue = "0") int query_uid, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         if (loginUser == null && query_uid == 0) {
-            return "/site/login";
+            return PAGE_LOGIN;
         } else {
             return "/user/contacts";
         }
@@ -215,7 +222,7 @@ public class UserController {
         if (loginUser != null) {
             return "/user/profilecenter";
         } else {
-            return "/site/login";
+            return PAGE_LOGIN;
         }
     }
 
@@ -254,15 +261,15 @@ public class UserController {
         if (loginUser != null) {
             user.setUid(loginUser.getUid());
             int flag = userService.saveProfile(user, loginUser);
-            map.put("flag", flag);
+            map.put(KEY_STATUS, flag);
             if (flag == 200) {
                 //更新session中的loginUser
                 session.setAttribute("loginUser", userService.findUser(user, loginUser, true));
             }
         } else {
-            map.put("flag", 401);
+            map.put(KEY_STATUS, 401);
         }
-        convertStatusCodeToWord(map, "flag", "info");
+        convertStatusCodeToWord(map);
         return map;
     }
 
@@ -278,11 +285,11 @@ public class UserController {
         Map<String, Object> map = new HashMap<String, Object>();
         User rs = userService.findUser(user, null);
         int flag = (rs == null ? 404 : 200);
-        map.put("flag", flag);
+        map.put(KEY_STATUS, flag);
         if (flag == 200) {
-            map.put("info", "已存在");
+            map.put(KEY_STATUS_FRIENDLY, "已存在");
         } else {
-            map.put("info", "未使用");
+            map.put(KEY_STATUS_FRIENDLY, "未使用");
         }
         return map;
     }
@@ -299,11 +306,11 @@ public class UserController {
         Map<String, Object> map = new HashMap<String, Object>();
         User rs = userService.findUser(user, null);
         int flag = (rs == null ? 404 : 200);
-        map.put("flag", flag);
+        map.put(KEY_STATUS, flag);
         if (flag == 200) {
-            map.put("info", "已存在");
+            map.put(KEY_STATUS_FRIENDLY, "已存在");
         } else {
-            map.put("info", "未使用");
+            map.put(KEY_STATUS_FRIENDLY, "未使用");
         }
         return map;
     }
@@ -324,21 +331,21 @@ public class UserController {
         String memValidateCode = (String) session.getAttribute("validateCode");
         Map<String, Object> map = new HashMap<String, Object>();
         if (loginUser == null) {
-            map.put("flag", 401);
-            map.put("info", "未登录");
+            map.put(KEY_STATUS, 401);
+            map.put(KEY_STATUS_FRIENDLY, "未登录");
             //服务端再与Session中的验证码验证，防止修改html破解
         } else if (memValidateCode.equalsIgnoreCase(validateCode)) {
             user.setUid(loginUser.getUid());
             int flag = userService.updateAccount(user, loginUser);
-            map.put("flag", flag);
-            convertStatusCodeToWord(map, "flag", "info");
+            map.put(KEY_STATUS, flag);
+            convertStatusCodeToWord(map);
             if (flag == 200) {
                 //销毁session让其重新登录
                 session.invalidate(); //由于前面清除了token，使所有终端自动登录失效，重新登录是为了让其获取新的token
             }
         } else {
-            map.put("flag", 401);
-            map.put("info", "验证码错误");
+            map.put(KEY_STATUS, 401);
+            map.put(KEY_STATUS_FRIENDLY, "验证码错误");
         }
         return map;
     }
@@ -359,15 +366,15 @@ public class UserController {
         Map<String, Object> map = new HashMap<String, Object>();
         if (loginUser != null) {
             int flag = userService.checkFollow(hostUser, loginUser);
-            map.put("flag", flag);
+            map.put(KEY_STATUS, flag);
             if (flag == 200) {
-                map.put("info", "已关注");
+                map.put(KEY_STATUS_FRIENDLY, "已关注");
             } else {
-                map.put("info", "未关注");
+                map.put(KEY_STATUS_FRIENDLY, "未关注");
             }
         } else {
-            map.put("flag", 401);
-            map.put("info", "未登录");
+            map.put(KEY_STATUS, 401);
+            map.put(KEY_STATUS_FRIENDLY, "未登录");
         }
         return map;
     }
@@ -386,14 +393,14 @@ public class UserController {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = new HashMap<String, Object>();
         int flag = userService.follow(hostUser, loginUser);
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         if (flag == 201) {
-            map.put("info", "关注成功并成为好友");
+            map.put(KEY_STATUS_FRIENDLY, "关注成功并成为好友");
         } else if (flag == 204) {
-            map.put("info", "重复关注");
+            map.put(KEY_STATUS_FRIENDLY, "重复关注");
         } else if (flag == 404) {
-            map.put("info", "无此用户");
+            map.put(KEY_STATUS_FRIENDLY, "无此用户");
         }
         return map;
     }
@@ -412,10 +419,10 @@ public class UserController {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = new HashMap<String, Object>();
         int flag = userService.removeFollow(hostUser, loginUser);
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         if (flag == 201) {
-            map.put("info", "取消关注成功并取消好友");
+            map.put(KEY_STATUS_FRIENDLY, "取消关注成功并取消好友");
         }
         return map;
     }
@@ -550,8 +557,8 @@ public class UserController {
         Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = userService.sendLetter(letter, loginUser);
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         return map;
     }
 
@@ -570,15 +577,15 @@ public class UserController {
         Map<String, Object> map = new HashMap<String, Object>();
         if (loginUser != null) {
             int flag = userService.checkCollection(article, loginUser);
-            map.put("flag", flag);
+            map.put(KEY_STATUS, flag);
             if (flag == 200) {
-                map.put("info", "已收藏");
+                map.put(KEY_STATUS_FRIENDLY, "已收藏");
             } else {
-                map.put("info", "未收藏");
+                map.put(KEY_STATUS_FRIENDLY, "未收藏");
             }
         } else {
-            map.put("flag", 401);
-            map.put("info", "未登录");
+            map.put(KEY_STATUS, 401);
+            map.put(KEY_STATUS_FRIENDLY, "未登录");
         }
         return map;
     }
@@ -597,12 +604,12 @@ public class UserController {
         Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = userService.collectArticle(loginUser, article);
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         if (flag == 404) {
-            map.put("info", "无此文章");
+            map.put(KEY_STATUS_FRIENDLY, "无此文章");
         } else if (flag == 204) {
-            map.put("info", "之前已经收藏过了");
+            map.put(KEY_STATUS_FRIENDLY, "之前已经收藏过了");
         }
         return map;
     }
@@ -621,8 +628,8 @@ public class UserController {
         Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = userService.unCollectArticle(loginUser, article);
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         return map;
     }
 
@@ -657,32 +664,10 @@ public class UserController {
         Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
         int flag = userService.clearToken(loginUser); //清除token，让所有终端自动登录失效
-        map.put("flag", flag);
-        convertStatusCodeToWord(map, "flag", "info");
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
         session.invalidate();
         return map;
-    }
-
-    private String jumpErrorInfo(HttpServletRequest request, String jumpUrl, String errorInfo) {
-        request.setAttribute("errorInfo", errorInfo);
-        return jumpUrl;
-    }
-
-    private void convertStatusCodeToWord(Map<String, Object> map, String codeKey, String wordKey) {
-        int flag = (Integer) map.get(codeKey);
-        if (flag == 200) {
-            map.put(wordKey, "成功");
-        } else if (flag == 400) {
-            map.put(wordKey, "参数错误");
-        } else if (flag == 401) {
-            map.put(wordKey, "需要登录或凭证错误");
-        } else if (flag == 403) {
-            map.put(wordKey, "没有权限");
-        } else if (flag == 404) {
-            map.put(wordKey, "无此记录");
-        } else {
-            map.put(wordKey, "服务器错误");
-        }
     }
 
 }

@@ -1,6 +1,9 @@
 package site.imcoder.blog.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import java.io.Serializable;
+import java.util.Date;
 
 /**
  * @author Jeffrey.Deng
@@ -13,6 +16,16 @@ public class Video implements Serializable {
     private int video_id;
 
     /**
+     * 上传用户
+     */
+    private User user;
+
+    /**
+     * 视频封面
+     */
+    private Photo cover;
+
+    /**
      * 视频名称
      */
     private String name;
@@ -23,9 +36,9 @@ public class Video implements Serializable {
     private String description;
 
     /**
-     * 上传用户
+     * 标签
      */
-    private User user;
+    private String tags;
 
     /**
      * 视频源的类型：
@@ -46,16 +59,6 @@ public class Video implements Serializable {
     private String code;
 
     /**
-     * 视频封面
-     */
-    private Photo cover;
-
-    /**
-     * 视频大小
-     */
-    private int size;
-
-    /**
      * 视频宽
      */
     private int width;
@@ -66,9 +69,9 @@ public class Video implements Serializable {
     private int height;
 
     /**
-     * 查看权限 0：公开 ， 1：好友， 2：私有
+     * 视频大小，单位MiB
      */
-    private int permission;
+    private float size;
 
     /**
      * 视频类型
@@ -76,14 +79,20 @@ public class Video implements Serializable {
     private String video_type;
 
     /**
+     * 上传时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private Date upload_time;
+
+    /**
      * 上传时的原始文件名
      */
     private String originName;
 
     /**
-     * 标签
+     * 查看权限 0：公开 ， 1：好友， 2：私有
      */
-    private String tags;
+    private int permission;
 
     public int getVideo_id() {
         return video_id;
@@ -91,6 +100,22 @@ public class Video implements Serializable {
 
     public void setVideo_id(int video_id) {
         this.video_id = video_id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public Photo getCover() {
+        return cover;
+    }
+
+    public void setCover(Photo cover) {
+        this.cover = cover;
     }
 
     public String getName() {
@@ -109,12 +134,12 @@ public class Video implements Serializable {
         this.description = description;
     }
 
-    public User getUser() {
-        return user;
+    public String getTags() {
+        return tags;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public void setTags(String tags) {
+        this.tags = tags;
     }
 
     public int getSource_type() {
@@ -141,22 +166,6 @@ public class Video implements Serializable {
         this.code = code;
     }
 
-    public Photo getCover() {
-        return cover;
-    }
-
-    public void setCover(Photo cover) {
-        this.cover = cover;
-    }
-
-    public int getSize() {
-        return size;
-    }
-
-    public void setSize(int size) {
-        this.size = size;
-    }
-
     public int getWidth() {
         return width;
     }
@@ -173,12 +182,12 @@ public class Video implements Serializable {
         this.height = height;
     }
 
-    public int getPermission() {
-        return permission;
+    public float getSize() {
+        return size;
     }
 
-    public void setPermission(int permission) {
-        this.permission = permission;
+    public void setSize(float size) {
+        this.size = size;
     }
 
     public String getVideo_type() {
@@ -189,6 +198,14 @@ public class Video implements Serializable {
         this.video_type = video_type;
     }
 
+    public Date getUpload_time() {
+        return upload_time;
+    }
+
+    public void setUpload_time(Date upload_time) {
+        this.upload_time = upload_time;
+    }
+
     public String getOriginName() {
         return originName;
     }
@@ -197,11 +214,11 @@ public class Video implements Serializable {
         this.originName = originName;
     }
 
-    public String getTags() {
-        return tags;
+    public int getPermission() {
+        return permission;
     }
 
-    public void setTags(String tags) {
-        this.tags = tags;
+    public void setPermission(int permission) {
+        this.permission = permission;
     }
 }
