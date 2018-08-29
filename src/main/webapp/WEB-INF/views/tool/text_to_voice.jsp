@@ -40,6 +40,7 @@
                     <br>
                     <h1>${loginUser.nickname}</h1>
                     <p>${loginUser.description}</p>
+                    <br>
                 </div>
             </div>
         </div>

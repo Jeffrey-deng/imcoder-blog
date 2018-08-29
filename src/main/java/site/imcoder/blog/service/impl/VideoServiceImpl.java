@@ -106,7 +106,7 @@ public class VideoServiceImpl implements IVideoService {
     /**
      * 返回视频
      *
-     * @param video 视频id，或者封面id
+     * @param video     视频id，或者封面id
      * @param loginUser
      * @return map
      * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 视频ID未找到

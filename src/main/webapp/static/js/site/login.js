@@ -47,7 +47,12 @@
         $.extend(true, config, options);
         pointer.login_form = $(config.selector.login_form);
         pointer.login_modal = $(config.selector.login_modal);
-        pointer.login_form.find('input[name="remember"]').prop("checked", true);
+        var loginConfig = common_utils.getLocalConfig("login", {"remember_default_check": true});
+        if (loginConfig.remember_default_check) {
+            pointer.login_form.find('input[name="remember"]').prop("checked", true);
+        } else {
+            pointer.login_form.find('input[name="remember"]').prop("checked", false);
+        }
         bindEvent();
         //初始化JumpUrl
         initJumpUrl();
@@ -194,7 +199,7 @@
                 config.jumpUrl = window.location.href;
             }
         }
-        isRememberLogin() && pointer.login_form.find('input[name="remember"]').prop("checked", true);
+        //isRememberLogin() && pointer.login_form.find('input[name="remember"]').prop("checked", true);
         pointer.login_modal.modal({backdrop: 'static', keyboard: false});
     };
 
@@ -220,8 +225,9 @@
                         } else {
                             var date = new Date();
                             var secure = common_utils.parseURL(document.location.href).protocol == "https" ? true : false;
-                            common_utils.cookieUtil.set("uid", data.loginUser.uid, date.getTime() + 31104000000, null, null, secure);
-                            common_utils.cookieUtil.set("token", data.token, date.getTime() + 31104000000, null, null, secure);
+                            var remember_expires = common_utils.getLocalConfig("login", {"remember_expires": 31104000000}).remember_expires;
+                            common_utils.cookieUtil.set("uid", data.loginUser.uid, date.getTime() + remember_expires, null, null, secure);
+                            common_utils.cookieUtil.set("token", data.token, date.getTime() + remember_expires, null, null, secure);
                         }
                         common_utils.cookieUtil.set("login_status", "true");
                         $(config.selector.uid_element).attr('uid', data.loginUser.uid);

@@ -12,11 +12,18 @@
     function loadConfig(type) {
         var params = {};
         params.type = type;
+        common_utils.notify({
+            "progressBar": false,
+            "hideDuration": 0,
+            "timeOut": 0,
+            "closeButton": false
+        }).success("正在加载数据", "", "notify_log_loading");
         $.ajax({
             url: "manager.do?method=load_log",
             data: params,
             type: "GET",
             complete: function (XHR, TS) {
+                common_utils.removeNotify("notify_log_loading");
                 if (XHR.status == 200 || XHR.status == 304) {
                     if (XHR.getResponseHeader('Content-Length') !== "0") {
                         var data = XHR.responseText;

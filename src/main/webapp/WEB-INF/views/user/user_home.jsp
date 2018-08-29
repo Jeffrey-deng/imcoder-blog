@@ -25,16 +25,17 @@
     <link rel="stylesheet" href="<%=staticPath%>css/style.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
 </head>
-<body uid="${loginUser.uid}">
+<body uid="${loginUser.uid}" style="background-image: url(<%=staticPath%>img/bg-site.png);">
 <!-- <body background="../../img/bg-site.png"> -->
 
 <!-- START THE COVER  background-image: url(img/bg-site.png);" -->
-<div id="first" class="" style="text-align:center;z-index:1000;background-image: url(<%=staticPath%>img/bg-site.png);">
+<div id="first" class="" style="text-align:center;z-index:1000;">
     <div class="carousel-inner">
         <div class="container">
             <br>
             <h1>${hostUser.nickname}</h1>
             <p>${hostUser.description}</p>
+            <br>
             <!-- hide 'follow' button when hostUser is loginUser  -->
             <c:if test="${ !( (!empty loginUser) and (loginUser.uid==hostUser.uid) ) }">
                 <p><a name="follow" followed="false" class="btn btn-large btn-success follow"><b>关注</b></a></p>

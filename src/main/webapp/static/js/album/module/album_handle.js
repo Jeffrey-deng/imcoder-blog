@@ -73,7 +73,7 @@
             album.name = pointer.createModal.find('input[name="album_name"]').val();
             album.description = pointer.createModal.find('textarea[name="album_desc"]').val();
             album.permission = pointer.createModal.find('input[name="album_permission"]:checked').val();
-            album.show_col = pointer.createModal.find('input[name="album_show_col"]').val();
+            album.show_col = pointer.createModal.find('select[name="album_show_col"]').val();
             createAlbum(album);
         });
 
@@ -85,7 +85,7 @@
             album.description = pointer.updateModal.find('textarea[name="album_desc"]').val();
             album.permission = pointer.updateModal.find('input[name="album_permission"]:checked').val();
             album.cover = pointer.updateModal.find('input[name="album_cover_path"]').val().trim();
-            album.show_col = pointer.updateModal.find('input[name="album_show_col"]').val();
+            album.show_col = pointer.updateModal.find('select[name="album_show_col"]').val();
             var isJson = false;
             album.cover = album.cover.replace(config.path_params.cloudPath, "").replace(config.path_params.staticPath, "");
             try {
@@ -291,7 +291,7 @@
             });
             var coverJson = ((typeof album.cover == "object") ? JSON.stringify(album.cover) : album.cover);
             pointer.updateModal.find('input[name="album_cover_path"]').val(coverJson);
-            pointer.updateModal.find('input[name="album_show_col"]').val(album.show_col);
+            pointer.updateModal.find('select[name="album_show_col"]').val(album.show_col);
             pointer.updateModal.find('span[name="album_size"]').html(album.size);
             pointer.updateModal.find('span[name="album_create_time"]').html(album.create_time);
 

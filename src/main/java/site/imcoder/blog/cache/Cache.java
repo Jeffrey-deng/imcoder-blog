@@ -178,6 +178,9 @@ public class Cache {
     public void reload() {
         logger.info("重新读取数据库初始化缓存池");
         stop();
+        staticClickRankList = null;
+        staticTimeRankList = null;
+        staticTagRankList = null;
         flushCacheTimer = new FlushCacheTimer();
         initCache();
     }
@@ -225,13 +228,26 @@ public class Cache {
      * @return
      */
     public User fillUserStats(User user) {
+        return fillUserStats(user, true);
+    }
+
+    /**
+     * 得到用户统计信息 例：关注数，粉丝数，文章数
+     *
+     * @param user
+     * @param security 是否保护隐私信息
+     * @return
+     */
+    public User fillUserStats(User user, boolean security) {
         if (user != null) {
             User _user = userBuffer.get(user.getUid());
             if (_user != null) {
                 user.setArticleCount(_user.getArticleCount());
                 user.setFollowCount(_user.getFollowCount());
                 user.setFansCount(_user.getFansCount());
-                user.setLoginIP(_user.getLoginIP());
+                if (security == false) {
+                    user.setLoginIP(_user.getLoginIP());
+                }
             } else {
                 logger.warn("fillUserStats error：用户 " + user.getUid() + " 未从缓存中找到数据！");
             }
@@ -490,6 +506,9 @@ public class Cache {
      */
     public void putArticle(Article article, User user) {
         articleBuffer.put(article.getAid(), article);
+        staticClickRankList = null;
+        staticTimeRankList = null;
+        staticTagRankList = null;
     }
 
     /**
@@ -501,6 +520,9 @@ public class Cache {
     public void removeArticle(Article article, User user) {
         articleBuffer.remove(article.getAid());
         hasUpdateArticle.remove(article.getAid());
+        staticClickRankList = null;
+        staticTimeRankList = null;
+        staticTagRankList = null;
     }
 
     /**
@@ -619,7 +641,7 @@ public class Cache {
      * @param user
      */
     public void updateUser(User user) {
-        this.fillUserStats(user);
+        this.fillUserStats(user, false);
         userBuffer.put(user.getUid(), user);
     }
 
@@ -632,6 +654,9 @@ public class Cache {
     public void updateArticle(Article article, User user) {
         this.fillArticleStats(article);
         articleBuffer.put(article.getAid(), article);
+        staticClickRankList = null;
+        staticTimeRankList = null;
+        staticTagRankList = null;
     }
 
 
@@ -683,10 +708,18 @@ public class Cache {
      * @param step
      */
     public void updateTagCount(String tag, int step) {
+        boolean isFound = false;
         for (Entry<String, Integer> entry : this.tagCount) {
-            if (tag.contains(entry.getKey())) {
+            int index = tag.indexOf(entry.getKey());
+            if (index != -1) {
                 entry.setValue(entry.getValue() + step);
+                if (isFound == false && index == 0 && tag.length() == entry.getKey().length()) {
+                    isFound = true;
+                }
             }
+        }
+        if (step > 0 && !isFound) { // 没有此标签，则添加
+            this.tagCount.add(new AbstractMap.SimpleEntry<>(tag, step));
         }
     }
 

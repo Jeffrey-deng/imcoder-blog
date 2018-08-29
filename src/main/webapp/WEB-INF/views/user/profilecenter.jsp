@@ -38,6 +38,7 @@
                     <br>
                     <h1>${loginUser.nickname}</h1>
                     <p>${loginUser.description}</p>
+                    <br>
                 </div>
             </div>
         </div>
@@ -178,7 +179,7 @@
                     <section class="post-container">
 
                         <!-- Nav tabs -->
-                        <ul class="nav nav-tabs" role="tablist">
+                        <ul class="nav nav-tabs" role="tablist" id="main_tab_ul">
                             <li role="presentation" class="active"><a href="#profile" role="tab" data-toggle="tab">个人资料</a></li>
                             <li role="presentation"><a href="#account" role="tab" data-toggle="tab">账户</a></li>
                             <li role="presentation"><a href="#friends" role="tab" data-toggle="tab">好友</a></li>
@@ -300,7 +301,7 @@
                                                     <div class="form-group">
                                                         <label class="col-sm-2 col-xs-2 control-label">注册时间</label>
                                                         <div class="col-sm-10 col-xs-10 ">
-                                                            <span id="register_time" class="help-block m-b-none">2015-2-9 5：25：55</span>
+                                                            <span id="register_time" class="help-block m-b-none"></span>
                                                         </div>
                                                     </div>
 
@@ -369,6 +370,13 @@
                                             </div>
                                             <div class="col-sm-3 col-xs-3">
                                                 <span style=""></span>
+                                            </div>
+                                        </div>
+                                        <div class="hr-line-dashed"></div>
+                                        <div class="form-group">
+                                            <label class="col-sm-2 col-xs-2 control-label">IP地址</label>
+                                            <div class="col-sm-7 col-xs-7">
+                                                <span id="login_ip" class="help-block m-b-none"></span>
                                             </div>
                                         </div>
 
@@ -488,7 +496,191 @@
                             </div>
                             <!-- messages tab end -->
 
-                            <div role="tabpanel" class="tab-pane" id="settings">...</div>
+                            <div role="tabpanel" class="tab-pane" id="settings">
+                                <div class="tabs-container col-md-12 col-sm-12 col-xs-12 col-sm-offset-0" style="margin-top: 30px;margin-bottom: 30px;">
+                                    <div class="tabs-left">
+                                        <!-- Nav tabs -->
+                                        <ul class="nav nav-tabs" role="tablist">
+                                            <li role="presentation" class="active"><a href="#setting_article" role="tab" data-toggle="tab">文章</a></li>
+                                            <li role="presentation"><a href="#setting_login" role="tab" data-toggle="tab">登录</a></li>
+                                            <li role="presentation"><a href="#setting_album" role="tab" data-toggle="tab">相册</a></li>
+                                        </ul>
+                                        <!-- Tab panes -->
+                                        <div class="tab-content col-xs-8">
+                                            <div role="tabpanel" class="tab-pane active" id="setting_article">
+                                                <form id="setting_article_form" method="post" class="form-horizontal">
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">详情页侧边栏</label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1" style="margin-left:40px;">
+                                                            <input type="radio" name="setting_full_screen" value="false" checked="checked"> 显示
+                                                        </label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1">
+                                                            <input type="radio" name="setting_full_screen" value="true"> 隐藏
+                                                        </label>
+                                                    </div>
+                                                    <div class="hr-line-dashed"></div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">全覆盖背景</label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1" style="margin-left:40px;">
+                                                            <input type="radio" name="setting_full_background_article" value="true" checked="checked"> 全屏
+                                                        </label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1">
+                                                            <input type="radio" name="setting_full_background_article" value="false"> 不全屏
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <div class="col-sm-4 col-sm-offset-6">
+                                                            <button class="btn btn-primary" type="button" id="submit_setting_article" name="setting_submit">保存内容</button>
+                                                            <span>&nbsp;OR&nbsp;</span>
+                                                            <input type="reset" id="reset_setting_article" class="btn btn-white reset" value="重置"/>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <div role="tabpanel" class="tab-pane" id="setting_login">
+                                                <form id="setting_login_form" method="post" class="form-horizontal">
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">默认勾选记住登陆</label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1" style="margin-left:40px;">
+                                                            <input type="radio" name="setting_remember_default_check" value="true" checked="checked"> 勾选
+                                                        </label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1">
+                                                            <input type="radio" name="setting_remember_default_check" value="false"> 不勾选
+                                                        </label>
+                                                    </div>
+                                                    <div class="hr-line-dashed"></div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">记住登录保存期限</label>
+                                                        <div class="col-sm-3 col-xs-4" style="margin-left:20px;">
+                                                            <input name="setting_remember_expires" class="col-sm-12 col-xs-12">
+                                                        </div>
+                                                        <label class="col-sm-2 col-xs-3 control-label inline" style="text-align: left;font-weight: normal;padding-left:0px;">天</label>
+                                                    </div>
+                                                    <div class="hr-line-dashed"></div>
+                                                    <div class="form-group">
+                                                        <div class="col-sm-4 col-sm-offset-6">
+                                                            <button class="btn btn-primary" type="button" id="submit_setting_login" name="setting_submit">保存内容</button>
+                                                            <span>&nbsp;OR&nbsp;</span>
+                                                            <input type="reset" id="reset_setting_login" class="btn btn-white reset" value="重置"/>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <div role="tabpanel" class="tab-pane" id="setting_album">
+                                                <form id="setting_album_form" method="post" class="form-horizontal">
+                                                    <div class="form-group">
+                                                        <a href="photo.do?method=dashboard&model=photo" target="_blank" style="color:#444;">
+                                                            <label class="col-sm-2 col-xs-2 control-label" style="font-weight: normal;text-decoration:underline;cursor:pointer;">照片页面</label>
+                                                        </a>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">全覆盖背景</label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1" style="margin-left:40px;">
+                                                            <input type="radio" name="setting_full_background_photo" value="true" checked="checked"> 全屏
+                                                        </label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1">
+                                                            <input type="radio" name="setting_full_background_photo" value="false"> 不全屏
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">放大镜</label>
+                                                        <div class="col-sm-10 col-xs-10">
+                                                            <label class="control-label col-sm-1 col-xs-6">宽度</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_blow_up_width">
+                                                            <label class="control-label col-sm-1 col-xs-6">高度</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_blow_up_height">
+                                                            <label class="control-label col-sm-1 col-xs-6">倍率</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_blow_up_scale">
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">视频插件加载模式</label>
+                                                        <label class="radio-inline col-sm-1 col-xs-6" style="margin-left:40px;">
+                                                            <input type="radio" name="setting_video_load_mode" value="lazyLoad" checked="checked"> lazyLoad
+                                                        </label>
+                                                        <label class="radio-inline col-sm-1 col-xs-6">
+                                                            <input type="radio" name="setting_video_load_mode" value="preLoad"> preLoad
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">每列展示照片个数</label>
+                                                        <div class="col-sm-10 col-xs-10">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1200px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_1200">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">940px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_940">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">520px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_520">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">400px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_400">
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">每页显示照片个数</label>
+                                                        <label class="col-sm-1 col-xs-3 control-label inline" style="font-weight: normal;">每页</label>
+                                                        <div class="col-sm-1 col-xs-4" style="padding-left: 0px;">
+                                                            <input name="setting_default_size_photo" class="col-sm-12 col-xs-12">
+                                                        </div>
+                                                        <label class="col-sm-2 col-xs-2 control-label inline" style="text-align: left;font-weight: normal;padding-left:2px;">张</label>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">搜索加载照片个数</label>
+                                                        <label class="col-sm-1 col-xs-3 control-label inline" style="font-weight: normal;">加载</label>
+                                                        <div class="col-sm-1 col-xs-4" style="padding-left: 0px;">
+                                                            <input name="setting_default_query_size" class="col-sm-12 col-xs-12">
+                                                        </div>
+                                                        <label class="col-sm-2 col-xs-2 control-label inline" style="text-align: left;font-weight: normal;padding-left:2px;">张</label>
+                                                    </div>
+                                                    <div class="hr-line-dashed"></div>
+                                                    <div class="form-group">
+                                                        <a href="photo.do?method=user_albums" target="_blank" style="color:#444">
+                                                            <label class="col-sm-2 col-xs-2 control-label" style="font-weight: normal;text-decoration:underline;cursor:pointer;">相册页面</label>
+                                                        </a>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">全覆盖背景</label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1" style="margin-left:40px;">
+                                                            <input type="radio" name="setting_full_background_album" value="true" checked="checked"> 全屏
+                                                        </label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1">
+                                                            <input type="radio" name="setting_full_background_album" value="false"> 不全屏
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">每列展示相簿个数</label>
+                                                        <div class="col-sm-10 col-xs-10">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1200px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_1200">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">940px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_940">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">520px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_520">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">400px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_400">
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">每页显示相簿个数</label>
+                                                        <label class="col-sm-1 col-xs-3 control-label inline" style="font-weight: normal;">每页</label>
+                                                        <div class="col-sm-1 col-xs-4" style="padding-left: 0px;">
+                                                            <input name="setting_default_size_album" class="col-sm-12 col-xs-12">
+                                                        </div>
+                                                        <label class="col-sm-2 col-xs-2 control-label inline" style="text-align: left;font-weight: normal;padding-left:2px;">个</label>
+                                                    </div>
+                                                    <div class="hr-line-dashed"></div>
+                                                    <div class="form-group">
+                                                        <div class="col-sm-4 col-sm-offset-7">
+                                                            <button class="btn btn-primary" type="button" id="submit_setting_album" name="setting_submit">保存内容</button>
+                                                            <span>&nbsp;OR&nbsp;</span>
+                                                            <input type="reset" id="reset_setting_album" class="btn btn-white reset" value="重置"/>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                </div>
+                                </div>
+                            </div>
                         </div>
 
                     </section>

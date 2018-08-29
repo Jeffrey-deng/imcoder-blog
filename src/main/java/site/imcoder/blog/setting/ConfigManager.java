@@ -19,6 +19,7 @@ import java.util.Properties;
 
 /**
  * 配置管理类
+ *
  * @author Jeffrey.Deng
  */
 @Component("configManager")

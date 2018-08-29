@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
 import site.imcoder.blog.Interceptor.LoginRequired;
+import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.entity.UserGroup;
@@ -195,7 +196,7 @@ public class SiteController extends BaseController {
     @ResponseBody
     public Map<String, Object> clearSystemMessageStatus(@RequestParam("smids") ArrayList<Integer> smids, HttpSession session) {
         Map<String, Object> map = new HashMap<String, Object>();
-        if (smids == null) {
+        if (smids != null) {
             User loginUser = (User) session.getAttribute("loginUser");
             int flag = notifyService.updateSystemMessageStatus(smids);
             map.put(KEY_STATUS, flag);
@@ -245,6 +246,29 @@ public class SiteController extends BaseController {
         } else {
             return "/tool/text_to_voice";
         }
+    }
+
+    /**
+     * 获取ip的地理位置
+     */
+    @RequestMapping(params = "method=ipLocation")
+    @ResponseBody
+    public Map<String, Object> ipLocation(@RequestParam("ip") String ip) {
+        Map<String, Object> map = siteService.getIpLocation(ip);
+        convertStatusCodeToWord(map);
+        return map;
+    }
+
+    /**
+     * 获取本机ip的地理位置
+     */
+    @RequestMapping(params = "method=currentIpLocation")
+    @ResponseBody
+    public Map<String, Object> currentIpLocation(HttpServletRequest request) {
+        String ip = Utils.getRemoteAddr(request);
+        Map<String, Object> map = siteService.getIpLocation(ip);
+        convertStatusCodeToWord(map);
+        return map;
     }
 
 }

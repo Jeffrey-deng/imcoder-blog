@@ -98,23 +98,37 @@ public interface IFileService {
     public void createAlbumFolder(String relativePath);
 
     /**
-     * 回收文件
+     * 回收<b>文件</b>到trashPathDir目录
      *
-     * @param sourceRelativePath 相对路径
-     * @param trashPath          回收相对路径，为空时取path的值
-     * @param isFile             是否是文件
-     * @param sourceBasePath     物理相对路径
+     * @param sourceFileFullPath 源文件物理绝对路径
+     * @param trashPathDir       <b>回收站的目录</b>(<b>不可为文件</b>)，可输入绝对路径，输入相对路径则会转换为相对回收站的路径
+     * @return
      */
-    public boolean recycleTrash(String sourceRelativePath, String trashPath, boolean isFile, String sourceBasePath);
+    public boolean recycleTrashFile(String sourceFileFullPath, String trashPathDir);
 
     /**
-     * 回收文件
+     * 回收<b>文件与目录</b>，且在回收站中建立与sourceRelativePath相同的目录结构
      *
-     * @param sourceFullPath 全路径
-     * @param trashPath      回收路径
-     * @param isFile         trashPath是否是文件
+     * @param sourceBasePath     物理基础路径
+     * @param sourceRelativePath 源文件相对路径，回收站中的目录结构也将使用此结构
+     * @param isFile             回收的是不是文件
      */
-    public boolean recycleTrash(String sourceFullPath, String trashPath, boolean isFile);
+    public boolean recycleTrash(String sourceBasePath, String sourceRelativePath, boolean isFile);
+
+    /**
+     * 回收<b>文件与目录</b>
+     * <p>
+     * <code>sourceFullPath</code> 与 <code>trashPath</code> 需要是同一种类型，<b>同为文件</b>或者<b>同为路径</b>;
+     * <p>不是同一种请使用
+     * <pre>
+     *     {@link #recycleTrashFile(String, String)}
+     * </pre>
+     *
+     * @param sourceFullPath 源文件全路径
+     * @param isFile         回收的是不是文件
+     * @param trashPath      回收路径，可输入绝对路径，输入相对路径则会转换为相对回收站的路径
+     */
+    public boolean recycleTrash(String sourceFullPath, boolean isFile, String trashPath);
 
     /**
      * 保存用户视频

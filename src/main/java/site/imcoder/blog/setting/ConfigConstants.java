@@ -2,7 +2,7 @@ package site.imcoder.blog.setting;
 
 /**
  * @author Jeffrey.Deng
- * 系统配置名称_常量
+ *         系统配置名称_常量
  */
 public class ConfigConstants {
 

@@ -28,6 +28,20 @@
     <link rel="stylesheet" href="<%=staticPath%>css/style.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css">
+
+    <style>
+        .comment-meta-count, a.comment-add-new {
+            color: rgba(204, 204, 204, 0.8);
+        }
+
+        a.comment-add-new:hover, a.comment-add-new:focus {
+            color: #337ab7;
+        }
+
+        a.comment-add-new:active {
+            color: rgba(204, 204, 204, 0.8);
+        }
+    </style>
 </head>
 <body uid="${loginUser.uid}" background="<%=staticPath%>img/bg-site.png">
 <!-- <body background="../../img/bg-site.png"> -->
@@ -38,8 +52,8 @@
             <div class="container">
                 <div class="" style="text-align:center;">
                     <h1>ImCODER's 博客</h1>
-                    <h3 style="color:#444;font-size:16.5px;">对于攀登者来说，失掉往昔的足迹并不可惜，迷失了继续前进时的方向却很危险。</h3>
-                    <h3 style="color:#555">
+                    <h3 style="font-size:16.5px;">对于攀登者来说，失掉往昔的足迹并不可惜，迷失了继续前进时的方向却很危险。</h3>
+                    <h3>
                         <f>Welcome to my blog</f>
                     </h3>
                 </div>

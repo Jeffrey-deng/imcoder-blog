@@ -73,6 +73,9 @@ public abstract class CommonDao extends SqlSessionDaoSupport {
         if (value == null || value.length() == 0) {
             return value;
         }
+        if (supportInjection) { // 转义单引号，防止sql注入
+            value = value.replace("'", "''");
+        }
         if (value.indexOf('<') != -1) {
             // 替换 < 为单词头，替换 > 为单词尾，忽略被转义的 <>
             value = value.replaceAll("\\{<\\}|\\\\\\\\<", replace_word_boundary_left).replaceAll("\\{>\\}|\\\\\\\\>", replace_word_boundary_right);
@@ -89,7 +92,6 @@ public abstract class CommonDao extends SqlSessionDaoSupport {
                     rs += (ch != '\\' ? ("\\\\" + ch) : "\\\\\\\\"); //如果是{\}，替换成 \\\\
                 }
                 keyword_escape_matcher.appendReplacement(sb, Matcher.quoteReplacement(rs));
-
             }
             keyword_escape_matcher.appendTail(sb);
             value = sb.toString();

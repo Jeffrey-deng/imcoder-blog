@@ -84,10 +84,16 @@ public class ArticleServiceImpl implements IArticleService {
         if (loginUser == null) {
             return 401;
         }
-        if (article == null || article.getAuthor() == null || article.getCategory() == null) {
+        if (article == null || article.getCategory() == null) {
             return 400;
         }
-        if (article.getAuthor().getUid() == loginUser.getUid() || loginUser.getUserGroup().getGid() == 1) {
+        Article cacheArticle = cache.getArticle(article.getAid(), Cache.READ);
+        if (cacheArticle == null) {
+            return 404;
+        }
+        User author = cacheArticle.getAuthor();
+        article.setAuthor(author);
+        if (author.getUid() == loginUser.getUid() || loginUser.getUserGroup().getGid() == 1) {
             Date date = new Date();
             article.setUpdate_time(date);
             int row = articleDao.update(article);

@@ -94,7 +94,12 @@
             (files.length > 1) && (photoInfo.iscover = 0);
             var tags = "";
             pointer.uploadModal.find(".tags-modify").find(".tag-content").each(function (i, tag) {
-                tags += "#" + tag.innerText;
+                var tags_value = tag.innerText;
+                if (/^mount@\d+$/.test(tags_value)) {
+                    tags = "#" + tags_value + tags;
+                } else {
+                    tags += "#" + tags_value;
+                }
             });
             photoInfo.tags = (tags == "#" ? "" : tags);
             if (photoInfo.description.length >= 1000) {
@@ -126,7 +131,12 @@
             photo.iscover = pointer.updateModal.find('input[name="photo_cover"]:checked').val();
             var tags = "";
             tags_modify_dom.find(".tag-content").each(function (i, tag) {
-                tags += "#" + tag.innerText;
+                var tags_value = tag.innerText;
+                if (/^mount@\d+$/.test(tags_value)) {
+                    tags = "#" + tags_value + tags;
+                } else {
+                    tags += "#" + tags_value;
+                }
             });
             photo.tags = (tags == "#" ? "" : tags);
             if (photo.description.length >= 1000) {

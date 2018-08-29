@@ -38,7 +38,8 @@
                 <div class="" style="text-align:center">
                     <br>
                     <h1>Website Administer System</h1>
-                    <h3 style="color:#444;font-size:16.5px;">用户管理</h3>
+                    <h3 style="font-size:16.5px;">用户管理</h3>
+                    <br>
                 </div>
             </div>
         </div>
@@ -329,7 +330,7 @@
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">登录IP:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="loginIP"></span>
+                        <a><span class="col-sm-7 col-xs-7 control-label" name="loginIP"></span></a>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">账号状态:</label>

@@ -57,9 +57,9 @@
             return;
         }
         if (config.mode == "preLoad") { //预加载，这种方式视频未播放时会有噪音
-            loadVideosByCovers(videoCovers, function (videos) {
-                if (videos) {
-                    $.each(videos, function (i, video) {
+            loadVideosByCovers(videoCovers, function (data) {
+                if (data && data.videos) {
+                    $.each(data.videos, function (i, video) {
                         var currentNode = page_handle.utils.getPhotoImageDom(video.cover.photo_id);
                         var videoNode = makeupVideoNode(currentNode, video);
                         insertVideoNode(currentNode, videoNode);
@@ -69,7 +69,7 @@
         } else { //延迟加载
             $.each(videoCovers, function (i, cover_id) {
                 var photoDom = page_handle.utils.getPhotoImageDom(cover_id);
-                photoDom.attr("title", "视频：" + photoDom.attr("title"));
+                photoDom.attr("title", "视频: " + photoDom.attr("title"));
                 photoDom.find("img").click(function () {
                     common_utils.removeNotify("notify_load_video");
                     common_utils.notify({
@@ -78,13 +78,14 @@
                         "timeOut": 0,
                         "closeButton": false
                     }).success("正在加载视频Meta", "", "notify_load_video");
-                    loadVideosByCover(cover_id, function (video) {
-                        if (video) {
+                    loadVideosByCover(cover_id, function (data) {
+                        if (data && data.flag == 200) {
+                            var video = data.video;
                             var currentNode = page_handle.utils.getPhotoImageDom(video.cover.photo_id);
                             var videoNode = makeupVideoNode(currentNode, video);
                             insertVideoNode(currentNode, videoNode);
-                            common_utils.removeNotify("notify_load_video");
                         }
+                        common_utils.removeNotify("notify_load_video");
                     });
                     return false;
                 });
@@ -94,12 +95,11 @@
 
     var loadVideosByCover = function (cover_id, callback) {
         $.get("video.do?method=detailByAjax", {"cover_id": cover_id}, function (data) {
-            if (data.flag == 200) {
-                callback(data.video);
-            } else {
+            if (data.flag != 200) {
                 toastr.error(data.info, "加载视频失败");
                 console.log("Load video found error, Error Code: " + data.flag);
             }
+            callback(data);
         });
     };
 
@@ -111,7 +111,7 @@
             dataType: "json",
             //contentType: "application/json",
             success: function (data) {
-                callback(data.videos);
+                callback(data);
             },
             error: function (xhr, ts) {
                 console.log("Load video found error, Error Code: " + ts);
@@ -130,11 +130,14 @@
             node.setAttribute("type", video.video_type);
         } else {
             node.innerHTML = video.code;
-            var scale = (photoDom.width()) / video.width;
+            var scale = (photoDom.find("img").width()) / video.width;
             $(node).children().removeAttr("width")
-                .css("height", (video.height * scale - 10) + "px") //由于该节点还没有实际渲染，所以需要减去边框宽度
                 .css("border", "5px solid #FFFFFF")
-                .css("width", "100%");
+                .css("width", "100%")
+                //.height(video.height * scale);
+                // jquery赋值时会加上border宽度，但是由于该节点还没有实际渲染，jquery识别不到border，所以手动需要加上边框宽度
+                // .height(video.height * scale + 10); // 既这样等同于原始的写法：
+                .css("height", (video.height * scale + 10) + "px"); // 原始css赋值的宽度会包含border宽度在内
         }
         return node;
     };
@@ -155,7 +158,8 @@
         }
     };
 
-    init();
+    var videoConfig = common_utils.getLocalConfig("album", {"photo_page": {"video_load_mode": "lazyLoad"}});
+    init({"mode": videoConfig.photo_page.video_load_mode});
 
     var context = {
         "reInit": init,

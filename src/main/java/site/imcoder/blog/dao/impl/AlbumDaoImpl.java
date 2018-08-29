@@ -10,6 +10,7 @@ import site.imcoder.blog.entity.Album;
 import site.imcoder.blog.entity.Photo;
 import site.imcoder.blog.entity.User;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,21 +66,27 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
      */
     @Override
     public List<Album> findAlbumInfoList(Album album, User loginUser) {
-        String name = null;
-        if (album != null) {
-            name = album.getName();
-            if (album.getName() != null && album.getName().length() != 0) {
-                album.setName(encodeRegexField(regex_filed_album_name, name, false));
+        try {
+            String name = null;
+            if (album != null) {
+                name = album.getName();
+                if (album.getName() != null && album.getName().length() != 0) {
+                    album.setName(encodeRegexField(regex_filed_album_name, name, false));
+                }
             }
+            Map<String, Object> map = new HashMap<>();
+            map.put("album", album);
+            map.put("loginUser", loginUser);
+            List<Album> list = this.getSqlSession().selectList("album.findAlbumInfoList", map);
+            if (album != null) {
+                album.setName(name);
+            }
+            return list;
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.warn("findAlbumInfoList fail", e);
+            return null;
         }
-        Map<String, Object> map = new HashMap<>();
-        map.put("album", album);
-        map.put("loginUser", loginUser);
-        List<Album> list = this.getSqlSession().selectList("album.findAlbumInfoList", map);
-        if (album != null) {
-            album.setName(name);
-        }
-        return list;
     }
 
     /**
@@ -225,23 +232,29 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
      * @return photos
      */
     public List<Photo> findPhotoList(Photo photo, String logic_conn, int start, int size, User loginUser) {
-        String tags = null;
-        if (photo != null) {
-            tags = photo.getTags();
-            if (photo.getTags() != null && photo.getTags().length() != 0) {
-                photo.setTags(encodeRegexField(regex_filed_photo_tags, tags));
+        try {
+            String tags = null;
+            if (photo != null) {
+                tags = photo.getTags();
+                if (photo.getTags() != null && photo.getTags().length() != 0) {
+                    photo.setTags(encodeRegexField(regex_filed_photo_tags, tags));
+                }
             }
+            Map<String, Object> map = new HashMap<>();
+            map.put("photo", photo);
+            map.put("logic_conn", logic_conn);
+            map.put("start", start);
+            map.put("size", size);
+            map.put("loginUser", loginUser);
+            List<Photo> list = this.getSqlSession().selectList("album.findPhotoList", map);
+            if (photo != null) {
+                photo.setTags(tags);
+            }
+            return list;
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.warn("findPhotoList fail", e);
+            return null;
         }
-        Map<String, Object> map = new HashMap<>();
-        map.put("photo", photo);
-        map.put("logic_conn", logic_conn);
-        map.put("start", start);
-        map.put("size", size);
-        map.put("loginUser", loginUser);
-        List<Photo> list = this.getSqlSession().selectList("album.findPhotoList", map);
-        if (photo != null) {
-            photo.setTags(tags);
-        }
-        return list;
     }
 }

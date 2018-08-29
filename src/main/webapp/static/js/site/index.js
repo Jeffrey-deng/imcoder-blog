@@ -47,7 +47,7 @@
                         html += '<ul class="post-meta">';
                         html += '<li> 作者: <a href="user.do?method=home&uid=' + article.author.uid + '" target="_blank"> ' + article.author.nickname + '</a> </li>';
                         html += '<li>分类: <a href="article.do?method=list&category.atid=' + article.category.atid + '">' + article.category.atname + '</a></li>';
-                        html += '<li><time datetime="" itemprop="datePublished">' + article.update_time + '</time></li>';
+                        html += '<li><time title="更新时间：'+ article.update_time +'" datetime="" itemprop="datePublished">' + article.create_time + '</time></li>';
                         html += '</ul><div class="post-content" itemprop="articleBody">';
                         html += article.summary + '</div></div></div>';
                     });

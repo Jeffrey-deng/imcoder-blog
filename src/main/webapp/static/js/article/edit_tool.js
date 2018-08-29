@@ -1802,7 +1802,7 @@
             });
             this.$button = button.render();
             return this.$button;
-        }
+        };
 
 
         //自定义的编辑器
@@ -2156,7 +2156,7 @@
      * @param album_id
      */
     function insertPhotosFromCloud(album_id) {
-        $.get("photo.do?method=albumByAjax", {"id": album_id}, function (data) {
+        $.get("photo.do?method=albumByAjax", {"id": album_id, "mount": true}, function (data) {
             if (data.flag == 200) {
                 var editor = $('#article_edit');
                 var photos = data.album.photos;

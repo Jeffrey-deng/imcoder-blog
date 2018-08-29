@@ -183,6 +183,7 @@ public class ManagerController extends BaseController {
         map.put(KEY_STATUS, flag);
         convertStatusCodeToWord(map);
         if (flag == 200) {
+            map.put("aid", article.getAid());
             map.put(KEY_STATUS_FRIENDLY, "文章修改成功");
         } else if (flag == 404) {
             map.put(KEY_STATUS_FRIENDLY, "该文章不存在");

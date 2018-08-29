@@ -70,9 +70,7 @@
         <result column="uid" property="uid"/>
         <result column="username" property="username"/>
         <result column="nickname" property="nickname"/>
-        <result column="phone" property="phone"/>
         <result column="sex" property="sex"/>
-        <result column="email" property="email"/>
         <result column="address" property="address"/>
         <result column="birthday" property="birthday"/>
         <result column="description" property="description"/>
@@ -91,7 +89,7 @@
     <!-- 根据用户ID查询 -->
     <select id="findUser" parameterType="int" resultMap="userMap">
         select
-        uid,u.gid,username,nickname,phone,sex,email,address,birthday,description,head_photo,register_time,qq,weibo,says,lock_status,
+        uid,u.gid,username,nickname,sex,address,birthday,description,head_photo,register_time,qq,weibo,says,lock_status,
         ug.group_name
         from user u left join user_group ug on u.gid = ug.gid
         where uid=#{uid} limit 1

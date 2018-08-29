@@ -66,7 +66,7 @@
                 <div class="" style="text-align:center;">
                     <c:if test="${not empty loginUser}">
                         <h1>${loginUser.nickname}</h1>
-                        <h3 style="color:#444;font-size:16.5px;">${loginUser.description}</h3>
+                        <h3 style="font-size:16.5px;">${loginUser.description}</h3>
                     </c:if>
                     <c:if test="${empty loginUser}">
                         <h1>标签广场</h1>

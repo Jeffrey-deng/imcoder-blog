@@ -48,6 +48,18 @@ public interface IAlbumService {
     public Map<String, Object> findAlbumWithPhotos(Album album, User loginUser);
 
     /**
+     * 查找出该相册的信息和图片列表
+     *
+     * @param album
+     * @param mount     是否加载挂载在此相册的照片
+     * @param loginUser
+     * @return map
+     * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册未找到
+     * album - album对象
+     */
+    public Map<String, Object> findAlbumWithPhotos(Album album, boolean mount, User loginUser);
+
+    /**
      * 查找相册列表
      *
      * @param album
@@ -127,4 +139,17 @@ public interface IAlbumService {
      * @return photos
      */
     public List<Photo> findPhotoList(Photo photo, String logic_conn, int start, int size, User loginUser);
+
+    /**
+     * 查找照片集合
+     *
+     * @param base       在哪个基础之下查找
+     * @param photo
+     * @param logic_conn
+     * @param start
+     * @param size
+     * @param loginUser
+     * @return photos
+     */
+    public List<Photo> findPhotoList(String base, Photo photo, String logic_conn, int start, int size, User loginUser);
 }

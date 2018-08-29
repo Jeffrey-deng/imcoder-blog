@@ -138,8 +138,8 @@
             <div class="container">
                 <div class="" style="text-align:center;">
                     <h1 hostUser="${hostUser.uid}">${hostUser.nickname}</h1>
-                    <h3 style="color:#444;font-size:16.5px;">${hostUser.description}</h3>
-                    <h3 style="color:#555">
+                    <h3 style="font-size:16.5px;">${hostUser.description}</h3>
+                    <h3>
                         <f>${hostUser.says}</f>
                     </h3>
                 </div>
@@ -396,7 +396,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>选择封面</label>
+                        <label><div class="convert-upload-cover" style="font-weight: bold;display: inline;">上传封面</div> / <div class="convert-select-cover" style="font-weight: normal;display: inline;">选择封面</div></label>
                         <input class="note-image-input form-control" type="file" name="cover_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
                         <input class="note-image-input form-control" name="cover_photo_id" value="0" style="margin-top: 5px;display: none;">
                     </div>

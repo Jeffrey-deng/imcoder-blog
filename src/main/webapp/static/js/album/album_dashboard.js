@@ -30,10 +30,27 @@
             "hideMethod": "fadeOut"
         };
 
+        var albumConfig = common_utils.getLocalConfig("album", {
+            "album_page": {
+                "full_background": false,
+                "default_col": {
+                    "1200": 4,
+                    "940": 3,
+                    "520": 3,
+                    "400": 2
+                },
+                "default_size": 40
+            }
+        });
+        if (albumConfig.album_page.full_background) {
+            $("body").css("background-image", $("#first").css("background-image"));
+            $("#first").css("background-image", "");
+        }
+
         var params = common_utils.parseURL(window.location.href).params;
-        var pageSize = params.size ? params.size : 40;
+        var pageSize = params.size ? params.size : albumConfig.album_page.default_size;
         var pageNum = params.page ? params.page : 1;
-        var col = params.col;
+        var col = params.col && parseInt(params.col);
         var checkAlbumId = params.check ? parseInt(params.check) : 0;
 
         var load_condition = {};
@@ -53,12 +70,13 @@
 
         //从本地缓存中得到相册基本信息组连接
         var album_size_cache_conn = PeriodCache.getOrCreateGroup({
+            "version": 1.2,
             "groupName": "album_size_cache",
-            "timeOut": 900000,
+            "timeOut": 1200000,
             "reload": {
                 "url": "photo.do?method=albumByAjax",
                 "params": function (groupName, key) {
-                    return {"id": key};
+                    return {"id": key, "mount": true};
                 },
                 "parse": function (cacheCtx, groupName, key, old_object_value, data) {
                     if (data.flag == 200) {
@@ -139,7 +157,8 @@
             page_params: {
                 "pageSize": pageSize,
                 "pageNum": pageNum,
-                "col": col
+                "col": col,
+                "default_col": albumConfig.album_page.default_col
             },
             load_condition: load_condition,
             checkAlbumId: checkAlbumId,

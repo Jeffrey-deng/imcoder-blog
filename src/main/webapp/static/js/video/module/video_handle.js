@@ -73,6 +73,8 @@
         pointer.uploadModal = $(config.selector.uploadModal);
         pointer.updateModal = $(config.selector.updateModal);
 
+        pointer.uploadModal.find('input[name="video_permission"][value="0"]').prop("checked", true);
+
         pointer.uploadModal.find('select[name="video_source_type"]').change(function (e) {
             var key = $(this).val();
             if (key == 0) {
@@ -85,6 +87,19 @@
                 pointer.uploadModal.find('input[name="video_file"]').parent().hide(100);
                 pointer.uploadModal.find('textarea[name="video_code"]').parent().show(100);
             }
+        });
+
+        pointer.uploadModal.find('input[name="cover_file"]').prev().find(".convert-upload-cover").click(function (e) {
+            $(this).css("font-weight", "bold").parent().find(".convert-select-cover").css("font-weight", "normal");
+            pointer.uploadModal.find('select[name="cover_album_id"]').parent().show(100);
+            pointer.uploadModal.find('input[name="cover_photo_id"]').css("display", "none");
+            pointer.uploadModal.find('input[name="cover_file"]').css("display", "block");
+        });
+        pointer.uploadModal.find('input[name="cover_file"]').prev().find(".convert-select-cover").click(function (e) {
+            $(this).css("font-weight", "bold").parent().find(".convert-upload-cover").css("font-weight", "normal");
+            pointer.uploadModal.find('select[name="cover_album_id"]').parent().hide(100);
+            pointer.uploadModal.find('input[name="cover_file"]').css("display", "none");
+            pointer.uploadModal.find('input[name="cover_photo_id"]').css("display", "block").val("0");
         });
 
         //提交上传事件
@@ -321,6 +336,7 @@
                     pointer.uploadModal.find('input[name="video_file"]').val("");
                     pointer.uploadModal.find('input[name="cover_file"]').val("");
                 } else {
+                    file == null && (file = {"name": "文件为空"});
                     common_utils.removeNotify("notify_uploading");
                     toastr.error(data.info, file.name + ", 上传失败", {timeOut: 0});
                     console.log("Error Code: " + file.name + " upload fail - " + data.flag);
@@ -328,6 +344,7 @@
                 }
             },
             error: function () {
+                file == null && (file = {"name": "文件为空"});
                 common_utils.removeNotify("notify_uploading");
                 toastr.error(file.name + " 上传失败", "未知错误", {timeOut: 0});
                 pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
@@ -364,16 +381,22 @@
             return false;
         }
         var openUploadModal_callback = function (albums) {
+            var album_select_dom = pointer.uploadModal.find('select[name="cover_album_id"]');
             var options_str = '';
+            var selectValue = "0";
             if (albums == null || albums.length == 0) {
                 options_str = '<option value="0">无相册</option>';
             } else {
                 $.each(albums, function (index, album) {
                     options_str += '<option value="' + album.album_id + '">' + album.name + '</option>';
                 });
+                if (album_select_dom[0].options.length > 0) {
+                    selectValue = album_select_dom.val();
+                } else {
+                    selectValue = albums[0].album_id + "";
+                }
             }
-            pointer.uploadModal.find('select[name="cover_album_id"]').html(options_str);
-            pointer.uploadModal.find('input[name="video_permission"][value="0"]').prop("checked", true);
+            album_select_dom.html(options_str).val(selectValue);
             pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
             pointer.uploadModal.modal('show');
         };

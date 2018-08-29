@@ -2,12 +2,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'clipboard', 'niftymodals', 'edit_tool', 'common_utils', 'login_handle'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'clipboard', 'niftymodals', 'edit_tool', 'common_utils', 'login_handle', 'toolbar'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, Clipboard, null, null, common_utils, login_handle);
+        factory(window.jQuery, null, $(document).ready, toastr, Clipboard, null, null, common_utils, login_handle, toolbar);
     }
-})(function ($, bootstrap, domReady, toastr, Clipboard, niftymodals, edit_tool, common_utils, login_handle) {
+})(function ($, bootstrap, domReady, toastr, Clipboard, niftymodals, edit_tool, common_utils, login_handle, toolbar) {
 
     //是否已经保存
     var isSaveFlag = false;
@@ -64,7 +64,7 @@
                         toastr.success("保存成功!", "提示");
                         $('#btn_save').attr("disabled", "disabled");
                         $('#btn_cancle').attr("disabled", "disabled");
-                        var detail_url = "article.do?method=detail&aid=" + data.aid;
+                        var detail_url = "article.do?method=detail&aid=" + article.aid;
                         $('#a_checkDeatil').attr("href", detail_url);
                         //显示结果框
                         $('#ResultTipsModal').niftyModal();
@@ -398,6 +398,9 @@
                 $(this).val("格式化图片展示");
             }
         });
+
+        // 关闭搜索快捷键
+        toolbar.rewriteSearch({"searchHotKey": false});
 
     });
 

@@ -84,6 +84,7 @@
                     <br>
                     <h1>${article.author.nickname}</h1>
                     <p>${article.author.description}</p>
+                    <br>
                     <!-- hide 'follow' button when article's author is loginUser  -->
                     <c:if test="${ !( (!empty loginUser) and (loginUser.uid==article.author.uid) ) }">
                         <p><a name="follow" followed="false" class="btn btn-large btn-success follow"><b>关注</b></a></p>

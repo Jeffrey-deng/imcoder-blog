@@ -70,8 +70,8 @@
             <div class="container">
                 <div class="" style="text-align:center;">
                     <h1 hostUser="${hostUser.uid}">${hostUser.nickname}</h1>
-                    <h3 style="color:#444;font-size:16.5px;">${hostUser.description}</h3>
-                    <h3 style="color:#555">
+                    <h3 style="font-size:16.5px;">${hostUser.description}</h3>
+                    <h3>
                         <f>${hostUser.says}</f>
                     </h3>
                 </div>
@@ -310,7 +310,19 @@
                     </div>
                     <div class="form-group">
                         <label title="一行显示图片的数量">展示列数:</label>
-                        <input class="form-control" style="display:inline-block;width: 15%;margin-left: 7px;" type="text" name="album_show_col" value="4">
+                        <select class="select-inline m-b" name="album_show_col" style="display:inline-block;margin-left: 6px;">
+                            <option value="0" selected>遵循默认配置</option>
+                            <option value="1">显示1列</option>
+                            <option value="2">显示2列</option>
+                            <option value="3">显示3列</option>
+                            <option value="4">显示4列</option>
+                            <option value="5">显示5列</option>
+                            <option value="6">显示6列</option>
+                            <option value="7">显示7列</option>
+                            <option value="8">显示8列</option>
+                            <option value="9">显示9列</option>
+                            <option value="10">显示10列</option>
+                        </select>
                     </div>
                     <div class="form-group" style="padding-top: 5px;">
                         <label>相册权限:</label>
@@ -386,7 +398,19 @@
                     </div>
                     <div class="form-group">
                         <label title="一行显示图片的数量">展示列数：</label>
-                        <input class="form-control" style="display:inline-block;width: 14%;margin-left: 6px;" type="text" name="album_show_col" value="4">
+                        <select class="select-inline m-b" name="album_show_col" style="display:inline-block;margin-left: 6px;">
+                            <option value="0">遵循默认配置</option>
+                            <option value="1">显示1列</option>
+                            <option value="2">显示2列</option>
+                            <option value="3">显示3列</option>
+                            <option value="4">显示4列</option>
+                            <option value="5">显示5列</option>
+                            <option value="6">显示6列</option>
+                            <option value="7">显示7列</option>
+                            <option value="8">显示8列</option>
+                            <option value="9">显示9列</option>
+                            <option value="10">显示10列</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>照片数量：</label>

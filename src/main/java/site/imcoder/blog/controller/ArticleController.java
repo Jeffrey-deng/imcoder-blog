@@ -83,11 +83,11 @@ public class ArticleController extends BaseController {
         Map<String, Object> map = new HashMap<>();
         User loginUser = (User) session.getAttribute("loginUser");
         article.setCategory(category);
-        article.setAuthor(loginUser);
         int status = 0;
         if (flag != null && flag.equals("update")) {
             status = articleService.update(article, loginUser);
         } else {
+            article.setAuthor(loginUser);
             status = articleService.save(article, loginUser);
         }
         map.put(KEY_STATUS, status);

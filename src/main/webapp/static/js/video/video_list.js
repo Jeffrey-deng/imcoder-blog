@@ -83,7 +83,7 @@
                             var album = {};
                             album.photos = data.photos || [];
                             album.size = data.photos ? data.photos.length : 0;
-                            album.show_col = 4;
+                            album.show_col = 0;
                             data.album = album;
                             success(data);
                             if (album.size == 0) {

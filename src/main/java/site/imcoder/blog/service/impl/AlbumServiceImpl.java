@@ -34,6 +34,15 @@ public class AlbumServiceImpl implements IAlbumService {
 
     private static char QUOTE = '\'';
 
+    private static String MOUNT_PREFIX = "mount@";
+
+    private static Comparator<Photo> ALBUM_PHOTO_COMPARATOR = new Comparator<Photo>() {
+        @Override
+        public int compare(Photo b, Photo n) {
+            return b.getPhoto_id() - n.getPhoto_id();
+        }
+    };
+
     @Resource
     private IAlbumDao albumDao;
 
@@ -134,13 +143,39 @@ public class AlbumServiceImpl implements IAlbumService {
      * album - album对象 with photos
      */
     public Map<String, Object> findAlbumWithPhotos(Album album, User loginUser) {
+        return findAlbumWithPhotos(album, true, loginUser);
+    }
+
+    /**
+     * 查找出该相册的信息和图片列表
+     *
+     * @param album
+     * @param mount     是否加载挂载在此相册的照片
+     * @param loginUser
+     * @return map
+     * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册未找到
+     * album - album对象
+     */
+    @Override
+    public Map<String, Object> findAlbumWithPhotos(Album album, boolean mount, User loginUser) {
         Map<String, Object> map = this.findAlbumInfo(album, loginUser);
         int flag = (Integer) map.get("flag");
         if (flag == 200) {
             Album db_album = (Album) map.get("album");
             List<Photo> photos = albumDao.findPhotosFromAlbum(album);
+            if (photos == null) {
+                photos = new ArrayList<>();
+            }
             db_album.setPhotos(photos);
-            if (photos != null) {
+            if (mount) {
+                Photo mountCondition = new Photo(); // 该相册挂载的查找条件
+                mountCondition.setUid(db_album.getUser().getUid());
+                mountCondition.setTags(MOUNT_PREFIX + db_album.getAlbum_id());
+                List<Photo> mountPhotos = findPhotoList(mountCondition, "and", 0, 0, loginUser);
+                photos.addAll(mountPhotos);
+                Collections.sort(photos, ALBUM_PHOTO_COMPARATOR); // 重新排序
+                db_album.setSize(photos.size());
+            } else {
                 db_album.setSize(photos.size());
             }
         }
@@ -189,7 +224,7 @@ public class AlbumServiceImpl implements IAlbumService {
     /**
      * 删除相册
      *
-     * @param album 相册ID，相册名
+     * @param album          相册ID，相册名
      * @param loginUser
      * @param deleteFromDisk
      * @return flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册ID未找到，500：服务器错误
@@ -209,7 +244,7 @@ public class AlbumServiceImpl implements IAlbumService {
                 boolean rs = false;
                 if (deleteFromDisk) {
                     // 回收相册文件夹
-                    rs = fileService.recycleTrash(relativePath, null, false, Config.get(ConfigConstants.CLOUD_FILE_BASEPATH));
+                    rs = fileService.recycleTrash(Config.get(ConfigConstants.CLOUD_FILE_BASEPATH), relativePath, false);
                 }
                 if (rs || !deleteFromDisk) {
                     String sqlBackupPath = Config.get(ConfigConstants.TRASH_RECYCLE_BASEPATH) + relativePath + "album_data_" + db_album.getAlbum_id() + "_" + new Date().getTime() + ".sql";
@@ -360,7 +395,7 @@ public class AlbumServiceImpl implements IAlbumService {
                 int left = albumDao.deletePhoto(db_photo);
                 if (deleteFromDisk) {
                     // int right = fileService.deleteFileByUrl(db_photo.getPath(), "cloud", request);
-                    int right = fileService.recycleTrash(db_photo.getPath(), null, true, Config.get(ConfigConstants.CLOUD_FILE_BASEPATH)) ? 1 : 0; //回收
+                    int right = fileService.recycleTrash(Config.get(ConfigConstants.CLOUD_FILE_BASEPATH), db_photo.getPath(), true) ? 1 : 0; //回收
                     left = left * right;
                 }
                 return left > 0 ? 200 : 500;
@@ -400,7 +435,7 @@ public class AlbumServiceImpl implements IAlbumService {
                             photo.setOriginName("");
                         }
                     }
-                    Matcher matcher = Pattern.compile("(.*/)(.*_)(\\d{10,})(\\..+)?$").matcher(oldPath);
+                    Matcher matcher = Pattern.compile("^(.*/)(.*_)(\\d{10,})(\\..+)?$").matcher(oldPath);
                     matcher.find();
                     String newPathDir = matcher.group(1); //文件夹
                     String newPathExt = photo.getOriginName().lastIndexOf('.') != -1 ? photo.getOriginName().substring(photo.getOriginName().lastIndexOf('.')) : ".jpg";
@@ -410,7 +445,7 @@ public class AlbumServiceImpl implements IAlbumService {
                             photo.setImage_type(db_photo.getImage_type()); // 视频：更新视频封面图片文件时，避免旧类型被覆盖
                         }
                         photo.setPath(newPathDir + newPathFileName);
-                        fileService.recycleTrash(oldPath, oldPath, true, Config.get(ConfigConstants.CLOUD_FILE_BASEPATH)); // 回收旧文件
+                        fileService.recycleTrash(Config.get(ConfigConstants.CLOUD_FILE_BASEPATH), oldPath, true); // 回收旧文件
                     } else {
                         return 500;
                     }
@@ -449,7 +484,52 @@ public class AlbumServiceImpl implements IAlbumService {
      * @return photos
      */
     public List<Photo> findPhotoList(Photo photo, String logic_conn, int start, int size, User loginUser) {
-        return albumDao.findPhotoList(photo, logic_conn, start, size, loginUser);
+        return findPhotoList(null, photo, logic_conn, start, size, loginUser);
+    }
+
+    /**
+     * 查找照片集合
+     *
+     * @param base       在哪个基础之下查找
+     * @param photo
+     * @param logic_conn
+     * @param start
+     * @param size
+     * @param loginUser
+     * @return photos
+     */
+    @Override
+    public List<Photo> findPhotoList(String base, Photo photo, String logic_conn, int start, int size, User loginUser) {
+        if (base != null && base.startsWith("album_detail") && photo != null && photo.getAlbum_id() > 0) {
+            int album_id = photo.getAlbum_id();
+            Album album = new Album();
+            album.setAlbum_id(album_id);
+            Map<String, Object> albumInfo = findAlbumInfo(album, loginUser);
+            int flag = (int) albumInfo.get("flag");
+            if (flag == 200) {
+                Album lcd = (Album) albumInfo.get("album");
+                int lcd_uid = lcd.getUser().getUid();
+                String lcf_tags = MOUNT_PREFIX + album_id;
+                photo.setAlbum_id(0); // 去掉相册条件
+                List<Photo> photoList = albumDao.findPhotoList(photo, logic_conn, 0, 0, loginUser);
+                if (photoList != null) {
+                    List<Photo> newList = new ArrayList<>();
+                    for (Photo p : photoList) {
+                        if (p.getUid() == lcd_uid && (p.getAlbum_id() == album_id || (p.getTags() != null && p.getTags().indexOf(lcf_tags) != -1))) {
+                            newList.add(p);
+                        }
+                    }
+                    photoList = null;
+                    return newList;
+                } else {
+                    return null;
+                }
+            } else {
+                return null;
+            }
+        } else {
+            return albumDao.findPhotoList(photo, logic_conn, start, size, loginUser);
+        }
     }
 
     /**

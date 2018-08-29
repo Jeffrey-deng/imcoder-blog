@@ -785,7 +785,7 @@
         if (!notifyName) {
             notifyPool = {};
             toastr.clear();
-        } else if (notifyPool.hasOwnProperty(notifyName)){
+        } else if (notifyPool.hasOwnProperty(notifyName)) {
             if (notifyPool[notifyName]) {
                 toastr.remove(notifyPool[notifyName], true);
             }
@@ -804,18 +804,26 @@
 
     /**
      * 客户端本地配置
+     * @param {String|Object} module - 模块名称，当取所有配置时，此处可填所有配置的默认值
+     * @param {Object} defaultValue - module模块的默认值
+     * @returns {*} 当module为传入的模块名称时，返回该模块配置；当module传入的是所有配置默认值或为空时，返回所有配置；
      */
-    var getLocalConfig = function (module) {
+    var getLocalConfig = function (module, defaultValue) {
         var localConfig = localStorage.getItem("blog_local_config");
         if (!localConfig) {
             localConfig = {};
-            localConfig.search = {}; //搜索帮助
-            localConfig.search.hasReadHelp = false; // 是否查看过搜索帮助
             localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
         } else {
             localConfig = JSON.parse(localConfig);
         }
-        return module ? localConfig[module] : localConfig;
+        if (defaultValue) {
+            localConfig[module] = $.extend(true, defaultValue, localConfig[module]);
+            localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
+        } else if (typeof module == "object") {
+            localConfig = $.extend(true, module, localConfig);
+            localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
+        }
+        return (typeof module == "string") ? localConfig[module] : localConfig;
     };
 
     /**
@@ -826,7 +834,11 @@
     var setLocalConfig = function (moduleName, moduleValue) {
         if (moduleName) {
             var localConfig = getLocalConfig();
-            localConfig[moduleName] = moduleValue;
+            if (localConfig[moduleName]) {
+                localConfig[moduleName] = $.extend(true, localConfig[moduleName], moduleValue);
+            } else {
+                localConfig[moduleName] = moduleValue;
+            }
             localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
         }
     };

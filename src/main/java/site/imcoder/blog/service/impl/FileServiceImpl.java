@@ -46,7 +46,7 @@ public class FileServiceImpl implements IFileService {
         } catch (IOException e) {
             e.printStackTrace();
             rs = false;
-            logger.warn("FileMove found exception " + e.getMessage() + " , formPath: \"" + formPath + "\", toPath: \"" + toPath + "\"");
+            logger.warn("FileCopy found exception " + e.getMessage() + " , formPath: \"" + formPath + "\", toPath: \"" + toPath + "\"");
         }
         return rs;
     }
@@ -102,7 +102,6 @@ public class FileServiceImpl implements IFileService {
         if (!dir.exists()) {
             dir.mkdirs();
         }
-
     }
 
     /**
@@ -249,7 +248,7 @@ public class FileServiceImpl implements IFileService {
             if (file.isDirectory()) {
                 logger.warn("FileDelete submit is a directory! so not delete：" + file.getPath());
                 result = 404;
-            } else if (recycleTrash(file_url, null, true, basePath)) {
+            } else if (recycleTrash(basePath, file_url, true)) {
                 //logger.info("FileDelete from " + file.getPath());
                 result = 200;
             } else {
@@ -264,7 +263,7 @@ public class FileServiceImpl implements IFileService {
                 if (thefile.isDirectory()) {
                     logger.warn("FileDelete submit is a directory! so not delete：" + file.getPath());
                     result = 404;
-                } else if (recycleTrash(realPath, "upload/image/article/deleteByRequest/", false)) {
+                } else if (recycleTrashFile(realPath, "upload/image/article/deleteByRequest/")) {
                     //返回成功
                     //logger.info("FileDelete from " + realPath);
                     result = 200;
@@ -401,32 +400,61 @@ public class FileServiceImpl implements IFileService {
     }
 
     /**
-     * 回收文件
+     * 回收<b>文件</b>到trashPathDir目录
      *
-     * @param sourceRelativePath 相对路径
-     * @param trashPath          回收相对路径，为空时取path的值
-     * @param isFile             是否是文件
-     * @param sourceBasePath     物理相对路径
+     * @param sourceFileFullPath 源文件物理绝对路径
+     * @param trashPathDir       <b>回收站的目录</b>(<b>不可为文件</b>)，可输入绝对路径，输入相对路径则会转换为相对回收站的路径
+     * @return
      */
-    public boolean recycleTrash(String sourceRelativePath, String trashPath, boolean isFile, String sourceBasePath) {
-        if (sourceBasePath == null || sourceBasePath == null) {
+    public boolean recycleTrashFile(String sourceFileFullPath, String trashPathDir) {
+        if (sourceFileFullPath == null || trashPathDir == null) {
             return false;
         }
-        String fullPath = sourceBasePath + sourceRelativePath;
-        if (trashPath == null) {
-            trashPath = sourceRelativePath;
+        File file = new File(sourceFileFullPath);
+        if (file.exists()) {
+            if (!trashPathDir.endsWith("/")) {
+                trashPathDir = trashPathDir + "/";
+            }
+            if (file.isFile()) {
+                return recycleTrash(sourceFileFullPath, true, trashPathDir + file.getName());
+            } else {
+                logger.warn("FileRecycle error: sourceFileFullPath isn't a file! the path: " + sourceFileFullPath);
+            }
+        } else {
+            logger.warn("FileRecycle error: sourceFileFullPath doesn't exist! the path: " + sourceFileFullPath);
         }
-        return recycleTrash(fullPath, trashPath, isFile);
+        return false;
     }
 
     /**
-     * 回收文件
+     * 回收<b>文件与目录</b>，且在回收站中建立与sourceRelativePath相同的目录结构
      *
-     * @param sourceFullPath 全路径
-     * @param trashPath      回收路径
-     * @param isFile         trashPath是否是文件
+     * @param sourceBasePath     物理基础路径
+     * @param sourceRelativePath 源文件相对路径，回收站中的目录结构也将使用此结构
+     * @param isFile             回收的是不是文件
      */
-    public boolean recycleTrash(String sourceFullPath, String trashPath, boolean isFile) {
+    public boolean recycleTrash(String sourceBasePath, String sourceRelativePath, boolean isFile) {
+        if (sourceBasePath == null || sourceRelativePath == null) {
+            return false;
+        }
+        String fullPath = sourceBasePath + sourceRelativePath;
+        return recycleTrash(fullPath, isFile, sourceRelativePath);
+    }
+
+    /**
+     * 回收<b>文件与目录</b>
+     * <p>
+     * <code>sourceFullPath</code> 与 <code>trashPath</code> 需要是同一种类型，<b>同为文件</b>或者<b>同为路径</b>;
+     * <p>不是同一种请使用
+     * <pre>
+     *     {@link #recycleTrashFile(String, String)}
+     * </pre>
+     *
+     * @param sourceFullPath 源文件全路径
+     * @param isFile         回收的是不是文件
+     * @param trashPath      回收路径，可输入绝对路径，输入相对路径则会转换为相对回收站的路径
+     */
+    public boolean recycleTrash(String sourceFullPath, boolean isFile, String trashPath) {
         if (sourceFullPath == null || trashPath == null) {
             return false;
         }

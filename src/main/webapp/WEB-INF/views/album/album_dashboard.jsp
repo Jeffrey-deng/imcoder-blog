@@ -14,7 +14,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <title>dashboard - 相册 | ImCODER's 博客</title>
+    <title>dashboard | ImCODER博客's 相册</title>
     <meta name="description" content="相册看板dashboard">
     <meta name="keywords" content="相册,dashboard,ImCODER's 博客">
     <!-- 使用url函数转换相关路径 -->
@@ -141,7 +141,7 @@
                 <div class="" style="text-align:center;">
                     <c:if test="${not empty loginUser}">
                         <h1>${loginUser.nickname}</h1>
-                        <h3 style="color:#444;font-size:16.5px;">${loginUser.description}</h3>
+                        <h3>${loginUser.description}</h3>
                     </c:if>
                     <c:if test="${empty loginUser}">
                         <h1>album dashboard</h1>
@@ -407,7 +407,19 @@
                             </div>
                             <div class="form-group">
                                 <label title="一行显示图片的数量">展示列数:</label>
-                                <input class="form-control" style="display:inline-block;width: 15%;margin-left: 7px;" type="text" name="album_show_col" value="4">
+                                <select class="select-inline m-b" name="album_show_col" style="display:inline-block;margin-left: 6px;">
+                                    <option value="0">遵循默认配置</option>
+                                    <option value="1">显示1列</option>
+                                    <option value="2">显示2列</option>
+                                    <option value="3">显示3列</option>
+                                    <option value="4">显示4列</option>
+                                    <option value="5">显示5列</option>
+                                    <option value="6">显示6列</option>
+                                    <option value="7">显示7列</option>
+                                    <option value="8">显示8列</option>
+                                    <option value="9">显示9列</option>
+                                    <option value="10">显示10列</option>
+                                </select>
                             </div>
                             <div class="form-group" style="padding-top: 5px;">
                                 <label>相册权限:</label>

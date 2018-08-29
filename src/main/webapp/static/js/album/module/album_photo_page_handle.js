@@ -97,7 +97,10 @@
             "actionForEditPhoto": "photo.edit",
             "pagePaginationClick": "page.jump.click",
             "pageJumpCompleted": "page.jump.completed",
-            "pageLoadCompleted": "page.load.completed"
+            "pageLoadCompleted": "page.load.completed",
+            "popupOpened": "popup.open",
+            "popupClosed": "popup.close",
+            "popupChanged": "popup.change"
         },
         path_params: {
             "basePath": "https://imcoder.site/",
@@ -114,9 +117,15 @@
             "pageSize": 40,
             "pageCount": 0,
             "pageNum": 1,
-            "col": undefined
+            "col": undefined,
+            "default_col": {
+                "1200": 4,
+                "940": 3,
+                "520": 3,
+                "400": 2
+            }
         },
-        album_col: true,
+        use_album_col: true,
         page_method_address: "dashboard",
         load_condition: null,
         checkPhotoId: 0,
@@ -128,7 +137,7 @@
             pointer.album = data.album;
             if (pointer.album.photos != null) {
                 config.page_params.pageCount = utils.calcPageCount();
-                config.page_params.col && (config.album_col = false);
+                config.page_params.col && (config.use_album_col = false);
                 bindPopstate();
                 if (config.checkPhotoId > 0) {
                     jumpPage(utils.getPhotoPageNum(config.checkPhotoId));
@@ -525,10 +534,15 @@
          $grid.imagesLoaded().progress( function() {
          $grid.masonry('layout');
          });*/
-        var col = config.page_params.col;
-        var pcCol = col;
-        if (config.album_col) {
-            pcCol = pointer.album.show_col;
+        var default_col = config.page_params.default_col;
+        var col = config.page_params.col; // col指定时则强制修改列数
+        var baseCol = col;
+        if (config.use_album_col) {
+            if (pointer.album.show_col > 0) { // show_col等于0采取默认配置值
+                baseCol = pointer.album.show_col;
+            } else {
+                baseCol = default_col["1200"];
+            }
         }
         if (pointer.masonryInstance == null) {
             pointer.masonryInstance = new Macy({
@@ -542,28 +556,28 @@
                     y: 10
                 },
                 //设置列数
-                columns: pcCol,
+                columns: baseCol,
                 //定义不同分辨率（1200，940，520，400这些是分辨率）
                 breakAt: {
                     1200: {
-                        columns: pcCol,
+                        columns: baseCol,
                         margin: {
                             x: 10,
                             y: 10
                         }
                     },
                     940: {
-                        columns: config.album_col && pcCol < 3 ? pcCol : (col ? col : 3),
+                        columns: config.use_album_col && (baseCol < default_col["940"]) ? baseCol : (col ? col : default_col["940"]),
                         margin: {
                             y: 10
                         }
                     },
                     520: {
-                        columns: config.album_col && pcCol < 3 ? pcCol : (col ? col : 3),
+                        columns: config.use_album_col && (baseCol < default_col["520"]) ? baseCol : (col ? col : default_col["520"]),
                         margin: 3
                     },
                     400: {
-                        columns: config.album_col && pcCol < 2 ? pcCol : (col ? col : 2)
+                        columns: config.use_album_col && (baseCol < default_col["400"]) ? baseCol : (col ? col : default_col["400"])
                     }
                 }
             });
@@ -654,6 +668,7 @@
                             location.pathname + search
                         );
                     }
+                    utils.triggerEvent(config.event.popupOpened, params.check);
                 },
                 close: function () {
                     // Will fire when popup is closed
@@ -662,6 +677,7 @@
                     if (params.check) { // 当已经到列表页就不运行
                         history.back();
                     }
+                    utils.triggerEvent(config.event.popupClosed, params.check);
                 },
                 markupParse: function (template, values, item) {
                     // Triggers each time when content of popup changes
@@ -700,6 +716,7 @@
                             location.pathname + search
                         );
                     }
+                    utils.triggerEvent(config.event.popupChanged, photo_id);
                 },
                 change: function () {
                     //console.log(this.content); // Direct reference to your popup element

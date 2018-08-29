@@ -73,9 +73,9 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center;">
-                    <h1 style="">ImCODER's 博客</h1>
-                    <h3 style="color:#444;font-size:16.5px;">对于攀登者来说，失掉往昔的足迹并不可惜，迷失了继续前进时的方向却很危险。</h3>
-                    <h3 style="color:#555">
+                    <h1>ImCODER's 博客</h1>
+                    <h3 style="font-size:16.5px;">对于攀登者来说，失掉往昔的足迹并不可惜，迷失了继续前进时的方向却很危险。</h3>
+                    <h3>
                         <f>A coder's journal</f>
                     </h3>
                     <p>

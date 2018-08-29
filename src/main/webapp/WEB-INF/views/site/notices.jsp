@@ -33,8 +33,8 @@
             <div class="container">
                 <div class="" style="text-align:center;">
                     <h1>ImCODER's 博客</h1>
-                    <h3 style="color:#444">对于攀登者来说，失掉往昔的足迹并不可惜，迷失了继续前时的方向却很危险。</h3>
-                    <p style="color:#444">Welcome to my blog</p>
+                    <h3>对于攀登者来说，失掉往昔的足迹并不可惜，迷失了继续前时的方向却很危险。</h3>
+                    <p>Welcome to my blog</p>
                     <p><a class="btn btn-large btn-success loginModal_trigger"><b>
                         <c:if test="${ empty loginUser }">登录 or 注册</c:if><c:if test="${ !empty loginUser }">已登录</c:if>
                     </b></a></p>

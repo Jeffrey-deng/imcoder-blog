@@ -58,11 +58,10 @@
 }
 
 html {
-	font-family: 'Open Sans', sans-serif ;font-size:100%;
+	font-family: 'Open Sans',"Microsoft Yahei",sans-serif ;font-size:100%;
 	-ms-text-size-adjust: 100%;
 	-webkit-text-size-adjust: 100%
 }
-
 
 body {
 	margin: 0;
@@ -88,8 +87,7 @@ body.modal-open {
 	}
 }
 
-article,aside,details,figcaption,figure,footer,header,hgroup,main,menu,nav,section,summary
-	{
+article,aside,details,figcaption,figure,footer,header,hgroup,main,menu,nav,section,summary {
 	display: block
 }
 
@@ -891,7 +889,7 @@ td,th {
 body {
 	color: #666;
 	background-color: #f2f2f2;
-	font-family: 'Open Sans', sans-serif ;
+	font-family: "Open Sans","Microsoft Yahei",sans-serif ;
 	font-size: 87.5%
 }
 
@@ -906,7 +904,8 @@ a:hover,a:active {
 
 pre,code {
 	background: #F3F3F3;
-	font-family: Menlo;
+	/*font-family: Menlo;*/
+	font-family: Helvetica,Arial,Menlo,"Microsoft Yahei",sans-serif;
 	font-size: .92857em
 }
 
@@ -917,7 +916,7 @@ code {
 
 pre {
 	padding: 8px;
-	overflow-x: auto; 
+	overflow-x: auto;
 }
 
 pre code {
@@ -960,7 +959,7 @@ h2 {
 	font-family: "Helvetica Neue", Helvetica, Arial, 'Microsoft JHengHei',
 		sans-serif;font-weight:bold;
 	font-size:160%;
-		
+
 }
 h3 {
 	font-family: "Helvetica Neue", Helvetica, Arial, 'Microsoft JHengHei',
@@ -1120,7 +1119,7 @@ textarea {
 	/* background-color: #f2f2f2; */
 	background-color: #fff;
 	overflow: hidden;
-	 box-shadow: 0 2px 3px #ddd 
+	 box-shadow: 0 2px 3px #ddd
 }
 
 .post-author {
@@ -1170,7 +1169,8 @@ textarea {
 }
 
 .post-content {
-	font-family: 'Microsoft YaHei' ;
+	/*font-family: 'Microsoft YaHei' ;*/
+	font-family: Helvetica,Arial,"Open Sans","Microsoft Yahei",sans-serif;
 }
 
 .post .tags {
@@ -1693,6 +1693,22 @@ ripple {
 		z-index:1000;
 	}
 
+#first h1, #first h2, #first h3, #first h4 {
+	color: rgba(204, 204, 204, 0.8);
+}
+
+#first p {
+	color: rgba(204, 204, 204, 0.8);
+}
+
+#first {
+	background-size: 100%;
+}
+
+body {
+	background-size: 100%;
+}
+
 /* 顶部栏 */
 @media (max-width: 767px) {
 	.toolbar,navbar{
@@ -1780,7 +1796,7 @@ ripple {
 }
 
 @media (max-width:767px){
-	
+
 	/* 回到顶页 */
 	#goTop {
 	    display: block;
@@ -1794,14 +1810,14 @@ ripple {
 	    right: 10px;
 	    bottom: -40px;
 	}
-	
+
 	#goTop div {
 	    position: absolute;
 	    right: 0;
 	    left: 0;
 	    margin: auto;
 	}
-	
+
 	#goTop .stick {
 	    width: 4px;
 	    height: 10px;
@@ -1809,7 +1825,7 @@ ripple {
 	    border-radius: 1px;
 	    background-color: #429e46;
 	}
-	
+
 	#goTop .arrow {
 	    width: 0;
 	    height: 0;
@@ -1833,7 +1849,7 @@ ripple {
 	.goBottom .arrow {
 		width: 0;
 		height: 0;
-		bottom: 6px;
+		bottom: 4px;
 		border-width: 9px 9px 0;
 		border-style: solid;
 		border-color: transparent;
@@ -1848,16 +1864,16 @@ ripple {
 	.goBottom .stick {
 		width: 4px;
 		height: 10px;
-		top: 9px;
+		top: 6px;
 		border-radius: 1px;
 		background-color: #429e46;
 	}
-	
+
 	/* 插入代码modal */
 	.insert-code-panel{
 		width:100%;
 	}
-	
+
 	.chatpanel{
 		width:100%;
 		margin-left: auto;
@@ -1866,16 +1882,16 @@ ripple {
 		/*padding:0px;
 		margin: 0px -1px;*/
 	}
-	
+
 	.chatpanel .chat-users{
 		height:auto;
 	}
-	
+
 	.chatpanel .chat-discussion{
 		height:430px;
 		padding: 0px;
 	}
-	
+
 	.chatpanel .btngroup{
 		padding-top:10px;
 		float: right;
@@ -1889,46 +1905,46 @@ ripple {
 		border-bottom: 1px solid #cfcfcf;
 		z-index:1000;
 	}*/
-	
+
 	.toolbar .hiddenscorll {
     	overflow-x:hidden;
 	}
-	
+
 	/* 顶部栏  站点导航 */
 	.toolbar .sitenavigation .row {
     	padding-top:8px;
     	padding-bottom:5px;
     }
-    
+
 	.toolbar .dropdown-menu .row [class *="col-"]  {
 		padding-left:4px;
     	padding-right:4px;
 	}
-	
+
 	.toolbar .sitenavigation .row .rowname{
 		margin-left:19px;
     	padding-left:5px;
     	padding-right:5px;
     }
-    
+
      .toolbar .sitenavigation .row .morespace{
     	padding-right:0px;
     	width:55px;
     }
-    
+
     .toolbar .sitenavigation .row .moremorespace{
     	padding-left:0px;
     	padding-right:0px;
     	width:68px;
     }
-    
+
     /* 顶部栏  用户 */
     .toolbar .user .dropdown-toggle	{
     	padding-bottom:0px;
     	padding-top:10px;
     	padding-left:20px;
 	}
-	
+
 	.toolbar .user .dropdown-toggle	img{
     	width:30px;
     	height:30px;
@@ -1941,7 +1957,7 @@ ripple {
 	}
 }
 @media (min-width: 768px){
-	
+
 	/* 回到顶页 */
 	#goTop {
 	    display: block;
@@ -1955,7 +1971,7 @@ ripple {
 	    right: 50px;
 	    bottom: -40px;
 	}
-	
+
 	#goTop .arrow {
 	    width: 0;
 	    height: 0;
@@ -1963,14 +1979,14 @@ ripple {
 	    border: 9px solid transparent;
 	    border-bottom-color: #429e46;
 	}
-	
+
 	#goTop div {
 	    position: absolute;
 	    right: 0;
 	    left: 0;
 	    margin: auto;
 	}
-	
+
 	#goTop .stick {
 	    width: 8px;
 	    height: 14px;
@@ -2013,31 +2029,31 @@ ripple {
 		border-radius: 1px;
 		background-color: #429e46;
 	}
-	
+
 	 /* 插入代码modal */
 	.insert-code-panel {
 		width:500px;
 	}
-	
+
 	.chatpanel{
 		width:760px;
 	}
-	
+
 	.chatpanel .chat-users{
 		height:430px;
 	}
-	
+
 	.chatpanel .chat-discussion{
 		height:430px;
 		padding: 7px;
 	}
-	
+
 	.chatpanel .btngroup{
 		padding-top:50px;
 	}
-			
+
 	/* 顶部栏 */
-	
+
 	/* 顶部栏  站点导航 */
 	.toolbar .sitenavigation .dropdown-menu {
     	width:560px;
@@ -2056,29 +2072,29 @@ ripple {
     	padding-top:8px;
     	padding-bottom:5px;
     }
-    
+
     .toolbar .sitenavigation .row .rowname{
     	padding-left:30px;
     	width:80px;
     }
-    
+
     .toolbar .sitenavigation .row .morespace{
     	padding-right:0px;
     	width:60px;
     }
-    
+
     .toolbar .sitenavigation .row .moremorespace{
     	padding-right:0px;
     	width:80px;
     }
-    
+
     /* 顶部栏  用户 */
     .toolbar .user .dropdown-toggle	{
     	padding-bottom:0px;
     	padding-top:10px;
     	padding-left:0px;
 	}
-	
+
 	.toolbar .user .dropdown-toggle	img{
     	width:30px;
     	height:30px;
@@ -2089,7 +2105,7 @@ ripple {
     	min-width:90px;
     	text-align:center;
 	}
-    
+
 }
 
 .toast-success-no-icon {

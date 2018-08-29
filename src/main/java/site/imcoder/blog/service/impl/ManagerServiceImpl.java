@@ -141,7 +141,7 @@ public class ManagerServiceImpl implements IManagerService {
         if (auth == 200) {
             List<User> list = siteDao.loadUserTable();
             for (User user : list) {
-                cache.fillUserStats(user);
+                cache.fillUserStats(user, false);
             }
             map.put("userList", list);
         }

@@ -26,11 +26,20 @@
                 var isBlowup = _this.attr("isBlowup");
                 isBlowup = isBlowup || "false";
                 if (isBlowup == "false") {
+                    var config = common_utils.getLocalConfig("album", {
+                        "photo_page": {
+                            "blow_up": {
+                                "width": 500,
+                                "height": 500,
+                                "scale": 1.6
+                            }
+                        }
+                    }).photo_page.blow_up;
                     blowup = $.blowup({
                         selector: "#masonryContainer img",
-                        width: 500,
-                        height: 500,
-                        scale: 1.6
+                        width: config.width,
+                        height: config.height,
+                        scale: config.scale
                     });
                     _this.attr("isBlowup", "true");
                     toastr.success("已开启放大镜", "", {"progressBar": false});
@@ -102,15 +111,26 @@
         var photos = album.photos;
         if (photos && photos.length > 0) {
             var hasFeatured = false;
+            var hasVideo = false;
             $.each(photos, function (i, photo) {
                 if (photo.tags && photo.tags.indexOf("精选") != -1) {
                     hasFeatured = true;
+                }
+                if (photo.image_type && photo.image_type.indexOf("video") != -1) {
+                    hasVideo = true;
+                }
+                if (hasFeatured && hasVideo) {
                     return false;
                 }
             });
+            if (hasVideo) {
+                $("#main .album_options .options_right").prepend(
+                    '<a class="option_video" style="margin-left: 5px;" itemtype="url" href="photo.do?method=dashboard&model=photo&album_id=' + album_id + '&image_type=video&from=album_detail" target="_blank">视频</a>'
+                );
+            }
             if (hasFeatured) {
                 $("#main .album_options .options_right").prepend(
-                    '<a class="option_featured" itemtype="url" href="photo.do?method=dashboard&model=photo&album_id=' + album_id + '&tags=精选" target="_blank">精选</a>'
+                    '<a class="option_featured" style="margin-left: 5px;" itemtype="url" href="photo.do?method=dashboard&model=photo&album_id=' + album_id + '&tags=精选&from=album_detail" target="_blank">精选</a>'
                 );
             }
         }
@@ -137,15 +157,44 @@
             "hideMethod": "fadeOut"
         };
 
+        var albumConfig = common_utils.getLocalConfig("album", {
+            "photo_page": {
+                "full_background": false,
+                "default_col": {
+                    "1200": 4,
+                    "940": 3,
+                    "520": 3,
+                    "400": 2
+                },
+                "default_size": 40
+            }
+        });
+        if (albumConfig.photo_page.full_background) {
+            $("body").css("background-image", $("#first").css("background-image"));
+            $("#first").css("background-image", "");
+        }
+
         var album_id = $('#album_size').attr('album_id');
 
         var params = common_utils.parseURL(window.location.href).params;
-        var pageSize = params.size ? params.size : 40;
+        var pageSize = params.size ? params.size : albumConfig.photo_page.default_size;
         var pageNum = params.page ? params.page : 1;
-        var col = params.col;
+        var col = params.col && parseInt(params.col);
         var checkPhotoId = params.check ? parseInt(params.check) : 0;
 
         // 照片页面布局模块初始化
+        album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupChanged, function (e, check) {
+            if (check) {
+                setTimeout(function () { // 要设置一个延迟地址栏与历史才会生效
+                    document.title = album_photo_page_handle.pointer.album.name + "_" + check + " - 独伫小桥风卷袖的相册 | ImCODER's 博客";
+                }, 50);
+            }
+        });
+        album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupClosed, function (e, check) {
+            setTimeout(function () { // 要设置一个延迟地址栏与历史才会生效
+                document.title = album_photo_page_handle.pointer.album.name + " - 独伫小桥风卷袖的相册 | ImCODER's 博客";
+            }, 50);
+        });
         album_photo_page_handle.init({
             path_params: {
                 "basePath": $("#basePath").attr("href"),
@@ -161,7 +210,8 @@
             page_params: {
                 "pageSize": pageSize,
                 "pageNum": pageNum,
-                "col": col
+                "col": col,
+                "default_col": albumConfig.photo_page.default_col
             },
             checkPhotoId: checkPhotoId,
             page_method_address: "album_detail",
@@ -178,7 +228,7 @@
                     }).success("正在加载数据", "", "notify_photos_loading");
                     var object = $.extend(true, {}, config.load_condition);
                     // Object.keys(object).length
-                    $.get("photo.do?method=albumByAjax", {"id": object.album_id}, function (data) {
+                    $.get("photo.do?method=albumByAjax", {"id": object.album_id, "mount": true}, function (data) {
                         common_utils.removeNotify("notify_photos_loading");
                         if (data.flag == 200) {
                             success(data);
@@ -197,10 +247,49 @@
                 "actionForEditPhoto": function (photo) {
                     $.magnificPopup.close();
                     album_photo_handle.openUpdatePhotoModal(photo);
+                },
+                "makeupNode_callback": function (photo_node, photo) {
+                    if (photo.tags.indexOf("mount@" + this.config.load_condition.album_id) != -1) {
+                        photo_node.title = "Refer@" + photo.album_id + ": " + photo_node.title;
+                    }
+                    return;
                 }
             }
         });
 
+        // 创建一个定期刷新的内存缓存实例
+        var memoryPeriodCache = new PeriodCache({
+            cacheCtx: { // 重写cacheCtx，修改存储的位置
+                "ctx": {},
+                "setItem": function (key, value) {
+                    this.ctx[key] = value;
+                },
+                "getItem": function (key) {
+                    return this.ctx[key];
+                },
+                "removeItem": function (key) {
+                    delete this.ctx[key];
+                }
+            }
+        });
+        // 从内存缓存实例中得到相册基本信息组连接
+        var secureAlbumInfoConn = memoryPeriodCache.getOrCreateGroup({
+            "groupName": "album_info_cache",
+            "timeOut": 1800000,
+            "reload": {
+                "url": "photo.do?method=albumByAjax",
+                "params": function (groupName, key) {
+                    return {"id": key, "photos": false};
+                },
+                "parse": function (cacheCtx, groupName, key, old_object_value, data) {
+                    if (data.flag == 200) {
+                        return data.album;
+                    } else {
+                        return null;
+                    }
+                }
+            }
+        });
         // 相册照片处理模块初始化
         album_photo_handle.init({
             "selector": {
@@ -222,11 +311,20 @@
                 },
                 "updateCompleted": function (context, photo) {
                     album_photo_page_handle.utils.updatePhotoInPage(photo);
-                    if (photo.path) { // 如果更新了图片文件
+                    var photo_source = album_photo_page_handle.utils.getPhotoByCache(photo.photo_id);
+                    var album_id = album_photo_page_handle.config.load_condition.album_id;
+                    // 如果其他相册的图片取消挂载在本相册，重新构建布局
+                    var umount = (photo_source.album_id != album_id && photo.tags.indexOf("mount@" + album_id) == -1);
+                    if (umount) {
+                        album_photo_page_handle.utils.deletePhotoInPage(photo.photo_id);
+                    } else if (photo_source.album_id != album_id) {
+                        album_photo_page_handle.utils.getPhotoImageDom(photo.photo_id).attr("title", "Refer@" + photo_source.album_id + ": " + photo.name);
+                    }
+                    // 如果更新了图片文件，重新构建布局
+                    if (!umount && photo.path) {
                         album_photo_page_handle.jumpPage(album_photo_page_handle.config.page_params.pageNum);
                     }
                     if (photo.iscover == 1) {
-                        var photo_source = album_photo_page_handle.utils.getPhotoByCache(photo.photo_id);
                         album_photo_page_handle.pointer.album.cover = JSON.stringify({
                             "photo_id": photo_source.photo_id,
                             "path": photo_source.path,
@@ -246,7 +344,31 @@
                     openUploadModal_callback(album_id);
                 },
                 "beforeUpdateModalOpen": function (context, updateModal, formatPhotoToModal_callback, photo) {
-                    formatPhotoToModal_callback(photo);
+                    //如果是引用别的相册的照片
+                    if (photo.tags.indexOf("mount@" + album_photo_page_handle.config.load_condition.album_id) != -1) {
+                        // 引用的照片 添加照片所属相册链接
+                        if (updateModal.find('span[name="album_id"]').length == 0) {
+                            updateModal.find('span[name="photo_id"]').parent().parent().after(
+                                '<div class="form-group"><label class="control-label">所属簿：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>' +
+                                '<a target="_blank" style="color: #666; cursor: pointer" title="点击查看该相簿" >' +
+                                '<span name="album_id" class="control-label"></span></a></div>'
+                            );
+                        } else {
+                            updateModal.find('span[name="album_id"]').parent().parent().show(0);
+                        }
+                        secureAlbumInfoConn.get(photo.album_id, function (album) {
+                            var album_url = "photo.do?method=album_detail&id=" + photo.album_id;
+                            if (album) {
+                                updateModal.find('span[name="album_id"]').text(album.name).parent().attr("href", album_url);
+                            } else {
+                                updateModal.find('span[name="album_id"]').text(photo.album_id).parent().attr("href", album_url);
+                            }
+                            formatPhotoToModal_callback(photo);
+                        });
+                    } else {
+                        updateModal.find('span[name="album_id"]').parent().parent().hide(0); // 本相册照片隐藏链接
+                        formatPhotoToModal_callback(photo);
+                    }
                 }
             },
             "albumId": album_id,

@@ -25,11 +25,20 @@
                 var isBlowup = _this.attr("isBlowup");
                 isBlowup = isBlowup || "false";
                 if (isBlowup == "false") {
+                    var config = common_utils.getLocalConfig("album", {
+                        "photo_page": {
+                            "blow_up": {
+                                "width": 500,
+                                "height": 500,
+                                "scale": 1.6
+                            }
+                        }
+                    }).photo_page.blow_up;
                     blowup = $.blowup({
                         selector: "#masonryContainer img",
-                        width: 500,
-                        height: 500,
-                        scale: 1.6
+                        width: config.width,
+                        height: config.height,
+                        scale: config.scale
                     });
                     _this.attr("isBlowup", "true");
                     toastr.success("已开启放大镜", "", {"progressBar": false});
@@ -65,12 +74,30 @@
             "hideMethod": "fadeOut"
         };
 
+        var albumConfig = common_utils.getLocalConfig("album", {
+            "photo_page": {
+                "full_background": false,
+                "default_col": {
+                    "1200": 4,
+                    "940": 3,
+                    "520": 3,
+                    "400": 2
+                },
+                "default_size": 40,
+                "default_query_size": 520
+            }
+        });
+        if (albumConfig.photo_page.full_background) {
+            $("body").css("background-image", $("#first").css("background-image"));
+            $("#first").css("background-image", "");
+        }
+
         var params = common_utils.parseURL(window.location.href).params;
-        var pageSize = params.size ? params.size : 40;
+        var pageSize = params.size ? params.size : albumConfig.photo_page.default_size;
         var pageNum = params.page ? params.page : 1;
-        var col = params.col;
+        var col = params.col && parseInt(params.col);
         var checkPhotoId = params.check ? parseInt(params.check) : 0;
-        var query_size = params.query_size ? parseInt(params.query_size) : 520;
+        var query_size = params.query_size ? parseInt(params.query_size) : albumConfig.photo_page.default_query_size;
         var query_start = params.query_start ? parseInt(params.query_start) : 0;
 
         var load_condition = {};
@@ -82,12 +109,34 @@
         });
 
         var title_prefix = params.tags || params.name || params.description || "";
-        if (title_prefix && title_prefix == "_") {
-            !params.description && !params.name && $("head").find("title").text("所有标签" + " | " + $("head").find("title").text());
-        } else if (title_prefix) {
-            $("head").find("title").text(title_prefix + " | " + $("head").find("title").text());
+        if (Object.keys(load_condition).length == 2 && load_condition.album_id && load_condition.image_type == "video") {
+            title_prefix = "相册" + load_condition.album_id + "_" + "视频";
+        }
+        if (title_prefix) {
+            if (title_prefix == "_" && !params.description && !params.name) {
+                title_prefix = "所有标签";
+            }
+            $("head").find("title").text(title_prefix + " - " + $("head").find("title").text());
         }
 
+        album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupChanged, function (e, check) {
+            check && setTimeout(function () { // 要设置一个延迟地址栏与历史才会生效
+                if (title_prefix) {
+                    document.title = title_prefix + "_" + check + " - dashboard | ImCODER博客's 相册";
+                } else {
+                    document.title = "照片_" + check + " - dashboard | ImCODER博客's 相册";
+                }
+            }, 50);
+        });
+        album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupClosed, function (e, check) {
+            setTimeout(function () { // 要设置一个延迟地址栏与历史才会生效
+                if (title_prefix) {
+                    document.title = title_prefix + " - dashboard | ImCODER博客's 相册";
+                } else {
+                    document.title = "dashboard | ImCODER博客's 相册";
+                }
+            }, 50);
+        });
         album_photo_page_handle.init({
             path_params: {
                 "basePath": $("#basePath").attr("href"),
@@ -103,7 +152,8 @@
             page_params: {
                 "pageSize": pageSize,
                 "pageNum": pageNum,
-                "col": col
+                "col": col,
+                "default_col": albumConfig.photo_page.default_col
             },
             checkPhotoId: checkPhotoId,
             page_method_address: "dashboard",
@@ -121,15 +171,19 @@
                     }).success("正在加载数据", "", "notify_photos_loading");
                     var object = $.extend(true, {}, config.load_condition);
                     delete object.method;
-                    object.query_size = config.query_size;
-                    object.query_start = config.query_start;
+                    if (object.from && object.album_id && object.from.indexOf("album_detail") != -1) {
+                        object.base = object.from;
+                    } else {
+                        object.query_size = config.query_size;
+                        object.query_start = config.query_start;
+                    }
                     $.get("photo.do?method=photoListByAjax", object, function (data) {
                         common_utils.removeNotify("notify_photos_loading");
                         if (data.flag == 200) {
                             var album = {};
                             album.photos = data.photos || [];
                             album.size = data.photos ? data.photos.length : 0;
-                            album.show_col = 4;
+                            album.show_col = 0;
                             data.album = album;
                             success(data);
                             if (album.size == 0) {
@@ -141,7 +195,7 @@
                                 }).success("抱歉，未找到您要的内容", "", "notify_photos_loading_empty");
                             }
                         } else {
-                            toastr.error(data.info, "加载相册信息失败!");
+                            toastr.error(data.info, "加载照片列表失败!");
                             console.warn("Error Code: " + data.flag);
                         }
                     });
@@ -174,7 +228,8 @@
                     var context = this;
                     var config = context.config;
                     if (!config.hasLoadAll && config.page_params.pageNum == config.page_params.pageCount) { // 点击加载全部图片
-                        if (context.pointer.album.size == 520 && config.query_size == 520) {
+                        var default_query_size = albumConfig.photo_page.default_query_size;
+                        if (context.pointer.album.size == default_query_size && config.query_size == default_query_size) {
                             toastr.success("点击加载更多照片", "", {
                                 timeOut: 0, onclick: function () {
                                     config.query_size = 0;
@@ -353,7 +408,8 @@
                             return /^[^\w]+$/.test(key) ? "{" + key + "}" : this[0];
                         }, "\\[\\[\\.", "\\.\\]\\]")
                     }
-                    document.title = value + " | dashboard - 相册";
+                    document.title = value + " - dashboard | ImCODER博客's 相册";
+                    title_prefix = value;
                 }
                 search_input_value += "," + key + ":";
                 if (toolbar.config.special_pair_separator.test(value) || toolbar.config.special_value_separator.test(value)) {

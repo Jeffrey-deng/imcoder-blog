@@ -18,6 +18,7 @@ import site.imcoder.blog.service.IUserService;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,15 @@ import java.util.Map;
 @Controller
 @RequestMapping("/photo.do")
 public class PhotoController extends BaseController {
+
+    private static String MOUNT_PREFIX = "mount@";
+
+    private static Comparator<Photo> ALBUM_PHOTO_COMPARATOR = new Comparator<Photo>() {
+        @Override
+        public int compare(Photo b, Photo n) {
+            return b.getPhoto_id() - n.getPhoto_id();
+        }
+    };
 
     @Resource
     private IAlbumService albumService;
@@ -108,20 +118,22 @@ public class PhotoController extends BaseController {
     /**
      * Ajax 打开相册详情
      *
-     * @param id
+     * @param id      相册ID
+     * @param photos  是否加载照片列表
+     * @param mount   是否加载挂载到本相册的照片
      * @param session
      * @param request
-     * @return Json
+     * @return
      */
     @RequestMapping(params = "method=albumByAjax")
     @ResponseBody
-    public Map<String, Object> openAlbumByAjax(int id, @RequestParam(defaultValue = "true") boolean photos, HttpSession session, HttpServletRequest request) {
+    public Map<String, Object> openAlbumByAjax(int id, @RequestParam(defaultValue = "true") boolean photos, @RequestParam(defaultValue = "false") boolean mount, HttpSession session, HttpServletRequest request) {
         Album album = new Album();
         album.setAlbum_id(id);
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = null;
         if (photos) {
-            map = albumService.findAlbumWithPhotos(album, loginUser);
+            map = albumService.findAlbumWithPhotos(album, mount, loginUser);
         } else {
             map = albumService.findAlbumInfo(album, loginUser);
         }
@@ -179,7 +191,12 @@ public class PhotoController extends BaseController {
         Map<String, Object> map = new HashMap<>();
         List<Album> albumList = albumService.findAlbumList(album, loginUser);
         map.put("albums", albumList);
-        map.put(KEY_STATUS, 200);
+        if (albumList != null) {
+            map.put(KEY_STATUS, 200);
+        } else {
+            map.put(KEY_STATUS, 400);
+        }
+        convertStatusCodeToWord(map);
         return map;
     }
 
@@ -301,14 +318,20 @@ public class PhotoController extends BaseController {
             @RequestParam(defaultValue = "and") String logic_conn,
             @RequestParam(defaultValue = "0") int query_start,
             @RequestParam(defaultValue = "500") int query_size,
+            String base,
             HttpServletRequest request,
             HttpSession session
     ) {
         Map<String, Object> map = new HashMap<>();
         User loginUser = (User) session.getAttribute("loginUser");
-        List<Photo> photos = albumService.findPhotoList(photo, logic_conn, query_start, query_size, loginUser);
+        List<Photo> photos = albumService.findPhotoList(base, photo, logic_conn, query_start, query_size, loginUser);
         map.put("photos", photos);
-        map.put(KEY_STATUS, 200);
+        if (photos != null) {
+            map.put(KEY_STATUS, 200);
+        } else {
+            map.put(KEY_STATUS, 400);
+        }
+        convertStatusCodeToWord(map);
         return map;
     }
 

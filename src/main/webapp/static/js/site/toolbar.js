@@ -27,7 +27,7 @@
         "special_value_separator": /[:：=]/,    //键与值的分隔符
         "special_search_object": {    //需要特殊处理的关键字
             "model_schema": ["model", "mode", "m"],
-            "photo_schema": ["logic_conn", "name", "description", "desc", "tag", "tags", "uid", "photo_id", "id", "album_id", "aid", "originName", "origin", "path"],
+            "photo_schema": ["logic_conn", "name", "description", "desc", "tag", "tags", "uid", "photo_id", "id", "album_id", "aid", "originName", "origin", "path", "image_type", "type", "from"],
             "article_schema": ["logic_conn", "id", "aid", "author.uid", "uid", "category.atid", "atid", "title", "tag", "tags", "summary", "create_time", "update_time", "click", "top", "recommend"],
             "album_schema": ["id", "album_id", "name", "description", "desc", "user.uid", "uid"]
         },
@@ -87,6 +87,7 @@
                     entry[0] == "id" && (entry[0] = "photo_id");
                     entry[0] == "aid" && (entry[0] = "album_id");
                     entry[0] == "tag" && (entry[0] = "tags");
+                    entry[0] == "type" && (entry[0] = "image_type");
                     // 转化图片路径为相对路径
                     entry[0] == "path" && (entry[1] = entry[1].replace(context.config.path_params.cloudPath, ""));
                     // 编码正则表达式
@@ -229,7 +230,7 @@
             "album": config.callback.album_search,
             "ts": config.callback.tags_square_search
         };
-        var searchConfig = common_utils.getLocalConfig("search");
+        var searchConfig = common_utils.getLocalConfig("search", {"hasReadHelp": false}); // 搜索帮助
         if (!searchConfig.hasReadHelp) {
             searchInputBox.focus(function (e) {
                 try {
@@ -268,15 +269,17 @@
             }
         });
         // quickly search
-        $(document).keyup(function (e) {
-            e.defaultPrevented;
-            var theEvent = e || window.event;
-            var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
-            var tagName = e.target.tagName;
-            if ((code == 83 || code == 70) && tagName != "INPUT" && tagName != "TEXTAREA" && !e.target.hasAttribute("contenteditable")) { // S键或F键
-                _self.find('.toolbar_search_input').focus(); // 将焦点定位到输入框
-            }
-        });
+        $(document).keyup(searchHotKey_event);
+    };
+
+    var searchHotKey_event = function (e) {
+        e.defaultPrevented;
+        var theEvent = e || window.event;
+        var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
+        var tagName = e.target.tagName;
+        if ((code == 83 || code == 70) && !e.target.isContentEditable && tagName != "INPUT" && tagName != "TEXTAREA") { // S键或F键
+            _self.find('.toolbar_search_input').focus(); // 将焦点定位到输入框
+        }
     };
 
     /**
@@ -286,7 +289,8 @@
      *  {String} inputInitialValue, // 搜索框默认值
      *  {Function} model_action, // 搜索模块响应
      *  {Array} modelMapping, // 搜索模块映射名称
-     *  {Boolean} setDefaultMapping  // 是否设置成默认模块
+     *  {Boolean} setDefaultMapping  // 是否设置成默认模块，默认false
+     *  {Boolean} searchHotKey  // 是否开启搜索快捷键，默认true
      * }
      * @param options
      */
@@ -303,6 +307,9 @@
             if (options.setDefaultMapping == true) {
                 config.special_model_mapping["default"] = options.model_action;
             }
+        }
+        if (options.hasOwnProperty("searchHotKey") && options["searchHotKey"] == false) {
+            $(document).unbind("keyup", searchHotKey_event); // 特殊页面可配置searchHotKey关闭搜索快捷键
         }
     };
 

@@ -2,12 +2,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'magnificPopup', 'login_handle'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'common_utils', 'magnificPopup', 'login_handle'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, null, login_handle);
+        factory(window.jQuery, null, $(document).ready, toastr, common_utils, null, login_handle);
     }
-})(function ($, bootstrap, domReady, toastr, magnificPopup, login_handle) {
+})(function ($, bootstrap, domReady, toastr, common_utils, magnificPopup, login_handle) {
 
     var list = []; //评论列表
     var aid = $('#h_aid').attr('aid');
@@ -54,7 +54,7 @@
                 //构造主题
                 var topics = getTopics(list);
                 //组装HTM
-                var listHtml = '<h3>已有 ' + list.length + '条评论<a style="float:right;" href="#addcomment">添加评论</a></h3>';
+                var listHtml = '<h3 class="comment-meta-count">已有 ' + list.length + '条评论<a class="comment-add-new" style="float:right;" href="#addcomment">添加评论</a></h3>';
                 listHtml += '<ol class="comment-list">';
                 for (var i = 0; i < topics.length; i++) {
                     var comment = topics[i];
@@ -552,6 +552,15 @@
             var preStatus = e.currentTarget.getAttribute("status") || "no";
             fullArticleMainArea(preStatus);
         });
+
+        var articleConfig = common_utils.getLocalConfig("article", {"full_screen": false, "full_background": false});
+        if (articleConfig.full_screen) {
+            fullArticleMainArea("no");
+        }
+        if (articleConfig.full_background) {
+            $("body").css("background-image", $("#first").css("background-image"));
+            $("#first").css("background-image", "");
+        }
 
         initDelete();
 

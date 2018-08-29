@@ -213,6 +213,10 @@ public class EventTriggerImpl implements IEventTrigger {
             }
 
             article.setDetail("");
+            User author = article.getAuthor();
+            User simpleAuthor = new User(author.getUid(), author.getUsername(), author.getNickname());
+            article.setAuthor(simpleAuthor);
+            author = null;
             cache.updateArticle(article, user);
 
             cache.updateCategoryCount(article.getCategory(), 1);

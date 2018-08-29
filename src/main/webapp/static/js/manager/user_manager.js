@@ -6,12 +6,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'common_utils'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, null);
+        factory(window.jQuery, null, $(document).ready, null, common_utils);
     }
-})(function ($, bootstrap, domReady, toastr) {
+})(function ($, bootstrap, domReady, toastr, common_utils) {
     domReady(function () {
         $('#user_tds').find('tr').each(function (index, tr) {
             if (index == 0) return;
@@ -43,5 +43,25 @@
                 });
             });
         });
+
+        $('#userInfoModal').find('span[name="loginIP"]').click(function (e) {
+            var ip = this.innerText;
+            if (ip != "暂无IP") {
+                getIpLocation(ip)
+            }
+        });
     });
+
+    function getIpLocation(ip) {
+        $.get("site.do?method=ipLocation", {"ip": ip}, function (data) {
+            if (data && data.flag == 200 && data.location) {
+                common_utils.notify({
+                    "progressBar": false,
+                    "iconClass": "toast-success-no-icon"
+                }).success(data.location, "", "notify_ip_location");
+            } else {
+                toastr.error("出了一点小问题...", data.flag);
+            }
+        });
+    }
 });

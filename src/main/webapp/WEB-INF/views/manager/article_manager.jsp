@@ -39,7 +39,8 @@
                 <div class="" style="text-align:center">
                     <br>
                     <h1>Website Administer System</h1>
-                    <h3 style="color:#444;font-size:16.5px;">文章管理</h3>
+                    <h3>文章管理</h3>
+                    <br>
                 </div>
             </div>
         </div>

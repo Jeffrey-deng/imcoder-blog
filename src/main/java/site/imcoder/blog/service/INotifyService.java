@@ -59,7 +59,8 @@ public interface INotifyService {
 
     /**
      * 新的关注者提醒
-     *  @param user
+     *
+     * @param user
      * @param fan
      * @param isFriend
      */

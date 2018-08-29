@@ -34,6 +34,7 @@
         var pageSize = params.size ? params.size : 40;
         var pageNum = params.page ? params.page : 1;
         var col = params.col;
+        var fromAlbumDetailPage = (params.from && params.album_id && params.from == "album_detail");
         var load_condition = {};
         var titleStr = "";
         $.each(params, function (key, value) {
@@ -46,8 +47,23 @@
             $("head").find("title").text(titleStr.substring(1) + " | 标签索引 - 相册");
         }
 
+        // 重写一个支持特殊符号做id的选择器
+        album_page_handle.utils.getAlbumDom = function (album_id) {
+            var encodeId = album_id;
+            var jsArr = album_page_handle.config.jsSpecialChars;
+            var jqueryArr = album_page_handle.config.jquerySpecialChars;
+            $.each(jsArr, function (i, char) {
+                encodeId = encodeId.replace(new RegExp("\\" + char, "g"), "\\" + char);
+            });
+            $.each(jqueryArr, function (i, char) {
+                encodeId = encodeId.replace(new RegExp(char, "g"), "\\" + char);
+            });
+            return $("#" + album_page_handle.config.selector.album_id_prefix + encodeId);
+        };
         var calls = [];
         album_page_handle.init({
+            jsSpecialChars: ["\\", "^", "$", "*", "?", ".", "+", "(", ")", "[", "]", "|", "{", "}"],
+            jquerySpecialChars: ["~", "`", "@", "#", "%", "&", "=", "'", "\"", ":", ";", "<", ">", ",", "/"],
             callback: {
                 "loadAlbums_callback": function (config, success) { // 加载相册列表的回调
                     common_utils.notify({
@@ -57,10 +73,13 @@
                         "closeButton": false
                     }).success("正在加载数据", "", "notify_photos_loading");
                     var object = $.extend(true, {"query_size": 0}, config.load_condition);
+                    fromAlbumDetailPage && (object.base = object.from);
                     $.get("photo.do?method=photoListByAjax", object, function (data) {
                         if (data.flag == 200) {
                             common_utils.getNotify("notify_photos_loading").find(".toast-message").text("正在计算数据");
-                            if (!data.photos) {
+                            fromAlbumDetailPage && (config.load_condition.from = "album_detail_tags");
+                            var photos = data.photos;
+                            if (!photos) {
                                 common_utils.removeNotify("notify_photos_loading");
                                 return;
                             }
@@ -75,7 +94,7 @@
                             }
                             config.isFilterTags = isFilterTags;
                             var tagsMap = {};
-                            $.each(data.photos, function (i, photo) {
+                            $.each(photos, function (i, photo) {
                                 var tags = photo.tags ? photo.tags.split('#') : [];
                                 $.each(tags, function (i, tag) {
                                     if (tag) {

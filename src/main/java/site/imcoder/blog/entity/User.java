@@ -65,6 +65,17 @@ public class User implements Serializable {
     public User() {
     }
 
+    public User(int uid, String username, String nickname) {
+        this.uid = uid;
+        this.username = username;
+        this.nickname = nickname;
+    }
+
+    public User(int uid, String nickname) {
+        this.uid = uid;
+        this.nickname = nickname;
+    }
+
     public int getUid() {
         return uid;
     }

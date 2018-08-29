@@ -181,11 +181,12 @@ public class UserServiceImpl implements IUserService {
             if (cache.getUser(hostUser.getUid(), Cache.READ) == null) {
                 trigger.newUser(hostUser);
             }
-            cache.fillUserStats(hostUser);
+            boolean enableSecurity = (loginUser == null || (user.getUid() != loginUser.getUid() && loginUser.getUserGroup().getGid() == 0));
+            cache.fillUserStats(hostUser, enableSecurity);
             hostUser.setPassword(null);
             hostUser.setToken(null);
             //loginUser-->判断主人各项资料访客的查看权限
-            if (loginUser == null || (user.getUid() != loginUser.getUid() && loginUser.getUserGroup().getGid() == 0)) {
+            if (enableSecurity) {
                 hostUser.setLoginIP(null);
                 hostUser.setUsername(null);
                 hostUser.setEmail(null);

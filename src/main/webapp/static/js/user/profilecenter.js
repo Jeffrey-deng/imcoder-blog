@@ -90,17 +90,89 @@
 
                     $('input[name="username"]').val(user.username);
                     $('input[name="email"]').val(user.email);
-
+                    $('#login_ip').html(user.loginIP);
+                    getIpLocation(user.loginIP);
                     $('#validateMailForm').find('input[name="email"]').val(user.email);
                     src_email = user.email;
                     src_username = user.username;
                 }
-
             },
             error: function () {
                 console.log("拉取个人资料失败");
             }
         });
+    }
+
+    function getIpLocation(ip) {
+        // getIpLocationByTaoBao(ip); https页面不能使用淘宝接口，换成后台Java获取
+        $.get("site.do?method=ipLocation", {"ip": ip}, function (data) {
+            if (data && data.flag == 200 && data.location) {
+                $("#login_ip").html(ip + " , " + data.location);
+            } else {
+                $("#login_ip").html(ip);
+            }
+        });
+    }
+
+    function getIpLocationByTaoBao(ip) {
+        $.get("http://ip.taobao.com/service/getIpInfo.php", {"ip": ip}, function (json) {
+            if (json && json.code == 0 && json.data) {
+                var data = json.data;
+                var location = generateIpLocation(data.country, data.region, data.city, data.isp);
+                $("#login_ip").html(ip + " , " + location);
+            } else {
+                $("#login_ip").html(ip);
+            }
+        }).fail(function () {
+            console.warn("淘宝ip接口获取ip失败");
+            $("#login_ip").html(ip);
+        });
+    }
+
+    var municipality = ["北京", "天津", "上海", "重庆"];
+    var autonomous = ["内蒙古", "广西", "宁夏", "新疆", "西藏"];
+
+    function generateIpLocation(country, region, city, isp) {
+        var location = "";
+        if (isp == "内网") {
+            location = "局域网";
+            return location;
+        }
+        location += country;
+        if (country == "中国") {
+            if (municipality.indexOf(region) != -1) {
+                location += (region + "市");
+            } else if (autonomous.indexOf(region) != -1) {
+                location += (region + "自治区");
+            } else {
+                location += (region + "省");
+            }
+            if (region != city && city != "XX") {
+                location += (city + "市");
+            }
+            if (isp != "XX") {
+                location += isp;
+            }
+        } else if (country == "美国") {
+            location += (region + "州");
+            if (region != city && city != "XX") {
+                location += (city + "市");
+            }
+            if (isp != "XX") {
+                location += isp;
+            }
+        } else {
+            if (region != country && region != "XX") {
+                location += region;
+            }
+            if (region != city && city != "XX") {
+                location += city;
+            }
+            if (isp != "XX") {
+                location += isp;
+            }
+        }
+        return location;
     }
 
     function update_profile() {
@@ -844,7 +916,7 @@
                     if (data.flag == 200) {
                         console.log("清除未读系统消息成功！");
                     } else {
-                        console.log("清除未读系统消息成功！" + data.info);
+                        console.warn("清除未读系统消息失败！" + data.info);
                         console.warn("Error Code: " + data.flag);
                     }
                 },
@@ -853,6 +925,172 @@
                 }
             });
         }
+    }
+
+    function init_setting() {
+        var articleConfig = common_utils.getLocalConfig("article", {
+            "full_screen": false,
+            "full_background": false
+        });
+        var loginConfig = common_utils.getLocalConfig("login", {
+            "remember_expires": 31104000000,
+            "remember_default_check": true
+        });
+        var albumConfig = common_utils.getLocalConfig("album", {
+            "photo_page": {
+                "blow_up": {
+                    "width": 500,
+                    "height": 500,
+                    "scale": 1.6
+                },
+                "full_background": false,
+                "video_load_mode": "lazyLoad",
+                "default_col": {
+                    "1200": 4,
+                    "940": 3,
+                    "520": 3,
+                    "400": 2
+                },
+                "default_size": 40,
+                "default_query_size": 520
+            },
+            "album_page": {
+                "full_background": false,
+                "default_col": {
+                    "1200": 4,
+                    "940": 3,
+                    "520": 3,
+                    "400": 2
+                },
+                "default_size": 40
+            }
+        });
+        var settingTab = $("#settings");
+        // 初始化 article配置
+        if (articleConfig.full_screen) {
+            settingTab.find('#setting_article_form input[name="setting_full_screen"][value="true"]').prop("checked", true);
+        } else {
+            settingTab.find('#setting_article_form input[name="setting_full_screen"][value="false"]').prop("checked", true);
+        }
+        if (articleConfig.full_background) {
+            settingTab.find('#setting_article_form input[name="setting_full_background_article"][value="true"]').prop("checked", true);
+        } else {
+            settingTab.find('#setting_article_form input[name="setting_full_background_article"][value="false"]').prop("checked", true);
+        }
+
+        // 初始化登录配置
+        settingTab.find('#setting_login_form input[name="setting_remember_expires"]').val(loginConfig.remember_expires / (3600 * 1000 * 24));
+        if (loginConfig.remember_default_check) {
+            settingTab.find('#setting_login_form input[name="setting_remember_default_check"][value="true"]').prop("checked", true);
+        } else {
+            settingTab.find('#setting_login_form input[name="setting_remember_default_check"][value="false"]').prop("checked", true);
+        }
+
+        // 初始化相册photo_page配置
+        if (albumConfig.photo_page.full_background) {
+            settingTab.find('#setting_album_form input[name="setting_full_background_photo"][value="true"]').prop("checked", true);
+        } else {
+            settingTab.find('#setting_album_form input[name="setting_full_background_photo"][value="false"]').prop("checked", true);
+        }
+        settingTab.find('#setting_album_form input[name="setting_blow_up_width"]').val(albumConfig.photo_page.blow_up.width);
+        settingTab.find('#setting_album_form input[name="setting_blow_up_height"]').val(albumConfig.photo_page.blow_up.height);
+        settingTab.find('#setting_album_form input[name="setting_blow_up_scale"]').val(albumConfig.photo_page.blow_up.scale);
+        settingTab.find('#setting_album_form input[name="setting_video_load_mode"]').each(function (i, mode) {
+            if (mode.value == albumConfig.photo_page.video_load_mode) {
+                $(mode).prop("checked", true);
+            }
+        });
+        settingTab.find('#setting_album_form input[name="setting_default_col_photo_1200"]').val(albumConfig.photo_page.default_col["1200"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_photo_940"]').val(albumConfig.photo_page.default_col["940"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_photo_520"]').val(albumConfig.photo_page.default_col["520"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_photo_400"]').val(albumConfig.photo_page.default_col["400"]);
+        settingTab.find('#setting_album_form input[name="setting_default_size_photo"]').val(albumConfig.photo_page.default_size);
+        settingTab.find('#setting_album_form input[name="setting_default_query_size"]').val(albumConfig.photo_page.default_query_size);
+
+        // 初始化相册album_page配置
+        if (albumConfig.album_page.full_background) {
+            settingTab.find('#setting_album_form input[name="setting_full_background_album"][value="true"]').prop("checked", true);
+        } else {
+            settingTab.find('#setting_album_form input[name="setting_full_background_album"][value="false"]').prop("checked", true);
+        }
+        settingTab.find('#setting_album_form input[name="setting_default_col_album_1200"]').val(albumConfig.album_page.default_col["1200"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_album_940"]').val(albumConfig.album_page.default_col["940"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_album_520"]').val(albumConfig.album_page.default_col["520"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_album_400"]').val(albumConfig.album_page.default_col["400"]);
+        settingTab.find('#setting_album_form input[name="setting_default_size_album"]').val(albumConfig.album_page.default_size);
+
+        // 点击保存事件
+        settingTab.find("#submit_setting_article").click(function () {
+            var config = {};
+            config.full_screen = settingTab.find('#setting_article_form input[name="setting_full_screen"]:checked').val() == "true" ? true : false;
+            config.full_background = settingTab.find('#setting_article_form input[name="setting_full_background_article"]:checked').val() == "true" ? true : false;
+            common_utils.setLocalConfig("article", config);
+            toastr.success("文章配置保存成功！", "", {"progressBar": false});
+        });
+        settingTab.find("#submit_setting_login").click(function () {
+            var config = {};
+            var days = settingTab.find('#setting_login_form input[name="setting_remember_expires"]').val();
+            if (days == "") {
+                toastr.error("请输入值！", "错误", {"progressBar": false});
+                return;
+            }
+            if (isNaN(days)) {
+                toastr.error("请输入数字！", "错误", {"progressBar": false});
+                return;
+            }
+            if (days <= 0) {
+                toastr.error("请输入大于0的数字！单位为天", "错误", {"progressBar": false});
+                return;
+            }
+            config.remember_expires = days * (3600 * 1000 * 24);
+            config.remember_default_check = settingTab.find('#setting_login_form input[name="setting_remember_default_check"]:checked').val() == "true" ? true : false;
+            common_utils.setLocalConfig("login", config);
+            toastr.success("登录配置保存成功！", "", {"progressBar": false});
+        });
+        settingTab.find("#submit_setting_album").click(function () {
+            var config = {};
+            // photo_page
+            config.photo_page = {};
+            config.photo_page.full_background = settingTab.find('#setting_album_form input[name="setting_full_background_photo"]:checked').val() == "true" ? true : false;
+            config.photo_page.video_load_mode = settingTab.find('#setting_album_form input[name="setting_video_load_mode"]:checked').val();
+            var blow_up_width = settingTab.find('#setting_album_form input[name="setting_blow_up_width"]').val();
+            var blow_up_height = settingTab.find('#setting_album_form input[name="setting_blow_up_height"]').val();
+            var blow_up_scale = settingTab.find('#setting_album_form input[name="setting_blow_up_scale"]').val();
+            if (blow_up_width == "" || isNaN(blow_up_width) || blow_up_width <= 0) {
+                toastr.error("放大镜宽度请输入大于0的数字！", "错误", {"progressBar": false});
+                return;
+            }
+            if (blow_up_height == "" || isNaN(blow_up_height) || blow_up_height <= 0) {
+                toastr.error("放大镜高度请输入大于0的数字！", "错误", {"progressBar": false});
+                return;
+            }
+            if (blow_up_scale == "" || isNaN(blow_up_scale) || blow_up_scale <= 0) {
+                toastr.error("放大镜倍率请输入大于0的数字！", "错误", {"progressBar": false});
+                return;
+            }
+            config.photo_page.blow_up = {};
+            config.photo_page.blow_up.width = parseInt(blow_up_width);
+            config.photo_page.blow_up.height = parseInt(blow_up_height);
+            config.photo_page.blow_up.scale = parseFloat(blow_up_scale);
+            config.photo_page.default_col = {};
+            config.photo_page.default_col["1200"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_1200"]').val());
+            config.photo_page.default_col["940"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_940"]').val());
+            config.photo_page.default_col["520"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_520"]').val());
+            config.photo_page.default_col["400"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_400"]').val());
+            config.photo_page.default_size = parseInt(settingTab.find('#setting_album_form input[name="setting_default_size_photo"]').val());
+            config.photo_page.default_query_size = parseInt(settingTab.find('#setting_album_form input[name="setting_default_query_size"]').val());
+            // album_page
+            config.album_page = {};
+            config.album_page.full_background = settingTab.find('#setting_album_form input[name="setting_full_background_album"]:checked').val() == "true" ? true : false;
+            config.album_page.default_col = {};
+            config.album_page.default_col["1200"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_1200"]').val());
+            config.album_page.default_col["940"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_940"]').val());
+            config.album_page.default_col["520"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_520"]').val());
+            config.album_page.default_col["400"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_400"]').val());
+            config.album_page.default_size = parseInt(settingTab.find('#setting_album_form input[name="setting_default_size_album"]').val());
+            common_utils.setLocalConfig("album", config);
+            toastr.success("相册配置保存成功！", "", {"progressBar": false});
+        });
     }
 
     /**************** msg end ******************/
@@ -885,11 +1123,17 @@
             }
         }
 
-        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+        var hostUserName = document.title.substring(0, document.title.indexOf(" "));
+        $('#main_tab_ul a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
             // e.target // newly activated tab
             //e.relatedTarget // previous active tab
             //if ( !(action !== undefined && action.length > 0)) {
-            history.replaceState(null, document.title, location.pathname + "?method=profilecenter&action=" + $(e.target).attr('href').substring(1));
+
+            history.replaceState(
+                null,
+                hostUserName + "_" + e.target.innerText + " - ImCODER's 博客",
+                location.pathname + "?method=profilecenter&action=" + $(e.target).attr('href').substring(1));
+            document.title = hostUserName + "_" + e.target.innerText + " - ImCODER's 博客";
             /*document.location.href = $(e.target).attr('href');
              //document.body.scrollTop = document.documentElement.scrollTop = 0;
              scrollTo(0,0);*/
@@ -912,6 +1156,8 @@
         initMsgForm();
 
         initAccountForm();
+
+        init_setting();
     });
 
 });

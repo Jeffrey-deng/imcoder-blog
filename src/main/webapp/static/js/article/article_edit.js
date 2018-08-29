@@ -2,12 +2,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'clipboard', 'niftymodals', 'edit_tool', 'common_utils', 'login_handle'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'clipboard', 'niftymodals', 'edit_tool', 'common_utils', 'login_handle', 'toolbar'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, Clipboard, null, null, common_utils, login_handle);
+        factory(window.jQuery, null, $(document).ready, toastr, Clipboard, null, null, common_utils, login_handle, toolbar);
     }
-})(function ($, bootstrap, domReady, toastr, Clipboard, niftymodals, edit_tool, common_utils, login_handle) {
+})(function ($, bootstrap, domReady, toastr, Clipboard, niftymodals, edit_tool, common_utils, login_handle, toolbar) {
 
     var flag = "new";
     //是否已经保存
@@ -327,6 +327,8 @@
         //初始化复制剪切板
         initClipboard();
 
+        // 关闭搜索快捷键
+        toolbar.rewriteSearch({"searchHotKey": false});
     });
 
 });

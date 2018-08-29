@@ -64,7 +64,13 @@
             "pageSize": 40,
             "pageCount": 0,
             "pageNum": 1,
-            "col": undefined
+            "col": undefined,
+            "default_col": {
+                "1200": 4,
+                "940": 3,
+                "520": 3,
+                "400": 2
+            }
         },
         load_condition: null,
         album_href_prefix: ""
@@ -221,6 +227,7 @@
 
     // 瀑布流
     var initWaterfallFlow = function () {
+        var default_col = config.page_params.default_col;
         var col = config.page_params.col;
         if (pointer.masonryInstance == null) {
             pointer.masonryInstance = new Macy({
@@ -234,29 +241,29 @@
                     y: 30
                 },
                 //设置列数
-                columns: col || 4,
+                columns: col || default_col["1200"],
                 //定义不同分辨率（1200，940，520，400这些是分辨率）
                 breakAt: {
                     1200: {
-                        columns: col || 4,
+                        columns: col || default_col["1200"],
                         margin: {
                             x: 20,
                             y: 30
                         }
                     },
                     940: {
-                        columns: col || 3,
+                        columns: col || default_col["940"],
                         margin: {
                             x: 20,
                             y: 20
                         }
                     },
                     520: {
-                        columns: col || 2,
+                        columns: col || default_col["520"],
                         margin: 20
                     },
                     400: {
-                        columns: col || 2,
+                        columns: col || default_col["400"],
                         margin: 20
                     }
                 }
@@ -315,7 +322,7 @@
         },
         "createAlbumNode": function (album) {
             var div = document.createElement("div");
-            div.id = (config.selector.album_id_prefix + album.album_id).replace(/\s/g, "-").replace(/\./g, "_");
+            div.id = (config.selector.album_id_prefix + album.album_id);
             div.className = "album";
             // div.setAttribute("data-order", photo.count);
             div.setAttribute("data-id", album.album_id);
@@ -380,8 +387,7 @@
             utils.calcNavLocation();
         },
         "getAlbumDom": function (album_id) {
-            var encodeId = album_id.replace(/\s/g, "-").replace(/\./g, "_");
-            return $("#" + config.selector.album_id_prefix + encodeId);
+            return $("#" + config.selector.album_id_prefix + album_id);
         },
         "createNavLiNode": function (pageNum, isActive) {
             var li = document.createElement("li");

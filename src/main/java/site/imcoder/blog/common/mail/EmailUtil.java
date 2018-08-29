@@ -108,15 +108,15 @@ public class EmailUtil {
     /**
      * 发送邮件
      *
-     * @param smtp        邮件服务器地址
-     * @param ssl_port    ssl端口
+     * @param smtp         邮件服务器地址
+     * @param ssl_port     ssl端口
      * @param formNickName 发件人昵称
-     * @param fromAddress 发送人地址
-     * @param fromPass    发送人密码
-     * @param toAddress   收件人地址
-     * @param ccAddress   抄送人地址
-     * @param subject     发送主题
-     * @param content     发送内容
+     * @param fromAddress  发送人地址
+     * @param fromPass     发送人密码
+     * @param toAddress    收件人地址
+     * @param ccAddress    抄送人地址
+     * @param subject      发送主题
+     * @param content      发送内容
      * @throws Exception
      */
     public static boolean sendProcess(String smtp, String ssl_port, String formNickName, String fromAddress, String fromPass, String toAddress,
@@ -206,15 +206,15 @@ public class EmailUtil {
     /**
      * 发送邮件
      *
-     * @param smtp        邮件服务器地址
-     * @param ssl_port    ssl端口
+     * @param smtp         邮件服务器地址
+     * @param ssl_port     ssl端口
      * @param formNickName 发件人昵称
-     * @param fromAddress 发送人地址
-     * @param fromPass    发送人密码
-     * @param toAddress   收件人地址
-     * @param ccAddress   抄送人地址
-     * @param subject     发送主题
-     * @param content     发送内容
+     * @param fromAddress  发送人地址
+     * @param fromPass     发送人密码
+     * @param toAddress    收件人地址
+     * @param ccAddress    抄送人地址
+     * @param subject      发送主题
+     * @param content      发送内容
      * @throws Exception
      */
     public static void asyncSend(final String smtp, final String ssl_port, final String formNickName, final String fromAddress, final String fromPass, final String toAddress,
@@ -254,15 +254,15 @@ public class EmailUtil {
     /**
      * 发送邮件
      *
-     * @param smtp        邮件服务器地址
-     * @param ssl_port    ssl端口
+     * @param smtp         邮件服务器地址
+     * @param ssl_port     ssl端口
      * @param formNickName 发件人昵称
-     * @param fromAddress 发送人地址
-     * @param fromPass    发送人密码
-     * @param toAddress   收件人地址
-     * @param ccAddress   抄送人地址
-     * @param subject     发送主题
-     * @param content     发送内容
+     * @param fromAddress  发送人地址
+     * @param fromPass     发送人密码
+     * @param toAddress    收件人地址
+     * @param ccAddress    抄送人地址
+     * @param subject      发送主题
+     * @param content      发送内容
      * @throws Exception
      */
     public static boolean asyncSend2(final String smtp, final String ssl_port, final String formNickName, final String fromAddress, final String fromPass, final String toAddress,
