@@ -184,15 +184,17 @@
 
         // 照片页面布局模块初始化
         album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupChanged, function (e, check) {
+            var handle = this;
             if (check) {
                 setTimeout(function () { // 要设置一个延迟地址栏与历史才会生效
-                    document.title = album_photo_page_handle.pointer.album.name + "_" + check + " - 独伫小桥风卷袖的相册 | ImCODER's 博客";
+                    document.title = handle.pointer.album.name + "_" + check + " - " + handle.pointer.album.user.nickname + "的相册 | ImCODER's 博客";
                 }, 50);
             }
         });
         album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupClosed, function (e, check) {
+            var handle = this;
             setTimeout(function () { // 要设置一个延迟地址栏与历史才会生效
-                document.title = album_photo_page_handle.pointer.album.name + " - 独伫小桥风卷袖的相册 | ImCODER's 博客";
+                document.title = handle.pointer.album.name + " - " + handle.pointer.album.user.nickname + "的相册 | ImCODER's 博客";
             }, 50);
         });
         album_photo_page_handle.init({

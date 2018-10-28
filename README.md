@@ -8,17 +8,15 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
 
 #### 2018.10.27
 
-    add `mount photo support` and `local setting for each modules`
+add `mount photo support` and `local setting for each modules`
     
     (1) site front-end
-    
     1、modify font-family in style.css
     2、replace new site background-image.
     3、add local config and config setting Visual view for modules.
     4、make the url address to match the title in some page.
-    
+    >
     (2) site backend
-    
     1、add query ip location interface.
     2、optimize functions for recycling waste.
     3、modify the implementation of file expiration time.
@@ -26,20 +24,17 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
     5、fixed sql injection bug
     6、enhance user data security.
     7、optimize cache data accuracy.
-    
+    >
     (3) article module
-    
     1、fixed article update bug by manager.
     2、modify top article area for showing create_time, not update_time.
-    
+    >
     (4) album module
-    
     1、add mount photo to another album support
     2、add a video button to the album page.
     3、modify set a more precise css height to the referenced video.
-    
+    >
     (5) search module
-    
     1、optimize the display when an error occurs in the search.
     2、add switch for search hot key in rewriteSearch.
     3、add special char support for jquery selector.
