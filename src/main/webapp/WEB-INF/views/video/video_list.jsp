@@ -24,109 +24,11 @@
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
     <style>
-        .photo {
-            /*padding-bottom: 20px;*/
-            float: left;
-        }
-
-        .padding {
-            background-color: #f2f2f2;
-        }
-
-        .photo img, video {
-            border: 5px solid #FFFFFF;
-            width: 100%;
-            cursor: pointer;
-        }
-
-        .mfp-bg {
-            opacity: .5;
-        }
-
-        .mfp-title {
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            width: calc(100% - 40px);
-            overflow: hidden;
-        }
-
-        button.mfp-arrow {
-            opacity: 0;
-            transition: all 0.3s linear;
-        }
-
-        .mfp-arrow:focus {
-            opacity: 0;
-        }
-
-        .mfp-arrow:hover {
-            opacity: 0.6;
-        }
-
-        /* button.mfp-arrow {
-            opacity: 0;
-            top: 20%;
-            margin-top: 0px;
-            width: 20%;
-            height: 60%;
-        }
-
-        button.mfp-arrow-left {
-            margin-left: 10%;
-        }
-
-        button.mfp-arrow-right {
-            margin-right: 10%;
-        }
-
-        .mfp-arrow:hover, .mfp-arrow:focus {
-            opacity: 0;
-        }
-
-        .container-fluid {
-           !* padding: 20px;*!
-        }
-        .photo-size {
-            width: 25%;
-        }
-        .photo {
-            margin-bottom: 10px;
-            !*float: left;*!
-        }
-        .photo img {
-            max-width: 100%
-        }*/
-    </style>
-
-    <style>
-        .mfp-with-zoom .mfp-container,
-        .mfp-with-zoom.mfp-bg {
-            opacity: 0;
-            -webkit-backface-visibility: hidden;
-            /* ideally, transition speed should match zoom duration */
-            -webkit-transition: all 0.3s ease-out;
-            -moz-transition: all 0.3s ease-out;
-            -o-transition: all 0.3s ease-out;
-            transition: all 0.3s ease-out;
-        }
-
-        .mfp-with-zoom.mfp-ready .mfp-container {
-            opacity: 1;
-        }
-
-        .mfp-with-zoom.mfp-ready.mfp-bg {
-            opacity: 0.8;
-        }
-
-        .mfp-with-zoom.mfp-removing .mfp-container,
-        .mfp-with-zoom.mfp-removing.mfp-bg {
-            opacity: 0;
-        }
     </style>
 </head>
 <body uid="${loginUser.uid}">
@@ -200,23 +102,23 @@
                             <div class="col-sm-2 rowname">
                                 <div class="coldesc">服务</div>
                             </div>
-                            <div class="col-xs-1	morespace">
+                            <div class="col-xs-1 morespace">
                                 <div class="coldesc"><a class="toolbar_jump_writeblog">写博客</a></div>
                             </div>
-                            <div class="col-xs-1	morespace">
+                            <div class="col-xs-1 morespace">
                                 <div class="coldesc"><a class="toolbar_jump_paste_code" href="http://paste.ubuntu.com" target="_blank">贴代码</a></div>
                             </div>
-                            <div class="col-sm-1	">
+                            <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_albums" href="<%=basePath%>photo.do?method=user_albums" target="_blank">相册</a></div>
                             </div>
-                            <div class="col-sm-1  ">
-                                <div class="coldesc"><a class="toolbar_jump_ftp" href="ftp://imcoder.site:21" target="_blank">FTP</a></div>
+                            <div class="col-sm-1" style="padding-left: 5px">
+                                <div class="coldesc"><a class="toolbar_jump_cloud" href="<%=cloudPath%>" target="_blank">cloud</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_archives" href="<%=basePath%>article.do?method=archives" target="_blank">归档</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
                             <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
                                 <div class="col-sm-1">
@@ -226,7 +128,13 @@
                         </div>
                         <div class="row">
                             <div class="col-sm-2 rowname">
-                                <div class="coldesc">关于</div>
+                                <div class="coldesc">站点</div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_notice" target="_blank" href="site.do?method=list">公告</a></div>
@@ -396,7 +304,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label><div class="convert-upload-cover" style="font-weight: bold;display: inline;">上传封面</div> / <div class="convert-select-cover" style="font-weight: normal;display: inline;">选择封面</div></label>
+                        <label><div class="convert-upload-cover" style="font-weight: bold;display: inline;">上传封面</div> / <div class="convert-select-cover" style="font-weight: normal;display: inline;"  title="选取已上传的照片ID">选择封面</div></label>
                         <input class="note-image-input form-control" type="file" name="cover_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
                         <input class="note-image-input form-control" name="cover_photo_id" value="0" style="margin-top: 5px;display: none;">
                     </div>
@@ -481,9 +389,24 @@
                             <a name="video_path" style="cursor: pointer">点击下载</a>
                         </span>
                     </div>
+                    <div class="form-group">
+                        <label>选择视频</label>
+                        <input class="note-image-input form-control" type="file" name="video_file" accept="video/mp4,video/webm">
+                    </div>
                     <div class="form-group" style="overflow:auto;display: none">
                         <label>代码块/链接：</label>
                         <textarea class="form-control" type="text" name="video_code"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>选择相册</label>
+                        <select class="form-control" name="cover_album_id">
+                            <option value="0">无相册</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><div class="convert-select-cover" style="font-weight: bold;display: inline;" title="选取已上传的照片ID">选择封面</div> / <div class="convert-upload-cover" style="font-weight: normal;display: inline;">上传封面</div></label>
+                        <input class="note-image-input form-control" type="file" name="cover_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
+                        <input class="note-image-input form-control" name="cover_photo_id" value="0" style="margin-top: 5px;display: none;">
                     </div>
                     <div class="form-group">
                         <label>名称：</label>
@@ -502,7 +425,7 @@
                         </span>
                     </div>
                     <div class="form-group " style="padding-top: 7px;">
-                        <label class="control-label">可见性</label>
+                        <label class="control-label">视频可见性：</label>
                         <label class="radio-inline" style="margin-left:10px;">
                             <input type="radio" name="video_permission" value="0" checked="checked"> 公开
                         </label>
@@ -514,7 +437,7 @@
                         </label>
                     </div>
                     <div class="form-group">
-                        <label class="control-label">图片大小：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                        <label class="control-label">视频大小：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
                         <span name="video_size" class="control-label"></span>
                     </div>
                     <div class="form-group">
@@ -523,7 +446,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-danger" name="deleteVideo_trigger">删除图片</button>
+                    <button class="btn btn-danger" name="deleteVideo_trigger">删除视频</button>
                     <button class="btn btn-primary" name="updateVideo_trigger">更新信息</button>
                     <button class="btn btn-default" name="cancelBtn" data-dismiss="modal">关闭</button>
                 </div>

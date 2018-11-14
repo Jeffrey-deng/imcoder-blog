@@ -209,6 +209,7 @@ public class ArticleController extends BaseController {
     /**
      * 查询文章列表
      *
+     * @param pageSize  每页数量
      * @param jumpPage  跳转页
      * @param condition 条件article
      * @param session
@@ -238,6 +239,20 @@ public class ArticleController extends BaseController {
             }
         }
         return "/site/index";
+    }
+
+    /**
+     * 通过Ajax查询文章列表
+     *
+     * @param condition 条件article
+     * @param session
+     * @return 通过权限检查的列表
+     */
+    @RequestMapping(params = "method=getArticleList")
+    @ResponseBody
+    public List<Article> list(Article condition, HttpServletRequest request, HttpSession session) {
+        User loginUser = (User) session.getAttribute("loginUser");
+        return articleService.list(condition, loginUser);
     }
 
     //添加评论
@@ -419,6 +434,30 @@ public class ArticleController extends BaseController {
             map.put(KEY_STATUS_FRIENDLY, "错误");
         }
         return map;
+    }
+
+    /**
+     * 文章归档页
+     *
+     * @param user
+     * @return
+     */
+    @RequestMapping(params = "method=archives")
+    public String archives(User user, HttpSession session) {
+        return "/article/article_archives";
+    }
+
+    /**
+     * 文章标签页
+     *
+     * @param user
+     * @return
+     */
+    @RequestMapping(params = "method=tags")
+    public String tags(User user, HttpServletRequest request, HttpSession session) {
+        User loginUser = getLoginUser(session);
+        request.setAttribute("tagList", articleService.findTagList(user, 0, loginUser));
+        return "/article/article_tags";
     }
 
 }

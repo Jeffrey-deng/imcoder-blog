@@ -384,7 +384,7 @@
         // dragenter .album_options
         $(document.body).on("dragenter", function (e) {
             var types = e.originalEvent.dataTransfer.types;
-            if (types && types.indexOf("Files") != -1) {
+            if (types && types.length > 0 && types[0] == "Files") {
                 e.stopPropagation();
                 e.preventDefault();
                 if (!common_utils.getNotify("dragUpload_notify")) {

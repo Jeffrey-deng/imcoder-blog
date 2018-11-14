@@ -6,6 +6,25 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
 
 ## develop log
 
+#### 2018.12.10
+
+add `new popup way to play video` and `article archives\tags page`
+    
+    (1) video module
+    
+    1、add new popup way to play video.
+    2、add a play flag in photos there're the cover of video.
+    3、add new control block view for video popup modal.
+    4、add control auto hide after mouse does not move for a while.
+    5、front end add update video modal.
+    6、move album page css to style.css.
+    
+    (2) article module
+    
+    1、add article archives page.
+    2、add article tags page.
+    3、optimize toolbar's navigation column.
+
 #### 2018.10.27
 
 add `mount photo support` and `local setting for each modules`

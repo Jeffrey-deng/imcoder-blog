@@ -136,24 +136,30 @@ public class InitCacheTool {
      * 统计每个tag的数量
      *
      * @param articleBuffer
+     * @param uid           大于0时只统计该用户的文章
+     * @param publicOnly    是否只统计公开文章的标签
      * @return
      */
-    public List<Entry<String, Integer>> initTagCount(Map<Integer, Article> articleBuffer) {
+    public List<Entry<String, Integer>> initTagCount(Map<Integer, Article> articleBuffer, int uid, boolean publicOnly) {
+        boolean isFindUser = uid > 0 ? true : false;
         Map<String, Integer> map = new HashMap<String, Integer>();
         for (Article article : articleBuffer.values()) {
-            //只统计公开文章的标签
-            if (article.getPermission() == 0) {
-                //例：#Hadoop#大数据#HA#学习笔记#ZK#JNS
-                String tags = article.getTags();
-                if (tags != null && !tags.equals("")) {
-                    for (String tag : tags.split("#")) {
-                        //过滤掉第一个""
-                        if (!tag.equals("")) {
-                            if (map.containsKey(tag))
-                                map.put(tag, map.get(tag) + 1);
-                            else
-                                map.put(tag, 1);
-                        }
+            if (isFindUser && article.getAuthor().getUid() != uid) { //是否只统计某一个用户文章的标签
+                continue;
+            }
+            if (publicOnly && article.getPermission() > 0) { //是否只统计公开文章的标签
+                continue;
+            }
+            //例：#Hadoop#大数据#HA#学习笔记#ZK#JNS
+            String tags = article.getTags();
+            if (tags != null && !tags.equals("")) {
+                for (String tag : tags.split("#")) {
+                    //过滤掉第一个""
+                    if (!tag.equals("")) {
+                        if (map.containsKey(tag))
+                            map.put(tag, map.get(tag) + 1);
+                        else
+                            map.put(tag, 1);
                     }
                 }
             }
@@ -166,6 +172,16 @@ public class InitCacheTool {
             }
         });
         return list;
+    }
+
+    /**
+     * 统计每个tag的数量
+     *
+     * @param articleBuffer
+     * @return
+     */
+    public List<Entry<String, Integer>> initTagCount(Map<Integer, Article> articleBuffer) {
+        return initTagCount(articleBuffer, 0, true);
     }
 
 }

@@ -44,7 +44,7 @@ public interface IArticleService {
     public Map<String, Object> detail(int aid, User loginUser);
 
     /**
-     * 查找文章列表
+     * 查找文章列表，分页
      *
      * @param pageSize  每页篇数
      * @param jumpPage  跳转页
@@ -53,6 +53,15 @@ public interface IArticleService {
      * @return 文章列表, 分页bean
      */
     public Map<String, Object> list(int pageSize, int jumpPage, Article condition, User loginUser);
+
+    /**
+     * 查找文章列表, 不分页
+     *
+     * @param condition
+     * @param loginUser
+     * @return
+     */
+    public List<Article> list(Article condition, User loginUser);
 
     /**
      * 删除文章
@@ -112,6 +121,16 @@ public interface IArticleService {
      * @return Map<String,List>
      */
     public Map<String, Object> listRanking(int uid, int size);
+
+    /**
+     * 获取文章标签列表，按文章数量降序排序
+     *
+     * @param hostUser  文章作者，为null,查询所有
+     * @param size      列表长度，为0返回全部
+     * @param loginUser
+     * @return
+     */
+    public List<Map.Entry<String, Integer>> findTagList(User hostUser, int size, User loginUser);
 
     /**
      * 图片或附件上传

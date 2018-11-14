@@ -15,10 +15,7 @@ import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
 
 import javax.annotation.Resource;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 /**
@@ -161,7 +158,7 @@ public class ArticleServiceImpl implements IArticleService {
     }
 
     /**
-     * 查找文章列表
+     * 查找文章列表，分页
      *
      * @param pageSize  每页篇数
      * @param jumpPage  跳转页
@@ -184,7 +181,27 @@ public class ArticleServiceImpl implements IArticleService {
         } else {
             return null;
         }
+    }
 
+    /**
+     * 查找文章列表, 不分页
+     *
+     * @param condition
+     * @param loginUser
+     * @return
+     */
+    public List<Article> list(Article condition, User loginUser) {
+        int rows = articleDao.findCount(condition, loginUser);
+        if (rows > 0) {
+            PageUtil page = new PageUtil(rows, rows, 1);
+            //想查出符合条件的LIST
+            List<Article> articleList = articleDao.findList(page, condition, loginUser);
+            //填充统计数据
+            cache.fillArticleStats(articleList);
+            return articleList;
+        } else {
+            return new ArrayList<>();
+        }
     }
 
     /**
@@ -307,13 +324,42 @@ public class ArticleServiceImpl implements IArticleService {
         //改为从Cache中查
         List<Article> clickRankList = cache.getHotSortArticle(uid, size);
         List<Article> newestList = cache.getTimeSortArticle(uid, size);
-        List<Entry<String, Integer>> hotTagList = cache.getTagCount(size);
+        List<Entry<String, Integer>> hotTagList = cache.getTagCount(uid, size);
 
         Map<String, Object> map = new HashMap<String, Object>();
         map.put("clickRankList", clickRankList);
         map.put("newestList", newestList);
         map.put("hotTagList", hotTagList);
         return map;
+    }
+
+    /**
+     * 获取文章标签列表，按文章数量降序排序
+     *
+     * @param hostUser  文章作者，为null,查询所有
+     * @param size      列表长度，为0返回全部
+     * @param loginUser
+     * @return
+     */
+    public List<Entry<String, Integer>> findTagList(User hostUser, int size, User loginUser) {
+        int uid = (hostUser == null ? 0 : hostUser.getUid());
+        if (loginUser != null) { // 登录了时，从数据库查询该登录用户可见的文章
+            Article condition = null;
+            if (hostUser != null) {
+                condition = new Article();
+                condition.setAuthor(hostUser);
+            }
+            int rows = articleDao.findCount(condition, loginUser);
+            if (rows > 0) {
+                PageUtil page = new PageUtil(rows, rows, 1);
+                List<Article> visibleList = articleDao.findList(page, condition, loginUser);
+                return cache.getTagCount(uid, size, visibleList);
+            } else {
+                return new ArrayList<>();
+            }
+        } else {
+            return cache.getTagCount(uid, size);
+        }
     }
 
     /**

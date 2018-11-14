@@ -102,6 +102,9 @@
                 },
                 "parsePhotosZipName": function (config) {
                     return false;
+                },
+                "actionForEditPhoto": function (photo) {
+                    video_handle.openUpdateVideoModal(photo.photo_id);
                 }
             }
         });
@@ -120,13 +123,45 @@
                 "uploadCompleted": function (context, video) {  // 视频上传完成后回调
                     album_photo_page_handle.utils.appendPhotoToPage(video.cover);
                     album_photo_page_handle.jumpPage(album_photo_page_handle.utils.calcPageCount());
+                },
+                "beforeUpdateModalOpen": function (context, updateModal, formatVideoToModal_callback, video) {  // 更新窗口打开前回调
+                    // 从相册视频插件打开时
+                    if (typeof video == "object") {
+                        formatVideoToModal_callback(video);
+                    } else {
+                        // 拖拽打开时
+                        this.loadVideo({"cover_id": video}, function (data) {
+                            formatVideoToModal_callback(data.video);
+                        });
+                    }
                 }
             },
             "hostUser": hostUser
         });
 
+        // 绑定打开上传窗口
         $('#uploadVideo').click(function () {
             video_handle.openUploadVideoModal();
         });
+
+        // 绑定插件中编辑按钮事件
+        album_video_plugin.utils.bindEvent(album_video_plugin, album_video_plugin.config.event.actionForEditVideo, function (e, video) {
+            this.utils.closeVideoPopup();
+            video_handle.openUpdateVideoModal(video); // 打开视频更新窗口
+        });
+
+        if (params.info && !isNaN(params.info)) {
+            video_handle.loadVideo({"video_id": parseInt(params.info)}, function (data) {
+                if (data && data.flag == 200) {
+                    video_handle.openUpdateVideoModal(data.video);
+                }
+                history.replaceState(
+                    {"flag": "page"},
+                    document.title,
+                    document.location.pathname + document.location.search.replace(/&info=[\d]*/, "")
+                );
+            });
+        }
+
     });
 });

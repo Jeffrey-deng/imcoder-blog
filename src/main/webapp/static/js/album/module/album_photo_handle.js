@@ -69,7 +69,7 @@
         },
         albumId: 0,
         downloadType: "url",
-        maxUploadSize: 7 * 1024 * 1024
+        maxUploadSize: 10 * 1024 * 1024
     };
     var init = function (options) {
 

@@ -938,13 +938,7 @@
         });
         var albumConfig = common_utils.getLocalConfig("album", {
             "photo_page": {
-                "blow_up": {
-                    "width": 500,
-                    "height": 500,
-                    "scale": 1.6
-                },
                 "full_background": false,
-                "video_load_mode": "lazyLoad",
                 "default_col": {
                     "1200": 4,
                     "940": 3,
@@ -952,7 +946,19 @@
                     "400": 2
                 },
                 "default_size": 40,
-                "default_query_size": 520
+                "default_query_size": 520,
+                "video": {
+                    "load_mode": "popupLoad",
+                    "popup_iframe_border": true,
+                    "popup_btn_display": "inline",
+                    "popup_height_scale": 0.91,
+                    "popup_hide_btn": true
+                },
+                "blow_up": {
+                    "width": 500,
+                    "height": 500,
+                    "scale": 1.6
+                }
             },
             "album_page": {
                 "full_background": false,
@@ -996,10 +1002,26 @@
         settingTab.find('#setting_album_form input[name="setting_blow_up_height"]').val(albumConfig.photo_page.blow_up.height);
         settingTab.find('#setting_album_form input[name="setting_blow_up_scale"]').val(albumConfig.photo_page.blow_up.scale);
         settingTab.find('#setting_album_form input[name="setting_video_load_mode"]').each(function (i, mode) {
-            if (mode.value == albumConfig.photo_page.video_load_mode) {
+            if (mode.value == albumConfig.photo_page.video.load_mode) {
                 $(mode).prop("checked", true);
             }
         });
+        if (albumConfig.photo_page.video.popup_iframe_border) {
+            settingTab.find('#setting_album_form input[name="setting_video_iframe_border"][value="true"]').prop("checked", true);
+        } else {
+            settingTab.find('#setting_album_form input[name="setting_video_iframe_border"][value="false"]').prop("checked", true);
+        }
+        settingTab.find('#setting_album_form input[name="setting_popup_btn_display"]').each(function (i, mode) {
+            if (mode.value == albumConfig.photo_page.video.popup_btn_display) {
+                $(mode).prop("checked", true);
+            }
+        });
+        if (albumConfig.photo_page.video.popup_hide_btn) {
+            settingTab.find('#setting_album_form input[name="setting_popup_hide_btn"][value="true"]').prop("checked", true);
+        } else {
+            settingTab.find('#setting_album_form input[name="setting_popup_hide_btn"][value="false"]').prop("checked", true);
+        }
+        settingTab.find('#setting_album_form input[name="setting_video_height_scale"]').val(albumConfig.photo_page.video.popup_height_scale);
         settingTab.find('#setting_album_form input[name="setting_default_col_photo_1200"]').val(albumConfig.photo_page.default_col["1200"]);
         settingTab.find('#setting_album_form input[name="setting_default_col_photo_940"]').val(albumConfig.photo_page.default_col["940"]);
         settingTab.find('#setting_album_form input[name="setting_default_col_photo_520"]').val(albumConfig.photo_page.default_col["520"]);
@@ -1052,7 +1074,17 @@
             // photo_page
             config.photo_page = {};
             config.photo_page.full_background = settingTab.find('#setting_album_form input[name="setting_full_background_photo"]:checked').val() == "true" ? true : false;
-            config.photo_page.video_load_mode = settingTab.find('#setting_album_form input[name="setting_video_load_mode"]:checked').val();
+            config.photo_page.video = {};
+            config.photo_page.video.load_mode = settingTab.find('#setting_album_form input[name="setting_video_load_mode"]:checked').val();
+            config.photo_page.video.popup_iframe_border = settingTab.find('#setting_album_form input[name="setting_video_iframe_border"]:checked').val() == "true" ? true : false;
+            config.photo_page.video.popup_btn_display = settingTab.find('#setting_album_form input[name="setting_popup_btn_display"]:checked').val();
+            config.photo_page.video.popup_hide_btn = settingTab.find('#setting_album_form input[name="setting_popup_hide_btn"]:checked').val() == "true" ? true : false;
+            var height_scale = settingTab.find('#setting_album_form input[name="setting_video_height_scale"]').val();
+            if (height_scale == "" || isNaN(height_scale) || height_scale <= 0 || height_scale > 1) {
+                toastr.error("宽度比例应在0.0到1.0之间！", "错误", {"progressBar": false});
+                return;
+            }
+            config.photo_page.video.popup_height_scale = parseFloat(height_scale);
             var blow_up_width = settingTab.find('#setting_album_form input[name="setting_blow_up_width"]').val();
             var blow_up_height = settingTab.find('#setting_album_form input[name="setting_blow_up_height"]').val();
             var blow_up_scale = settingTab.find('#setting_album_form input[name="setting_blow_up_scale"]').val();

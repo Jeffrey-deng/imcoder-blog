@@ -500,6 +500,9 @@
                 }
             };
             common_utils.zipRemoteFilesAndDownload(JSZip, options);
+        },
+        "closePhotoPopup": function () {
+            $.magnificPopup.close();
         }
     };
     // 瀑布流

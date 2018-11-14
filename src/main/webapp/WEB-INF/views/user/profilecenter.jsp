@@ -97,23 +97,23 @@
                             <div class="col-sm-2 rowname">
                                 <div class="coldesc">服务</div>
                             </div>
-                            <div class="col-xs-1	morespace">
+                            <div class="col-xs-1 morespace">
                                 <div class="coldesc"><a class="toolbar_jump_writeblog">写博客</a></div>
                             </div>
-                            <div class="col-xs-1	morespace">
+                            <div class="col-xs-1 morespace">
                                 <div class="coldesc"><a class="toolbar_jump_paste_code" href="http://paste.ubuntu.com" target="_blank">贴代码</a></div>
                             </div>
-                            <div class="col-sm-1	">
+                            <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_albums" href="<%=basePath%>photo.do?method=user_albums" target="_blank">相册</a></div>
                             </div>
-                            <div class="col-sm-1  ">
-                                <div class="coldesc"><a class="toolbar_jump_ftp" href="ftp://imcoder.site:21" target="_blank">FTP</a></div>
+                            <div class="col-sm-1" style="padding-left: 5px">
+                                <div class="coldesc"><a class="toolbar_jump_cloud" href="<%=cloudPath%>" target="_blank">cloud</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_archives" href="<%=basePath%>article.do?method=archives" target="_blank">归档</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
                             <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
                                 <div class="col-sm-1">
@@ -123,7 +123,13 @@
                         </div>
                         <div class="row">
                             <div class="col-sm-2 rowname">
-                                <div class="coldesc">关于</div>
+                                <div class="coldesc">站点</div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_notice" target="_blank" href="site.do?method=list">公告</a></div>
@@ -595,12 +601,50 @@
                                                     </div>
                                                     <div class="form-group">
                                                         <label class="col-sm-2 col-xs-2 control-label">视频插件加载模式</label>
-                                                        <label class="radio-inline col-sm-1 col-xs-6" style="margin-left:40px;">
+                                                        <label class="radio-inline col-sm-1 col-xs-4" style="margin-left:40px;">
                                                             <input type="radio" name="setting_video_load_mode" value="lazyLoad" checked="checked"> lazyLoad
                                                         </label>
-                                                        <label class="radio-inline col-sm-1 col-xs-6">
+                                                        <label class="radio-inline col-sm-1 col-xs-4">
                                                             <input type="radio" name="setting_video_load_mode" value="preLoad"> preLoad
                                                         </label>
+                                                        <label class="radio-inline col-sm-1 col-xs-4">
+                                                            <input type="radio" name="setting_video_load_mode" value="popupLoad"> popupLoad
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">视频IFrame黑边</label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1" style="margin-left:40px;">
+                                                            <input type="radio" name="setting_video_iframe_border" value="true" checked="checked"> 保留
+                                                        </label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1">
+                                                            <input type="radio" name="setting_video_iframe_border" value="false"> 去除
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label" title="视频窗口上的控件显示模式">视频窗口控件显示</label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1" style="margin-left:40px;">
+                                                            <input type="radio" name="setting_popup_btn_display" value="inline" checked="checked"> inline
+                                                        </label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1">
+                                                            <input type="radio" name="setting_popup_btn_display" value="block"> block
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label" title="视频窗口上失焦时控件是否隐藏">视频窗口控件行为</label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1" style="margin-left:40px;" title="自动隐藏">
+                                                            <input type="radio" name="setting_popup_hide_btn" value="true" checked="checked"> 自动
+                                                        </label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1" title="保持显示">
+                                                            <input type="radio" name="setting_popup_hide_btn" value="false"> 保持
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">视频窗口高度比例</label>
+                                                        <label class="col-sm-1 col-xs-3 control-label inline" style="font-weight: normal;margin-left: 5px;">占窗口</label>
+                                                        <div class="col-sm-1 col-xs-4" style="padding-left: 0px;">
+                                                            <input name="setting_video_height_scale" class="col-sm-12 col-xs-12">
+                                                        </div>
+                                                        <label class="col-sm-2 col-xs-2 control-label inline" style="text-align: left;font-weight: normal;padding-left:2px;">(0.0~1.0)</label>
                                                     </div>
                                                     <div class="form-group">
                                                         <label class="col-sm-2 col-xs-2 control-label">每列展示照片个数</label>

@@ -458,24 +458,43 @@ public class Cache {
     /**
      * 得到每种标签数量从大到小的集合
      *
-     * @param size
+     * @param uid         是否查询所有还是单个用户 uid=0 为查询所有
+     * @param size        list长度
+     * @param visibleList 如果传入文章列表则统计此列表的标签
      * @return
      */
-    public List<Entry<String, Integer>> getTagCount(int size) {
+    public List<Entry<String, Integer>> getTagCount(int uid, int size, List<Article> visibleList) {
+
+        List<Entry<String, Integer>> tagList = tagCount;
+        Map<Integer, Article> articleMap = articleBuffer;
+
+        if (visibleList != null) { // if has visibleList, calc visibleList's tags
+            articleMap = new LinkedHashMap<>();
+            for (Article article : visibleList) {
+                articleMap.put(article.getAid(), article);
+            }
+            tagList = initTool.initTagCount(articleMap, uid, false); // get the visible article List's  tags
+        } else if (uid > 0) {
+            tagList = initTool.initTagCount(articleMap, uid, true); // get the user's article tags
+        }
+
+        if (size == 0) { // site为0时，返回全部标签
+            return tagList;
+        }
 
         long time = new Date().getTime();
-        if (staticTagRankList != null) {
+        if (visibleList == null && uid == 0 && staticTagRankList != null) {
             if (time - 60 * 1000 * 15 < tagRankListLastViewTime) {
                 return staticTagRankList;
             }
         }
 
         List<Entry<String, Integer>> list = new ArrayList<Entry<String, Integer>>();
-        if (tagCount.size() < size) {
-            size = tagCount.size();
+        if (tagList.size() < size) {
+            size = tagList.size();
         }
         for (int i = 0; i < size; i++) {
-            list.add(tagCount.get(i));
+            list.add(tagList.get(i));
         }
         Collections.sort(list, new Comparator<Entry<String, Integer>>() {
             //降序排序
@@ -483,10 +502,22 @@ public class Cache {
                 return -o1.getValue().compareTo(o2.getValue());
             }
         });
-
-        tagRankListLastViewTime = time;
-        staticTagRankList = list;
+        if (visibleList == null && uid == 0) {
+            tagRankListLastViewTime = time;
+            staticTagRankList = list;
+        }
         return list;
+    }
+
+    /**
+     * 得到每种标签数量从大到小的集合
+     *
+     * @param uid  是否查询所有还是单个用户 uid=0 为查询所有
+     * @param size list长度
+     * @return
+     */
+    public List<Entry<String, Integer>> getTagCount(int uid, int size) {
+        return getTagCount(uid, size, null);
     }
 
     /**

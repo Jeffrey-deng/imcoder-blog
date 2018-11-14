@@ -43,6 +43,7 @@
             "article_detail": ["js/article/article_detail"],
             "article_edit": ["js/article/article_edit"],
             "edit_tool": ["js/article/edit_tool"],
+            "article_archives": ["js/article/article_archives"],
             "article_manager": ["js/manager/article_manager"],
             "user_manager": ["js/manager/user_manager"],
             "article_modify": ["js/manager/article_modify"],
@@ -198,6 +199,14 @@
                 } else if (page == "text_to_voice") {
 
                     require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "text_to_voice"]);
+
+                } else if (page == "article_archives") {
+
+                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "article_archives"]);
+
+                } else if (page == "article_tags") {
+
+                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar"]);
 
                 }
             }

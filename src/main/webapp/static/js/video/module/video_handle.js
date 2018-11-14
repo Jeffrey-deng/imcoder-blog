@@ -74,7 +74,12 @@
         pointer.updateModal = $(config.selector.updateModal);
 
         pointer.uploadModal.find('input[name="video_permission"][value="0"]').prop("checked", true);
+        pointer.video_permission = 0;
+        pointer.uploadModal.find('input[name="video_permission"]').click(function (e) {
+            pointer.video_permission = $(this).val();
+        });
 
+        // 切换视频上传的类型
         pointer.uploadModal.find('select[name="video_source_type"]').change(function (e) {
             var key = $(this).val();
             if (key == 0) {
@@ -89,6 +94,7 @@
             }
         });
 
+        // 定义上传视频时切换 “封面使用 相册中已上传的图片 还是 上传新的图片” 的事件，以封面ID输入框值是否为0作为判断依据
         pointer.uploadModal.find('input[name="cover_file"]').prev().find(".convert-upload-cover").click(function (e) {
             $(this).css("font-weight", "bold").parent().find(".convert-select-cover").css("font-weight", "normal");
             pointer.uploadModal.find('select[name="cover_album_id"]').parent().show(100);
@@ -99,7 +105,7 @@
             $(this).css("font-weight", "bold").parent().find(".convert-upload-cover").css("font-weight", "normal");
             pointer.uploadModal.find('select[name="cover_album_id"]').parent().hide(100);
             pointer.uploadModal.find('input[name="cover_file"]').css("display", "none");
-            pointer.uploadModal.find('input[name="cover_photo_id"]').css("display", "block").val("0");
+            pointer.uploadModal.find('input[name="cover_photo_id"]').css("display", "block").val("0"); // point!
         });
 
         //提交上传事件
@@ -176,21 +182,147 @@
             }, true);
         });
 
-        //更新图片事件
-        pointer.updateModal.find('button[name="updateVideo_trigger"]').click(function () {
-
+        // 切换更新视频时上传的类型
+        pointer.updateModal.find('select[name="video_source_type"]').change(function (e) {
+            var key = $(this).val();
+            if (key == 0) {
+                pointer.updateModal.find('input[name="video_file"]').parent().show(100);
+                pointer.updateModal.find('textarea[name="video_code"]').parent().hide(100);
+                var video_href_node = pointer.updateModal.find('.copy-input').parent();
+                if (video_href_node.hasClass("user-upload-video")) { // 如果该视频是用户上传的（不是引用的），则显示链接
+                    video_href_node.show(0);
+                } else {
+                    video_href_node.hide(0);
+                }
+            } else if (key == 1) {
+                pointer.updateModal.find('input[name="video_file"]').parent().hide(100);
+                pointer.updateModal.find('textarea[name="video_code"]').parent().show(100);
+                pointer.updateModal.find('.copy-input').parent().hide(0);
+            } else {
+                pointer.updateModal.find('input[name="video_file"]').parent().hide(100);
+                pointer.updateModal.find('textarea[name="video_code"]').parent().show(100);
+                pointer.updateModal.find('.copy-input').parent().hide(0);
+            }
         });
 
-        //删除图片事件
+        // 定义更新视频时切换 “封面使用 相册中已上传的图片 还是 上传新的图片” 的事件，以是否选择了图片文件为判断依据
+        pointer.updateModal.find('input[name="cover_file"]').prev().find(".convert-upload-cover").click(function (e) {
+            $(this).css("font-weight", "bold").parent().find(".convert-select-cover").css("font-weight", "normal");
+            pointer.updateModal.find('select[name="cover_album_id"]').parent().show(100);
+            pointer.updateModal
+                .find('input[name="cover_photo_id"]').css("display", "none")
+                .parent().find('input[name="cover_file"]').css("display", "block").val(""); // point!
+        });
+        pointer.updateModal.find('input[name="cover_file"]').prev().find(".convert-select-cover").click(function (e) {
+            $(this).css("font-weight", "bold").parent().find(".convert-upload-cover").css("font-weight", "normal");
+            pointer.updateModal.find('select[name="cover_album_id"]').parent().hide(100);
+            pointer.updateModal
+                .find('input[name="cover_file"]').css("display", "none")
+                .parent().find('input[name="cover_photo_id"]').css("display", "block");
+        });
+
+        //更新视频事件
+        pointer.updateModal.find('button[name="updateVideo_trigger"]').click(function () {
+            var videoInfo = {};
+            var coverInfo = {};
+            videoInfo.video_id = pointer.updateModal.find('span[name="video_id"]').html().trim();
+            if (!videoInfo.video_id) {
+                toastr.error("代码出错~");
+                return;
+            }
+            var coverFiles = pointer.updateModal.find('input[name="cover_file"]')[0].files;
+            var uploadNewCover = false;
+            if (coverFiles == null || coverFiles[0] == undefined || coverFiles[0] == null) {
+                var cover_id = parseInt(pointer.updateModal.find('input[name="cover_photo_id"]').val()) || 0;
+                if (cover_id && cover_id > 0) {
+                    coverInfo.photo_id = cover_id;
+                } else {
+                    coverInfo.photo_id = 0;
+                    toastr.error("你既未选择新封面文件，又未指定已上传的封面ID呢");
+                    return;
+                }
+            } else {
+                uploadNewCover = true;
+            }
+            videoInfo.source_type = pointer.updateModal.find('select[name="video_source_type"]').val();
+            var uploadNewVideo = false;
+            if (videoInfo.source_type == 0) {
+                var files = pointer.updateModal.find('input[name="video_file"]')[0].files;
+                if (files == null || files[0] == undefined || files[0] == null) {
+                    if (!pointer.updateModal.find('.copy-input').parent().hasClass("user-upload-video")) {
+                        toastr.error("未选择视频文件呢");
+                        return;
+                    }
+                } else {
+                    uploadNewVideo = true;
+                }
+            } else if (videoInfo.source_type == 1) {
+                videoInfo.path = pointer.updateModal.find('textarea[name="video_code"]').val();
+            } else {
+                videoInfo.code = pointer.updateModal.find('textarea[name="video_code"]').val();
+            }
+            videoInfo.name = pointer.updateModal.find('input[name="video_name"]').val();
+            videoInfo.description = pointer.updateModal.find('textarea[name="video_desc"]').val();
+            videoInfo.permission = pointer.updateModal.find('input[name="video_permission"]:checked').val();
+            var tags = "";
+            pointer.updateModal.find(".tags-modify").find(".tag-content").each(function (i, tag) {
+                tags += "#" + tag.innerText;
+            });
+            videoInfo.tags = (tags == "#" ? "" : tags);
+
+            coverInfo.album_id = parseInt(pointer.updateModal.find('select[name="cover_album_id"]').val()) || 0;
+            coverInfo.name = videoInfo.name;
+            coverInfo.description = videoInfo.description;
+            if (videoInfo.tags.indexOf("#视频") == -1) {
+                coverInfo.tags = "#视频" + videoInfo.tags;
+            } else {
+                coverInfo.tags = videoInfo.tags;
+            }
+            videoInfo.cover = coverInfo;
+
+            if (videoInfo.description.length >= 1000) {
+                toastr.error("描述字数" + videoInfo.description.length + "过长, 应在1000字内", "错误", {"progressBar": false});
+                this.removeAttribute("disabled");
+                return;
+            }
+            if (uploadNewCover && !(coverInfo.album_id > 0)) {
+                toastr.error("未选择相册", "错误", {"progressBar": false});
+                return;
+            }
+            if (videoInfo.source_type == 1 && !videoInfo.path) {
+                toastr.error("未输入视频链接", "错误", {"progressBar": false});
+                return;
+            }
+            if (videoInfo.source_type == 2 && !videoInfo.code) {
+                toastr.error("未输入引用代码块", "错误", {"progressBar": false});
+                return;
+            }
+
+            /*            console.log("videoInfo: ", videoInfo);
+             console.log("coverFiles: ", coverFiles);
+             console.log("files: ", files);*/
+
+            this.setAttribute("disabled", "disabled");
+            login_handle.runOnLogin(function (isLogin) {
+                if (isLogin) {
+                    updateVideo((uploadNewVideo ? files[0] : null), (uploadNewCover ? coverFiles[0] : null), videoInfo);
+                } else {
+                    toastr.error("登陆状态失效，请重新登录！");
+                    this.removeAttribute("disabled");
+                }
+            }, true);
+        });
+
+        //删除视频事件
         pointer.updateModal.find('button[name="deleteVideo_trigger"]').click(function () {
             var video_id = pointer.updateModal.find('span[name="video_id"]').html().trim();
             deleteVideo(video_id);
         });
 
-        //复制图片地址
+        //复制视频地址
         initClipboard(config.selector.copyVideoUrlTrigger, config.selector.updateModal);
 
-        //下载图片事件
+        //下载视频事件
         pointer.updateModal.find('a[name="video_path"]').click(function () {
             //downloadVideo(this.getAttribute("path"), config.downloadType);
         });
@@ -352,15 +484,29 @@
             }
         });
     };
-    var updateVideo = function (video, file) {
-
+    var updateVideo = function (videoFile, coverFile, videoInfo) {
+        console.log(videoFile, coverFile, videoInfo);
+        pointer.updateModal.find('button[name="updateVideo_trigger"]').removeAttr("disabled");
+        toastr.error("更新功能开发中~");
     };
     var deleteVideo = function (video_id) {
-
+        toastr.error("删除功能开发中~");
     };
 
-    var loadVideo = function (video_id, success) {
-
+    var loadVideo = function (video_id, callback) {
+        var video_param = null;
+        if (typeof video_id == "object") {
+            video_param = video_id;
+        } else {
+            video_param = {"video_id": video_id};
+        }
+        $.get("video.do?method=detailByAjax", video_param, function (data) {
+            if (data.flag != 200) {
+                toastr.error(data.info, "加载视频失败");
+                console.log("Load video found error, Error Code: " + data.flag);
+            }
+            callback(data);
+        });
     };
 
     var loadAlbums = function (uid, success) {
@@ -397,6 +543,11 @@
                 }
             }
             album_select_dom.html(options_str).val(selectValue);
+            pointer.uploadModal.find('input[name="video_permission"]').each(function () {
+                if ($(this).val() == pointer.video_permission) {
+                    $(this).prop("checked", true);
+                }
+            });
             pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
             pointer.uploadModal.modal('show');
         };
@@ -405,7 +556,7 @@
     };
 
     /**
-     * 打开照片信息更新窗口
+     * 打开视频信息更新窗口
      * @param {Integer|Object} video - 可为video_id或video对象
      *          默认处理：对于窗口所需video对象，如果传入为video对象则直接使用，如果为video_id则调用loadVideo异步获取；
      *                    如需修改可重写回调方法beforeUpdateModalOpen，该方法的参数video由此处的video参数传入；
@@ -414,9 +565,9 @@
      */
     var openUpdateVideoModal = function (video) {
         var formatVideoToModal_callback = function (video) {
-            var isAuthor = login_handle.equalsLoginUser(video.uid);
+            var isAuthor = login_handle.equalsLoginUser(video.user.uid);
             // load to modal
-            //var video_url = "video.do?method=album_detail&id=" + video.album_id + "&check=" + video.video_id;
+            var video_url = "redirect.do?model=album&photo_id=" + video.cover.photo_id;
             pointer.updateModal.find('span[name="video_id"]').text(video.video_id).parent().attr("href", video_url);
             pointer.updateModal.find('input[name="video_name"]').val(video.name);
             pointer.updateModal.find('textarea[name="video_desc"]').val(video.description);
@@ -427,18 +578,24 @@
             });
             pointer.updateModal.find('select[name="video_source_type"]').val(video.source_type);
             if (video.source_type == 1) {
-                pointer.updateModal.find('.copy-input').val("").parent().hide();
+                pointer.updateModal.find('.copy-input').val("").parent().removeClass("user-upload-video").hide();
                 pointer.updateModal.find('textarea[name="video_code"]').val(video.path).parent().show();
             } else if (video.source_type == 2) {
-                pointer.updateModal.find('.copy-input').val("").parent().hide();
+                pointer.updateModal.find('.copy-input').val("").parent().removeClass("user-upload-video").hide();
                 pointer.updateModal.find('textarea[name="video_code"]').val(video.code).parent().show();
             } else {
                 pointer.updateModal.find('textarea[name="video_code"]').val("").parent().hide();
-                pointer.updateModal.find('.copy-input').val(config.path_params.cloudPath + video.path);
-                pointer.updateModal.find('a[name="video_path"]').attr("path", config.path_params.cloudPath + video.path).parent().show();
+                pointer.updateModal
+                    .find('.copy-input').val(config.path_params.cloudPath + video.path)
+                    .parent().addClass("user-upload-video").show().// 如果该视频是用户上传的（不是引用的），则添加标记类: .user-upload-video
+                find('a[name="video_path"]').attr("path", config.path_params.cloudPath + video.path);
             }
-            pointer.updateModal.find('span[name="video_size"]').html(video.size + "KB（" + video.width + "×" + video.height + "）");
+            pointer.updateModal.find('span[name="video_size"]').html(video.size + "MB（" + video.width + "×" + video.height + "）");
             pointer.updateModal.find('span[name="video_upload_time"]').html(video.upload_time);
+            pointer.updateModal.find('select[name="cover_album_id"]').parent().hide(0);
+            pointer.updateModal
+                .find('input[name="cover_file"]').css("display", "none")
+                .parent().css("display", (isAuthor ? "block" : "none")).find('input[name="cover_photo_id"]').css("display", "block").val(video.cover.photo_id);
             if (isAuthor && video.source_type == 0) {
                 pointer.updateModal.find('.copy-input').prev().attr("title", "原始文件名：" + video.originName)
             }
@@ -448,14 +605,13 @@
             pointer.updateModal.find('.modal-dialog').css("margin-top", dialogStyle);
 
             // define btn by user type
-            var fileStyle = isAuthor ? "block" : "none";
+            var fileStyle = isAuthor && (video.source_type == 0) ? "block" : "none";
             var btnStyle = isAuthor ? "inline-block" : "none";
             pointer.updateModal.find('input[name="video_file"]').val("").parent().css("display", fileStyle);
-            pointer.updateModal.find('input[name="cover_file"]').val("").parent().css("display", fileStyle);
             pointer.updateModal.find('button[name="deleteVideo_trigger"]').css("display", btnStyle);
             pointer.updateModal.find('button[name="updateVideo_trigger"]').css("display", btnStyle);
 
-            // 照片标签
+            // 视频标签
             video.tags = video.tags || "";
             var tags_modify_dom = pointer.updateModal.find('.tags-modify').eq(0);
             if (isAuthor) {
@@ -526,6 +682,11 @@
                     runOnce: true
                 });
                 if (isAuthor) {
+                    pointer.updateModal.find('textarea[name="video_code"]').autoTextarea({
+                        maxHeight: 200,
+                        minHeight: config.textareaInputHeight,
+                        runOnce: true
+                    });
                     utils.calcTagInputWidth(tags_modify_dom);
                     //console.log(tags_modify_dom.outerHeight(true) + "_ " + tags_modify_dom.prop("scrollHeight"));
                     tags_modify_dom.autoTextarea({
@@ -551,7 +712,7 @@
          console.error('该浏览器不支持Clipboard复制');
          }*/
         clipboard.on('success', function (e) {
-            toastr.success("图片地址复制成功！", "提示", {"progressBar": false});
+            toastr.success("视频地址复制成功！", "提示", {"progressBar": false});
             console.info('已复制Text:', e.text);
             e.clearSelection();
         });

@@ -14,9 +14,9 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <title>文章管理 - Website Administer System</title>
-    <meta name="description" content="文章管理 - 博客后台管理中心">
-    <meta name="keywords" content="文章管理 - 博客后台管理中心">
+    <title>文章标签 - ImCODER's 博客</title>
+    <meta name="description" content="文章标签,tags,ImCODER's 博客">
+    <meta name="keywords" content="文章标签,archives,ImCODER's 博客">
     <!-- 使用url函数转换相关路径 -->
     <!-- <script async="" src="http://www.google-analytics.com/analytics.js"></script> -->
 
@@ -26,20 +26,34 @@
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css">
     <link rel="stylesheet" href="<%=staticPath%>css/style.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
+
+    <style>
+        ul.notes li div.note-div {
+            width: 110px;
+            height: 110px;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            ul.notes li div.note-div {
+                width: 90px;
+                height: 110px;
+                text-align: center;
+            }
+        }
+    </style>
 </head>
-<body uid="${loginUser.uid}">
+<body uid="${loginUser.uid}" style="background-image: url(<%=staticPath%>img/bg-site.png);">
 <!-- <body background="../../img/bg-site.png"> -->
 <!-- START THE COVER  background-image: url(img/bg-site.png);" -->
-<div id="first" class="" style="z-index:1000;background-image: url(<%=staticPath%>img/bg-site.png);">
+<div id="first" class="" style="z-index:1000;">
     <div class="carousel-inner">
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center">
                     <br>
-                    <h1>Website Administer System</h1>
-                    <h3>文章管理</h3>
+                    <h1>文章标签</h1>
+                    <h3>tags</h3>
                     <br>
                 </div>
             </div>
@@ -146,7 +160,7 @@
                     </ul>
                 </li>
                 <li><a href="<%=basePath%>">首页</a></li>
-                <li class="active"><a>文章管理</a></li>
+                <li class="active"><a>标签</a></li>
             </ul>
             <ul class="nav navbar-nav navbar-right">
                 <form class="navbar-form navbar-left" role="search">
@@ -179,145 +193,37 @@
 <!-- body start -->
 <div id="body">
     <div class="container">
-        <div class="row" style=" margin-top: 2em;">
-
+        <div class="row" style=" margin-top: 1em;">
             <div class="col-md-12 col-sm-12 col-xs-12">
-                <div class="panel panel-primary post-content" id="blog_panel">
-                    <div class="panel-heading">
-                        <h3 class="panel-title">文章列表</h3>
+                <article class="post" style="background-color: #f2f2f2;padding-top: 25px;border-radius: 2px;">
+                    <div class ="">
+                        <div class="wrapper wrapper-content animated fadeInUp">
+                            <ul class="notes">
+                                <c:if test="${ not empty tagList }">
+                                    <c:forEach items="${tagList}" var="tag">
+                                        <li>
+                                            <a href="article.do?method=list&tags=${tag.key}" target="_blank">
+                                                <div class="note-div">
+                                                    <h4>${tag.key}</h4>
+                                                    <p>${tag.value} 文章</p>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    </c:forEach>
+                                </c:if>
+                                <c:if test="${empty tagList }">
+                                    <h2 style="font-size: 1.25em;margin-top: -5px;" class="post-title" itemprop="name headline">未找到标签，或者你没有权限查看</h2>
+                                </c:if>
+                            </ul>
+                        </div>
                     </div>
-                    <div class="panel-body">
-                        <p style="margin-left: 3%;padding-top: 10px;">目前文章有 <b id="articleCount"></b> 篇。</p>
-                    </div>
-                    <div style="width:100%;overflow:auto;">
-                        <table class="table table-hover" style="text-align:center;" id="article_tds">
-
-                        </table>
-                    </div>
-                </div>
-                <ol class="page-navigator"></ol>
+                </article>
             </div>
         </div><!-- end .row -->
 
     </div>
 </div>
 <!-- body end -->
-
-<style>
-    @media (min-width: 768px) {
-        #modifyArticleModal .modal-dialog {
-            width: 500px;
-        }
-
-        #modifyArticleModal span {
-            text-align: left;
-        }
-    }
-
-    @media (max-width: 768px) {
-        #modifyArticleModal .modal-dialog {
-            width: 100%;
-        }
-
-        #modifyArticleModal span {
-            text-align: left;
-        }
-    }
-</style>
-<div class="note-editor">
-    <div class="modal fade in" id="modifyArticleModal" aria-hidden="false" tabindex="-1" style="padding-right: 5px;">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
-                            aria-hidden="true">×</span></button>
-                    <h4 class="modal-title">修改文章信息</h4></div>
-                <div class="modal-body" style="padding-bottom: 0px;">
-                    <form id="article_form" method="post" class="form-horizontal row">
-                        <div class="form-group">
-                            <label class="col-xs-offset-1 col-xs-3 col-sm-3 control-label">文章ID</label>
-                            <span name="article_aid" class="col-xs-3 col-sm-3 control-label"></span>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-xs-offset-1 control-label col-xs-3 col-sm-3">文章标题</label>
-                            <span name="article_title" class="control-label col-xs-8 col-sm-8"></span>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-xs-offset-1 col-xs-3 col-sm-3 control-label">分类</label>
-                            <div class="col-xs-5 col-sm-4">
-                                <select class="form-control m-b" name="article_category">
-                                    <option value="0" selected="selected">默认</option>
-                                    <option value="1">开发</option>
-                                    <option value="2">教程</option>
-                                    <option value="3">资源</option>
-                                    <option value="4">科技</option>
-                                    <option value="5">游戏</option>
-                                    <option value="6">段子</option>
-                                    <option value="7">杂谈</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-xs-offset-1 col-xs-3 col-sm-3 control-label">文章权限</label>
-                            <div class="col-xs-7 col-sm-8">
-                                <div class="radio-inline">
-                                    <input type="radio" checked="checked" value="0" name="article_permission">公开
-                                </div>
-                                <div class="radio-inline">
-                                    <input type="radio" value="1" name="article_permission">对好友可见
-                                </div>
-                                <div class="radio-inline">
-                                    <input type="radio" value="2" name="article_permission">私有
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-xs-offset-1 col-xs-3 col-sm-3 control-label">是否推荐</label>
-                            <div class="col-xs-8 col-sm-8">
-                                <div class="radio-inline">
-                                    <input type="radio" checked="checked" value="0" name="article_recommend">普通
-                                </div>
-                                <div class="radio-inline">
-                                    <input type="radio" value="1" name="article_recommend">推荐
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-xs-offset-1 col-xs-3 col-sm-3 control-label">推荐权重</label>
-                            <div class="col-xs-5 col-sm-4">
-                                <input name="article_top" type="text" class="form-control" requried="requried">
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-danger" name="deleteArticle_trigger">删除文章</button>
-                    <button class="btn btn-primary" name="modifyArticle_trigger">更新信息</button>
-                    <button class="btn btn-default" name="cancelBtn" data-dismiss="modal">关闭</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<div class="modal fade" tabindex="-1" role="dialog" id="modal_system_status">
-    <div class="modal-dialog" role="document" style="margin-top:10%">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title">重新初始化系统缓存</h4>
-            </div>
-            <div class="modal-body">
-                <p>你确定要从数据库重新加载文章、用户等资料以刷新缓存中的数据吗?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
-                <button type="button" class="btn btn-primary" id="modal_btn_confirm">确定</button>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div id="goTop" class="" style="bottom: 70px;">
     <div class="arrow"></div>
@@ -335,6 +241,6 @@
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="article_manager"></script>
+<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="article_tags"></script>
 </body>
 </html>

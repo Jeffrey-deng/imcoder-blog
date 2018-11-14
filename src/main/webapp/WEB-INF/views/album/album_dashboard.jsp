@@ -24,111 +24,11 @@
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
     <style>
-        .photo {
-            /*padding-bottom: 20px;*/
-            float: left;
-        }
-
-        .padding {
-            background-color: #f2f2f2;
-        }
-
-        .photo img, .photo video {
-            border: 5px solid #FFFFFF;
-            width: 100%;
-            cursor: pointer;
-        }
-
-        .album {
-            /*padding-bottom: 20px;*/
-            float: left;
-        }
-
-        .album img {
-            border: 5px solid #FFFFFF;
-            width: 100%;
-            cursor: pointer;
-        }
-
-        .album .album_name {
-            height: 15px;
-            padding-top: 5px;
-        }
-
-        .album .album_name span {
-            font-weight: 600;
-            float: left;
-            cursor: pointer;
-        }
-
-        .mfp-bg {
-            opacity: .5;
-        }
-
-        .mfp-title {
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            width: calc(100% - 40px);
-            overflow: hidden;
-        }
-
-        button.mfp-arrow {
-            opacity: 0;
-            transition: all 0.3s linear;
-        }
-
-        .mfp-arrow:focus {
-            opacity: 0;
-        }
-
-        .mfp-arrow:hover {
-            opacity: 0.6;
-        }
-
-        /*.container-fluid {
-           !* padding: 20px;*!
-        }
-        .photo-size {
-            width: 25%;
-        }
-        .photo {
-            margin-bottom: 10px;
-            !*float: left;*!
-        }
-        .photo img {
-            max-width: 100%
-        }*/
-    </style>
-
-    <style>
-        .mfp-with-zoom .mfp-container,
-        .mfp-with-zoom.mfp-bg {
-            opacity: 0;
-            -webkit-backface-visibility: hidden;
-            /* ideally, transition speed should match zoom duration */
-            -webkit-transition: all 0.3s ease-out;
-            -moz-transition: all 0.3s ease-out;
-            -o-transition: all 0.3s ease-out;
-            transition: all 0.3s ease-out;
-        }
-
-        .mfp-with-zoom.mfp-ready .mfp-container {
-            opacity: 1;
-        }
-
-        .mfp-with-zoom.mfp-ready.mfp-bg {
-            opacity: 0.8;
-        }
-
-        .mfp-with-zoom.mfp-removing .mfp-container,
-        .mfp-with-zoom.mfp-removing.mfp-bg {
-            opacity: 0;
-        }
     </style>
 </head>
 <body uid="${loginUser.uid}">
@@ -204,23 +104,23 @@
                             <div class="col-sm-2 rowname">
                                 <div class="coldesc">服务</div>
                             </div>
-                            <div class="col-xs-1	morespace">
+                            <div class="col-xs-1 morespace">
                                 <div class="coldesc"><a class="toolbar_jump_writeblog">写博客</a></div>
                             </div>
-                            <div class="col-xs-1	morespace">
+                            <div class="col-xs-1 morespace">
                                 <div class="coldesc"><a class="toolbar_jump_paste_code" href="http://paste.ubuntu.com" target="_blank">贴代码</a></div>
                             </div>
-                            <div class="col-sm-1	">
+                            <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_albums" href="<%=basePath%>photo.do?method=user_albums" target="_blank">相册</a></div>
                             </div>
-                            <div class="col-sm-1  ">
-                                <div class="coldesc"><a class="toolbar_jump_video" href="video.do?method=user_videos" target="_blank">视频</a></div>
+                            <div class="col-sm-1" style="padding-left: 5px">
+                                <div class="coldesc"><a class="toolbar_jump_cloud" href="<%=cloudPath%>" target="_blank">cloud</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_archives" href="<%=basePath%>article.do?method=archives" target="_blank">归档</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
                             <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
                                 <div class="col-sm-1">
@@ -230,7 +130,13 @@
                         </div>
                         <div class="row">
                             <div class="col-sm-2 rowname">
-                                <div class="coldesc">关于</div>
+                                <div class="coldesc">站点</div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_notice" target="_blank" href="site.do?method=list">公告</a></div>
@@ -495,7 +401,19 @@
                             </div>
                             <div class="form-group">
                                 <label title="一行显示图片的数量">展示列数：</label>
-                                <input class="form-control" style="display:inline-block;width: 14%;margin-left: 6px;" type="text" name="album_show_col" value="4">
+                                <select class="select-inline m-b" name="album_show_col" style="display:inline-block;margin-left: 6px;">
+                                    <option value="0">遵循默认配置</option>
+                                    <option value="1">显示1列</option>
+                                    <option value="2">显示2列</option>
+                                    <option value="3">显示3列</option>
+                                    <option value="4">显示4列</option>
+                                    <option value="5">显示5列</option>
+                                    <option value="6">显示6列</option>
+                                    <option value="7">显示7列</option>
+                                    <option value="8">显示8列</option>
+                                    <option value="9">显示9列</option>
+                                    <option value="10">显示10列</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label>照片数量：</label>

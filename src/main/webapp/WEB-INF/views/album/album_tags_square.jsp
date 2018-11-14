@@ -24,35 +24,12 @@
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
     <style>
-        .album {
-            /*padding-bottom: 20px;*/
-            float: left;
-        }
-
         .padding {
             background-color: #f2f2f2;
-        }
-
-        .album img {
-            border: 5px solid #FFFFFF;
-            width: 100%;
-            cursor: pointer;
-        }
-
-        .album .album_name {
-            height: 15px;
-            padding-top: 5px;
-        }
-
-        .album .album_name span {
-            font-weight: 600;
-            float: left;
-            cursor: pointer;
         }
     </style>
 </head>
@@ -129,23 +106,23 @@
                             <div class="col-sm-2 rowname">
                                 <div class="coldesc">服务</div>
                             </div>
-                            <div class="col-xs-1	morespace">
+                            <div class="col-xs-1 morespace">
                                 <div class="coldesc"><a class="toolbar_jump_writeblog">写博客</a></div>
                             </div>
-                            <div class="col-xs-1	morespace">
+                            <div class="col-xs-1 morespace">
                                 <div class="coldesc"><a class="toolbar_jump_paste_code" href="http://paste.ubuntu.com" target="_blank">贴代码</a></div>
                             </div>
-                            <div class="col-sm-1	">
+                            <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_albums" href="<%=basePath%>photo.do?method=user_albums" target="_blank">相册</a></div>
                             </div>
-                            <div class="col-sm-1  ">
-                                <div class="coldesc"><a class="toolbar_jump_ftp" href="ftp://imcoder.site:21" target="_blank">FTP</a></div>
+                            <div class="col-sm-1" style="padding-left: 5px">
+                                <div class="coldesc"><a class="toolbar_jump_cloud" href="<%=cloudPath%>" target="_blank">cloud</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_archives" href="<%=basePath%>article.do?method=archives" target="_blank">归档</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
                             <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
                                 <div class="col-sm-1">
@@ -155,7 +132,13 @@
                         </div>
                         <div class="row">
                             <div class="col-sm-2 rowname">
-                                <div class="coldesc">关于</div>
+                                <div class="coldesc">站点</div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_notice" target="_blank" href="site.do?method=list">公告</a></div>

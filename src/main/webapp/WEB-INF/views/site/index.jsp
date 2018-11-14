@@ -142,23 +142,23 @@
                             <div class="col-sm-2 rowname">
                                 <div class="coldesc">服务</div>
                             </div>
-                            <div class="col-xs-1	morespace">
+                            <div class="col-xs-1 morespace">
                                 <div class="coldesc"><a class="toolbar_jump_writeblog">写博客</a></div>
                             </div>
-                            <div class="col-xs-1	morespace">
+                            <div class="col-xs-1 morespace">
                                 <div class="coldesc"><a class="toolbar_jump_paste_code" href="http://paste.ubuntu.com" target="_blank">贴代码</a></div>
                             </div>
-                            <div class="col-sm-1	">
+                            <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_albums" href="<%=basePath%>photo.do?method=user_albums" target="_blank">相册</a></div>
                             </div>
-                            <div class="col-sm-1  ">
-                                <div class="coldesc"><a class="toolbar_jump_ftp" href="ftp://imcoder.site:21" target="_blank">FTP</a></div>
+                            <div class="col-sm-1" style="padding-left: 5px">
+                                <div class="coldesc"><a class="toolbar_jump_cloud" href="<%=cloudPath%>" target="_blank">cloud</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_archives" href="<%=basePath%>article.do?method=archives" target="_blank">归档</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
                             <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
                                 <div class="col-sm-1">
@@ -168,7 +168,13 @@
                         </div>
                         <div class="row">
                             <div class="col-sm-2 rowname">
-                                <div class="coldesc">关于</div>
+                                <div class="coldesc">站点</div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_notice" target="_blank" href="site.do?method=list">公告</a></div>
@@ -382,13 +388,17 @@
                 </section>
 
                 <section class="post" id="article_hotTag">
-                    <p class="ui red ribbon label">热门标签</p>
+                    <p class="ui red ribbon label">
+                        <a title="查看所有标签" target="_blank" href="article.do?method=tags" style="color:white;text-decoration: none;">热门标签</a>
+                    </p>
                     <p>
                     <ul id="rank_hotTag"></ul>
                 </section>
 
                 <section class="post" id="article_newest">
-                    <p class="ui red ribbon label">最新文章</p>
+                    <p class="ui red ribbon label">
+                        <a title="查看文章归档" target="_blank" href="article.do?method=archives" style="color:white;text-decoration: none;">最新文章</a>
+                    </p>
                     <p>
                     <ul id="rank_newest"></ul>
                 </section>
