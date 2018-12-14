@@ -93,8 +93,9 @@ public interface IArticleService {
      * @param comment
      * @param loginUser
      * @return flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，500: 失败
+     * comment 对象
      */
-    public int addComment(Comment comment, User loginUser);
+    public Map<String, Object> addComment(Comment comment, User loginUser);
 
     /**
      * 删除评论
@@ -118,9 +119,9 @@ public interface IArticleService {
      *
      * @param uid  是否查询所有还是单个用户 uid=0 为查询所有
      * @param size list长度 默认5
-     * @return Map<String,List>
+     * @return Map<String, List>
      */
-    public Map<String, Object> listRanking(int uid, int size);
+    public Map<String, Object> listRanking(int uid, int size, User loginUser);
 
     /**
      * 获取文章标签列表，按文章数量降序排序

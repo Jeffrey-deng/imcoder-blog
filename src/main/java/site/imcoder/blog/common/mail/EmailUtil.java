@@ -14,7 +14,7 @@ import java.util.concurrent.*;
  */
 public class EmailUtil {
 
-    private static final Logger LOGGER = Logger.getLogger(EmailUtil.class);
+    private static final Logger logger = Logger.getLogger(EmailUtil.class);
 
     /**
      * 常见的邮件发送协议地址
@@ -145,7 +145,7 @@ public class EmailUtil {
         } catch (Exception e) {
             success = false;
             e.printStackTrace();
-            LOGGER.warn("邮件推送：发送给 " + toAddress + " 邮件失败！" + e.toString());
+            logger.warn("邮件推送：发送给 " + toAddress + " 邮件失败！" + e.toString());
         }
         return success;
     }
@@ -244,7 +244,7 @@ public class EmailUtil {
                 try {
                     email.sendEmail();
                 } catch (Exception e) {
-                    LOGGER.warn("邮件推送：发送给 " + toAddress + " 邮件失败！" + e.toString());
+                    logger.warn("邮件推送：发送给 " + toAddress + " 邮件失败！" + e.toString());
                     e.printStackTrace();
                 }
             }

@@ -1,24 +1,34 @@
 package site.imcoder.blog.service.impl;
 
 import org.apache.log4j.Logger;
+import org.json.JSONObject;
 import org.springframework.stereotype.Service;
 import site.imcoder.blog.cache.Cache;
+import site.imcoder.blog.dao.IAlbumDao;
 import site.imcoder.blog.dao.IArticleDao;
 import site.imcoder.blog.dao.ISiteDao;
-import site.imcoder.blog.entity.Article;
-import site.imcoder.blog.entity.User;
+import site.imcoder.blog.dao.IVideoDao;
+import site.imcoder.blog.entity.*;
 import site.imcoder.blog.event.IEventTrigger;
+import site.imcoder.blog.service.IFileService;
 import site.imcoder.blog.service.IManagerService;
 import site.imcoder.blog.setting.Config;
+import site.imcoder.blog.setting.ConfigConstants;
 import site.imcoder.blog.setting.ConfigManager;
 
 import javax.annotation.Resource;
+import java.io.File;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
- * Created by Jeffrey.Deng on 2017/10/25.
+ * 后台管理
+ *
+ * @author Jeffrey.Deng
+ * @date 2017-10-25
  */
 @Service("managerService")
 public class ManagerServiceImpl implements IManagerService {
@@ -33,6 +43,15 @@ public class ManagerServiceImpl implements IManagerService {
 
     @Resource
     private IArticleDao articleDao;
+
+    @Resource
+    private IAlbumDao albumDao;
+
+    @Resource
+    private IVideoDao videoDao;
+
+    @Resource(name = "localFileService")
+    private IFileService fileService;
 
     @Resource
     private IEventTrigger trigger;
@@ -176,6 +195,143 @@ public class ManagerServiceImpl implements IManagerService {
         } else {
             return auth;
         }
+    }
+
+    /**
+     * 升级旧地址格式为新地址格式
+     *
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public int upgradeNewFileNameStyle(User loginUser) {
+        int auth = isAdmin(loginUser);
+        if (auth == 200) {
+            if (!Config.getBoolean(ConfigConstants.SITE_ALLOW_RUN_UPGRADE)) {
+                return 404;
+            }
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    long start = new Date().getTime();
+                    int album = upgradeAlbumNewFileNameStyle();
+                    if (album == 200) {
+                        int video = upgradeVideoNewFileNameStyle();
+                        long end = new Date().getTime();
+                        if (video == 200) {
+                            logger.info("upgrade file name old style to new style: successfully! completed in " + ((end - start) / 1000) + " seconds.");
+                            return;
+                        }
+                    }
+                    long end = new Date().getTime();
+                    logger.error("upgrade file name old style to new style: fail! after run " + ((end - start) / 1000) + " seconds.");
+                }
+            }).start();
+            return 200;
+        } else {
+            return auth;
+        }
+    }
+
+    /**
+     * 升级相册旧地址格式为新地址格式
+     *
+     * @return
+     */
+    private int upgradeAlbumNewFileNameStyle() {
+        String basePath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH);
+        Pattern isAlreadyNew = Pattern.compile("^.*/album/\\d{5}/\\d{3}/\\d{5}_\\d{4}_.+$");
+        List<Album> albumList = siteDao.loadAlbumTable(null);
+        for (Album album : albumList) {
+            List<Photo> photoList = siteDao.loadPhotoTable(album);
+            for (Photo photo : photoList) {
+                String oldPath = photo.getPath();
+                if (isAlreadyNew.matcher(oldPath).matches()) { // 已经是新地址了
+                    continue;
+                }
+                String photoFolder = fileService.generatePhotoFolderPath(album);
+                String newPath = photoFolder + fileService.generateNextPhotoFilename(photo, basePath + photoFolder);
+                if (fileService.move(basePath + oldPath, basePath + newPath, true)) {
+                    photo.setPath(newPath);
+                    if (albumDao.updatePhoto(photo) == -1) {
+                        logger.error("upgradeAlbumNewFileNameStyle: update video photo fail, photo_id: " + photo.getPhoto_id() + ", path: \"" + photo.getPath() + "\"");
+                        return 500;
+                    }
+                    if (siteDao.updateArticleFilePath(oldPath, newPath) < 0) {
+                        return 500;
+                    }
+                } else {
+                    logger.error("upgradeAlbumNewFileNameStyle: move image file \"" + oldPath + "\" to \"" + newPath + "\" fail");
+                    return 500;
+                }
+            }
+            if (album.getAlbum_id() <= 9999) {
+                String rp = Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + album.getUser().getUid() + "/album/" + album.getAlbum_id() + "/";
+                if (new File(basePath + rp).exists()) {
+                    fileService.recycleTrash(basePath, rp, false);
+                }
+            }
+            int cover_id = 0;
+            try {
+                JSONObject cover = new JSONObject(album.getCover());
+                cover_id = (int) cover.get("photo_id");
+            } catch (Exception e) {
+
+            } finally {
+                String json = Config.get(ConfigConstants.ALBUM_DEFAULT_COVER);
+                if (cover_id > 0) {
+                    Photo p = new Photo();
+                    p.setPhoto_id(cover_id);
+                    Photo photoInfo = albumDao.findPhotoInfo(p);
+                    json = "{\"path\": \"" + photoInfo.getPath() + "\", \"photo_id\": " + photoInfo.getPhoto_id() + ", \"width\": " + photoInfo.getWidth() + ", \"height\": " + photoInfo.getHeight() + "}";
+                }
+                album.setCover(json);
+                albumDao.updateCoverForAlbum(album);
+            }
+        }
+        return 200;
+    }
+
+    /**
+     * 升级视频旧地址格式为新地址格式
+     *
+     * @return
+     */
+    public int upgradeVideoNewFileNameStyle() {
+        String basePath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH);
+        Pattern isAlreadyNew = Pattern.compile("^.*/video/\\d{5}/\\d{5}_\\d{4}_.+$");
+        List<Video> videoList = siteDao.loadVideoTable(null);
+        for (Video video : videoList) {
+            if (video.getSource_type() == 0) {
+                String oldPath = video.getPath();
+                if (isAlreadyNew.matcher(oldPath).matches()) { // 已经是新地址了
+                    continue;
+                }
+                String videoFolder = fileService.generateVideoFolderPath(video);
+                String newPath = videoFolder + fileService.generateNextVideoName(video, basePath + videoFolder);
+                if (fileService.move(basePath + oldPath, basePath + newPath, true)) {
+                    video.setPath(newPath);
+                    if (videoDao.updateVideo(video) == -1) {
+                        logger.error("upgradeVideoNewFileNameStyle: update video path fail, video_id: " + video.getVideo_id() + ", path: \"" + video.getPath() + "\"");
+                        return 500;
+                    }
+                } else {
+                    logger.error("upgradeVideoNewFileNameStyle: move video file \"" + oldPath + "\" to \"" + newPath + "\" fail");
+                    return 500;
+                }
+            }
+        }
+        for (Video video : videoList) {
+            if (video.getCover().getAlbum_id() > 9999) {
+                break;
+            }
+            String relative = Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + video.getUser().getUid() + "/video/" + video.getCover().getAlbum_id() + "/";
+            File dir = new File(basePath + relative);
+            if (dir.exists()) {
+                fileService.recycleTrash(basePath, relative, false);
+            }
+        }
+        return 200;
     }
 
     private int convertRowToHttpCode(int row) {

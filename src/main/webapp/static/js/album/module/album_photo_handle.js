@@ -252,7 +252,7 @@
         var file = files[index];
         if (file.size > config.maxUploadSize) {
             toastr.error("换个小的，最大" + (config.maxUploadSize / (1024 * 1024)) + "M", file['name'], {timeOut: 0});
-            console.log("Error : 文件超过大小 - " + file['name']);
+            console.warn("Error : 文件超过大小 - " + file['name']);
             index++;
             pointer.failUploadNum += 1;
             if (index > files.length - 1) {
@@ -323,7 +323,7 @@
                 } else {
                     common_utils.removeNotify("notify_uploading");
                     toastr.error(data.info, file['name'] + ", 上传失败", {timeOut: 0});
-                    console.log("Error Code: " + file['name'] + " upload fail - " + data.flag);
+                    console.warn("Error Code: " + file['name'] + " upload fail - " + data.flag);
                     pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
                 }
             },
@@ -366,7 +366,7 @@
                         pointer.updateModal.find('input[name="photo_file"]').val("");
                     },
                     error: function (XHR, TS) {
-                        toastr.error(data.info, "错误", {"progressBar": false});
+                        toastr.error(TS, "错误", {"progressBar": false});
                         console.warn("Error Code: " + TS);
                     }
                 });

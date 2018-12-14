@@ -1,4 +1,4 @@
-﻿<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
+﻿﻿<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
@@ -7,13 +7,14 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <!DOCTYPE html>
 <html class="no-js">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>dashboard | ImCODER博客's 相册</title>
     <meta name="description" content="相册看板dashboard">
     <meta name="keywords" content="相册,dashboard,ImCODER's 博客">
@@ -22,12 +23,12 @@
 
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <style>
     </style>
 </head>
@@ -82,7 +83,7 @@
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">教程</a></div>
+                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
@@ -193,16 +194,9 @@
                 <!-- 相册管理  start -->
                 <header class="post post-container album_options" style="overflow:visible">
                     <h1 class="post-title" itemprop="name headline">
-                        <style>
-                            .post-title a:hover {
-                                text-decoration: none;
-                            }
-
-                            .post-title a {
-                                cursor: pointer
-                            }
-                        </style>
                         <a class="option_user_albums" itemtype="url" href="photo.do?method=user_albums" target="_blank">我的相册</a>
+                        <a class="option_tags_subtag" itemtype="url" href="<%=basePath%>photo.do?method=tags_square" target="_blank" title="查看该标签的子标签" style="display: none">查看子标签</a>
+                        <a class="option_tags_upcasting" itemtype="url" href="<%=basePath%>photo.do?method=tags_square" target="_blank" title="查看该标签的相似标签" style="display: none">相似标签</a>
                         <div style="float: right" class="options_right">
                             <c:choose>
                                 <c:when test="${not empty dashboard_model and dashboard_model eq 'album'}">
@@ -220,19 +214,17 @@
                 </header>
                 <!-- 相册管理  end -->
 
-                <article class="post" style="background-color: #f2f2f2;box-shadow: 0px 0px 1px 0.5px #ddd;">
+                <article class="post" style="background-color: #f8f8f8;box-shadow: 0px 0px 1px 0.5px #ddd;">
                     <style>
                         <c:if test="${not empty dashboard_model and dashboard_model eq 'album'}">
                         #masonryContainer {
-                            margin-left: 10px;
-                            margin-right: 10px;
+                            margin: 20px 10px 0px 10px !important;
                         }
-
                         </c:if>
                     </style>
                     <!-- 文章内容 start -->
                     <section>
-                        <div id="masonryContainer" class="" style="margin-top: 20px;">
+                        <div id="masonryContainer" class="" style="margin: 7px 6px 1px 6px">
                         </div>
                     </section>
                     <!-- 文章内容 end -->
@@ -242,8 +234,8 @@
                 </article>
 
                 <!-- 评论区 start -->
-                <header class="post post-container row" style="width: 100%;display: inline-block;background-color: #f2f2f2;box-shadow: 0px 0px 1px 0.5px #ddd;">
-                    <ul class="post-meta" style="display: inline-block;margin-top: 3px;margin-bottom: 0px;font-size: 14px;">
+                <header class="post post-container row album-footer">
+                    <ul class="post-meta footer-left">
                         <c:choose>
                             <c:when test="${not empty dashboard_model and dashboard_model eq 'album'}">
                                 <li>数量: <a id="album_count">0</a></li>
@@ -253,8 +245,8 @@
                             </c:otherwise>
                         </c:choose>
                     </ul>
-                    <ul class="post-meta" style="display: inline-block;margin-top: 3px;margin-bottom: 0px;font-size: 14px;">
-                        <ol class="page-navigator" style="display: inline-block;margin: 0 auto;padding:0px;"></ol>
+                    <ul class="post-meta footer-right">
+                        <ol class="page-navigator"></ol>
                     </ul>
                 </header>
                 <!-- 评论区 end -->
@@ -282,19 +274,6 @@
 
 <c:choose>
     <c:when test="${not empty dashboard_model and dashboard_model eq 'album'}">
-        <style>
-            @media (min-width: 768px) {
-                #createAlbumModal .modal-dialog {
-                    width: 450px;
-                }
-            }
-
-            @media (max-width: 768px) {
-                #createAlbumModal .modal-dialog {
-                    width: 100%;
-                }
-            }
-        </style>
         <div class="note-editor">
             <div class="modal fade in" id="createAlbumModal" aria-hidden="false" tabindex="-1" style="padding-right: 0 !important;">
                 <div class="modal-dialog">
@@ -349,19 +328,6 @@
             </div>
         </div>
 
-        <style>
-            @media (min-width: 768px) {
-                #updateAlbumModal .modal-dialog {
-                    width: 500px;
-                }
-            }
-
-            @media (max-width: 768px) {
-                #updateAlbumModal .modal-dialog {
-                    width: 100%;
-                }
-            }
-        </style>
         <div class="note-editor">
             <div class="modal fade in" id="updateAlbumModal" aria-hidden="false" tabindex="-1" style="padding-right: 0 !important;">
                 <div class="modal-dialog">
@@ -435,19 +401,6 @@
         </div>
     </c:when>
     <c:otherwise>
-        <style>
-            @media (min-width: 768px) {
-                #uploadPhotoModal .modal-dialog {
-                    width: 500px;
-                }
-            }
-
-            @media (max-width: 768px) {
-                #uploadPhotoModal .modal-dialog {
-                    width: 100%;
-                }
-            }
-        </style>
         <div class="note-editor">
             <div class="modal fade in" id="uploadPhotoModal" aria-hidden="false" tabindex="-1">
                 <div class="modal-dialog">
@@ -495,19 +448,6 @@
             </div>
         </div>
 
-        <style>
-            @media (min-width: 768px) {
-                #updatePhotoModal .modal-dialog {
-                    width: 500px;
-                }
-            }
-
-            @media (max-width: 768px) {
-                #updatePhotoModal .modal-dialog {
-                    width: 100%;
-                }
-            }
-        </style>
         <div class="note-editor">
             <div class="modal fade in" id="updatePhotoModal" aria-hidden="false" tabindex="-1">
                 <div class="modal-dialog">
@@ -582,15 +522,15 @@
 </c:choose>
 
 <!-- login modal start -->
-<div style="margin-top:100px;" class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
-    <div style="width: 350px;" class="modal-dialog" role="document">
+<div class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
+    <div class="modal-dialog" role="document">
         <div class="modal-content animated flipInY">
             <div class="modal-header text-center">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <h2 class="modal-title" id="loginModalLabel">登录/<a href="user.do?method=toregister" target="_blank">注册</a></h2>
             </div>
             <form role="form" id="login_form">
-                <div class="modal-body" style="height:200px;">
+                <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
                         <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
@@ -629,10 +569,10 @@
 <!-- Placed at the end of the document so the pages load faster -->
 <c:choose>
     <c:when test="${not empty dashboard_model and dashboard_model eq 'album'}">
-        <script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="album_dashboard"></script>
+        <script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="album_dashboard"></script>
     </c:when>
     <c:otherwise>
-        <script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="album_photo_dashboard"></script>
+        <script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="album_photo_dashboard"></script>
     </c:otherwise>
 </c:choose>
 </body>

@@ -1,11 +1,14 @@
 /**
- * Created by Jeffrey.Deng on 2017/4/8.
+ * requireJs配置
  */
 (function () {
-    var url_prefix = "https://static.imcoder.site/blog/";
-    var baseUrl = document.getElementById("require_node").getAttribute("baseUrl");
-    if (baseUrl) {
-        url_prefix = baseUrl;
+    var require_node = document.getElementById("require_node");
+    var url_prefix = require_node.getAttribute("baseUrl") || "https://static.imcoder.site/blog/";
+    var urlArgs = require_node.getAttribute("urlArgs") || null;
+    if (urlArgs && urlArgs != "?") {
+        urlArgs = urlArgs.replace(/^\?/, "");
+    } else {
+        urlArgs = false;
     }
     require.config({
         baseUrl: url_prefix,
@@ -27,6 +30,7 @@
             "jquery_steps": ["lib/steps/jquery.steps.min"],
             "jquery_validate": ["lib/validate/jquery.validate.min"],
             "jquery_validate_messages_zh": ["lib/validate/messages_zh"],
+            "aliyun-oss-sdk": ["lib/aliyun/aliyun-oss-sdk.min"],
 
             "album_photo_handle": ["js/album/module/album_photo_handle"],
             "album_photo_page_handle": ["js/album/module/album_photo_page_handle"],
@@ -43,6 +47,7 @@
             "article_detail": ["js/article/article_detail"],
             "article_edit": ["js/article/article_edit"],
             "edit_tool": ["js/article/edit_tool"],
+            "edit_tool_plugin": ["js/article/edit_tool_plugin"],
             "article_archives": ["js/article/article_archives"],
             "article_manager": ["js/manager/article_manager"],
             "user_manager": ["js/manager/user_manager"],
@@ -63,7 +68,8 @@
             "contact_with": ["js/user/contact_with"],
             "contacts": ["js/user/contacts"],
             "profilecenter": ["js/user/profilecenter"],
-            "user_home": ["js/user/user_home"]
+            "user_home": ["js/user/user_home"],
+            "cloud_share": ["js/cloud/cloud_share"],
         },
         shim: {
             bootstrap: {
@@ -79,7 +85,7 @@
             }
         },
         waitSeconds: 10,
-        urlArgs: false
+        urlArgs: urlArgs || false
     });
 
     require(["jquery", "toastr"], function ($, toastr) {
@@ -143,7 +149,7 @@
 
                 } else if (page == "article_edit") {
 
-                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "store2", "clipboard", "summernote", "niftymodals", "common_utils", "login_handle", "toolbar", "edit_tool", "article_edit"]);
+                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "store2", "clipboard", "summernote", "niftymodals", "common_utils", "login_handle", "toolbar", "edit_tool_plugin", "edit_tool", "article_edit"]);
 
                 } else if (page == "album_list") {
 
@@ -190,7 +196,7 @@
 
                 } else if (page == "manager_article_modify") {
 
-                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "store2", "clipboard", "summernote", "niftymodals", "common_utils", "login_handle", "toolbar", "edit_tool", "article_modify"]);
+                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "store2", "clipboard", "summernote", "niftymodals", "common_utils", "login_handle", "toolbar", "edit_tool_plugin", "edit_tool", "article_modify"]);
 
                 } else if (page == "403") {
 

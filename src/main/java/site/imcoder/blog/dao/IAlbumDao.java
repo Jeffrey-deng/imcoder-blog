@@ -2,6 +2,7 @@ package site.imcoder.blog.dao;
 
 import site.imcoder.blog.entity.Album;
 import site.imcoder.blog.entity.Photo;
+import site.imcoder.blog.entity.PhotoTagWrapper;
 import site.imcoder.blog.entity.User;
 
 import java.util.List;
@@ -112,4 +113,13 @@ public interface IAlbumDao {
      * @return photos
      */
     public List<Photo> findPhotoList(Photo photo, String logic_conn, int start, int size, User loginUser);
+
+    /**
+     * 查询出用户设置的特殊标签
+     *
+     * @param tagWrapper
+     * @param loginUser
+     * @return
+     */
+    public List<PhotoTagWrapper> findPhotoTagWrappers(PhotoTagWrapper tagWrapper, User loginUser);
 }

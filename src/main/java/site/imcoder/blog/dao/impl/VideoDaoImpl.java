@@ -62,4 +62,22 @@ public class VideoDaoImpl extends CommonDao implements IVideoDao {
         return this.getSqlSession().selectList("video.findVideoListByCoverIdArray", map);
     }
 
+    /**
+     * 更新视频
+     *
+     * @param video
+     * @return
+     */
+    @Override
+    public int updateVideo(Video video) {
+        try {
+            return this.getSqlSession().insert("video.updateVideo", video);
+        } catch (Exception e) {
+            e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("updateVideo fail", e);
+            return -1;
+        }
+    }
+
 }

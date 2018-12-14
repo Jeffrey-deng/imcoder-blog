@@ -6,25 +6,26 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <!DOCTYPE html>
 <html class="no-js">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>系统日志 - Website Administer System</title>
     <!-- 使用url函数转换相关路径 -->
     <!-- <script async="" src="http://www.google-analytics.com/analytics.js"></script> -->
 
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote.min.css">
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote.min.css<%=urlArgs%>">
 
 </head>
 <body uid="${loginUser.uid}" onload=" ">
@@ -33,10 +34,8 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center">
-                    <br>
                     <h1>${loginUser.nickname}</h1>
-                    <p>${loginUser.description}</p>
-                    <br>
+                    <h3>${loginUser.description}</h3>
                 </div>
             </div>
         </div>
@@ -73,7 +72,7 @@
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">教程</a></div>
+                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
@@ -236,7 +235,7 @@
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="log_view"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="log_view"></script>
 
 </body>
 </html>

@@ -1,27 +1,57 @@
 package site.imcoder.blog.service;
 
 import org.springframework.web.multipart.MultipartFile;
+import site.imcoder.blog.entity.Album;
 import site.imcoder.blog.entity.Photo;
 import site.imcoder.blog.entity.Video;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.InputStream;
 import java.util.Map;
 
 /**
  * 处理文件操作
- * Created by Jeffrey.Deng on 2018/1/3.
+ *
+ * @author Jeffrey.Deng
+ * @date 2018/1/3
  */
 public interface IFileService {
 
-    public boolean copy(String formPath, String toPath, boolean isFile);
+    // 文件系统运行模式
+    public enum Mode {
+        LOCAL("local"),
+        REMOTE("remote"),
+        SYNC("sync");
 
-    public boolean move(String formPath, String toPath, boolean isFile);
+        public String value;
+
+        Mode(String name) {
+            this.value = name;
+        }
+
+        public static Mode valueOfName(String name) {
+            for (Mode system : values()) {
+                if (system.value.equals(name)) {
+                    return system;
+                }
+            }
+            return null;
+        }
+    }
+
+    public boolean copy(String fromPath, String toPath, boolean isFile);
+
+    public boolean move(String fromPath, String toPath, boolean isFile);
 
     public boolean delete(String path);
 
     public boolean deleteDirectory(String path);
 
     public void createDirs(String path);
+
+    public boolean existsFile(String filePath);
+
+    public boolean existsDir(String dirPath);
 
     /**
      * 保存文本
@@ -30,6 +60,15 @@ public interface IFileService {
      * @param filePath
      */
     public boolean saveText(String text, String filePath);
+
+    /**
+     * 文件保存
+     *
+     * @param inputStream 输入流
+     * @param filePath    文件保存绝对路径
+     * @return
+     */
+    public boolean save(InputStream inputStream, String filePath);
 
     /**
      * 保存文章中上传的图片或附件
@@ -41,7 +80,7 @@ public interface IFileService {
      * @param map
      * @return boolean 是否成功保存
      */
-    public boolean saveArticleAttachment(MultipartFile file, String relativePath, String fileName, boolean isImage, Map map);
+    public boolean saveArticleAttachment(MultipartFile file, String relativePath, String fileName, boolean isImage, Map<String, Object> map);
 
     /**
      * 下载互联网图片
@@ -52,7 +91,7 @@ public interface IFileService {
      * @param map
      * @return boolean 是否下载成功
      */
-    public boolean downloadInternetImage(String url, String relativePath, String fileName, Map map);
+    public boolean downloadInternetImage(String url, String relativePath, String fileName, Map<String, Object> map);
 
 
     /**
@@ -140,4 +179,66 @@ public interface IFileService {
      * @return
      */
     public boolean saveVideoFile(MultipartFile file, Video video, String relativePath, String fileName);
+
+    /**
+     * 生成相册相对路径
+     *
+     * @param album
+     * @return
+     */
+    public String generateAlbumPath(Album album);
+
+    /**
+     * 得到照片保存的文件夹
+     *
+     * @return
+     */
+    public String generatePhotoFolderPath(Album album);
+
+    /**
+     * 得到该照片在这个相册的下一个文件名
+     * 规则为 albumId_index_uploadTime
+     *
+     * @param photo
+     * @param savePath
+     * @return
+     */
+    public String generateNextPhotoFilename(Photo photo, String savePath);
+
+    /**
+     * 得到该照片在这个相册的文件名
+     * 规则为 albumId_index_uploadTime
+     *
+     * @param photo
+     * @param index 编号，属于这个文件夹第几个文件
+     * @return
+     */
+    public String generatePhotoFilename(Photo photo, int index);
+
+    /**
+     * 生成视频保存文件夹相对路径
+     *
+     * @param video
+     * @return
+     */
+    public String generateVideoFolderPath(Video video);
+
+    /**
+     * 生成下一个视频的文件名
+     *
+     * @param video
+     * @param savePath 保存文件夹的绝对路径
+     * @return
+     */
+    public String generateNextVideoName(Video video, String savePath);
+
+    /**
+     * 生成视频的文件名
+     *
+     * @param video
+     * @param index 编号，属于这个文件夹第几个文件
+     * @return
+     */
+    public String generateVideoFilename(Video video, int index);
+
 }

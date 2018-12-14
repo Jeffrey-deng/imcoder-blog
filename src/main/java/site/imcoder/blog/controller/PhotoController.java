@@ -8,12 +8,16 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
+import site.imcoder.blog.Interceptor.GZIP;
 import site.imcoder.blog.Interceptor.LoginRequired;
 import site.imcoder.blog.entity.Album;
 import site.imcoder.blog.entity.Photo;
+import site.imcoder.blog.entity.PhotoTagWrapper;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.service.IAlbumService;
 import site.imcoder.blog.service.IUserService;
+import site.imcoder.blog.setting.Config;
+import site.imcoder.blog.setting.ConfigConstants;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -127,6 +131,7 @@ public class PhotoController extends BaseController {
      */
     @RequestMapping(params = "method=albumByAjax")
     @ResponseBody
+    @GZIP
     public Map<String, Object> openAlbumByAjax(int id, @RequestParam(defaultValue = "true") boolean photos, @RequestParam(defaultValue = "false") boolean mount, HttpSession session, HttpServletRequest request) {
         Album album = new Album();
         album.setAlbum_id(id);
@@ -139,6 +144,8 @@ public class PhotoController extends BaseController {
         }
         int flag = (int) map.get(KEY_STATUS);
         if (flag == 200) {
+            Album db_album = (Album) map.get("album");
+            map.put(ConfigConstants.CLOUD_PHOTO_PREVIEW_ARGS, Config.getChild(ConfigConstants.CLOUD_PHOTO_PREVIEW_ARGS, "@user_", db_album.getUser().getUid() + "", ":"));
             map.put(KEY_STATUS_FRIENDLY, "查找成功！");
         } else {
             convertAlbumStatusCodeToWord(map);
@@ -192,6 +199,13 @@ public class PhotoController extends BaseController {
         List<Album> albumList = albumService.findAlbumList(album, loginUser);
         map.put("albums", albumList);
         if (albumList != null) {
+            String cloud_photo_preview_args = null;
+            if (album != null && album.getUser() != null && album.getUser().getUid() > 0) {
+                cloud_photo_preview_args = Config.getChild(ConfigConstants.CLOUD_PHOTO_PREVIEW_ARGS, "@user_", album.getUser().getUid() + "", ":");
+            } else {
+                cloud_photo_preview_args = Config.getChildDefault(ConfigConstants.CLOUD_PHOTO_PREVIEW_ARGS, "@user_");
+            }
+            map.put(ConfigConstants.CLOUD_PHOTO_PREVIEW_ARGS, cloud_photo_preview_args);
             map.put(KEY_STATUS, 200);
         } else {
             map.put(KEY_STATUS, 400);
@@ -307,26 +321,46 @@ public class PhotoController extends BaseController {
      * @param logic_conn
      * @param query_start
      * @param query_size
-     * @param request
+     * @param base  数据查询的特殊基准
+     * @param from  实际的执行js请求的页面
+     * @param extend    查询的标签是否将其展开查询
      * @param session
      * @return
      */
     @RequestMapping(params = "method=photoListByAjax")
     @ResponseBody
+    @GZIP
     public Map<String, Object> photoListByAjax(
             Photo photo,
             @RequestParam(defaultValue = "and") String logic_conn,
             @RequestParam(defaultValue = "0") int query_start,
             @RequestParam(defaultValue = "500") int query_size,
-            String base,
-            HttpServletRequest request,
+            String base,    // 数据查询的特殊基准
+            String from,    // 实际的执行js请求的页面
+            @RequestParam(defaultValue = "false") boolean extend,
             HttpSession session
     ) {
         Map<String, Object> map = new HashMap<>();
         User loginUser = (User) session.getAttribute("loginUser");
-        List<Photo> photos = albumService.findPhotoList(base, photo, logic_conn, query_start, query_size, loginUser);
+        List<Photo> photos = albumService.findPhotoList(base, photo, logic_conn, query_start, query_size, loginUser, extend);
         map.put("photos", photos);
         if (photos != null) {
+            if (extend && from != null && from.equals("album_tags_square")) {   // 来自标签广场的请求的话，返回用户的标签设置
+                PhotoTagWrapper queryTagWrapper = null;
+                if (photo != null && photo.getUid() > 0) {
+                    queryTagWrapper = new PhotoTagWrapper();
+                    queryTagWrapper.setUid(photo.getUid());
+                }
+                List<PhotoTagWrapper> photoTagWrappers = albumService.findPhotoTagWrappers(queryTagWrapper, loginUser);
+                map.put("tag_wrappers", photoTagWrappers);
+            }
+            String cloud_photo_preview_args = null;
+            if (photo != null && photo.getUid() > 0) {
+                cloud_photo_preview_args = Config.getChild(ConfigConstants.CLOUD_PHOTO_PREVIEW_ARGS, "@user_", photo.getUid() + "", ":");
+            } else {
+                cloud_photo_preview_args = Config.getChildDefault(ConfigConstants.CLOUD_PHOTO_PREVIEW_ARGS, "@user_");
+            }
+            map.put(ConfigConstants.CLOUD_PHOTO_PREVIEW_ARGS, cloud_photo_preview_args);
             map.put(KEY_STATUS, 200);
         } else {
             map.put(KEY_STATUS, 400);
@@ -417,6 +451,29 @@ public class PhotoController extends BaseController {
     @RequestMapping(params = "method=tags_square")
     public String tagsSquare(HttpSession session, HttpServletRequest request) {
         return "/album/album_tags_square";
+    }
+
+    /**
+     * 查找用户特殊配置标签
+     *
+     * @param tagWrapper
+     * @param session
+     * @return
+     */
+    @RequestMapping(params = "method=getTagWrappers")
+    @ResponseBody
+    public Map<String, Object> getTagWrappers(PhotoTagWrapper tagWrapper, HttpSession session) {
+        Map<String, Object> map = new HashMap<>();
+        User loginUser = getLoginUser(session);
+        List<PhotoTagWrapper> wrappers = albumService.findPhotoTagWrappers(tagWrapper, loginUser);
+        map.put("tag_wrappers", wrappers);
+        if (wrappers != null) {
+            map.put(KEY_STATUS, 200);
+        } else {
+            map.put(KEY_STATUS, 400);
+        }
+        convertStatusCodeToWord(map);
+        return map;
     }
 
     protected void convertPhotoStatusCodeToWord(Map<String, Object> map) {

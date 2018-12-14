@@ -5,6 +5,7 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <%
     Object http_code = request.getAttribute("http_code");
@@ -23,11 +24,11 @@
     <meta name="description" content="重新验证密码登录到imcoder.site">
 
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
     <style>
         .toast-success-no-icon {
             background-color: #51A351 !important;
@@ -43,6 +44,67 @@
 
         .toast-warning-no-icon {
             background-color: #F89406 !important;
+        }
+
+        img.img-circle {
+            width: 10.15385em;
+            height: 10.15385em;
+            border-width: 0.4615em;
+        }
+
+        @media (min-width: 1537px) {
+            body {
+                font-size: 14.3px;
+            }
+
+            .lock-word {
+                top: 8.46154em;
+                margin-left: -36.1539em;
+            }
+
+            .lockscreen.middle-box {
+                width: 15.38461em;
+                padding-top: 8.46154em;
+            }
+
+            .middle-box {
+                max-width: 30.76923em;
+            }
+
+            .m-b-md {
+                margin-bottom: 1.53846em;
+            }
+
+            .form-group {
+                margin-bottom: 1.153847em;
+            }
+
+            h3 {
+                font-size: 1.230769em;
+            }
+
+            p {
+                margin: 0 0 0.76923em;
+            }
+
+            .form-control, .single-line {
+                font-size: 1.0769em;
+            }
+
+            .form-control {
+                height: 2.6153em;
+            }
+
+            .btn {
+                font-size: 1.0769em;
+                padding: 0.4615em 0.923em;
+            }
+        }
+
+        @media (min-width: 1750px) {
+            body {
+                font-size: 16.25px;
+            }
         }
     </style>
 </head>
@@ -73,6 +135,6 @@
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="lockscreen"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="lockscreen"></script>
 </body>
 </html>

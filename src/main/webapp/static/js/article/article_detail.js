@@ -23,7 +23,7 @@
             submit_comment();
         });
         //从服务器加载评论
-        loadList(1);
+        loadList();
 
         $("#comment_form_parentid").val('0');
         $("#comment_form_replyuid").val(auid);
@@ -43,7 +43,7 @@
     }
 
     //从服务器加载评论
-    function loadList(pageIndex) {
+    function loadList() {
         $.ajax({
             type: 'POST',
             url: 'article.do?method=listComment&aid=' + aid,
@@ -51,21 +51,7 @@
             success: function (data) {
                 //alert(JSON.stringify(data));
                 list = data;
-                //构造主题
-                var topics = getTopics(list);
-                //组装HTM
-                var listHtml = '<h3 class="comment-meta-count">已有 ' + list.length + '条评论<a class="comment-add-new" style="float:right;" href="#addcomment">添加评论</a></h3>';
-                listHtml += '<ol class="comment-list">';
-                for (var i = 0; i < topics.length; i++) {
-                    var comment = topics[i];
-                    var layer = topics.length - i;
-                    listHtml += getItemHtml(comment, layer);
-                }
-                listHtml += '</ol>';
-
-                $('#comments').html(listHtml);
-                //绑定事件
-                setBtnEvent();
+                buildCommentAreaHtml(list, 1);
             },
             error: function () {
 
@@ -100,15 +86,23 @@
     }
 
     var uid = $('body').attr('uid');
-    //获取评论的HTML
-    function getItemHtml(comment, index, floor, deep) {
 
-        if (!deep) deep = 0;
+    /**
+     * 获取评论的HTML
+     * @param comment
+     * @param building 栋, 从1开始
+     * @param floor 栋中的第几层, 从1开始
+     * @param room 层中的第几室 , 从1开始
+     * @returns {string}
+     */
+    function getItemHtml(comment, building, floor, room) {
+        if (!floor) floor = 1;
+        if (!room) room = 1;
         var html = "<li id='li_" + comment.cid + "' class='comment-body " + ((comment.parentid == 0) ? 'comment-parent ' : '');
         html += ( (comment.user.uid == auid) ? 'comment-by-author ' : '' );
-        html += ( (deep % 2 == 0) ? 'comment-level-even ' : 'comment-level-odd ' ) + "'>";
+        html += ( (floor % 2 == 0) ? 'comment-level-even ' : 'comment-level-odd ' ) + "'>";
         html += "<div class='comment-author'> ";
-        html += '<span itemprop="image" style="text-align: center;"><img class="avatar" src="' + staticPath + comment.user.head_photo + '" title="" width="32" height="32"></span>';
+        html += '<span itemprop="image" style="text-align: center;"><img class="avatar" src="' + staticPath + comment.user.head_photo + '" title=""></span>';
         html += '<cite class="fn" itemprop="name"><a href="' + basePath + 'user.do?method=home&uid=' + comment.user.uid + '">' + comment.user.nickname + '</a></cite>';
         html += '</div>';
         html += '<div class="comment-meta"> ';
@@ -122,16 +116,35 @@
         html += '&nbsp;&nbsp;<a href="#reply" onclick="">回复</a>';
         html += '</div>';
         if (comment.replies != null && comment.replies.length > 0) {
-            html += ' <div class="comment-children" itemprop="discusses"> ';
-            html += ' <ol class="comment-list"> ';
+            html += '<div class="comment-children" itemprop="discusses">';
+            html += '<ol class="comment-list">';
             for (var j = 0; j < comment.replies.length; j++) {
-                html += getItemHtml(comment.replies[j], j + 1, index, deep + 1);
+                html += getItemHtml(comment.replies[j], building, floor + 1, j + 1);
             }
             html += '</ol>';
             html += '</div>';
         }
         html += '</li>';
         return html;
+    }
+
+    function buildCommentAreaHtml(list, pageIndex) {
+        //构造主题
+        var topics = getTopics(list);
+
+        //组装HTM
+        var listHtml = '<h3 class="comment-meta-count">已有 ' + list.length + '条评论<a class="comment-add-new" style="float:right;" href="#addcomment">添加评论</a></h3>';
+        listHtml += '<ol class="comment-list">';
+        for (var i = 0; i < topics.length; i++) {
+            var comment = topics[i];
+            var building = topics.length - i; // 第几栋楼
+            listHtml += getItemHtml(comment, building);
+        }
+        listHtml += '</ol>';
+        $('#comments').html(listHtml);
+
+        //绑定事件
+        setBtnEvent();
     }
 
     //获取评论对象
@@ -210,10 +223,14 @@
         var data = {"cid": commentId, "parentid": comment.parentid, "aid": comment.aid};
         $.post("article.do?method=deleteComment", data, function (data) {
             if (data.flag == 200) {
-                $("#li_" + commentId).remove();
+                list.splice(list.indexOf(comment), 1);
+                //$("#li_" + commentId).remove();
+                buildCommentAreaHtml(list, 1);
                 toastr.success('删除成功！');
             } else if (data.flag == 201) {
-                $("#li_" + commentId).find('.comment-content').eq(0).find('p').eq(0).html('*已删除*');
+                comment.content = "*已删除*";
+                //$("#li_" + commentId).find('.comment-content').eq(0).find('p').eq(0).html('*已删除*');
+                buildCommentAreaHtml(list, 1);
                 toastr.success('删除成功！');
             } else {
                 toastr.error(data.info, '删除评论失败！');
@@ -231,7 +248,12 @@
             var content = $("#comment_form_content").val();
             //去除@xx:
             if (parentid != '0') {
-                content = content.substring(content.indexOf(':') + 1);
+                var start = content.indexOf(':') + 1;
+                if (start >= content.length) {
+                    toastr.error('评论不能为空！');
+                    return;
+                }
+                content = content.substring(start);
             }
             //转义
             if (!$('#tagInner').prop('checked')) {
@@ -246,7 +268,9 @@
                     success: function (data) {
                         if (data.flag == 200) {
                             toastr.success('评论添加成功！');
-                            loadList(1);
+                            list.push(data.comment);
+                            buildCommentAreaHtml(list, 1);
+                            //loadList();
                             $comment_editor.val('');
                         } else {
                             toastr.error(data.info, '添加评论失败！');
@@ -341,72 +365,92 @@
                 success: function (data) {
                     if (data.flag == 200) {
                         console.log("已收藏该文章");
-                        $('#collectArticleBtn').attr("status", "yes")
-                        $('#collectArticleBtn').html('<span class="glyphicon glyphicon-star" aria-hidden="true"></span><b> 已收藏</b>');
+                        $('#collectArticleBtn').attr("status", "yes").html('<span class="glyphicon glyphicon-star" aria-hidden="true"></span><b> 已收藏</b>');
                     }
                 }
             });
         }
     }
 
+    //保存返回的验证码
+    var validateCode = null;
+
     function initDelete() {
         if ($('#validateMailModal').length > 0) {
             //发送验证邮件事件
             $('#sendValidateMailBtn').click(function () {
+                var _self = $(this);
                 sendValidateMail();
                 $('#validateMailModal').modal({backdrop: 'static', keyboard: false});
-                $('#sendValidateMailBtn').attr('disabled', "true").val("30s后");
+                _self.attr('disabled', "true").val("30s后");
                 var num = 30;
                 var time_inter = setInterval(function () {
-                    num -= 1;
-                    $('#sendValidateMailBtn').val(num + "s后");
+                    _self.val((--num) + "s后");
                 }, 1000);
                 setTimeout(function () {
                     clearInterval(time_inter);
-                    $('#sendValidateMailBtn').removeAttr("disabled").val("重新发送");
-                }, 30 * 1000);
+                    _self.removeAttr("disabled").val("重新发送");
+                }, 30 * 1000 + 10);
             });
             //检查验证码是否正确事件
             $('#deleteArticleBtn').click(function () {
                 var code = $('#validateMailForm').find('input[name="validateCode"]').eq(0).val().replace(/(^\s*)|(\s*$)/g, '');
-                if (code.toLowerCase() == validateCode.toLowerCase()) {
-                    toastr.success('正在删除！');
-                    $.post("article.do?method=delete", {"aid": aid, "validateCode": validateCode}, function (data) {
+                if (code) {
+                    $.get("site.do?method=checkValidateCode", {"code": code}, function (data) {
                         if (data.flag == 200) {
-                            toastr.success('删除成功！');
-                            setTimeout(function () {
-                                document.location.href = $("#basePath").attr("href");
-                            }, 2000);
+                            validateCode = code;
+                            deleteArticle();
                         } else {
-                            toastr.error(data.info, '删除失败！');
+                            validateCode = null;
+                            toastr.error(data.info, data.flag);
                             console.warn("Error Code: " + data.flag);
                         }
                     });
                 } else {
-                    toastr.error('验证码错误！');
+                    toastr.error("请输入验证码~");
                 }
             });
         }
     }
 
-    //保存返回的验证码
-    var validateCode;
     //发送验证码邮件
     function sendValidateMail() {
         $.ajax({
-            url: 'site.do?method=sendValidateMail',
+            url: 'site.do?method=sendValidateCode',
             type: "POST",
             success: function (data) {
-                if (data) {
-                    validateCode = data;
-                    toastr.success('已发送验证邮件！');
+                if (data.flag == 200) {
+                    toastr.success("验证邮件发送成功！");
                 } else {
-                    toastr.error('验证邮件发送失败！');
+                    toastr.error(data.info, "错误");
+                    console.warn("Error Code: " + data.flag);
                 }
             },
-            error: function () {
-                toastr.error('验证邮件发送失败！');
+            error: function (XHR, TS) {
+                toastr.error(TS, '验证邮件发送失败！');
             }
+        });
+    }
+
+    function deleteArticle() {
+        common_utils.notify({
+            "progressBar": false,
+            "hideDuration": 0,
+            "timeOut": 0,
+            "closeButton": false
+        }).success("正在删除~", "", "notify_article_deleting");
+        $.post("article.do?method=delete", {"aid": aid, "validateCode": validateCode}, function (data) {
+            common_utils.removeNotify("notify_article_deleting");
+            if (data.flag == 200) {
+                toastr.success('删除成功！');
+                toastr.success("此页面刷新后将不可用~", "", {"timeOut": 0});
+            } else {
+                toastr.error(data.info, '删除失败！');
+                console.warn("Error Code: " + data.flag);
+            }
+        }).fail(function () {
+            common_utils.removeNotify("notify_article_deleting");
+            toastr.error("服务器错误", '删除失败！');
         });
     }
 
@@ -464,7 +508,7 @@
                 //<button title="%title%" type="button" class="mfp-arrow mfp-arrow-%dir%"></button>
                 tPrev: '上一张', // title for left button,'Previous (Left arrow key)
                 tNext: '下一张', // title for right button,Next (Right arrow key)
-                tCounter: '<span class="mfp-counter">%curr% of %total%</span>' // markup of counter
+                tCounter: '%curr% of %total%' // markup of counter
             },
             removalDelay: 300,
             mainClass: 'mfp-with-zoom',
@@ -526,22 +570,6 @@
             //滚动效果（除去有hash值时）
             $('html, body').animate({scrollTop: x}, 'slow');
         }
-
-        // 提示吐司  設置
-        toastr.options = {
-            "closeButton": true,
-            "debug": false,
-            "progressBar": false,
-            "positionClass": "toast-bottom-left",
-            "showDuration": "400",
-            "hideDuration": "1000",
-            "timeOut": "3500",
-            "extendedTimeOut": "1000",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "fadeIn",
-            "hideMethod": "fadeOut"
-        };
 
         $('#collectArticleBtn').click(function (e) {
             var preStatus = e.currentTarget.getAttribute("status") || "no";

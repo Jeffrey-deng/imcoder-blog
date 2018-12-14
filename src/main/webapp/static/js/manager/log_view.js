@@ -82,21 +82,6 @@
      */
     domReady(function () {
 
-        toastr.options = {
-            "closeButton": true,
-            "debug": false,
-            "progressBar": false,
-            "positionClass": "toast-bottom-left",
-            "showDuration": "400",
-            "hideDuration": "1000",
-            "timeOut": "4500",
-            "extendedTimeOut": "1000",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "fadeIn",
-            "hideMethod": "fadeOut"
-        };
-
         //自定义的编辑器
         var editable = $("#log_area").summernote({
             lang: "zh-CN",

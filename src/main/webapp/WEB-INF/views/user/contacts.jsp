@@ -7,24 +7,25 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <!DOCTYPE html>
 <html class="no-js">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>联系人页 - ImCODER's 博客</title>
     <meta name="description" content="联系人页">
     <meta name="keywords" content="联系人页,ImCODER's 博客">
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
 
 </head>
 
@@ -34,10 +35,8 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center">
-                    <br>
                     <h1>ImCODER's 博客</h1>
-                    <h3 style="color:#444;font-size:16.5px;">联系人列表</h3>
-                    <br>
+                    <h3>联系人列表</h3>
                 </div>
             </div>
         </div>
@@ -74,7 +73,7 @@
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">教程</a></div>
+                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
@@ -212,15 +211,15 @@
 </div>
 
 <!-- login modal start -->
-<div style="margin-top:100px;" class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
-    <div style="width: 350px;" class="modal-dialog" role="document">
+<div class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
+    <div class="modal-dialog" role="document">
         <div class="modal-content animated flipInY">
             <div class="modal-header text-center">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <h2 class="modal-title" id="loginModalLabel">登录/<a href="user.do?method=toregister" target="_blank">注册</a></h2>
             </div>
             <form role="form" id="login_form">
-                <div class="modal-body" style="height:200px;">
+                <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
                         <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
@@ -255,7 +254,7 @@
 <!-- Bootstrap & Plugins core JavaScript -->
 <!-- ######################################### -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="contact"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="contact"></script>
 <!-- ######################################### -->
 
 <!-- ######################################## -->

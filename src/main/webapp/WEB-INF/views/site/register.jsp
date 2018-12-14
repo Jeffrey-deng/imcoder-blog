@@ -5,6 +5,7 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <!DOCTYPE html>
 <html>
@@ -18,17 +19,22 @@
     <meta name="description" content="简单几步就可以创建一个imcoder.site账号.账户信息->个人资料->条款->提交">
 
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/iCheck/custom.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/steps/jquery.steps.css">
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/iCheck/custom.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/steps/jquery.steps.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
 
     <style>
         .wizard > .content > .body label.valid {
             color: #1bb394;
+        }
+
+        .wizard-big.wizard > .content {
+            min-height: 25em;
         }
     </style>
 
@@ -40,15 +46,15 @@
         <div class="col-sm-12">
             <div class="ibox">
                 <div class="ibox-title" align="center">
-                    <h3><a href="/">主页</a></h3>
+                    <h3 style="font-size: 1.3em"><a href="/">主页</a></h3>
                 </div>
-                <div class="ibox-content" style="height:500px;">
+                <div class="ibox-content">
                     <h2>注册</h2>
                     <p>简单几步就可以创建一个账号</p>
 
-                    <form id="form" action="" class="wizard-big" style="height:500px;">
+                    <form id="form" action="" class="wizard-big" style="height:100%;">
                         <h1>账户</h1>
-                        <fieldset>
+                        <fieldset style="border-width: 0px">
                             <h2>账户信息</h2>
                             <div class="row">
                                 <div class="col-sm-8">
@@ -58,13 +64,11 @@
                                     </div>
                                     <div class="form-group">
                                         <label>密码 *</label>
-                                        <input id="password" name="password" type="password"
-                                               class="form-control required">
+                                        <input id="password" name="password" type="password" class="form-control required">
                                     </div>
                                     <div class="form-group">
                                         <label>确认密码 *</label>
-                                        <input id="confirm" name="confirm" type="password"
-                                               class="form-control required">
+                                        <input id="confirm" name="confirm" type="password" class="form-control required">
                                     </div>
                                 </div>
                                 <div class="col-sm-4">
@@ -78,7 +82,7 @@
 
                         </fieldset>
                         <h1>个人资料</h1>
-                        <fieldset style="overflow-y:auto;overflow-x:hidden;height:350px;">
+                        <fieldset style="overflow-y:auto;overflow-x:hidden;height: 25em;">
                             <h2>个人资料信息(不带*的可以不填写)</h2>
                             <div class="row">
                                 <div class="col-sm-6">
@@ -136,9 +140,9 @@
 
 
 <!-- Small modal start 成功提示框 -->
-<div style="margin-top:170px;" class="modal fade" id="TipsModal" tabindex="-1" role="dialog"
+<div style="margin-top:12.14286em;" class="modal fade" id="TipsModal" tabindex="-1" role="dialog"
      aria-labelledby="exampleModalLabel">
-    <div style="width:400px;" class="modal-dialog" role="document">
+    <div style="width:28.5714em;" class="modal-dialog" role="document">
         <div class="modal-content animated bounceInRight">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
@@ -157,7 +161,7 @@
 </div>
 <!-- Small modal end -->
 
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="register"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="register"></script>
 
 </body>
 

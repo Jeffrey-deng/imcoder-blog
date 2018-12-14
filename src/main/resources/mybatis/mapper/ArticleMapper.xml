@@ -5,7 +5,7 @@
 <mapper namespace="article">
 
     <!-- 保存文章表 -->
-    <insert id="saveArticle" parameterType="article" useGeneratedKeys="true" keyProperty="aid">
+    <insert id="saveArticle" parameterType="article" useGeneratedKeys="true" keyProperty="aid" keyColumn="aid">
         insert into article
         (atid,title,uid,tags,summary,permission,create_time,update_time)
         values(
@@ -321,7 +321,7 @@
     <!-- Comment handle start -->
 
     <!-- 保存评论 -->
-    <insert id="saveComment" parameterType="comment">
+    <insert id="saveComment" parameterType="comment" useGeneratedKeys="true" keyProperty="cid" keyColumn="cid">
         insert into comment (aid,uid,r_cid,content,send_time)
         values (#{aid},#{user.uid},#{parentid},#{content},#{send_time})
     </insert>

@@ -27,7 +27,7 @@
         "special_value_separator": /[:：=]/,    //键与值的分隔符
         "special_search_object": {    //需要特殊处理的关键字
             "model_schema": ["model", "mode", "m"],
-            "photo_schema": ["logic_conn", "name", "description", "desc", "tag", "tags", "uid", "photo_id", "id", "album_id", "aid", "originName", "origin", "path", "image_type", "type", "from"],
+            "photo_schema": ["logic_conn", "name", "description", "desc", "tag", "tags", "uid", "photo_id", "id", "album_id", "aid", "originName", "origin", "path", "image_type", "type", "from", "extend"],
             "article_schema": ["logic_conn", "id", "aid", "author.uid", "uid", "category.atid", "atid", "title", "tag", "tags", "summary", "create_time", "update_time", "click", "top", "recommend"],
             "album_schema": ["id", "album_id", "name", "description", "desc", "user.uid", "uid"]
         },
@@ -193,8 +193,10 @@
                     tags_square_url += "&" + entry[0] + "=" + entry[1];
                     isFindSpecial = true;
                 });
-                if (isFindSpecial || key == "") {
+                if (isFindSpecial) {
                     window.open(tags_square_url + (filterKeyWord ? ("&filter=" + encodeURIComponent(filterKeyWord)) : ""));
+                } else if (filterKeyWord) {
+                    window.open(tags_square_url + "&filter=" + encodeURIComponent(filterKeyWord));
                 } else {
                     window.open(tags_square_url + (key ? ("&filter=" + encodeURIComponent(key)) : ""));
                 }
@@ -376,6 +378,8 @@
         _self.find('.toolbar_jump_help').attr("href", "site.do?method=help");
 
         _self.find('.toolbar_jump_notice').attr("href", "site.do?method=notices");
+
+        _self.find('.toolbar_jump_cloud').attr("href", "cloud.do?method=share");
     }
 
     //写博客

@@ -19,7 +19,7 @@
             if (data.clickRankList != null) {
                 var rank_hot_html = "";
                 $(data.clickRankList).each(function (i, article) {
-                    rank_hot_html += '<li style="border-bottom: 1px solid #cfcfcf;margin-bottom:6px;"><a target="_blank" href="article.do?method=detail&aid=' + article.aid + '" title="点击量：' + article.click + ' 次">' + article.title + '(<span>' + article.click + '</span>)</a></li>';
+                    rank_hot_html += '<li><a target="_blank" href="article.do?method=detail&aid=' + article.aid + '" title="点击量：' + article.click + ' 次">' + article.title + '(<span>' + article.click + '</span>)</a></li>';
                 });
                 $('#rank_hot').html(rank_hot_html);
             }
@@ -36,7 +36,7 @@
                         tag = key;
                         count = value;
                     });
-                    rank_hotTag_html += '<li style="border-bottom: 1px solid #cfcfcf;margin-bottom:6px;"><a target="_blank" href="article.do?method=list&tags=' + tag + '" title="此标签下文章 ' + count + ' 篇以上" >' + tag + '(<span>' + count + '</span>)</a></li>';
+                    rank_hotTag_html += '<li><a target="_blank" href="article.do?method=list&tags=' + tag + '" title="此标签下文章 ' + count + ' 篇以上" >' + tag + '(<span>' + count + '</span>)</a></li>';
                 });
                 $('#rank_hotTag').html(rank_hotTag_html);
             }
@@ -44,8 +44,8 @@
             if (data.newestList != null) {
                 var rank_newest_html = "";
                 $(data.newestList).each(function (i, article) {
-                    rank_newest_html += '<li style="border-bottom: 1px solid #cfcfcf;margin-bottom:6px;"><a target="_blank" href="article.do?method=detail&aid=' + article.aid + '" title="发表时间：' + article.create_time + '" >' + article.title + '</a></li>';
-                    //rank_newest_html+='<li style="border-bottom: 1px solid #cfcfcf;margin-bottom:6px;"><a target="_blank" href="article.do?method=detail&aid='+article.aid+'" >'+article.title+'(<span>'+article.create_time.split(' ')[0]+'</span>)</a></li>';
+                    rank_newest_html += '<li><a target="_blank" href="article.do?method=detail&aid=' + article.aid + '" title="发表时间：' + article.create_time + '" >' + article.title + '</a></li>';
+                    //rank_newest_html+='<li><a target="_blank" href="article.do?method=detail&aid='+article.aid+'" >'+article.title+'(<span>'+article.create_time.split(' ')[0]+'</span>)</a></li>';
                 });
                 $('#rank_newest').html(rank_newest_html);
             }

@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
+import site.imcoder.blog.Interceptor.GZIP;
 import site.imcoder.blog.Interceptor.LoginRequired;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.Category;
@@ -95,6 +96,7 @@ public class ManagerController extends BaseController {
 
     @LoginRequired
     @RequestMapping(params = "method=user_manager")
+    @GZIP
     public String userManager(HttpSession session, HttpServletRequest request) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = managerService.getUserList(loginUser);
@@ -127,6 +129,7 @@ public class ManagerController extends BaseController {
     @LoginRequired
     @RequestMapping(params = "method=articleListByAjax")
     @ResponseBody
+    @GZIP
     public Map<String, Object> articleListByAjax(HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> map = managerService.getArticleInfoList(loginUser);
@@ -265,7 +268,6 @@ public class ManagerController extends BaseController {
         return map;
     }
 
-
     @LoginRequired
     @RequestMapping(params = "method=log_view")
     public String checkLog(HttpSession session) {
@@ -285,10 +287,11 @@ public class ManagerController extends BaseController {
     @LoginRequired(content = "")
     @RequestMapping(params = "method=load_log")
     @ResponseBody
+    @GZIP
     public void loadLogFile(@RequestParam(defaultValue = "error") String type, HttpSession session, HttpServletResponse response) {
         if (isAdmin(session) == 200) {
             String path = null;
-            if (KEY_STATUS_FRIENDLY.equalsIgnoreCase(type)) {
+            if ("info".equalsIgnoreCase(type)) {
                 path = Config.get(ConfigConstants.LOG_FILE_INFO_PATH);
             } else if ("warn".equalsIgnoreCase(type)) {
                 path = Config.get(ConfigConstants.LOG_FILE_WARN_PATH);
@@ -352,6 +355,24 @@ public class ManagerController extends BaseController {
             e.printStackTrace();
             logger.error("日志文件流关闭出错", e);
         }
+    }
+
+    @LoginRequired
+    @RequestMapping(params = "method=upgradeNewFileNameStyle")
+    @ResponseBody
+    public Map<String, Object> upgradeNewFileNameStyle(HttpSession session) {
+        Map<String, Object> map = new HashMap<>();
+        User loginUser = getLoginUser(session);
+        int flag = managerService.upgradeNewFileNameStyle(loginUser);
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
+        if (flag == 200) {
+            map.put(KEY_STATUS_FRIENDLY, "已提交，请到日志查看结果~");
+        } else if (flag == 404) {
+            map.put(KEY_STATUS_FRIENDLY, "系统已设置为不允许运行升级模式，请修改设置~");
+            map.put(KEY_STATUS, 403);
+        }
+        return map;
     }
 
     protected void convertStatusCodeToWord(Map<String, Object> map, String codeKey, String wordKey) {

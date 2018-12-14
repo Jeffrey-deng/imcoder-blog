@@ -7,13 +7,14 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <!DOCTYPE html>
 <html class="no-js">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>${hostUser.nickname}的相册 | ImCODER's 博客</title>
     <meta name="description" content="${hostUser.nickname}的相册列表">
     <meta name="keywords" content="相册,相册列表,${hostUser.nickname},ImCODER's 博客">
@@ -22,15 +23,16 @@
 
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <style>
         .padding {
             background-color: #f2f2f2;
         }
+
         .modal-open[style] {
             padding-right: 0px !important;
         }
@@ -46,10 +48,8 @@
             <div class="container">
                 <div class="" style="text-align:center;">
                     <h1 hostUser="${hostUser.uid}">${hostUser.nickname}</h1>
-                    <h3 style="font-size:16.5px;">${hostUser.description}</h3>
-                    <h3>
-                        <f>${hostUser.says}</f>
-                    </h3>
+                    <h3>${hostUser.description}</h3>
+                    <h3>${hostUser.says}</h3>
                 </div>
             </div>
         </div>
@@ -86,7 +86,7 @@
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">教程</a></div>
+                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
@@ -196,15 +196,6 @@
                 <!-- 相册管理  start -->
                 <header class="post post-container album_options">
                     <h1 class="post-title" itemprop="name headline">
-                        <style>
-                            .post-title a:hover {
-                                text-decoration: none;
-                            }
-
-                            .post-title a {
-                                cursor: pointer
-                            }
-                        </style>
                         <c:choose>
                             <c:when test="${ not empty loginUser and loginUser.uid == hostUser.uid }">
                                 <a class="option_create" itemtype="url" id="createAlbum" author="${hostUser.uid}">创建新相册</a>
@@ -232,12 +223,12 @@
                 </article>
 
                 <!-- 底部区 start -->
-                <header class="post post-container row" style="width: 100%;display: inline-block;background-color: #f2f2f2;box-shadow: 0px 0px 1px 0.5px #ddd;">
-                    <ul class="post-meta" style="display: inline-block;margin-top: 3px;margin-bottom: 0px;font-size: 14px;">
+                <header class="post post-container row album-footer">
+                    <ul class="post-meta footer-left">
                         <li>数量: <a id="album_count">0</a></li>
                     </ul>
-                    <ul class="post-meta" style="display: inline-block;margin-top: 3px;margin-bottom: 0px;font-size: 14px;">
-                        <ol class="page-navigator" style="display: inline-block;margin: 0 auto;padding:0px;"></ol>
+                    <ul class="post-meta footer-right">
+                        <ol class="page-navigator"></ol>
                     </ul>
                 </header>
                 <!-- 底部区 end -->
@@ -261,19 +252,7 @@
     <div class="arrow"></div>
     <div class="stick"></div>
 </div>
-<style>
-    @media (min-width: 768px) {
-        #createAlbumModal .modal-dialog {
-            width: 450px;
-        }
-    }
 
-    @media (max-width: 768px) {
-        #createAlbumModal .modal-dialog {
-            width: 100%;
-        }
-    }
-</style>
 <div class="note-editor">
     <div class="modal fade in" id="createAlbumModal" aria-hidden="false" tabindex="-1" style="padding-right: 0 !important;">
         <div class="modal-dialog">
@@ -328,19 +307,6 @@
     </div>
 </div>
 
-<style>
-    @media (min-width: 768px) {
-        #updateAlbumModal .modal-dialog {
-            width: 500px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        #updateAlbumModal .modal-dialog {
-            width: 100%;
-        }
-    }
-</style>
 <div class="note-editor">
     <div class="modal fade in" id="updateAlbumModal" aria-hidden="false" tabindex="-1" style="padding-right: 0 !important;">
         <div class="modal-dialog">
@@ -414,15 +380,15 @@
 </div>
 
 <!-- login modal start -->
-<div style="margin-top:100px;" class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
-    <div style="width: 350px;" class="modal-dialog" role="document">
+<div class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
+    <div class="modal-dialog" role="document">
         <div class="modal-content animated flipInY">
             <div class="modal-header text-center">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <h2 class="modal-title" id="loginModalLabel">登录/<a href="user.do?method=toregister" target="_blank">注册</a></h2>
             </div>
             <form role="form" id="login_form">
-                <div class="modal-body" style="height:200px;">
+                <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
                         <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
@@ -460,7 +426,7 @@
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
 
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="album_list"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="album_list"></script>
 
 </body>
 </html>

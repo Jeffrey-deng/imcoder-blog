@@ -1,0 +1,23 @@
+# accessKeyId
+accessKeyId=
+
+# accessKeySecret
+accessKeySecret=
+
+# sts
+securityToken=
+
+# region endpoint
+endpoint=
+
+# bucketName
+bucketName=
+
+# 地域id
+regionId=
+
+# 提供授权的角色 acs:ram::$accountID:role/$roleName
+sts_role=
+
+# 垃圾回收路径
+trash_recycle_basepath=.trash/

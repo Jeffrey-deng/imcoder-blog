@@ -21,7 +21,7 @@ import java.util.Properties;
  */
 public class Email {
 
-    private static final Logger LOGGER = Logger.getLogger(Email.class);
+    private static final Logger logger = Logger.getLogger(Email.class);
 
     /**
      * 邮件对象
@@ -135,7 +135,7 @@ public class Email {
             mp = new MimeMultipart();
             return true;
         } catch (Exception e) {
-            LOGGER.error("获取邮件会话对象时发生错误！" + e);
+            logger.error("获取邮件会话对象时发生错误！" + e);
             return false;
         }
 
@@ -178,7 +178,7 @@ public class Email {
             // 将小盒子放到大盒子中去
             mp.addBodyPart(bp);
         } catch (Exception e) {
-            System.err.println("设置邮件正文时发生错误！" + e);
+            logger.error("设置邮件正文时发生错误！" + e);
             return false;
         }
         return true;
@@ -202,7 +202,7 @@ public class Email {
             files.add(fileds);
             return true;
         } catch (Exception e) {
-            System.err.println("增加邮件附件<" + filename + ">时发生错误：" + e);
+            logger.error("增加邮件附件<" + filename + ">时发生错误：" + e);
             return false;
         }
 
@@ -224,7 +224,7 @@ public class Email {
             }
             return true;
         } catch (Exception e) {
-            System.err.println("删除邮件附件发生错误：" + e);
+            logger.error("删除邮件附件发生错误：" + e);
             return false;
         }
 
@@ -302,7 +302,7 @@ public class Email {
      * @return
      */
     public boolean sendEmail() throws Exception {
-        LOGGER.debug("正在发送邮件....");
+        logger.debug("正在发送邮件....");
 
         mimeMsg.setContent(mp);
         mimeMsg.saveChanges();
@@ -314,7 +314,7 @@ public class Email {
         /** 发送邮件 **/
         transport.sendMessage(mimeMsg, mimeMsg.getRecipients(Message.RecipientType.TO));
         transport.close();
-        LOGGER.info("邮件推送：发送给 " + mimeMsg.getRecipients(Message.RecipientType.TO)[0].toString() + " 邮件成功！");
+        logger.info("邮件推送：发送给 " + mimeMsg.getRecipients(Message.RecipientType.TO)[0].toString() + " 邮件成功！");
         return true;
     }
 

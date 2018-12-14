@@ -52,7 +52,7 @@
                     v.video_id = #{video_id}
                 </when>
                 <when test="cover != null and cover.photo_id > 0">
-                    and v.cover_id = #{cover.photo_id}
+                    v.cover_id = #{cover.photo_id}
                 </when>
                 <otherwise>
                     1 != 1
@@ -96,5 +96,11 @@
             </choose>
         </where>
     </select>
+
+    <update id="updateVideo" parameterType="video">
+        update video set cover_id = #{cover.photo_id}, name = #{name}, description = #{description}, tags = #{tags}, source_type = #{source_type}, path = #{path},
+         code = #{code}, width = #{width}, height = #{height}, size = #{size}, video_type = #{video_type}, originName = #{originName}, permission = #{permission}
+        where video_id = #{video_id}
+    </update>
 
 </mapper>

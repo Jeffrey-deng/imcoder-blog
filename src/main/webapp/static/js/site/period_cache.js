@@ -81,7 +81,10 @@
                 if (isLoadNew) {
                     if (groupConfig.reload_udf) {
                         var saveNewObjectValue_callback = function (object_value) {
-                            context.utils.setCache(groupName, key, {"update_time": new Date().getTime(), "version": groupConfig.version}, object_value);
+                            context.utils.setCache(groupName, key, {
+                                "update_time": new Date().getTime(),
+                                "version": groupConfig.version
+                            }, object_value);
                             callback.call(object_value, object_value);
                         };
                         groupConfig.reload_udf.call(context, context.pointer.cacheCtx, groupName, key, (old_object ? old_object.value : null), saveNewObjectValue_callback);
@@ -93,7 +96,10 @@
                             "data": groupConfig.reload.params(groupName, key),
                             "success": function (data) {
                                 var new_object_value = groupConfig.reload.parse.call(context, context.pointer.cacheCtx, groupName, key, (old_object ? old_object.value : null), data);
-                                context.utils.setCache(groupName, key, {"update_time": new Date().getTime(), "version": groupConfig.version}, new_object_value);
+                                context.utils.setCache(groupName, key, {
+                                    "update_time": new Date().getTime(),
+                                    "version": groupConfig.version
+                                }, new_object_value);
                                 callback.call(new_object_value, new_object_value);
                             },
                             "error": function (XHR, TS) {

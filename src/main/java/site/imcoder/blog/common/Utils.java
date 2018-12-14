@@ -1,18 +1,14 @@
 package site.imcoder.blog.common;
 
-import sun.misc.BASE64Encoder;
-
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.security.MessageDigest;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,6 +19,10 @@ import java.util.regex.Pattern;
  * @date 2016-7-12
  */
 public class Utils {
+
+    public static interface Callback<I, R> {
+        public R call(I i) throws Exception;
+    }
 
     /**
      * 得到classPath
@@ -130,39 +130,22 @@ public class Utils {
         return result.substring(1);
     }
 
-
-    /**
-     * description: 转换date为字符串
-     *
-     * @param date
-     * @param format 日期格式
-     * @return String
-     * @author dengchao
-     */
-    public static String FormatDate(Date date, String format) {
-        SimpleDateFormat sdf = new SimpleDateFormat(format);
-        String str = sdf.format(date);
-        return str;
-
-    }
-
     /**
      * MD5 MD2 SHA
      * 字符串加密
      *
      * @param pattern 加密的方式
      * @param value   待加密的字符串
-     * @return 加密后的字符串
+     * @return 加密后且BASE64编码的字符串
      */
     public static String MD(String pattern, String value) {
-        String returnValue = "";// 加密后的字符串
+        String returnValue = null;// 加密后的字符串
         // 加密的方式
         try {
-            MessageDigest digest = MessageDigest.getInstance(pattern);
-            // digest.digest( value.getBytes() );
-            // 转型成utf-8字符编码
-            BASE64Encoder encoder = new BASE64Encoder();
-            returnValue = encoder.encode(digest.digest(value.getBytes("utf-8")));
+            MessageDigest md = MessageDigest.getInstance(pattern);
+            // 转型成base64编码
+            returnValue = Base64.getEncoder().encodeToString(md.digest(value.getBytes("utf-8")));
+            // getUrlEncoder(), 由于URL对反斜线“/”有特殊的意义，因此URL编码会替换掉它，使用下划线替换
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -170,9 +153,19 @@ public class Utils {
     }
 
     /**
+     * MD5且BASE64编码
+     *
+     * @param value
+     * @return
+     */
+    public static String MD5(String value) {
+        return MD("MD5", value);
+    }
+
+    /**
      * 编码URL
      * <p>
-     * js需要两次decodeURIComponent解码
+     * 当request已经设置为UTF-8时，不需要编码两次
      *
      * @param str
      * @return
@@ -180,7 +173,7 @@ public class Utils {
     public static String encoder(String str) {
         String result = null;
         try {
-            result = URLEncoder.encode(URLEncoder.encode(str, "utf-8"), "utf-8");
+            result = URLEncoder.encode(str, "utf-8");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -189,6 +182,7 @@ public class Utils {
 
     /**
      * 解码URL
+     * 当request已经设置为UTF-8时，不需要编码两次
      *
      * @param str
      * @return
@@ -196,7 +190,7 @@ public class Utils {
     public static String decoder(String str) {
         String result = null;
         try {
-            result = URLDecoder.decode(URLDecoder.decode(str, "utf-8"), "utf-8");
+            result = URLDecoder.decode(str, "utf-8");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -240,6 +234,9 @@ public class Utils {
             ip = request.getHeader("WL-Proxy-Client-IP");
         }
         if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("X-Real-IP");
+        }
+        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
             ip = request.getRemoteAddr();
         }
         return ip.equals("0:0:0:0:0:0:0:1") ? "127.0.0.1" : ip;
@@ -275,7 +272,7 @@ public class Utils {
         if (str == null) {
             return null;
         }
-        List<String> list = new ArrayList();
+        List<String> list = new ArrayList<String>();
         String[] splits = str.split(separator);
         for (String split : splits) {
             if (split.length() > 0) {
@@ -283,6 +280,65 @@ public class Utils {
             }
         }
         return list.toArray(new String[list.size()]);
+    }
+
+    /**
+     * 转义正则特殊字符 （$()*+.[]?\^{}
+     * \\需要第一个替换
+     */
+    public static String escapeExprSpecialWord(String str) {
+        if (str == null || str.length() == 0) {
+            return str;
+        }
+        return str.replace("\\", "\\\\").replace("*", "\\*")
+                .replace("+", "\\+").replace("|", "\\|")
+                .replace("{", "\\{").replace("}", "\\}")
+                .replace("(", "\\(").replace(")", "\\)")
+                .replace("^", "\\^").replace("$", "\\$")
+                .replace("[", "\\[").replace("]", "\\]")
+                .replace("?", "\\?").replace(",", "\\,")
+                .replace(".", "\\.").replace("&", "\\&");
+    }
+
+    public static boolean isBlank(String str) {
+        if (isEmpty(str)) {
+            return true;
+        } else {
+            return str.matches("^\\s*$");
+        }
+    }
+
+    public static boolean isNotBlank(String str) {
+        return !isBlank(str);
+    }
+
+    public static boolean isEmpty(String str) {
+        return str == null || str.length() == 0;
+    }
+
+    public static boolean isNotEmpty(String str) {
+        return !isEmpty(str);
+    }
+
+    public static String formatDate(Date date, String pattern) {
+        if (isEmpty(pattern)) {
+            pattern = "yyyy-MM-dd HH:mm:ss";
+        }
+        SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+        String format = sdf.format(date);
+        return format;
+    }
+
+    public static Date parseDate(String dateStr, String pattern) {
+        if (isEmpty(dateStr) || isEmpty(pattern)) {
+            return null;
+        }
+        SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+        try {
+            return sdf.parse(dateStr);
+        } catch (ParseException e) {
+            return null;
+        }
     }
 
 }

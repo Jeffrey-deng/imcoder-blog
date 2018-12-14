@@ -6,21 +6,50 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
 
 ## develop log
 
+#### 2019.01.15
+
+add remote file system, new file name style, and so forth.
+
+    (1) site module
+    1、add js/css refresh args config support - "ServerConfig.xml#site_cdn_addr_args".
+    2、add support server push config to users - "ServerConfig.xml#site_client_config".
+    3、replace "px" to "em" to define the size of the element so that the display size is the same at different pix.
+    4、modify page allow user zoom.
+    5、add gzip compression annotation and add to some special requests.
+    6、optimize the api for getting the rank list in the Cache.
+    7、add md5 tool in FileUtil.
+    8、modify help article id config func.
+    9、add new query ip location callback.
+    10、enhanced verification code verification security.
+    >
+    (1) file module
+    1、optimize the code structure in file service.
+    2、add remote file system interface.
+    2、add remote file system implement base aliyun oss - "ServerConfig.xml#remote_oss_config_location, oss.properties".
+    3、add a my cloud share token page for aliyun oss.
+    4、upgrade file name old style to new style.
+        set "true" for "site_allow_run_upgrade" in ServerConfig.xml,
+        then run "http://hostname/manager.do?method=upgradeNewFileNameStyle" to upgrade.
+    >
+    (1) album module
+    1、add photo preview compress setting - "ServerConfig.xml#cloud_photo_preview_args".
+    2、add album tags support users with special setting for each tag.
+    3、increased display column count in album pages for better support for retina screen.
+    4、add "the displayed image pixel is different" under different column numbers.
+
 #### 2018.12.10
 
 add `new popup way to play video` and `article archives\tags page`
     
     (1) video module
-    
     1、add new popup way to play video.
     2、add a play flag in photos there're the cover of video.
     3、add new control block view for video popup modal.
     4、add control auto hide after mouse does not move for a while.
     5、front end add update video modal.
     6、move album page css to style.css.
-    
+    >
     (2) article module
-    
     1、add article archives page.
     2、add article tags page.
     3、optimize toolbar's navigation column.

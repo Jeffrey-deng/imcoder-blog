@@ -14,31 +14,36 @@
 })(function ($, bootstrap, domReady, toastr, common_utils, login_handle, PeriodCache, video_handle, album_photo_page_handle, album_video_plugin) {
 
     domReady(function () {
-        // 提示吐司  設置
-        toastr.options = {
-            "closeButton": true,
-            "debug": false,
-            "progressBar": false,
-            "positionClass": "toast-bottom-left",
-            "showDuration": "400",
-            "hideDuration": "1000",
-            "timeOut": "3500",
-            "extendedTimeOut": "1000",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "fadeIn",
-            "hideMethod": "fadeOut"
-        };
+
+        var albumConfig = common_utils.getLocalConfig("album", {
+            "photo_page": {
+                "full_background": false,
+                "default_col": {
+                    "2000": 6,
+                    "1800": 5,
+                    "1600": 4,
+                    "940": 3,
+                    "720": 2
+                },
+                "default_size": 0,
+                "preview_compress": true
+            }
+        });
+        if (albumConfig.photo_page.full_background) {
+            $("body").css("background-image", $("#first").css("background-image"));
+            $("#first").css("background-image", "");
+        }
 
         //var album_id = $('#album_size').attr('album_id');
         var hostUser = parseInt($('#first h1').attr('hostUser'));
 
         var params = common_utils.parseURL(window.location.href).params;
-        var pageSize = params.size ? params.size : 40;
+        var pageSize = params.size ? params.size : albumConfig.photo_page.default_size;
         var pageNum = params.page ? params.page : 1;
         var col = params.col;
         var checkVideoId = params.check ? parseInt(params.check) : 0;
-
+        var cloud_photo_preview_args = "";
+        var open_preview_compress = albumConfig.photo_page.preview_compress;
 
         album_photo_page_handle.init({
             path_params: {
@@ -55,7 +60,8 @@
             page_params: {
                 "pageSize": pageSize,
                 "pageNum": pageNum,
-                "col": col
+                "col": col,
+                "default_col": albumConfig.photo_page.default_col
             },
             checkPhotoId: checkVideoId,
             page_method_address: "user_videos",
@@ -85,6 +91,7 @@
                             album.size = data.photos ? data.photos.length : 0;
                             album.show_col = 0;
                             data.album = album;
+                            cloud_photo_preview_args = data.cloud_photo_preview_args;
                             success(data);
                             if (album.size == 0) {
                                 common_utils.notify({
@@ -99,6 +106,13 @@
                             console.warn("Error Code: " + data.flag);
                         }
                     });
+                },
+                "generatePhotoPreviewUrl": function (source, relativePath, hitCol) { // 生成预览图片url的函数
+                    if (open_preview_compress && cloud_photo_preview_args) {
+                        return source + cloud_photo_preview_args.replace("{col}", hitCol);
+                    } else {
+                        return source;
+                    }
                 },
                 "parsePhotosZipName": function (config) {
                     return false;

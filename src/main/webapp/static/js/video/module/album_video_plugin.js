@@ -22,6 +22,7 @@
         album_photo_page_handle: album_photo_page_handle,
         load_mode: "popupLoad", // lazyLoad、preLoad、popupLoad
         popup_iframe_border: true, // IFrame打开时保留黑边
+        popup_video_border: false, // 普通video打开时保留黑边
         popup_btn_display: "block", // 视频窗口上按钮的显示方式 block,inline
         popup_hide_btn: true, // 视频窗口上失焦时隐藏编辑按钮
         popup_height_scale: 0.91, // 视频高度占窗口高的比例
@@ -226,9 +227,11 @@
                     }
                     var magnificPopup = this; // $.magnificPopup.instance
                     var video = item.video;
-                    var height_scale = null;
-                    var scale = null;
-                    var isNotInline = config.popup_btn_display != "inline";
+                    var height_scale = null; // 容器高度占浏览器高度比
+                    var scale = null; // 播放器宽高缩放比例
+                    var isNotInline = config.popup_btn_display != "inline"; // 控件显示方式
+                    var block_padding = (window.innerWidth >= 1750 ? 81.25 : (window.innerWidth >= 1600 ? 73.822 : 65));
+                    var usableHeight = null;    // 可用实际高度
 
                     if (isNotInline) {
                         magnificPopup.wrap.find(".mfp-container").removeClass("mfp-inline-holder").addClass("mfp-image-holder");
@@ -237,17 +240,23 @@
                             .addClass("video-popup-block")
                             .css("max-height", window.innerHeight + "px");
                         template.find(".mfp-video-edit-inline").remove();
-                        var video_url = "video.do?method=user_videos&uid=" + video.user.uid + "&info=" + video.video_id
+                        var video_url = "video.do?method=user_videos&uid=" + video.user.uid + "&info=" + video.video_id;
                         template.find(".mfp-title").html('<a href="' + video_url + '" title="' + video.description + '" target="_blank">' + video.name + '</a>');
                         template.find(".mfp-counter").html('<a class="mfp-video-edit" title="点击编辑视频信息">编辑</a>');
                         height_scale = 1;
-                        scale = (window.innerHeight - 65) / video.height; // 设定为固定的height，width按视频变化
+                        usableHeight = window.innerHeight - block_padding;
+                        scale = usableHeight / video.height; // 设定为固定的height，width按视频变化
                     } else {
                         template.find(".mfp-bottom-bar").remove();
                         height_scale = config.popup_height_scale;
-                        scale = window.innerHeight * height_scale / video.height; // 设定为固定的height，width按视频变化
+                        usableHeight = window.innerHeight * height_scale;
+                        scale = usableHeight / video.height; // 设定为固定的height，width按视频变化
                     }
                     var vd = template.find(".include-iframe");
+                    var generalWidth = usableHeight / 1080 * 1920;
+                    if (generalWidth < window.innerWidth) {
+                        magnificPopup.contentContainer.css("max-width", generalWidth + "px");
+                    }
                     var need_width = scale * video.width; // 设定width的值
                     if (video.source_type == 2) {
                         vd.parent().removeClass("mfp-video-scaler").addClass("mfp-iframe-scaler");
@@ -258,9 +267,9 @@
                             magnificPopup.contentContainer.css("height", "");
                             // 宽度不够时，设置最大宽度，同时寻找合适高度
                             var need_height = ((window.innerWidth - 12) / video.width) * video.height;
-                            if (isNotInline && need_height <= (window.innerHeight - 65)) {
-                                magnificPopup.contentContainer.css("height", (need_height + 65) + "px");
-                            } else if (!isNotInline && need_height <= (window.innerHeight * height_scale)) {
+                            if (isNotInline && need_height <= usableHeight) {
+                                magnificPopup.contentContainer.css("height", (need_height + block_padding) + "px");
+                            } else if (!isNotInline && need_height <= usableHeight) {
                                 magnificPopup.contentContainer.css("height", need_height + "px");
                             }
                         } else if (config.popup_iframe_border) {
@@ -271,22 +280,29 @@
                             magnificPopup.contentContainer.css("width", need_width + "px");
                         }
                         // 未加载时背景色改为通过 .mfp-figure:after 解决
-                        if (false && isNotInline) {
-                            // 此方法还可解决mousemove遇到iframe不生效问题 config.popup_hide_btn，z-index: 700;opacity: 0;
-                            // 或者直接给iframe加pointer-events: none;隔绝事件，但是一样的，这样就触发不了iframe里的事件了
-                            vd.children(0).css("z-index", "600");
-                            vd.append('<div class="real-video" style="z-index: 500;background: #000;position: absolute;top: 0;left: 0;width: 100%;height: calc(100% - 65px);margin-top: 32.5px;"></div>');
-                        }
+                        // if (false && isNotInline) {
+                        //     // 此方法还可解决mousemove遇到iframe不生效问题 config.popup_hide_btn，z-index: 700;opacity: 0;
+                        //     // 或者直接给iframe加pointer-events: none;隔绝事件，但是一样的，这样就触发不了iframe里的事件了
+                        //     vd.children(0).css("z-index", "600");
+                        //     vd.append('<div class="real-video" style="z-index: 500;background: #000;position: absolute;top: 0;left: 0;width: 100%;height: calc(100% - 65px);margin-top: 32.5px;"></div>');
+                        // }
                     } else {
+                        // mfp-iframe-scaler这个类未指定高度时会使div向下偏移
+                        vd.parent().removeClass("mfp-iframe-scaler").addClass("mfp-video-scaler");
+                        var sourceNode = makeupVideoNode(null, video);
+                        vd.html(sourceNode);
                         magnificPopup.contentContainer.css("height", ""); // 不指定就会居中
                         if (window.innerWidth < need_width) {
                             magnificPopup.contentContainer.css("width", "");
+                        } else if (config.popup_video_border) { // 添加黑边
+                            magnificPopup.contentContainer.css("width", "");
+                            sourceNode.style.width = need_width + "px";
+                            if (!isNotInline) {
+                                vd.parent().addClass("mfp-figure mfp-figure-inline");
+                            }
                         } else {
                             magnificPopup.contentContainer.css("width", need_width + "px");
                         }
-                        // mfp-iframe-scaler这个类未指定高度时会使div向下偏移
-                        vd.parent().removeClass("mfp-iframe-scaler").addClass("mfp-video-scaler");
-                        vd.html(makeupVideoNode(null, video));
                     }
 
                     var video_edit_node = template.find(".mfp-video-edit");
@@ -377,13 +393,14 @@
         } else {
             node.innerHTML = video.code;
             var scale = (photoDom.find("img").width()) / video.width;
+            var borderWidth = 0; // 新样式不采用border了
             $(node).children().removeAttr("width")
-                .css("border", "5px solid #FFFFFF")
+            //.css("border", borderWidth + "px solid #FFFFFF")
                 .css("width", "100%")
                 //.height(video.height * scale);
                 // jquery赋值时会加上border宽度，但是由于该节点还没有实际渲染，jquery识别不到border，所以手动需要加上边框宽度
-                // .height(video.height * scale + 10); // 既这样等同于原始的写法：
-                .css("height", (video.height * scale + 10) + "px"); // 原始css赋值的宽度会包含border宽度在内
+                // .height(video.height * scale + borderWidth*2); // 既这样等同于原始的写法：
+                .css("height", (video.height * scale + borderWidth * 2) + "px"); // 原始css赋值的宽度会包含border宽度在内
         }
         return node;
     };
@@ -425,6 +442,7 @@
             "video": {
                 "load_mode": "popupLoad",
                 "popup_iframe_border": true,
+                "popup_video_border": false,
                 "popup_btn_display": "block",
                 "popup_hide_btn": true,
                 "popup_height_scale": 0.91

@@ -14,32 +14,21 @@
 })(function ($, bootstrap, domReady, toastr, common_utils, login_handle, PeriodCache, album_handle, album_page_handle) {
 
     domReady(function () {
-        // 提示吐司  設置
-        toastr.options = {
-            "closeButton": true,
-            "debug": false,
-            "progressBar": false,
-            "positionClass": "toast-bottom-left",
-            "showDuration": "400",
-            "hideDuration": "1000",
-            "timeOut": "3500",
-            "extendedTimeOut": "1000",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "fadeIn",
-            "hideMethod": "fadeOut"
-        };
 
         var albumConfig = common_utils.getLocalConfig("album", {
             "album_page": {
                 "full_background": false,
                 "default_col": {
-                    "1200": 4,
+                    "2000": 4,
+                    "1800": 4,
+                    "1600": 4,
                     "940": 3,
-                    "520": 3,
-                    "400": 2
+                    "720": 2
                 },
-                "default_size": 40
+                "default_size": 0
+            },
+            "photo_page": {
+                "preview_compress": true
             }
         });
         if (albumConfig.album_page.full_background) {
@@ -55,6 +44,8 @@
         var pageNum = params.page ? params.page : 1;
         var col = params.col && parseInt(params.col);
         var checkAlbumId = params.check ? parseInt(params.check) : 0;
+        var cloud_photo_preview_args = "";
+        var open_preview_compress = albumConfig.photo_page.preview_compress;
 
         //从本地缓存中得到相册基本信息组连接
         var album_size_cache_conn = PeriodCache.getOrCreateGroup({
@@ -102,6 +93,7 @@
                                         album.cover = {"path": album.cover};
                                     }
                                 });
+                                cloud_photo_preview_args = data.cloud_photo_preview_args;
                                 success(data);
                             }
                         } else {
@@ -109,6 +101,13 @@
                             console.warn("Error Code: " + data.flag);
                         }
                     });
+                },
+                "generatePhotoPreviewUrl": function (source, relativePath, hitCol) { // 生成预览图片url的函数
+                    if (open_preview_compress && cloud_photo_preview_args) {
+                        return source + cloud_photo_preview_args.replace("{col}", hitCol);
+                    } else {
+                        return source;
+                    }
                 },
                 "actionForEditAlbum": function (album) {
                     // 从缓存中获取相册照片数量

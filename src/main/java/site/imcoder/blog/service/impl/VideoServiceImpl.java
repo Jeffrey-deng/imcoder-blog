@@ -3,6 +3,7 @@ package site.imcoder.blog.service.impl;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.cache.Cache;
+import site.imcoder.blog.dao.ISiteDao;
 import site.imcoder.blog.dao.IVideoDao;
 import site.imcoder.blog.entity.Friend;
 import site.imcoder.blog.entity.Photo;
@@ -30,9 +31,12 @@ public class VideoServiceImpl implements IVideoService {
     private IVideoDao videoDao;
 
     @Resource
-    private IAlbumService albumService;
+    private ISiteDao siteDao;
 
     @Resource
+    private IAlbumService albumService;
+
+    @Resource(name = "localFileService")
     private IFileService fileService;
 
     @Resource
@@ -68,8 +72,8 @@ public class VideoServiceImpl implements IVideoService {
                     map.put("flag", 400);
                     return map;
                 }
-                String relativePath = Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + loginUser.getUid() + "/video/" + cover.getAlbum_id() + "/";
-                String fileName = generateVideoName(video);
+                String relativePath = fileService.generateVideoFolderPath(video);
+                String fileName = fileService.generateNextVideoName(video, Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath);
                 boolean isSave = fileService.saveVideoFile(file, video, relativePath, fileName);
                 if (isSave) {
                     video.setPath(relativePath + fileName);
@@ -176,8 +180,4 @@ public class VideoServiceImpl implements IVideoService {
         return httpCode;
     }
 
-    private String generateVideoName(Video video) {
-        String suffix = video.getOriginName().substring(video.getOriginName().lastIndexOf('.'));
-        return "video_" + video.getUser().getUid() + "_" + video.getCover().getAlbum_id() + "_" + video.getUpload_time().getTime() + suffix;
-    }
 }

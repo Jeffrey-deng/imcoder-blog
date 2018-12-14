@@ -120,10 +120,14 @@
                 return false;
             }
         });
-        $(config.selector.loginModal_trigger).click(function () {
-            showLoginModal();
-        });
+
+        // 如果有登录框
         if (pointer.login_modal.length > 0) {
+
+            $(config.selector.loginModal_trigger).click(function () {
+                showLoginModal();
+            });
+
             pointer.login_form.find('input[name="remember"]').click(function (e) {
                 var remember = $(e.currentTarget).prop('checked');
                 if (remember) {
@@ -133,8 +137,27 @@
                     toastr.success("登录后会清除本地的令牌", "将会关闭自动登录", {"timeOut": "5000", "closeButton": false});
                 }
             });
-        }
 
+            // 绑定动画
+            pointer.login_modal.attr("class", "modal").find(".modal-content").attr("class", "modal-content");
+            pointer.login_modal.bind('animationend webkitAnimationEnd', function () {
+                var _self = $(this);
+                if (_self.hasClass("bounceOutRight")) {
+                    _self.modal('hide');
+                }
+                _self.removeClass("animated bounceInLeft bounceOutRight");
+            }).on('show.bs.modal', function () {
+                $(this).css("animation-duration", "1s").removeClass("animated bounceInLeft").addClass("animated bounceInLeft");
+            }).on('hide.bs.modal', function () {
+                var _self = $(this);
+                if (_self.hasClass("bounceOutRight")) {
+                    return true;
+                } else {
+                    _self.css("animation-duration", "0.5s").addClass("animated bounceOutRight");
+                    return false;
+                }
+            });
+        }
     };
 
     /**
@@ -165,7 +188,7 @@
         url = arguments[0] || window.location.href;
         modalFirst = (arguments[1] || arguments[1] === false) ? arguments[1] : true;
         if (modalFirst && pointer.login_modal.length > 0) {
-            showLoginModal(url);
+            showLoginModal(url, null);
         } else {
             var encoderUrl = encodeURIComponent(encodeURIComponent(url));
             window.location.href = "user.do?method=jumpLogin&continue=" + encoderUrl;
@@ -232,7 +255,7 @@
                         common_utils.cookieUtil.set("login_status", "true");
                         $(config.selector.uid_element).attr('uid', data.loginUser.uid);
                         localStorage.login_time = common_utils.formatDate(new Date(), "yyyy-MM-dd hh:mm:ss");
-                        localStorage.checkLogin_lastTime = JSON.stringify({"time": new Date().getTime()});
+                        localStorage.checkLogin_lastTime = new Date().getTime() + "";
 
                         //如果有回调函数则执行
                         if (pointer.callback) {
@@ -269,28 +292,6 @@
      * @returns {Boolean}
      */
     var validateLogin = function () {
-        /*var loginAgain = true;
-         var checkLoginLastTime = localStorage.getItem("checkLogin_lastTime");
-         if (checkLoginLastTime) {
-         checkLoginLastTime = JSON.parse(checkLoginLastTime);
-         if (checkLoginLastTime.time) {
-         var interval = new Date().getTime() - parseInt(checkLoginLastTime.time);
-         if (interval < 900000) {
-         loginAgain = false;
-         }
-         }
-         } else {
-         localStorage.setItem("checkLogin_lastTime", JSON.stringify({"time": new Date().getTime()}));
-         loginAgain = false;
-         }
-         if (loginAgain) {
-         if (isRememberLogin()) {
-         common_utils.cookieUtil.set("login_status", "false");
-         autoLogin(false);
-         } else {
-         checkLoginByRequest();
-         }
-         }*/
         if (window.navigator.cookieEnabled) {
             var e = common_utils.cookieUtil.get("login_status") == "true";
             if (e) {
@@ -336,7 +337,7 @@
             type: "GET",
             async: callback ? true : false,
             success: function (user) {
-                localStorage.setItem("checkLogin_lastTime", JSON.stringify({"time": new Date().getTime()}));
+                localStorage.setItem("checkLogin_lastTime", new Date().getTime() + "");
                 var isLogin = user ? true : false;
                 if (isLogin) {
                     common_utils.cookieUtil.set("login_status", "true");
@@ -423,6 +424,9 @@
         go: function (jumpUrl) {
             //如果是登录后刷新原来的页面，就reload页面，防止浏览器直接读取缓存而不刷新
             if (utils.IsCurrentPage(jumpUrl)) {
+                if (jumpUrl.indexOf('#') == 0) {
+                    window.location.hash = jumpUrl;
+                }
                 window.location.reload(true);
             }
             window.location.href = jumpUrl;

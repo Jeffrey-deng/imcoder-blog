@@ -6,27 +6,28 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <!DOCTYPE html>
 <html class="no-js">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>写博客 - ImCODER's 博客</title>
     <!-- 使用url函数转换相关路径 -->
     <!-- <script async="" src="http://www.google-analytics.com/analytics.js"></script> -->
 
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/niftymodals/jquery.niftymodals.min.css"/>
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/niftymodals/jquery.niftymodals.min.css<%=urlArgs%>"/>
 </head>
 <body uid="${loginUser.uid}">
 <div id="first" class="" style="z-index:1000;background-image: url(<%=staticPath%>img/bg-site.png);">
@@ -34,10 +35,8 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center">
-                    <br>
                     <h1>${loginUser.nickname}</h1>
-                    <p>${loginUser.description}</p>
-                    <br>
+                    <h3>${loginUser.description}</h3>
                 </div>
             </div>
         </div>
@@ -74,7 +73,7 @@
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">教程</a></div>
+                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
@@ -184,27 +183,27 @@
                 <article class="post">
                     <p class="ui red ribbon label">Tips 1</p>
                     <p>
-                    <ul style="padding-right:5px;font-size:13px;">
-                        <li style="padding-bottom:3px;">点击[插入代码]可插入code</li>
-                        <li style="padding-bottom:3px;">回车总有代码框时，可在左上角样式选择p消除</li>
+                    <ul class="tips-list">
+                        <li>点击[插入代码]可插入code</li>
+                        <li>回车总有代码框时，可在左上角样式选择p消除</li>
                     </ul>
                 </article>
 
                 <article class="post">
                     <p class="ui red ribbon label">Tips 2</p>
                     <p>
-                    <ul style="padding-right:5px;font-size:13px;">
-                        <li style="padding-bottom:3px;">图片可以拖拽到编辑框上传，并可以同时拖拽多张图片</li>
-                        <li style="padding-bottom:3px;">点击图片上的重置按钮，可设置为该图片原始大小</li>
-                        <li style="padding-bottom:3px;">点击图片上的升级按钮，可将原本引用互联网的图片上传到本站服务器</li>
-                        <li style="padding-bottom:3px;">点击图片上的封面按钮，可将图片设置为本文章封面</li>
+                    <ul class="tips-list">
+                        <li>图片可以拖拽到编辑框上传，并可以同时拖拽多张图片</li>
+                        <li>点击图片上的重置按钮，可设置为该图片原始大小</li>
+                        <li>点击图片上的升级按钮，可将原本引用互联网的图片上传到本站服务器</li>
+                        <li>点击图片上的封面按钮，可将图片设置为本文章封面</li>
                     </ul>
                 </article>
 
                 <article class="post">
                     <p class="ui red ribbon label">Tips 3</p>
                     <p>
-                    <ul style="padding-right:5px;font-size:13px;">
+                    <ul class="tips-list">
                         <li>点击[源代码]可查看文字的html代码，并直接可修改</li>
                     </ul>
                 </article>
@@ -212,7 +211,7 @@
                 <article class="post">
                     <p class="ui red ribbon label">Tips 4</p>
                     <p>
-                    <ul style="padding-right:5px;font-size:13px;">
+                    <ul class="tips-list">
                         <li>可给文章添加标签，用于分类与用户查找</li>
                     </ul>
                 </article>
@@ -220,9 +219,9 @@
                 <article class="post">
                     <p class="ui red ribbon label">Tips 5</p>
                     <p>
-                    <ul style="padding-right:5px;font-size:13px;">
-                        <li style="padding-bottom:3px;">可给文章设置权限</li>
-                        <li style="padding-bottom:3px;">勾选通知关注你的用户，你发表文章后会以邮件通知</li>
+                    <ul class="tips-list">
+                        <li>可给文章设置权限</li>
+                        <li>勾选通知关注你的用户，你发表文章后会以邮件通知</li>
                     </ul>
                 </article>
 
@@ -263,7 +262,7 @@
                                     <select class="form-control m-b" name="atid">
                                         <option value="0" selected="selected">默认</option>
                                         <option value="1">开发</option>
-                                        <option value="2">教程</option>
+                                        <option value="2">折腾</option>
                                         <option value="3">资源</option>
                                         <option value="4">科技</option>
                                         <option value="5">游戏</option>
@@ -340,19 +339,6 @@
     <div class="stick"></div>
 </div>
 <!-- code modal start 代码编辑框 -->
-<style>
-    @media (min-width: 768px) {
-        .modal-dialog, .insert-code-panel {
-            width: 500px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .modal-dialog, .insert-code-panel {
-            width: 100%;
-        }
-    }
-</style>
 <div class="note-editor">
     <div class="modal fade in" id="code_editModal" aria-hidden="false" tabindex="-1" style="padding-right: 5px;">
         <div class="modal-dialog insert-code-panel" style="margin-top:80px;">
@@ -376,19 +362,6 @@
 </div>
 <!-- code modal end 代码编辑框 -->
 
-<style>
-    @media (min-width: 768px) {
-        #insertAlbumPhotos_modal .modal-dialog {
-            width: 500px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        #insertAlbumPhotos_modal .modal-dialog {
-            width: 100%;
-        }
-    }
-</style>
 <div class="note-editor">
     <div class="modal fade in" id="insertAlbumPhotos_modal" aria-hidden="false" tabindex="-1" style="padding-right: 5px;">
         <div class="modal-dialog">
@@ -442,7 +415,7 @@
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="article_edit"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="article_edit"></script>
 <!-- ######################################### -->
 
 <script>

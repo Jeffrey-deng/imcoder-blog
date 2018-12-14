@@ -20,3 +20,4 @@ Desktop.ini
 /src/main/webapp/static/upload/article/
 /src/main/resources/server/ServerConfig.xml
 /src/main/resources/server/jdbc.properties
+/src/main/resources/server/oss.properties

@@ -52,4 +52,12 @@ public interface IManagerService {
      * @return
      */
     public int updateArticleInfo(Article article, User loginUser);
+
+    /**
+     * 升级旧地址格式为新地址格式
+     *
+     * @param loginUser
+     * @return
+     */
+    public int upgradeNewFileNameStyle(User loginUser);
 }

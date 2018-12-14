@@ -110,4 +110,114 @@ public class Config {
         }
         return 0L;
     }
+
+    /**
+     * 得到一个配置项中的子配置项, 没有值则返回默认值
+     * <pre>
+     * 例：
+     * 配置项compress中，有值：preview@user_16:raw@user_36:small
+     * 则：
+     * getChild("compress", "@user_", "16", ":"); 取用户16的值raw
+     * getChild("compress", "@user_", "36", ":"); 取用户36的值small
+     * getChild("compress", "@user_", "26", ":"); 无值则返回默认值preview
+     * getChildNotDefault("compress", "@user_", "26", ":"); 无值则返回空值（null）
+     * getChildDefault("compress", "@user_"); 返回默认值preview <pre/>
+     * @param key 配置项key
+     * @param childPrefix 自配置项key的前缀
+     * @param child 自配置项key
+     * @param childSuffix 自配置项key的后缀
+     * @return
+     */
+    public static String getChild(String key, String childPrefix, String child, String childSuffix) {
+        String childValue = getChildNotDefault(key, childPrefix, child, childSuffix);
+        return childValue == null ? getChildDefault(key, childPrefix) : childValue;
+    }
+
+    /**
+     * 得到一个配置项中的子配置项默认值
+     * <pre>
+     * 例：
+     * 配置项compress中，有值：preview@user_16:raw@user_36:small
+     * 则：
+     * getChild("compress", "@user_", "16", ":"); 取用户16的值raw
+     * getChild("compress", "@user_", "36", ":"); 取用户36的值small
+     * getChild("compress", "@user_", "26", ":"); 无值则返回默认值preview
+     * getChildNotDefault("compress", "@user_", "26", ":"); 无值则返回空值（null）
+     * getChildDefault("compress", "@user_"); 返回默认值preview <pre/>
+     * @param key 配置项key
+     * @param childPrefix 自配置项key的前缀
+     * @return
+     */
+    public static String getChildDefault(String key, String childPrefix) {
+        String line = get(key);
+        try {
+            if (line == null || line.length() == 0) {
+                return line;
+            }
+            int index = line.indexOf(childPrefix);
+            if (index != -1) {
+                return line.substring(0, index);
+            } else {
+                return line;
+            }
+        } catch (Exception e) {
+            return line;
+        }
+    }
+
+    /**
+     * 得到一个配置项中的子配置项, 没有值则返回null
+     * <pre>
+     * 例：
+     * 配置项compress中，有值：preview@user_16:raw@user_36:small
+     * 则：
+     * getChild("compress", "@user_", "16", ":"); 取用户16的值raw
+     * getChild("compress", "@user_", "36", ":"); 取用户36的值small
+     * getChild("compress", "@user_", "26", ":"); 无值则返回默认值preview
+     * getChildNotDefault("compress", "@user_", "26", ":"); 无值则返回空值（null）
+     * getChildDefault("compress", "@user_"); 返回默认值preview <pre/>
+     * @param key 配置项key
+     * @param childPrefix 自配置项key的前缀
+     * @param child 自配置项key
+     * @param childSuffix 自配置项key的后缀
+     * @return
+     */
+    public static String getChildNotDefault(String key, String childPrefix, String child, String childSuffix) {
+        try {
+            String line = get(key);
+            if (line == null || line.length() == 0) {
+                return line;
+            }
+            String childKey = childPrefix + child + childSuffix;
+            int i = line.indexOf(childKey);
+            if (i != -1) {
+                int start = i + childKey.length();
+                if (start >= line.length()) {
+                    return "";
+                }
+                int end = line.indexOf(childPrefix, start);
+                if (end == -1) {
+                    end = line.length();
+                }
+                return line.substring(start, end);
+            } else {
+                return null;
+            }
+//            // 正则方式查找
+//            line += childPrefix; // 解决非贪婪模式问题
+//            childPrefix = Utils.escapeExprSpecialWord(childPrefix);
+//            child = Utils.escapeExprSpecialWord(child);
+//            childSuffix = Utils.escapeExprSpecialWord(childSuffix);
+//            Pattern pattern = Pattern.compile(".*" + childPrefix + child + childSuffix + "(.*?)" + childPrefix + ".*$");
+//            Matcher matcher = pattern.matcher(line);
+//            if (matcher.find()) {
+//                return matcher.group(1);
+//            } else {
+//                return null;
+//            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
 }

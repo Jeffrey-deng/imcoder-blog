@@ -35,7 +35,7 @@ public class ArticleServiceImpl implements IArticleService {
     @Resource
     private INotifyService notifyService;
 
-    @Resource
+    @Resource(name = "localFileService")
     private IFileService fileService;
 
     @Resource
@@ -253,15 +253,20 @@ public class ArticleServiceImpl implements IArticleService {
      * @param comment
      * @param loginUser
      * @return flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，500: 失败
+     * comment 对象
      */
-    public int addComment(Comment comment, User loginUser) {
+    public Map<String, Object> addComment(Comment comment, User loginUser) {
+        Map<String, Object> map = new HashMap<>();
         if (loginUser == null) {
-            return 401;
+            map.put("flag", 401);
+            return map;
         }
         comment.setUser(loginUser);
         comment.setSend_time(new Date().getTime());
         int index = articleDao.saveComment(comment);
         if (index > 0) {
+            map.put("comment", comment);
+
             //触发发送新评论通知
             notifyService.receivedComment(comment);
 
@@ -269,7 +274,8 @@ public class ArticleServiceImpl implements IArticleService {
             //articleDao.raiseCommentCnt(comment);
             trigger.addComment(comment);
         }
-        return convertRowToHttpCode(index);
+        map.put("flag", convertRowToHttpCode(index));
+        return map;
     }
 
     /**
@@ -317,14 +323,24 @@ public class ArticleServiceImpl implements IArticleService {
      * @param size list长度 默认5
      * @return Map<String,List>
      */
-    public Map<String, Object> listRanking(int uid, int size) {
+    public Map<String, Object> listRanking(int uid, int size, User loginUser) {
         //原从数据库查
         //Map<String, Object> findRankList = articleDao.findRankList(uid,num);
 
         //改为从Cache中查
-        List<Article> clickRankList = cache.getHotSortArticle(uid, size);
-        List<Article> newestList = cache.getTimeSortArticle(uid, size);
-        List<Entry<String, Integer>> hotTagList = cache.getTagCount(uid, size);
+        List<Article> clickRankList = null;
+        List<Article> newestList = null;
+        List<Entry<String, Integer>> hotTagList = null;
+        if (uid == 0 && (loginUser == null || loginUser.getUid() == 0)) {
+            clickRankList = cache.getHotSortArticle(size);
+            newestList = cache.getTimeSortArticle(size);
+            hotTagList = cache.getTagCount(size);
+        } else {
+            List<Article> visibleArticles = cache.getVisibleArticles(uid, loginUser);
+            clickRankList = cache.getHotSortArticle(uid, size, visibleArticles);
+            newestList = cache.getTimeSortArticle(uid, size, visibleArticles);
+            hotTagList = cache.getTagCount(uid, size, visibleArticles);
+        }
 
         Map<String, Object> map = new HashMap<String, Object>();
         map.put("clickRankList", clickRankList);
@@ -358,7 +374,8 @@ public class ArticleServiceImpl implements IArticleService {
                 return new ArrayList<>();
             }
         } else {
-            return cache.getTagCount(uid, size);
+            User user = null;
+            return cache.getTagCount(uid, size, user);
         }
     }
 

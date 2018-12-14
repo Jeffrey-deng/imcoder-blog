@@ -7,13 +7,14 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <!DOCTYPE html>
 <html class="no-js">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>文章标签 - ImCODER's 博客</title>
     <meta name="description" content="文章标签,tags,ImCODER's 博客">
     <meta name="keywords" content="文章标签,archives,ImCODER's 博客">
@@ -22,11 +23,11 @@
 
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
 
     <style>
         ul.notes li div.note-div {
@@ -34,6 +35,7 @@
             height: 110px;
             text-align: center;
         }
+
         @media (max-width: 768px) {
             ul.notes li div.note-div {
                 width: 90px;
@@ -51,10 +53,8 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center">
-                    <br>
                     <h1>文章标签</h1>
                     <h3>tags</h3>
-                    <br>
                 </div>
             </div>
         </div>
@@ -91,7 +91,7 @@
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">教程</a></div>
+                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
@@ -196,7 +196,7 @@
         <div class="row" style=" margin-top: 1em;">
             <div class="col-md-12 col-sm-12 col-xs-12">
                 <article class="post" style="background-color: #f2f2f2;padding-top: 25px;border-radius: 2px;">
-                    <div class ="">
+                    <div class="">
                         <div class="wrapper wrapper-content animated fadeInUp">
                             <ul class="notes">
                                 <c:if test="${ not empty tagList }">
@@ -241,6 +241,6 @@
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="article_tags"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="article_tags"></script>
 </body>
 </html>

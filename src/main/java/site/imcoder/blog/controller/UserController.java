@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
+import site.imcoder.blog.Interceptor.GZIP;
 import site.imcoder.blog.Interceptor.LoginRequired;
 import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.entity.*;
@@ -159,11 +160,11 @@ public class UserController extends BaseController {
      * @return 通过权限检查的列表
      */
     @RequestMapping(params = "method=home")
-    public String list
-    (@RequestParam(defaultValue = "5") int pageSize,
-     @RequestParam(defaultValue = "1") int jumpPage,
-     @RequestParam(defaultValue = "0") int uid,
-     Article condition, HttpServletRequest request, HttpSession session) {
+    public String list(
+            @RequestParam(defaultValue = "5") int pageSize,
+            @RequestParam(defaultValue = "1") int jumpPage,
+            @RequestParam(defaultValue = "0") int uid,
+            Article condition, HttpServletRequest request, HttpSession session) {
         // convert [uid] to [author.uid]
         if (uid > 0) {
             if (condition == null) {
@@ -216,6 +217,7 @@ public class UserController extends BaseController {
      */
     @LoginRequired
     @RequestMapping(params = "method=profilecenter")
+    @GZIP
     public String profilecenter(HttpSession session) {
         /* 登陆验证 */
         User loginUser = (User) session.getAttribute("loginUser");
@@ -513,6 +515,7 @@ public class UserController extends BaseController {
     @LoginRequired(content = "")
     @RequestMapping(params = "method=listSysMsgs")
     @ResponseBody
+    @GZIP
     public List<SysMsg> listSysMsgs(int read_status, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         if (loginUser != null) {

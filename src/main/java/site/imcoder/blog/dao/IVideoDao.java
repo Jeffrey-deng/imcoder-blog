@@ -34,4 +34,12 @@ public interface IVideoDao {
      */
     public List<Video> findVideoListByCoverArray(List<Integer> covers, User loginUser);
 
+    /**
+     * 更新视频
+     *
+     * @param video
+     * @return
+     */
+    public int updateVideo(Video video);
+
 }

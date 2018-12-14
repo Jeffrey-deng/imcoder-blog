@@ -7,13 +7,14 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <!DOCTYPE html>
 <html class="no-js">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>${hostUser.nickname}的视频 - ImCODER's 博客</title>
     <meta name="description" content="${hostUser.nickname}的视频列表">
     <meta name="keywords" content="${hostUser.nickname},ImCODER's 博客,视频,视频列表,">
@@ -22,12 +23,12 @@
 
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <style>
     </style>
 </head>
@@ -40,10 +41,8 @@
             <div class="container">
                 <div class="" style="text-align:center;">
                     <h1 hostUser="${hostUser.uid}">${hostUser.nickname}</h1>
-                    <h3 style="font-size:16.5px;">${hostUser.description}</h3>
-                    <h3>
-                        <f>${hostUser.says}</f>
-                    </h3>
+                    <h3>${hostUser.description}</h3>
+                    <h3>${hostUser.says}</h3>
                 </div>
             </div>
         </div>
@@ -80,7 +79,7 @@
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">教程</a></div>
+                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
@@ -149,7 +148,7 @@
                     </ul>
                 </li>
                 <li><a href="<%=basePath%>">首页</a></li>
-                <li><a href="video.do?method=user_videos&uid=${album.user.uid}">${album.user.nickname}</a></li>
+                <li><a href="video.do?method=user_videos&uid=${hostUser.uid}">${hostUser.nickname}</a></li>
                 <li class="active"><a>视频列表</a></li>
             </ul>
             <ul class="nav navbar-nav navbar-right">
@@ -217,9 +216,9 @@
                 </header>
                 <!-- 视频管理  end -->
 
-                <article class="post" style="background-color: #f2f2f2;box-shadow: 0px 0px 1px 0.5px #ddd;">
+                <article class="post" style="background-color: #f8f8f8;box-shadow: 0px 0px 1px 0.5px #ddd;">
                     <section>
-                        <div id="masonryContainer" class="" style="margin-top: 20px;">
+                        <div id="masonryContainer" class="" style="margin: 7px 6px 1px 6px">
 
                         </div>
                     </section>
@@ -229,12 +228,12 @@
                 </article>
 
                 <!-- 评论区 start -->
-                <header class="post post-container row" style="width: 100%;background-color: #f2f2f2;box-shadow: 0px 0px 1px 0.5px #ddd;">
-                    <ul class="post-meta" style="display: inline-block;margin-top: 3px;margin-bottom: 0px;font-size: 14px;">
+                <header class="post post-container row album-footer">
+                    <ul class="post-meta footer-left">
                         <li>数量: <a id="video_count" hostUser="${hostUser.uid}">0</a></li>
                     </ul>
-                    <ul class="post-meta" style="display: inline-block;margin-top: 3px;margin-bottom: 0px;font-size: 14px;">
-                        <ol class="page-navigator" style="display: inline-block;margin: 0 auto;padding:0px;"></ol>
+                    <ul class="post-meta footer-right">
+                        <ol class="page-navigator"></ol>
                     </ul>
                 </header>
                 <!-- 评论区 end -->
@@ -259,19 +258,6 @@
     <div class="stick"></div>
 </div>
 
-<style>
-    @media (min-width: 768px) {
-        #uploadVideoModal .modal-dialog {
-            width: 500px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        #uploadVideoModal .modal-dialog {
-            width: 100%;
-        }
-    }
-</style>
 <div class="note-editor">
     <div class="modal fade in" id="uploadVideoModal" aria-hidden="false" tabindex="-1">
         <div class="modal-dialog">
@@ -304,7 +290,11 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label><div class="convert-upload-cover" style="font-weight: bold;display: inline;">上传封面</div> / <div class="convert-select-cover" style="font-weight: normal;display: inline;"  title="选取已上传的照片ID">选择封面</div></label>
+                        <label>
+                            <div class="convert-upload-cover" style="font-weight: bold;display: inline;">上传封面</div>
+                            /
+                            <div class="convert-select-cover" style="font-weight: normal;display: inline;" title="选取已上传的照片ID">选择封面</div>
+                        </label>
                         <input class="note-image-input form-control" type="file" name="cover_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
                         <input class="note-image-input form-control" name="cover_photo_id" value="0" style="margin-top: 5px;display: none;">
                     </div>
@@ -345,19 +335,6 @@
     </div>
 </div>
 
-<style>
-    @media (min-width: 768px) {
-        #updateVideoModal .modal-dialog {
-            width: 500px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        #updateVideoModal .modal-dialog {
-            width: 100%;
-        }
-    }
-</style>
 <div class="note-editor">
     <div class="modal fade in" id="updateVideoModal" aria-hidden="false" tabindex="-1">
         <div class="modal-dialog">
@@ -404,7 +381,11 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label><div class="convert-select-cover" style="font-weight: bold;display: inline;" title="选取已上传的照片ID">选择封面</div> / <div class="convert-upload-cover" style="font-weight: normal;display: inline;">上传封面</div></label>
+                        <label>
+                            <div class="convert-select-cover" style="font-weight: bold;display: inline;" title="选取已上传的照片ID">选择封面</div>
+                            /
+                            <div class="convert-upload-cover" style="font-weight: normal;display: inline;">上传封面</div>
+                        </label>
                         <input class="note-image-input form-control" type="file" name="cover_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
                         <input class="note-image-input form-control" name="cover_photo_id" value="0" style="margin-top: 5px;display: none;">
                     </div>
@@ -456,15 +437,15 @@
 </div>
 
 <!-- login modal start -->
-<div style="margin-top:100px;" class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
-    <div style="width: 350px;" class="modal-dialog" role="document">
+<div class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
+    <div class="modal-dialog" role="document">
         <div class="modal-content animated flipInY">
             <div class="modal-header text-center">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <h2 class="modal-title" id="loginModalLabel">登录/<a href="user.do?method=toregister" target="_blank">注册</a></h2>
             </div>
             <form role="form" id="login_form">
-                <div class="modal-body" style="height:200px;">
+                <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
                         <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
@@ -501,7 +482,7 @@
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="video_list"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="video_list"></script>
 
 </body>
 </html>

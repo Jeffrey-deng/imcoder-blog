@@ -2,13 +2,14 @@ package site.imcoder.blog.entity;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
+import java.io.Serializable;
 import java.util.Date;
 
 /**
  * Created by Jeffrey.Deng on 2018/1/5.
  * 照片实体类
  */
-public class Photo {
+public class Photo implements Serializable {
 
     /**
      * 照片ID

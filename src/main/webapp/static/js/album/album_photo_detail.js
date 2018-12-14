@@ -16,89 +16,95 @@
     /**
      * 放大镜
      */
-    function bindBlowup() {
+    function bindBlowup(config) {
         if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
             $("#blowup_trigger").hide();
         } else {
             var blowup = null;
+            var isBlowup = "false";
             $("#blowup_trigger").click(function () {
                 var _this = $(this);
-                var isBlowup = _this.attr("isBlowup");
-                isBlowup = isBlowup || "false";
+                isBlowup = _this.attr("isBlowup") || "false";
                 if (isBlowup == "false") {
-                    var config = common_utils.getLocalConfig("album", {
-                        "photo_page": {
-                            "blow_up": {
-                                "width": 500,
-                                "height": 500,
-                                "scale": 1.6
-                            }
-                        }
-                    }).photo_page.blow_up;
                     blowup = $.blowup({
                         selector: "#masonryContainer img",
                         width: config.width,
                         height: config.height,
                         scale: config.scale
                     });
-                    _this.attr("isBlowup", "true");
+                    isBlowup = "true";
+                    _this.attr("isBlowup", isBlowup);
                     toastr.success("已开启放大镜", "", {"progressBar": false});
                     _this.text("关闭放大镜");
                 } else {
                     blowup.destroy();
-                    _this.attr("isBlowup", "false");
+                    isBlowup = "false";
+                    _this.attr("isBlowup", isBlowup);
                     toastr.success("已关闭放大镜", "", {"progressBar": false});
                     _this.text("放大镜");
+                }
+            });
+            album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupChanged, function (e) {
+                if (isBlowup == "true") {
+                    var content = album_photo_page_handle.pointer.magnificPopup.content;
+                    if (content) {
+                        $.blowup({
+                            selector: content.find("img"),
+                            width: config.width,
+                            height: config.height,
+                            scale: config.scale
+                        });
+                    }
                 }
             });
         }
     }
 
-    function addFeaturedBtnBasedRemote(album_id) {
-        var callback = function (album_id) {
-            $("#main .album_options .options_right").prepend(
-                '<a class="option_featured" itemtype="url" href="photo.do?method=dashboard&model=photo&album_id=' + album_id + '&tags=精选" target="_blank">精选</a>'
-            );
-        };
-        var isLoadNew = true;
-        var featured_info_cache = localStorage.getItem("featured_info_cache");
-        if (featured_info_cache) {
-            featured_info_cache = JSON.parse(featured_info_cache);
-            var featured_info_album = featured_info_cache[album_id];
-            if (featured_info_album) {
-                var interval = new Date().getTime() - parseInt(featured_info_album.time);
-                if (interval < 1800000) {
-                    isLoadNew = false;
-                    if (featured_info_album.featured == "true") {
-                        callback(album_id);
-                    }
-                }
-            }
-        } else {
-            localStorage.setItem("featured_info_cache", "{}");
-            featured_info_cache = {};
-        }
-        if (isLoadNew) {
-            $.get("photo.do?method=photoListByAjax", {"album_id": album_id, "tags": "精选"}, function (data) {
-                if (data.flag == 200 && data.photos && data.photos.length > 0) {
-                    featured_info_cache[album_id] = {
-                        "album_id": album_id,
-                        "featured": "true",
-                        "time": new Date().getTime()
-                    };
-                    localStorage.setItem("featured_info_cache", JSON.stringify(featured_info_cache));
-                    callback(album_id);
-                } else {
-                    featured_info_cache[album_id] = {
-                        "album_id": album_id,
-                        "featured": "false",
-                        "time": new Date().getTime()
-                    };
-                    localStorage.setItem("featured_info_cache", JSON.stringify(featured_info_cache));
-                }
-            });
-        }
-    }
+    // function addFeaturedBtnBasedRemote(album_id) {
+    //     var callback = function (album_id) {
+    //         $("#main .album_options .options_right").prepend(
+    //             '<a class="option_featured" itemtype="url" href="photo.do?method=dashboard&model=photo&album_id=' + album_id + '&tags=精选" target="_blank">精选</a>'
+    //         );
+    //     };
+    //     var isLoadNew = true;
+    //     var featured_info_cache = localStorage.getItem("featured_info_cache");
+    //     if (featured_info_cache) {
+    //         featured_info_cache = JSON.parse(featured_info_cache);
+    //         var featured_info_album = featured_info_cache[album_id];
+    //         if (featured_info_album) {
+    //             var interval = new Date().getTime() - parseInt(featured_info_album.time);
+    //             if (interval < 1800000) {
+    //                 isLoadNew = false;
+    //                 if (featured_info_album.featured == "true") {
+    //                     callback(album_id);
+    //                 }
+    //             }
+    //         }
+    //     } else {
+    //         localStorage.setItem("featured_info_cache", "{}");
+    //         featured_info_cache = {};
+    //     }
+    //     if (isLoadNew) {
+    //         $.get("photo.do?method=photoListByAjax", {"album_id": album_id, "tags": "精选"}, function (data) {
+    //             if (data.flag == 200 && data.photos && data.photos.length > 0) {
+    //                 featured_info_cache[album_id] = {
+    //                     "album_id": album_id,
+    //                     "featured": "true",
+    //                     "time": new Date().getTime()
+    //                 };
+    //                 localStorage.setItem("featured_info_cache", JSON.stringify(featured_info_cache));
+    //                 callback(album_id);
+    //             } else {
+    //                 featured_info_cache[album_id] = {
+    //                     "album_id": album_id,
+    //                     "featured": "false",
+    //                     "time": new Date().getTime()
+    //                 };
+    //                 localStorage.setItem("featured_info_cache", JSON.stringify(featured_info_cache));
+    //             }
+    //         });
+    //     }
+    // }
 
     function addFeaturedBtnBasedLocal(album) {
         if ($("#main .album_options .options_right .option_featured").length > 0) {
@@ -123,7 +129,7 @@
                     return false;
                 }
             });
-            if (hasVideo) {
+            if (hasVideo && $("#main .album_options .options_right .option_video").length == 0) {
                 $("#main .album_options .options_right").prepend(
                     '<a class="option_video" style="margin-left: 5px;" itemtype="url" href="photo.do?method=dashboard&model=photo&album_id=' + album_id + '&image_type=video&from=album_detail" target="_blank">视频</a>'
                 );
@@ -141,32 +147,23 @@
      */
     domReady(function () {
 
-        // 提示吐司  設置
-        toastr.options = {
-            "closeButton": true,
-            "debug": false,
-            "progressBar": false,
-            "positionClass": "toast-bottom-left",
-            "showDuration": "400",
-            "hideDuration": "1000",
-            "timeOut": "3500",
-            "extendedTimeOut": "1000",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "fadeIn",
-            "hideMethod": "fadeOut"
-        };
-
         var albumConfig = common_utils.getLocalConfig("album", {
             "photo_page": {
                 "full_background": false,
                 "default_col": {
-                    "1200": 4,
+                    "2000": 6,
+                    "1800": 5,
+                    "1600": 4,
                     "940": 3,
-                    "520": 3,
-                    "400": 2
+                    "720": 2
                 },
-                "default_size": 40
+                "default_size": 0,
+                "preview_compress": true,
+                "blow_up": {
+                    "width": 500,
+                    "height": 500,
+                    "scale": 1.6
+                }
             }
         });
         if (albumConfig.photo_page.full_background) {
@@ -181,6 +178,8 @@
         var pageNum = params.page ? params.page : 1;
         var col = params.col && parseInt(params.col);
         var checkPhotoId = params.check ? parseInt(params.check) : 0;
+        var cloud_photo_preview_args = "";
+        var open_preview_compress = albumConfig.photo_page.preview_compress;
 
         // 照片页面布局模块初始化
         album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupChanged, function (e, check) {
@@ -233,6 +232,7 @@
                     $.get("photo.do?method=albumByAjax", {"id": object.album_id, "mount": true}, function (data) {
                         common_utils.removeNotify("notify_photos_loading");
                         if (data.flag == 200) {
+                            cloud_photo_preview_args = data.cloud_photo_preview_args;
                             success(data);
                             // 添加精选按钮
                             addFeaturedBtnBasedLocal(data.album);
@@ -241,6 +241,13 @@
                             console.warn("Error Code: " + data.flag);
                         }
                     });
+                },
+                "generatePhotoPreviewUrl": function (source, relativePath, hitCol) { // 生成预览图片url的函数
+                    if (open_preview_compress && cloud_photo_preview_args) {
+                        return source + cloud_photo_preview_args.replace("{col}", hitCol);
+                    } else {
+                        return source;
+                    }
                 },
                 "parsePhotosZipName": function (config) {
                     var zipName = "album_" + config.load_condition.album_id;
@@ -451,9 +458,20 @@
             album_handle.openUpdateAlbumModal(album_photo_page_handle.pointer.album);
         });
 
+        $("#first .album_name").dblclick(function () {
+            album_photo_page_handle.loadAlbumWithPhotos(album_photo_page_handle.config, function (data) {
+                if (data.flag == 200) {
+                    album_photo_page_handle.pointer.album = data.album;
+                    toastr.success("数据刷新成功");
+                    album_photo_page_handle.jumpPage(album_photo_page_handle.config.page_params.pageNum);
+                    album_photo_page_handle.utils.updateAlbumSizeInPage();
+                }
+            });
+        });
+
         // 添加精选按钮   replaceWith addFeaturedBtnBasedLocal(album)
         //addFeaturedBtnBasedRemote(album_id);
 
-        bindBlowup();
+        bindBlowup(albumConfig.photo_page.blow_up);
     });
 });

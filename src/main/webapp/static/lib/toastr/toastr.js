@@ -156,6 +156,7 @@
             function getDefaults() {
                 return {
                     tapToDismiss: true,
+                    hideOnHover: true,
                     toastClass: 'toast',
                     containerId: 'toast-container',
                     debug: false,
@@ -252,7 +253,12 @@
                 }
 
                 function handleEvents() {
-                    $toastElement.hover(stickAround, delayedHideToast);
+                    if (!options.hideOnHover && options.timeOut == 0) {
+                        $toastElement.hover(stickAround);
+                    } else {
+                        $toastElement.hover(stickAround, delayedHideToast);
+                    }
+
                     if (!options.onclick && options.tapToDismiss) {
                         $toastElement.click(hideToast);
                     }

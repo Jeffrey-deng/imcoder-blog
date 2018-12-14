@@ -15,39 +15,45 @@
     /**
      * 放大镜
      */
-    function bindBlowup() {
+    function bindBlowup(config) {
         if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
             $("#blowup_trigger").hide();
         } else {
             var blowup = null;
+            var isBlowup = "false";
             $("#blowup_trigger").click(function () {
                 var _this = $(this);
-                var isBlowup = _this.attr("isBlowup");
-                isBlowup = isBlowup || "false";
+                isBlowup = _this.attr("isBlowup") || "false";
                 if (isBlowup == "false") {
-                    var config = common_utils.getLocalConfig("album", {
-                        "photo_page": {
-                            "blow_up": {
-                                "width": 500,
-                                "height": 500,
-                                "scale": 1.6
-                            }
-                        }
-                    }).photo_page.blow_up;
                     blowup = $.blowup({
                         selector: "#masonryContainer img",
                         width: config.width,
                         height: config.height,
                         scale: config.scale
                     });
-                    _this.attr("isBlowup", "true");
+                    isBlowup = "true";
+                    _this.attr("isBlowup", isBlowup);
                     toastr.success("已开启放大镜", "", {"progressBar": false});
                     _this.text("关闭放大镜");
                 } else {
                     blowup.destroy();
-                    _this.attr("isBlowup", "false");
+                    isBlowup = "false";
+                    _this.attr("isBlowup", isBlowup);
                     toastr.success("已关闭放大镜", "", {"progressBar": false});
                     _this.text("放大镜");
+                }
+            });
+            album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupChanged, function (e) {
+                if (isBlowup == "true") {
+                    var content = album_photo_page_handle.pointer.magnificPopup.content;
+                    if (content) {
+                        $.blowup({
+                            selector: content.find("img"),
+                            width: config.width,
+                            height: config.height,
+                            scale: config.scale
+                        });
+                    }
                 }
             });
         }
@@ -58,33 +64,24 @@
      */
     domReady(function () {
 
-        // 提示吐司  設置
-        toastr.options = {
-            "closeButton": true,
-            "debug": false,
-            "progressBar": false,
-            "positionClass": "toast-bottom-left",
-            "showDuration": "400",
-            "hideDuration": "1000",
-            "timeOut": "3500",
-            "extendedTimeOut": "1000",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "fadeIn",
-            "hideMethod": "fadeOut"
-        };
-
         var albumConfig = common_utils.getLocalConfig("album", {
             "photo_page": {
                 "full_background": false,
                 "default_col": {
-                    "1200": 4,
+                    "2000": 6,
+                    "1800": 5,
+                    "1600": 4,
                     "940": 3,
-                    "520": 3,
-                    "400": 2
+                    "720": 2
                 },
-                "default_size": 40,
-                "default_query_size": 520
+                "default_size": 0,
+                "default_query_size": 600,
+                "preview_compress": true,
+                "blow_up": {
+                    "width": 500,
+                    "height": 500,
+                    "scale": 1.6
+                }
             }
         });
         if (albumConfig.photo_page.full_background) {
@@ -99,6 +96,8 @@
         var checkPhotoId = params.check ? parseInt(params.check) : 0;
         var query_size = params.query_size ? parseInt(params.query_size) : albumConfig.photo_page.default_query_size;
         var query_start = params.query_start ? parseInt(params.query_start) : 0;
+        var cloud_photo_preview_args = "";
+        var open_preview_compress = albumConfig.photo_page.preview_compress;
 
         var load_condition = {};
         $.each(params, function (key, value) {
@@ -185,6 +184,7 @@
                             album.size = data.photos ? data.photos.length : 0;
                             album.show_col = 0;
                             data.album = album;
+                            cloud_photo_preview_args = data.cloud_photo_preview_args;
                             success(data);
                             if (album.size == 0) {
                                 common_utils.notify({
@@ -199,6 +199,13 @@
                             console.warn("Error Code: " + data.flag);
                         }
                     });
+                },
+                "generatePhotoPreviewUrl": function (source, relativePath, hitCol) { // 生成预览图片url的函数
+                    if (open_preview_compress && cloud_photo_preview_args) {
+                        return source + cloud_photo_preview_args.replace("{col}", hitCol);
+                    } else {
+                        return source;
+                    }
                 },
                 "parsePhotosZipName": function (config) {
                     var zipName = "photos";
@@ -231,7 +238,7 @@
                         var default_query_size = albumConfig.photo_page.default_query_size;
                         if (context.pointer.album.size == default_query_size && config.query_size == default_query_size) {
                             toastr.success("点击加载更多照片", "", {
-                                timeOut: 0, onclick: function () {
+                                timeOut: 0, iconClass: "toast-success-no-icon", onclick: function () {
                                     config.query_size = 0;
                                     config.query_start = context.pointer.album.size;
                                     var params = common_utils.parseURL(document.location.href).params;
@@ -424,6 +431,24 @@
             });
         }
 
-        bindBlowup();
+        bindBlowup(albumConfig.photo_page.blow_up);
+
+        if (load_condition.tags) {
+            if (load_condition.extend == "true") {
+                var href = "photo.do?method=tags_square";
+                $.each(load_condition, function (key, value) {
+                    href += "&" + key + "=" + value
+                });
+                href += "&filter=" + load_condition.tags;
+                $(".album_options .option_tags_subtag").attr("href", href).show();
+            } else {
+                var href = "redirect.do?model=photo_tag";
+                $.each(load_condition, function (key, value) {
+                    href += "&" + key + "=" + value
+                });
+                href += "&casting=up";
+                $(".album_options .option_tags_upcasting").attr("href", href).show();
+            }
+        }
     });
 });

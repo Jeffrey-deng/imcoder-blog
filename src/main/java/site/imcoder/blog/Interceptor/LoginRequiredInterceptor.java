@@ -19,7 +19,8 @@ import java.lang.annotation.Annotation;
 import java.util.Map;
 
 /**
- * Created by Jeffrey.Deng on 2018/5/15.
+ * @author Jeffrey.Deng
+ * @date 2018/5/15
  */
 public class LoginRequiredInterceptor extends BaseInterceptor {
 
@@ -34,7 +35,7 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
     }
 
     @Override
-    public boolean runHandler(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preRunHandler(HttpServletRequest request, HttpServletResponse response, Object handler) {
         HttpSession session = request.getSession();
         User loginUser = (User) session.getAttribute("loginUser");
         if (loginUser == null && !tryToLogin(request, response, session)) {
@@ -161,7 +162,7 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
     }
 
     @Override
-    public boolean otherHandler(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preOtherHandler(HttpServletRequest request, HttpServletResponse response, Object handler) {
         if (handler.getClass().isAssignableFrom(HandlerMethod.class)) {
             HttpSession session = request.getSession();
             User loginUser = (User) session.getAttribute("loginUser");

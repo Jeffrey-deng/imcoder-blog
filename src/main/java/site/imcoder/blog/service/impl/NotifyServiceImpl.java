@@ -85,7 +85,7 @@ public class NotifyServiceImpl implements INotifyService {
      */
     public String validateCode(final User user) {
         final String code = Utils.getValidateCode();
-        String emailContent = formatContent(user.getNickname(), "此次帐号信息变更需要的验证码如下，请在 30 分钟内输入验证码进行下一步操作。", code, "如果非你本人操作，你的帐号可能存在安全风险，请立即 修改密码。");
+        String emailContent = formatContent(user.getNickname(), "此次帐号信息变更需要的验证码如下，请在 30 分钟内输入验证码进行下一步操作。", code, "如果非你本人操作，你的帐号可能存在安全风险，请立即 <a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/user.do?method=profilecenter&action=account' style='text-decoration:none;color:#259;border:none;outline:none;' target='_blank'>修改密码</a>。");
         boolean success = sendEmail(user.getEmail(), "博客验证码： " + code, emailContent);
         return success ? code : null;
     }
@@ -100,7 +100,13 @@ public class NotifyServiceImpl implements INotifyService {
             @Override
             public void run() {
                 Thread.currentThread().setName("Thread-NotifyServicePool-welcomeNewUser");
-                String emailContent = formatContent(user.getNickname(), "博客注册成功！此邮箱可以在忘记密码后，用于找回密码、重置密码！还会用来做未读消息提醒！", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/user.do?method=home&uid=" + user.getUid() + "' target='_blank' style='text-decoration:none;' >Welcome</a>", "如果不想再接收此类消息可以在个人中心设置页设置。<br>联系我：<a href='mailto:chao.devin@gmail.com' style='text-decoration:none;color:#259;border:none;outline:none;'>chao.devin@gmail.com</a>");
+                String siteHost = Config.get(ConfigConstants.SITE_ADDR);
+                List<User> managers = cache.getManagers();
+                String managerUrl = siteHost + "/user.do?method=profilecenter&action=sendLetter";
+                if (managers != null && managers.size() > 0) {
+                    managerUrl += ("&chatuid=" + managers.get(0).getUid());
+                }
+                String emailContent = formatContent(user.getNickname(), "博客注册成功！此邮箱可以在忘记密码后，用于找回密码、重置密码！还会用来做未读消息提醒！", "<a href='" + siteHost + "/user.do?method=home&uid=" + user.getUid() + "' target='_blank' style='text-decoration:none;' >Welcome</a>", "如果不想再接收此类消息可以在个人中心设置页设置。<br>联系我：<a href='" + managerUrl + "' style='text-decoration:none;color:#259;border:none;outline:none;'>站内信</a>");
                 sendEmail(user.getEmail(), user.getUsername() + " ，博客注册成功！ - ", emailContent);
             }
         });

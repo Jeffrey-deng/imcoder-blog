@@ -39,7 +39,7 @@ public class UserServiceImpl implements IUserService {
     @Resource
     private INotifyService notifyService;
 
-    @Resource
+    @Resource(name = "localFileService")
     private IFileService fileService;
 
     @Resource

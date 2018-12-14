@@ -62,4 +62,37 @@ public interface ISiteDao {
      * @return
      */
     public int updateSystemMessageStatus(List<Integer> smIdList);
+
+    /**
+     * 加载相册列表
+     *
+     * @param user 为null查找所有
+     * @return
+     */
+    public List<Album> loadAlbumTable(User user);
+
+    /**
+     * 加载照片列表
+     *
+     * @param album 为null查找所有
+     * @return
+     */
+    public List<Photo> loadPhotoTable(Album album);
+
+    /**
+     * 加载视频列表
+     *
+     * @param user 为null查找所有
+     * @return
+     */
+    public List<Video> loadVideoTable(User user);
+
+    /**
+     * 更新文章中的文件相对路径
+     *
+     * @param oldPath
+     * @param newPath
+     * @return
+     */
+    public int updateArticleFilePath(String oldPath, String newPath);
 }

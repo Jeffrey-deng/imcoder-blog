@@ -1,4 +1,4 @@
-﻿<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
+﻿﻿<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
@@ -7,13 +7,14 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <!DOCTYPE html>
 <html class="no-js">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>${article.title} - ImCODER博客's 文章</title>
     <meta name="description" content="${article.title}...">
     <meta name="keywords" content="<c:forTokens items='${article.tags}' delims='#' var='tag'>${tag},</c:forTokens>">
@@ -22,12 +23,12 @@
 
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css">
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
 
     <style>
     </style>
@@ -41,10 +42,8 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center">
-                    <br>
                     <h1>${article.author.nickname}</h1>
-                    <p>${article.author.description}</p>
-                    <br>
+                    <h3>${article.author.description}</h3>
                     <!-- hide 'follow' button when article's author is loginUser  -->
                     <c:if test="${ !( (!empty loginUser) and (loginUser.uid==article.author.uid) ) }">
                         <p><a name="follow" followed="false" class="btn btn-large btn-success follow"><b>关注</b></a></p>
@@ -85,7 +84,7 @@
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">教程</a></div>
+                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
@@ -256,14 +255,14 @@
                 <section class="post hidden-xs" id="article_hot">
                     <p class="ui red ribbon label">热门文章</p>
                     <p>
-                    <ul id="rank_hot">
+                    <ul id="rank_hot" class="rank-list">
                     </ul>
                 </section>
 
                 <section class="post hidden-xs" id="article_new">
                     <p class="ui red ribbon label">最新文章</p>
                     <p>
-                    <ul id="rank_newest">
+                    <ul id="rank_newest" class="rank-list">
                     </ul>
                 </section>
 
@@ -388,7 +387,7 @@
 <c:if test="${ not empty loginUser and loginUser.uid == article.author.uid }">
     <!--validateMailModal start -->
     <div class="modal fade" id="validateMailModal" tabindex="-1" role="dialog" aria-labelledby="validateMailModalLabel">
-        <div style="width:350px;margin-top:180px;" class="modal-dialog" role="document">
+        <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
@@ -426,15 +425,15 @@
 </c:if>
 
 <!-- login modal start -->
-<div style="margin-top:100px;" class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
-    <div style="width: 350px;" class="modal-dialog" role="document">
+<div class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
+    <div class="modal-dialog" role="document">
         <div class="modal-content animated flipInY">
             <div class="modal-header text-center">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <h2 class="modal-title" id="loginModalLabel">登录/<a href="user.do?method=toregister" target="_blank">注册</a></h2>
             </div>
             <form role="form" id="login_form">
-                <div class="modal-body" style="height:200px;">
+                <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
                         <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
@@ -480,7 +479,7 @@
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="article_detail"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="article_detail"></script>
 
 <!-- ######################################### -->
 

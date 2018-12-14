@@ -213,7 +213,6 @@
         window.common_utils = factory(window.jQuery, toastr);
     }
 })(function ($, toastr) {
-    /* --------- **** ------------- */
 
     //吐司 设置
     toastr.options = {
@@ -224,6 +223,7 @@
         "showDuration": "400",
         "hideDuration": "1000",
         "timeOut": "3500",
+        "hideOnHover": false,
         "extendedTimeOut": "1000",
         "showEasing": "swing",
         "hideEasing": "linear",
@@ -809,6 +809,18 @@
      * @returns {*} 当module为传入的模块名称时，返回该模块配置；当module传入的是所有配置默认值或为空时，返回所有配置；
      */
     var getLocalConfig = function (module, defaultValue) {
+        if (config_upgrade_start && !config_upgrade_completed) {
+            if (!getNotify("notify_upgrade_config")) {
+                notify({
+                    "progressBar": false,
+                    "timeOut": 10000,
+                    "onclick": function () {
+                        document.location.href = document.location.href;
+                    }
+                }).info("刷新页面应用新配置~", "Upgraded new local config", "notify_upgrade_config");
+            }
+            return (typeof module == "string") ? defaultValue : (module || {});
+        }
         var localConfig = localStorage.getItem("blog_local_config");
         if (!localConfig) {
             localConfig = {};
@@ -832,13 +844,16 @@
      * @param moduleValue
      */
     var setLocalConfig = function (moduleName, moduleValue) {
-        if (moduleName) {
-            var localConfig = getLocalConfig();
+        var localConfig = getLocalConfig();
+        if (typeof moduleName == "string") {
             if (localConfig[moduleName]) {
                 localConfig[moduleName] = $.extend(true, localConfig[moduleName], moduleValue);
             } else {
                 localConfig[moduleName] = moduleValue;
             }
+            localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
+        } else if (typeof moduleName == "object") {
+            $.extend(true, localConfig, moduleName);
             localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
         }
     };
@@ -864,6 +879,74 @@
         "getLocalConfig": getLocalConfig,
         "setLocalConfig": setLocalConfig
     };
+
+
+    // 检查是否需要升级配置
+    var config_upgrade_start = false;
+    var config_upgrade_completed = false; // 配置应用完成标记
+    var require_node = document.getElementById("require_node");
+    if (require_node) {
+        var urlArgs = require_node.getAttribute("urlArgs");
+        var last_upgrade_url = localStorage.getItem("blog_last_upgrade_url");
+        if (urlArgs && last_upgrade_url != urlArgs) {
+            config_upgrade_start = true;
+            // js等主线程执行完成才会执行异步线程，既在这之前需要"阻止"网页在加载新配置完成之前使用旧配置
+            $.ajax({
+                "type": "GET",
+                "url": "site.do?method=getConfigUpgrade",
+                "global": false,    // 去掉全局事件
+                "success": function (data) {
+                    if (data.flag == 200 && typeof data.config == "object") {
+                        var config = data.config;
+                        var localConfig = JSON.parse(localStorage.getItem("blog_local_config") || "{}");
+                        var needUpgrade = config.version > (localConfig.version || "0");    // 版本是否需要升级
+                        if (needUpgrade) {
+                            if (config.force == true) {
+                                localStorage.setItem("blog_local_config", JSON.stringify(config));
+                            } else {
+                                config.force = false;
+                                setLocalConfig(config);
+                            }
+                        }
+                        localStorage.setItem("blog_last_upgrade_url", urlArgs);
+                        config_upgrade_completed = true;
+                        var info = getNotify("notify_upgrade_config");
+                        if (info && needUpgrade) {
+                            info.find(".toast-message").html("刷新页面应用新配置 <b>v" + config.version + "</b> ~");
+                        } else {
+                            removeNotify("notify_upgrade_config");  // 不是新版本
+                        }
+                    } else {
+                        // 如果加载失败
+                        removeNotify("notify_upgrade_config");
+                        config_upgrade_completed = true;
+                        if (data.flag != 404) {
+                            console.warn("Error Code: " + data.flag);
+                            notify({
+                                "progressBar": false,
+                                "timeOut": 10000,
+                                "onclick": function () {
+                                    document.location.href = document.location.href;
+                                }
+                            }).error("刷新页面恢复旧配置~", "升级新配置失败", "notify_upgrade_config_fail");
+                        }
+                    }
+                },
+                "error": function (XHR, textStatus) {
+                    removeNotify("notify_upgrade_config");
+                    config_upgrade_completed = true;
+                    console.warn("Error Code: " + textStatus);
+                    notify({
+                        "progressBar": false,
+                        "timeOut": 10000,
+                        "onclick": function () {
+                            document.location.href = document.location.href;
+                        }
+                    }).error("刷新页面恢复旧配置~", "升级新配置失败/" + textStatus, "notify_upgrade_config_fail");
+                }
+            });
+        }
+    }
 
     return context;
 });

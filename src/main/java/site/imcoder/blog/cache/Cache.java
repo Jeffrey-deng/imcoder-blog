@@ -14,6 +14,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import java.util.*;
+import java.util.Collection;
 import java.util.Map.Entry;
 
 /**
@@ -284,7 +285,7 @@ public class Cache {
             return map;
         }
         int index = aid;
-        int maxAid = ((Article) getTimeSortArticle(0, 0).get(0)).getAid();
+        int maxAid = ((Article) getTimeSortArticle(0).get(0)).getAid();
         Article pre = null;
         Article next = null;
         while (--index > 0) {
@@ -352,35 +353,80 @@ public class Cache {
         return flag;
     }
 
+    /**
+     * 得到该用户可见的文章
+     *
+     * @param uid
+     * @param loginUser
+     * @return
+     */
+    public List<Article> getVisibleArticles(int uid, User loginUser) {
+        Collection<Article> values = articleBuffer.values();
+        List<Article> list = new ArrayList<>();
+        if (loginUser == null || loginUser.getUid() == 0) {
+            for (Article article : values) {
+                if (article.getPermission() != 0) {
+                    continue;
+                }
+                if (uid == 0) {
+                    list.add(article);
+                } else if (article.getAuthor().getUid() == uid) {
+                    list.add(article);
+                }
+            }
+            return list;
+        }
+        if (uid > 0) {
+            boolean isHimself = loginUser.getUid() == uid;
+            boolean isFriend = containsFriend(new Friend(loginUser.getUid(), uid)) == 2;
+            for (Article article : values) {
+                if (article.getAuthor().getUid() == uid) {
+                    if (isHimself || article.getPermission() == 0 || (isFriend && article.getPermission() == 1)) {
+                        list.add(article);
+                    }
+                }
+            }
+        } else {
+            int loginUid = loginUser.getUid();
+            List<Integer> friendList = new ArrayList<Integer>();
+            for (Friend f : friendBuffer) {
+                if (f.getUid() == loginUid) {
+                    friendList.add(f.getFid());
+                }
+            }
+            for (Article article : values) {
+                if (loginUid == article.getAuthor().getUid() || article.getPermission() == 0 || (article.getPermission() == 1 && friendList.contains(article.getAuthor().getUid()))) {
+                    list.add(article);
+                }
+            }
+        }
+        return list;
+    }
 
     private List<Article> staticClickRankList;
     private long clickRankListLastViewTime = new Date().getTime();
+    private int clickRankListLastViewSize = 0;
 
     /**
-     * 按热门程序排序的文章
+     * 得到缓存中按热门程序排序公开的文章
      *
-     * @param uid  是否查询所有还是单个用户 uid=0 为查询所有
      * @param size list长度
      * @return List<Article>
      */
-    public List<Article> getHotSortArticle(int uid, int size) {
-
-        long time = new Date().getTime();
-        if (uid == 0 && staticClickRankList != null) {
-            if (time - 60 * 1000 * 15 < clickRankListLastViewTime) {
-                return staticClickRankList;
+    public List<Article> getHotSortArticle(int size) {
+        long time = System.currentTimeMillis();
+        synchronized (this) {
+            if (size == clickRankListLastViewSize && staticClickRankList != null) {
+                if (time - 60 * 1000 * 15 < clickRankListLastViewTime) {
+                    return staticClickRankList;
+                }
             }
         }
 
         List<Article> hotSortArticle = new ArrayList<Article>();
         for (Article article : articleBuffer.values()) {
             //只返回公开文章
-            if (article.getPermission() != 0) {
-                continue;
-            }
-            if (uid == 0) {
-                hotSortArticle.add(article);
-            } else if (article.getAuthor().getUid() == uid) {
+            if (article.getPermission() == 0) {
                 hotSortArticle.add(article);
             }
         }
@@ -395,42 +441,85 @@ public class Cache {
             clickRankList.add(hotSortArticle.get(i));
         }
 
-        if (uid == 0) {
+        synchronized (this) {
             clickRankListLastViewTime = time;
+            clickRankListLastViewSize = size;
             staticClickRankList = clickRankList;
         }
         return clickRankList;
     }
 
-    private List<Article> staticTimeRankList;
-    private long timeRankListLastViewTime = new Date().getTime();
+    /**
+     * 得到按热门程序排序的文章
+     *
+     * @param uid         是否查询所有还是单个用户 uid=0 为查询所有
+     * @param size
+     * @param visibleList 如果传入文章列表则统计此列表
+     * @return
+     */
+    public List<Article> getHotSortArticle(int uid, int size, List<Article> visibleList) {
+        if (visibleList == null) {
+            if (uid == 0) {
+                return getHotSortArticle(size);
+            } else {
+                visibleList = getVisibleArticles(uid, null);
+            }
+        }
+        Collections.sort(visibleList, articleHotComparator);
+        //防止 该user 文章数 小于 num
+        if (visibleList.size() < size) {
+            size = visibleList.size();
+        }
+        List<Article> clickRankList = new ArrayList<Article>(size);
+        for (int i = 0; i < size; i++) {
+            clickRankList.add(visibleList.get(i));
+        }
+        return clickRankList;
+    }
 
     /**
-     * 按时间排序的文章
+     * 得到按热门程序排序的文章
      *
-     * @param uid  是否查询所有还是单个用户 uid=0 为查询所有
+     * @param uid       是否查询所有还是单个用户 uid=0 为查询所有
+     * @param size
+     * @param loginUser 传入loginUser则鉴权，否则只返回公开文章
+     * @return
+     */
+    public List<Article> getHotSortArticle(int uid, int size, User loginUser) {
+        if (uid == 0 && (loginUser == null || loginUser.getUid() == 0)) {
+            return getHotSortArticle(size);
+        } else {
+            return getHotSortArticle(uid, size, getVisibleArticles(uid, loginUser));
+        }
+    }
+
+    private List<Article> staticTimeRankList;
+    private long timeRankListLastViewTime = new Date().getTime();
+    private int timeRankListLastViewSize = 0;
+
+    /**
+     * 得到缓存中按时间排序的公开的文章
+     *
      * @param size list长度
      * @return List<Article>
      */
-    public List<Article> getTimeSortArticle(int uid, int size) {
+    public List<Article> getTimeSortArticle(int size) {
         if (size == 0) {
             size = Config.getInt(ConfigConstants.ARTICLE_HOME_SIZE_RANK);
         }
-        long time = new Date().getTime();
-        if (uid == 0 && staticTimeRankList != null) {
-            if (time - 60 * 1000 * 10 < timeRankListLastViewTime) {
-                return staticTimeRankList;
+        long time = System.currentTimeMillis();
+        synchronized (this) {
+            if (size == timeRankListLastViewSize && staticTimeRankList != null) {
+                if (time - 60 * 1000 * 10 < timeRankListLastViewTime) {
+                    return staticTimeRankList;
+                }
             }
         }
+
         List<Article> timeSortArticle = new ArrayList<Article>();
         for (Article article : articleBuffer.values()) {
             //只返回公开文章
-            if (article.getPermission() != 0) {
-                continue;
-            }
-            if (uid == 0) {
-                timeSortArticle.add(article);
-            } else if (article.getAuthor().getUid() == uid) {
+            if (article.getPermission() == 0) {
                 timeSortArticle.add(article);
             }
         }
@@ -445,15 +534,105 @@ public class Cache {
             newestList.add(timeSortArticle.get(i));
         }
 
-        if (uid == 0) {
+        synchronized (this) {
             timeRankListLastViewTime = time;
+            timeRankListLastViewSize = size;
             staticTimeRankList = newestList;
+        }
+
+        return newestList;
+    }
+
+    /**
+     * 得到按按时间排序的文章
+     *
+     * @param uid         是否查询所有还是单个用户 uid=0 为查询所有
+     * @param size
+     * @param visibleList 如果传入文章列表则统计此列表
+     * @return
+     */
+    public List<Article> getTimeSortArticle(int uid, int size, List<Article> visibleList) {
+        if (visibleList == null) {
+            if (uid == 0) {
+                return getTimeSortArticle(size);
+            } else {
+                visibleList = getVisibleArticles(uid, null);
+            }
+        }
+        Collections.sort(visibleList, articleTimeComparator);
+        //防止 该user 文章数 小于 num
+        if (visibleList.size() < size) {
+            size = visibleList.size();
+        }
+        List<Article> newestList = new ArrayList<Article>(size);
+        for (int i = 0; i < size; i++) {
+            newestList.add(visibleList.get(i));
         }
         return newestList;
     }
 
+    /**
+     * 得到按按时间排序的文章
+     *
+     * @param uid       是否查询所有还是单个用户 uid=0 为查询所有
+     * @param size
+     * @param loginUser 传入loginUser则鉴权，否则只返回公开文章
+     * @return
+     */
+    public List<Article> getTimeSortArticle(int uid, int size, User loginUser) {
+        if (uid == 0 && (loginUser == null || loginUser.getUid() == 0)) {
+            return getTimeSortArticle(size);
+        } else {
+            return getTimeSortArticle(uid, size, getVisibleArticles(uid, loginUser));
+        }
+    }
+
     private List<Entry<String, Integer>> staticTagRankList;
     private long tagRankListLastViewTime = new Date().getTime();
+    private int tagRankListLastViewSize = 0;
+
+    /**
+     * 得到缓存中每种标签数量从大到小的集合
+     *
+     * @param size
+     * @return
+     */
+    public List<Entry<String, Integer>> getTagCount(int size) {
+        List<Entry<String, Integer>> tagList = tagCount;
+        if (size == 0) { // site为0时，返回全部标签
+            return tagList;
+        }
+
+        long time = System.currentTimeMillis();
+        synchronized (this) {
+            if (size == tagRankListLastViewSize && staticTagRankList != null) {
+                if (time - 60 * 1000 * 15 < tagRankListLastViewTime) {
+                    return staticTagRankList;
+                }
+            }
+        }
+
+        List<Entry<String, Integer>> list = new ArrayList<Entry<String, Integer>>();
+        if (tagList.size() < size) {
+            size = tagList.size();
+        }
+        for (int i = 0; i < size; i++) {
+            list.add(tagList.get(i));
+        }
+        Collections.sort(list, new Comparator<Entry<String, Integer>>() {
+            //降序排序
+            public int compare(Entry<String, Integer> o1, Entry<String, Integer> o2) {
+                return -o1.getValue().compareTo(o2.getValue());
+            }
+        });
+
+        synchronized (this) {
+            tagRankListLastViewTime = time;
+            tagRankListLastViewSize = size;
+            staticTagRankList = list;
+        }
+        return list;
+    }
 
     /**
      * 得到每种标签数量从大到小的集合
@@ -476,17 +655,12 @@ public class Cache {
             tagList = initTool.initTagCount(articleMap, uid, false); // get the visible article List's  tags
         } else if (uid > 0) {
             tagList = initTool.initTagCount(articleMap, uid, true); // get the user's article tags
+        } else {
+            return getTagCount(size); // 直接返回缓存
         }
 
         if (size == 0) { // site为0时，返回全部标签
             return tagList;
-        }
-
-        long time = new Date().getTime();
-        if (visibleList == null && uid == 0 && staticTagRankList != null) {
-            if (time - 60 * 1000 * 15 < tagRankListLastViewTime) {
-                return staticTagRankList;
-            }
         }
 
         List<Entry<String, Integer>> list = new ArrayList<Entry<String, Integer>>();
@@ -502,22 +676,31 @@ public class Cache {
                 return -o1.getValue().compareTo(o2.getValue());
             }
         });
-        if (visibleList == null && uid == 0) {
-            tagRankListLastViewTime = time;
-            staticTagRankList = list;
-        }
         return list;
     }
 
     /**
      * 得到每种标签数量从大到小的集合
      *
-     * @param uid  是否查询所有还是单个用户 uid=0 为查询所有
-     * @param size list长度
+     * @param uid       是否查询所有还是单个用户 uid=0 为查询所有
+     * @param size      list长度
+     * @param loginUser 传入loginUser则鉴权，否则只返回公开文章
      * @return
      */
-    public List<Entry<String, Integer>> getTagCount(int uid, int size) {
-        return getTagCount(uid, size, null);
+    public List<Entry<String, Integer>> getTagCount(int uid, int size, User loginUser) {
+        if (uid == 0 && loginUser == null) {
+            return getTagCount(size);
+        } else {
+            return getTagCount(uid, size, getVisibleArticles(uid, loginUser));
+        }
+    }
+
+    /**
+     * 刷新tagCount公开缓存
+     */
+    public void calcRefreshTagCount() {
+        tagCount = initTool.initTagCount(articleBuffer, 0, true);
+        staticTagRankList = null;
     }
 
     /**
@@ -540,6 +723,9 @@ public class Cache {
         staticClickRankList = null;
         staticTimeRankList = null;
         staticTagRankList = null;
+        if (article.getPermission() == 0) {
+            calcRefreshTagCount();
+        }
     }
 
     /**
@@ -554,6 +740,7 @@ public class Cache {
         staticClickRankList = null;
         staticTimeRankList = null;
         staticTagRankList = null;
+        calcRefreshTagCount();
     }
 
     /**
@@ -688,6 +875,7 @@ public class Cache {
         staticClickRankList = null;
         staticTimeRankList = null;
         staticTagRankList = null;
+        calcRefreshTagCount();
     }
 
 
@@ -737,6 +925,7 @@ public class Cache {
      *
      * @param tag
      * @param step
+     * @deprecated 已失效
      */
     public void updateTagCount(String tag, int step) {
         boolean isFound = false;

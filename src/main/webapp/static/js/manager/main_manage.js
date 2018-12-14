@@ -27,22 +27,6 @@
 
     domReady(function () {
 
-        // 提示吐司  設置
-        toastr.options = {
-            "closeButton": true,
-            "debug": false,
-            "progressBar": false,
-            "positionClass": "toast-bottom-left",
-            "showDuration": "400",
-            "hideDuration": "1000",
-            "timeOut": "3500",
-            "extendedTimeOut": "1000",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "fadeIn",
-            "hideMethod": "fadeOut"
-        };
-
         $("#btn_reload_cache").click(function () {
             var modal = $("#modal_system_status");
             modal.find(".modal-title").text("重新初始化系统缓存");
@@ -96,7 +80,7 @@
                     }
                 });
             } else {
-                toastr.error("请输入值");
+                toastr.error("请输入值", "可输入 \"" + configMap.empty + "\" 表示空 ");
             }
 
         });

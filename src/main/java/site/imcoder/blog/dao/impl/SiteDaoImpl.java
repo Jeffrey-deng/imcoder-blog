@@ -8,7 +8,9 @@ import site.imcoder.blog.dao.CommonDao;
 import site.imcoder.blog.dao.ISiteDao;
 import site.imcoder.blog.entity.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 站点和统计类持久化类
@@ -133,5 +135,60 @@ public class SiteDaoImpl extends CommonDao implements ISiteDao {
         }
     }
 
+    /**
+     * 加载相册列表
+     *
+     * @param user 为null查找所有
+     * @return
+     */
+    @Override
+    public List<Album> loadAlbumTable(User user) {
+        return this.getSqlSession().selectList("site.findAlbumList", user);
+    }
 
+    /**
+     * 加载照片列表
+     *
+     * @param album 为null查找所有
+     * @return
+     */
+    @Override
+    public List<Photo> loadPhotoTable(Album album) {
+        return this.getSqlSession().selectList("site.findPhotoList", album);
+    }
+
+    /**
+     * 加载视频列表
+     *
+     * @param user 为null查找所有
+     * @return
+     */
+    @Override
+    public List<Video> loadVideoTable(User user) {
+        return this.getSqlSession().selectList("site.findVideoList", user);
+    }
+
+    /**
+     * 更新文章中的文件相对路径
+     *
+     * @param oldPath
+     * @param newPath
+     * @return
+     */
+    @Override
+    public int updateArticleFilePath(String oldPath, String newPath) {
+        try {
+            Map<String, String> map = new HashMap<String, String>();
+            map.put("oldPath", oldPath);
+            map.put("newPath", newPath);
+            int left = this.getSqlSession().update("updateArticleDetailFilePath", map);
+            int right = this.getSqlSession().update("updateArticleSummaryFilePath", map);
+            return left * right < 0 ? -1 : left * right;
+        } catch (Exception e) {
+            e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("updateArticleFilePath fail", e);
+            return -1;
+        }
+    }
 }

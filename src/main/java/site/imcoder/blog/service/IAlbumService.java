@@ -3,6 +3,7 @@ package site.imcoder.blog.service;
 import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.entity.Album;
 import site.imcoder.blog.entity.Photo;
+import site.imcoder.blog.entity.PhotoTagWrapper;
 import site.imcoder.blog.entity.User;
 
 import java.util.List;
@@ -152,4 +153,28 @@ public interface IAlbumService {
      * @return photos
      */
     public List<Photo> findPhotoList(String base, Photo photo, String logic_conn, int start, int size, User loginUser);
+
+    /**
+     * 查找照片集合
+     *
+     * @param base       在哪个基础之下查找
+     * @param photo
+     * @param logic_conn
+     * @param start
+     * @param size
+     * @param loginUser
+     * @param extend     查询的标签是否是扩展标签，tags参数值不支持正则匹配，只支持相等匹配
+     * @return photos
+     */
+    public List<Photo> findPhotoList(String base, Photo photo, String logic_conn, int start, int size, User loginUser, boolean extend);
+
+    /**
+     * 查询出用户设置的特殊标签
+     *
+     * @param tagWrapper
+     * @param loginUser
+     * @return
+     */
+    public List<PhotoTagWrapper> findPhotoTagWrappers(PhotoTagWrapper tagWrapper, User loginUser);
+
 }

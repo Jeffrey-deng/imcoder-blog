@@ -284,4 +284,53 @@
             </when>
         </choose>
     </select>
+
+    <!-- 扩展标签 -->
+    <resultMap id="photoTagResultMap" type="photoTagWrapper">
+        <result column="ptwid" property="ptwid"/>
+        <result column="uid" property="uid"/>
+        <result column="name" property="name"/>
+        <result column="extra" property="extra"/>
+        <result column="match_mode" property="match_mode"/>
+        <result column="pattern" property="pattern"/>
+        <result column="weight" property="weight"/>
+        <result column="scope" property="scope"/>
+        <result column="permission" property="permission"/>
+        <result column="description" property="description"/>
+    </resultMap>
+
+    <!-- 查询扩展标签 -->
+    <select id="findPhotoTagWrappers" parameterType="hashMap" resultMap="photoTagResultMap">
+        select t.ptwid, t.uid, t.name, t.extra, t.match_mode, t.pattern, t.weight, t.scope, t.permission, t.description
+        from photo_tag_wrapper t
+        <where>
+            <choose>
+                <when test="loginUser != null">
+                    (
+                    ( t.permission = 0 )
+                    OR
+                    ( t.permission = 1 and (t.uid = #{loginUser.uid} or t.uid in (select f.uid from friends f where
+                    f.fid = #{loginUser.uid})) )
+                    OR
+                    ( t.permission = 2 and t.uid = #{loginUser.uid} )
+                    )
+                </when>
+                <otherwise>
+                    t.permission = 0
+                </otherwise>
+            </choose>
+            <if test="wrapper != null">
+                <if test="wrapper.name != null and  wrapper.name != '' ">
+                    and name = #{wrapper.name}
+                </if>
+                <if test="wrapper.uid > 0">
+                    and uid = #{wrapper.uid}
+                </if>
+                <if test="wrapper.scope > 0">
+                    and scope = #{wrapper.scope}
+                </if>
+            </if>
+        </where>
+        order by t.weight desc
+    </select>
 </mapper>

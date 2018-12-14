@@ -1,4 +1,4 @@
-﻿<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
+﻿﻿<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
@@ -7,13 +7,14 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <!DOCTYPE html>
 <html class="no-js">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>标签广场 - 相册 | ImCODER's 博客</title>
     <meta name="description" content="相册标签广场">
     <meta name="keywords" content="相册,标签广场,ImCODER's 博客">
@@ -22,11 +23,11 @@
 
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <style>
         .padding {
             background-color: #f2f2f2;
@@ -43,7 +44,7 @@
                 <div class="" style="text-align:center;">
                     <c:if test="${not empty loginUser}">
                         <h1>${loginUser.nickname}</h1>
-                        <h3 style="font-size:16.5px;">${loginUser.description}</h3>
+                        <h3>${loginUser.description}</h3>
                     </c:if>
                     <c:if test="${empty loginUser}">
                         <h1>标签广场</h1>
@@ -84,7 +85,7 @@
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">教程</a></div>
+                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
@@ -192,20 +193,13 @@
             <article class="col-md-12 col-sm-12 col-xs-12" id="main" role="main">
 
                 <!-- 相册管理  start -->
-                <header class="post post-container" style="overflow:visible">
+                <header class="post post-container album_options" style="overflow:visible">
                     <h1 class="post-title" itemprop="name headline">
-                        <style>
-                            .post-title a:hover {
-                                text-decoration: none;
-                            }
-
-                            .post-title a {
-                                cursor: pointer
-                            }
-                        </style>
-                        <a itemtype="url" href="<%=basePath%>photo.do?method=user_albums" target="_blank">我的相册</a>
+                        <a class="option_my_albums" itemtype="url" href="<%=basePath%>photo.do?method=user_albums" target="_blank">我的相册</a>
+                        <a class="option_tags_condition" itemtype="url" href="<%=basePath%>photo.do?method=dashboard&model=photo" target="_blank" title="该过滤条件下的照片">查看条件</a>
                         <div style="float: right">
-                            <a itemtype="url" href="photo.do?method=tags_square" target="_blank">标签广场</a>
+                            <a class="option_tags_square" itemtype="url" href="photo.do?method=tags_square" target="_blank">标签广场</a>
+                            <a class="option_photo_square" itemtype="url" href="photo.do?method=dashboard&model=photo" target="_blank">照片广场</a>
                         </div>
                     </h1>
                 </header>
@@ -221,12 +215,12 @@
                 </article>
 
                 <!-- 底部区 start -->
-                <header class="post post-container row" style="width: 100%;display: inline-block;background-color: #f2f2f2;box-shadow: 0px 0px 1px 0.5px #ddd;">
-                    <ul class="post-meta" style="display: inline-block;margin-top: 3px;margin-bottom: 0px;font-size: 14px;">
+                <header class="post post-container row album-footer">
+                    <ul class="post-meta footer-left">
                         <li>数量: <a id="album_count">0</a></li>
                     </ul>
-                    <ul class="post-meta" style="display: inline-block;margin-top: 3px;margin-bottom: 0px;font-size: 14px;">
-                        <ol class="page-navigator" style="display: inline-block;margin: 0 auto;padding:0px;"></ol>
+                    <ul class="post-meta footer-right">
+                        <ol class="page-navigator"></ol>
                     </ul>
                 </header>
                 <!-- 底部区 end -->
@@ -252,15 +246,15 @@
 </div>
 
 <!-- login modal start -->
-<div style="margin-top:100px;" class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
-    <div style="width: 350px;" class="modal-dialog" role="document">
+<div class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
+    <div class="modal-dialog" role="document">
         <div class="modal-content animated flipInY">
             <div class="modal-header text-center">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <h2 class="modal-title" id="loginModalLabel">登录/<a href="user.do?method=toregister" target="_blank">注册</a></h2>
             </div>
             <form role="form" id="login_form">
-                <div class="modal-body" style="height:200px;">
+                <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
                         <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
@@ -297,7 +291,7 @@
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="album_tags_square"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="album_tags_square"></script>
 
 </body>
 </html>

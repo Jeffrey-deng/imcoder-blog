@@ -158,14 +158,7 @@ public class EventTriggerImpl implements IEventTrigger {
             article.setDetail("");
             cache.putArticle(article, user);
             cache.updateCategoryCount(article.getCategory(), 1);
-            for (String tag : article.getTags().split("#")) {
-                if (!tag.equals("")) {
-                    cache.updateTagCount(tag, 1);
-                }
-            }
-
             cache.updateUserArticleCount(user, 1);
-
             cache.siteBuffer.put("articleCount", (Integer) cache.siteBuffer.get("articleCount") + 1);
         }
     }
@@ -179,19 +172,10 @@ public class EventTriggerImpl implements IEventTrigger {
     @Override
     public void deleteArticle(Article article, User user) {
         if (article != null && user != null) {
-
             Article _article = cache.getArticle(article.getAid(), Cache.READ);
             cache.updateCategoryCount(_article.getCategory(), -1);
-            for (String tag : _article.getTags().split("#")) {
-                if (!tag.equals("")) {
-                    cache.updateTagCount(tag, -1);
-                }
-            }
-
             cache.updateUserArticleCount(user, -1);
-
             cache.removeArticle(article, user);
-
             cache.siteBuffer.put("articleCount", (Integer) cache.siteBuffer.get("articleCount") - 1);
         }
     }
@@ -206,25 +190,14 @@ public class EventTriggerImpl implements IEventTrigger {
         if (article != null && article.getAuthor() != null) {
             Article beforeArticle = cache.getArticle(article.getAid(), Cache.READ);
             cache.updateCategoryCount(beforeArticle.getCategory(), -1);
-            for (String tag : beforeArticle.getTags().split("#")) {
-                if (!tag.equals("")) {
-                    cache.updateTagCount(tag, -1);
-                }
-            }
 
             article.setDetail("");
             User author = article.getAuthor();
             User simpleAuthor = new User(author.getUid(), author.getUsername(), author.getNickname());
             article.setAuthor(simpleAuthor);
-            author = null;
             cache.updateArticle(article, user);
 
             cache.updateCategoryCount(article.getCategory(), 1);
-            for (String tag : article.getTags().split("#")) {
-                if (!tag.equals("")) {
-                    cache.updateTagCount(tag, 1);
-                }
-            }
         }
     }
 

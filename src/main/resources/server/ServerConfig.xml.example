@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Server>
 
+    <!-- 空值标记 -->
+    <property>
+        <param>empty</param>
+        <value>EMPTY</value>
+    </property>
+
     <!-- 博客域名
       主要用于邮件推送设置的域名 -->
     <property>
@@ -20,13 +26,26 @@
         <value>http://localhost:8080/blog/cloud/</value>
     </property>
 
+    <!-- 文件系统模式（local、remote、sync） -->
+    <property>
+        <param>cloud_file_system_mode</param>
+        <value>local</value>
+    </property>
+
+    <!-- oss配置文件地址 可使用前缀 classpath:  -->
+    <property>
+        <param>remote_oss_config_location</param>
+        <value>classpath:server/oss.properties</value>
+    </property>
+
     <!-- 上传文件存储相对路径 相对于其基础路径 -->
     <property>
         <param>article_upload_relativepath</param>
         <value>upload/</value>
     </property>
 
-    <!-- 上传文件存储基础路径 相对于context父文件夹，可以是绝对路径 -->
+    <!-- 上传文件存储基础路径 相对于context父文件夹，可以是绝对路径
+        仅对本地文件系统有效 -->
     <property>
         <param>article_upload_basepath</param>
         <value>blog/static/</value>
@@ -38,13 +57,38 @@
         <value>user/</value>
     </property>
 
-    <!-- 云盘文件存储基础路径 相对于context父文件夹，可以是绝对路径 -->
+    <!-- 云盘文件存储基础路径 相对于context父文件夹，可以是绝对路径，
+        仅对本地文件系统有效 -->
     <property>
         <param>cloud_file_basepath</param>
         <value>blog/cloud/</value>
     </property>
 
-    <!-- 垃圾回收路径 -->
+    <!-- 静态文件地址后缀(仅限js、css)
+        {time} 可取时间戳
+        {date} 可取yyMMdd     -->
+    <property>
+        <param>site_cdn_addr_args</param>
+        <value></value>
+    </property>
+
+    <!-- 浏览器端的配置
+        JSON格式： {"version": 1.0, "force": true, ...}
+        version: 为改配置的版本号，必填，修改配置后，设置新的版本号才会生效
+        force：强力升级，该方式为先删除客户端配置，再写入，可不填，不填为false
+        修改完成后，修改 SITE_CDN_ADDR_ARGS 为新值，客户端才会加载 -->
+    <property>
+        <param>site_client_config</param>
+        <value></value>
+    </property>
+
+    <!-- 图片文件预览参数，支持子集：@user_{uid}:{args} ，{col}可取到运行时显示的列数 -->
+    <property>
+        <param>cloud_photo_preview_args</param>
+        <value></value>
+    </property>
+
+    <!-- 垃圾回收路径，仅对本地文件系统有效 -->
     <property>
         <param>trash_recycle_basepath</param>
         <value>blog/cloud/.trash/</value>
@@ -56,9 +100,9 @@
         <value>0</value>
     </property>
 
-    <!-- “搜索帮助”对应的文章号 -->
+    <!-- “帮助”对应的文章号，支持子集：@{module}:{aid} -->
     <property>
-        <param>help_search_article_id</param>
+        <param>site_help_article_id</param>
         <value>0</value>
     </property>
 
@@ -163,7 +207,7 @@
     <!-- 首页置顶文章的数目 -->
     <property>
         <param>article_home_size_top</param>
-        <value>5</value>
+        <value>7</value>
     </property>
 
     <!-- 首页每个rank列表的文章数目 -->
@@ -194,6 +238,12 @@
     <property>
         <param>tool_speech_token_secret_key</param>
         <value></value>
+    </property>
+
+    <!-- 是否允许运行系统升级，true or false -->
+    <property>
+        <param>site_allow_run_upgrade</param>
+        <value>false</value>
     </property>
 
 </Server>

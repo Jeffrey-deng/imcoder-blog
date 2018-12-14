@@ -29,6 +29,9 @@
                     }
                 });
             },
+            "generatePhotoPreviewUrl": function (source, relativePath, hitCol) { // 生成预览图片url的函数
+                return source;
+            },
             "actionForEditAlbum": function (album) {
                 //var albumDom = this.utils.getAlbumDom(album.album_id);
                 return;
@@ -61,15 +64,16 @@
             "album_count": "#album_count"
         },
         page_params: {
-            "pageSize": 40,
+            "pageSize": 0, // 设置0为自适应：列数 * 10
             "pageCount": 0,
             "pageNum": 1,
             "col": undefined,
             "default_col": {
-                "1200": 4,
+                "2000": 4,
+                "1800": 4,
+                "1600": 4,
                 "940": 3,
-                "520": 3,
-                "400": 2
+                "720": 2
             }
         },
         load_condition: null,
@@ -83,13 +87,18 @@
             pointer.albums = data.albums;
             pointer.count = data.albums ? data.albums.length : 0;
 
+            if (config.page_params.pageSize == 0) {
+                config.page_params.default_size = 0;
+            }
+            config.page_params.pageCount = utils.calcPageCount();
+
             if (pointer.albums != null) {
-                config.page_params.pageCount = utils.calcPageCount();
                 jumpPage(config.page_params.pageNum);
             }
 
             utils.updateAlbumCountInPage();
             $(window).resize(function () {
+                config.calc_real_col_completed = false;
                 utils.calcNavLocation();
             });
 
@@ -120,6 +129,7 @@
     };
 
     var jumpPage = function (pagenum) {
+        config.page_params.pageCount = utils.calcPageCount();
         var albums = pointer.albums,
             pageSize = config.page_params.pageSize;
 
@@ -227,8 +237,7 @@
 
     // 瀑布流
     var initWaterfallFlow = function () {
-        var default_col = config.page_params.default_col;
-        var col = config.page_params.col;
+        var real_col = config.page_params.real_col;
         if (pointer.masonryInstance == null) {
             pointer.masonryInstance = new Macy({
                 container: '#' + config.selector.albumsContainer_id, // 图像列表容器id
@@ -241,30 +250,36 @@
                     y: 30
                 },
                 //设置列数
-                columns: col || default_col["1200"],
+                columns: real_col["2000"],
                 //定义不同分辨率（1200，940，520，400这些是分辨率）
                 breakAt: {
-                    1200: {
-                        columns: col || default_col["1200"],
+                    1800: {
+                        columns: real_col["1800"],
+                        margin: {
+                            x: 20,
+                            y: 30
+                        }
+                    },
+                    1600: {
+                        columns: real_col["1600"],
                         margin: {
                             x: 20,
                             y: 30
                         }
                     },
                     940: {
-                        columns: col || default_col["940"],
+                        columns: real_col["940"],
                         margin: {
                             x: 20,
                             y: 20
                         }
                     },
-                    520: {
-                        columns: col || default_col["520"],
-                        margin: 20
-                    },
-                    400: {
-                        columns: col || default_col["400"],
-                        margin: 20
+                    720: {
+                        columns: real_col["720"],
+                        margin: {
+                            x: 20,
+                            y: 20
+                        }
                     }
                 }
             });
@@ -336,7 +351,7 @@
             a.href = config.album_href_prefix + album.album_id;
             div.appendChild(a);
             var img = document.createElement("img");
-            img.setAttribute("src", config.path_params.cloudPath + album.cover.path);
+            img.setAttribute("src", config.callback.generatePhotoPreviewUrl.call(context, config.path_params.cloudPath + album.cover.path, album.cover.path, config.page_params.real_col[config.hitColKey]));
             //img.className = "img-thumbnail";
             a.appendChild(img);
 
@@ -380,7 +395,7 @@
         "deleteAlbumInPage": function (album_id) {
             utils.getAlbumDom(album_id).remove();
             var albums = pointer.albums;
-            var index = albums.indexOf(utils.getPhotoByCache(album_id));
+            var index = albums.indexOf(utils.getAlbumByCache(album_id));
             albums.splice(index, 1);
             utils.updateAlbumCountInPage();
             jumpPage(config.page_params.pageNum);
@@ -392,10 +407,8 @@
         "createNavLiNode": function (pageNum, isActive) {
             var li = document.createElement("li");
             li.className = isActive ? "current" : "";
-            li.style = "padding: 0px;margin: 0px;cursor: pointer";
             li.title = "第" + pageNum + "页";
             var a = document.createElement("a");
-            a.style = "height:20px;line-height: 20px;";
             a.setAttribute("jumpPage", pageNum);
             a.innerHTML = pageNum;
             li.appendChild(a);
@@ -415,7 +428,44 @@
                 right.css("margin-left", "").css("width", "100%").css("display", "block");
             }
         },
+        "calcRealCol": function () { // 计算每种分辨率下实际的列数
+            // 优先级：地址栏指定 > 用户本地设置 > 默认设置
+            if (config.calc_real_col_completed == true) {
+                return config.hitColKey;
+            } else {
+                var col = config.page_params.col; // col指定时则强制修改列数
+                var default_col = config.page_params.default_col;
+                var widthKeys = Object.keys(default_col);
+                var w = window.innerWidth;
+                widthKeys.sort(function (left, right) { // 降序
+                    return parseInt(right) - parseInt(left);
+                });
+                var real_col = config.page_params.real_col; // 保存实际的列数
+                if (!config.page_params.real_col) {
+                    real_col = $.extend({}, config.page_params.default_col);
+                    config.page_params.real_col = real_col;
+                }
+                var hitKey = null; // 当前页面宽度命中的key
+                for (var i = widthKeys.length - 1; i >= 0; i--) {
+                    var widthKey = widthKeys[i];
+                    real_col[widthKey] = (col || default_col[widthKey]);
+                    if (hitKey == null && w < parseInt(widthKey)) {
+                        hitKey = widthKey;
+                    }
+                }
+                if (hitKey == null) {
+                    hitKey = widthKeys[0];
+                }
+                config.hitColKey = hitKey;
+                config.calc_real_col_completed = true;
+                return hitKey;
+            }
+        },
         "calcPageCount": function () {
+            var hitKey = utils.calcRealCol();
+            var hitCol = config.page_params.real_col[hitKey]; // 当前显示的列数
+            // 一页照片数量自适应时是：列数 * 10
+            config.page_params.pageSize = (config.page_params.default_size == 0 ? (hitCol * 10) : config.page_params.pageSize);
             return Math.ceil(pointer.albums.length / config.page_params.pageSize);
         },
         "updateAlbumCountInPage": function () {
@@ -425,6 +475,9 @@
             $(config.selector.album_count).text(pointer.count);
         },
         "revisePageNum": function (pagenum) {
+            if (isNaN(pagenum)) {
+                return 1;
+            }
             pagenum = parseInt(pagenum);
             var pageCount = config.page_params.pageCount;
             pageCount < pagenum && (pagenum = pageCount);

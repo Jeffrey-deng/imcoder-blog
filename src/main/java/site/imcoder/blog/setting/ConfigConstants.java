@@ -7,6 +7,11 @@ package site.imcoder.blog.setting;
 public class ConfigConstants {
 
     /**
+     * 空值标志
+     */
+    public static final String EMPTY = "empty";
+
+    /**
      * 配置文件路径，配置在web.xml下 init-param 标签，值为相对应用根目录路径
      */
     public static final String SERVER_CONFIG_LOCATION = "serverConfigLocation";
@@ -25,6 +30,16 @@ public class ConfigConstants {
      * cloud地址，以"/"结尾
      */
     public static final String SITE_CLOUD_ADDR = "site_cloud_addr";
+
+    /**
+     * 文件系统模式（local、remote、sync）
+     */
+    public static final String CLOUD_FILE_SYSTEM_MODE = "cloud_file_system_mode";
+
+    /**
+     * oss配置文件地址
+     */
+    public static final String REMOTE_OSS_CONFIG_LOCATION = "remote_oss_config_location";
 
     /**
      * 上传文件存储相对路径 相对于其基础路径
@@ -47,14 +62,41 @@ public class ConfigConstants {
     public static final String CLOUD_FILE_BASEPATH = "cloud_file_basepath";
 
     /**
+     * 静态文件地址后缀(仅限js、css)
+     * {time} 可取时间戳
+     * {date} 可取yyMMdd
+     */
+    public static final String SITE_CDN_ADDR_ARGS = "site_cdn_addr_args";
+
+    /**
+     * 图片文件预览参数，支持子集：@user_{uid}:{args} ，{col}可取到运行时显示的列数
+     */
+    public static final String CLOUD_PHOTO_PREVIEW_ARGS = "cloud_photo_preview_args";
+
+    /**
      * 垃圾回收路径
      */
     public static final String TRASH_RECYCLE_BASEPATH = "trash_recycle_basepath";
 
     /**
+     * 项目context目录
+     */
+    public static final String SITE_CONTEXT_REAL_PATH = "site_context_real_path";
+
+    /**
+     * 项目context父目录
+     */
+    public static final String SITE_CONTEXT_FATHER_REAL_PATH = "site_context_father_real_path";
+
+    /**
      * ”关于我“ 对应的文章号
      */
     public static final String SITE_ABOUT_ARTICLE_ID = "site_about_article_id";
+
+    /**
+     * “帮助”对应的文章号，支持子集：@{module}:{aid}
+     */
+    public static final String SITE_HELP_ARTICLE_ID = "site_help_article_id";
 
     /**
      * 登录严格模式将校验IP
@@ -157,51 +199,20 @@ public class ConfigConstants {
     public static final String TOOL_SPEECH_TOKEN_SECRET_KEY = "tool_speech_token_secret_key";
 
     /**
-     * 帮助模块枚举类
+     * 浏览器端的配置
+     * <pre>
+     *  JSON格式： {"version": 1.0, "force": true, ...}
+     *  version: 为改配置的版本号，必填，修改配置后，设置 <b>新的版本号</b> 才会生效
+     *  force：强力升级，该方式为先删除客户端配置，再写入，可不填，不填为false
+     *  </pre>
+     * <p>
+     * 修改完成后，修改 {@link #SITE_CDN_ADDR_ARGS } 为新值，客户端才会加载
      */
-    public enum HelpConfigEnum {
+    public static final String SITE_CLIENT_CONFIG = "site_client_config";
 
-        TEMPLATE("template", "help_{module}_article_id"),
-        SEARCH("search", "help_search_article_id"),
-        ARTICLE("article", "help_article_detail_article_id"),
-        ARTICLE_DETAIL("article_detail", "help_article_detail_article_id"),
-        ARTICLE_EDIT("article_edit", "help_article_edit_article_id"),
-        ALBUM("album", "help_album_article_id"),
-        TOOL("tool", "help_tool_article_id");
+    /**
+     * 是否允许运行系统升级，true or false
+     */
+    public static final String SITE_ALLOW_RUN_UPGRADE = "site_allow_run_upgrade";
 
-        private String moduleName;
-        private String moduleConfigKey;
-
-        HelpConfigEnum(String moduleName, String moduleConfigKey) {
-            this.moduleName = moduleName;
-            this.moduleConfigKey = moduleConfigKey;
-        }
-
-        public String getModuleAlias() {
-            return moduleName;
-        }
-
-        public String getModuleConfigKey() {
-            return moduleConfigKey;
-        }
-
-        // 由模块别名得到配置名
-        public static String getModuleConfigKey(String moduleAlias) {
-            for (HelpConfigEnum module : values()) {
-                if (module.getModuleAlias().equals(moduleAlias)) {
-                    return module.getModuleConfigKey();
-                }
-            }
-            return HelpConfigEnum.TEMPLATE.getModuleConfigKey().replace("{module}", moduleAlias);
-        }
-
-        public static HelpConfigEnum valueOfName(String moduleName) {
-            for (HelpConfigEnum module : values()) {
-                if (module.getModuleConfigKey().equals(moduleName)) {
-                    return module;
-                }
-            }
-            return null;
-        }
-    }
 }

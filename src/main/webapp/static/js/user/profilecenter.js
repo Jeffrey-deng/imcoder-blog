@@ -191,7 +191,6 @@
                     toastr.error(data.info, "更新失败！");
                     console.warn("Error Code: " + data.flag);
                 }
-
             },
             error: function () {
                 toastr.error('更新失败！');
@@ -216,30 +215,48 @@
         }
     }
 
+    //保存验证正确的的验证码
+    var validateCode;
+
     function initAccountForm() {
 
         $('#submit_account').attr('disabled', "true");
 
         //发送验证邮件事件
         $('#sendValidateMailBtn').click(function () {
+            var _self = $(this);
             sendValidateMail();
             $('#validateMailModal').modal({backdrop: 'static', keyboard: false});
-            $('#sendValidateMailBtn').attr('disabled', "true").html("发送验证邮件（30s后可再发送）");
+            _self.attr('disabled', "true").html("发送验证邮件（30s后可再发送）");
+            var num = 30;
+            var time_inter = window.setInterval(function () {
+                _self.html("发送验证邮件（" + (--num) + "s后可再发送）");
+            }, 1000);
             setTimeout(function () {
-                $('#sendValidateMailBtn').removeAttr("disabled").html("发送验证邮件");
-            }, 30 * 1000);
+                window.clearInterval(time_inter);
+                _self.removeAttr("disabled").html("发送验证邮件（30s后可再发送）");
+            }, 30 * 1000 + 10);
         });
         //检查验证码是否正确事件
         $('#validateMailBtn').click(function () {
             var code = $('#validateMailForm').find('input[name="validateCode"]').eq(0).val().replace(/(^\s*)|(\s*$)/g, '');
-            if (code.toLowerCase() == validateCode.toLowerCase()) {
-                toastr.success('验证成功！');
-                $('#validateMailModal').modal('hide');
-                $('#account_form').find("input").removeAttr("disabled");
-                $('#sendValidateMailBtn').hide();
-                $('#submit_account').removeAttr("disabled");
+            if (code) {
+                $.get("site.do?method=checkValidateCode", {"code": code}, function (data) {
+                    if (data.flag == 200) {
+                        toastr.success('验证成功！');
+                        validateCode = code; // 保存，提交请求时再提交
+                        $('#validateMailModal').modal('hide');
+                        $('#account_form').find("input").removeAttr("disabled");
+                        $('#submit_account').removeAttr("disabled");
+                        $('#sendValidateMailBtn').hide();
+                    } else {
+                        validateCode = null;
+                        toastr.error(data.info, data.flag);
+                        console.warn("Error Code: " + data.flag);
+                    }
+                });
             } else {
-                toastr.error('验证码错误！');
+                toastr.error("请输入验证码~");
             }
         });
         //检查email
@@ -351,35 +368,34 @@
         });
     }
 
-    //保存返回的验证码
-    var validateCode;
     //发送验证码邮件
     function sendValidateMail() {
         $.ajax({
-            url: 'site.do?method=sendValidateMail',
+            url: 'site.do?method=sendValidateCode',
             type: "POST",
             success: function (data) {
-                if (data) {
-                    validateCode = data;
-                    toastr.success('已发送验证邮件！');
+                if (data.flag == 200) {
+                    toastr.success("验证邮件发送成功！");
                 } else {
-                    toastr.error('验证邮件发送失败！');
+                    toastr.error(data.info, "错误");
+                    console.warn("Error Code: " + data.flag);
                 }
             },
-            error: function () {
-                toastr.error('验证邮件发送失败！');
+            error: function (XHR, TS) {
+                toastr.error(TS, '验证邮件发送失败！');
             }
         });
     }
 
     function updateAccount() {
+        var form = $('#account_form');
         var data = {};
-        //服务端再与Session中的验证码验证，防止修改html破解
-        data['validateCode'] = validateCode;
-        data['email'] = $('#account_form').find('input[name="email"]').val();
-        data['username'] = $('#account_form').find('input[name="username"]').val();
-        if ($('#account_form').find('input[name="confirmpw"]').val() != "") {
-            data['password'] = $('#account_form').find('input[name="confirmpw"]').val()
+        //服务端再与Session中的验证码验证，防止修改html手动触发发送
+        data.validateCode = validateCode;
+        data.email = form.find('input[name="email"]').val();
+        data.username = form.find('input[name="username"]').val();
+        if (form.find('input[name="confirmpw"]').val() != "") {
+            data.password = form.find('input[name="confirmpw"]').val();
         }
         $.ajax({
             url: "user.do?method=updateAccount",
@@ -387,7 +403,7 @@
             data: data,
             success: function (data) {
                 if (data.flag == 200) {
-                    window.location.href = "user.do?method=jumpLogin&username=" + $('#account_form').find('input[name="username"]').val();
+                    window.location.href = "user.do?method=jumpLogin&username=" + form.find('input[name="username"]').val();
                 } else {
                     toastr.error(data.info, "保存失败！");
                     console.warn("Error Code: " + data.flag);
@@ -395,7 +411,7 @@
             },
             error: function () {
                 toastr.error('保存失败！');
-                console.log('修改账号信息失败！');
+                console.warn('修改账号信息失败！');
             }
         });
     }
@@ -629,7 +645,7 @@
 
         if ($(window).width() > 768) {
             $('#chat_Modal').find('.modal-dialog').css({
-                'margin-top': $(window).height() / 2 - 604 / 2
+                'margin-top': $(window).height() / 2 - (805 / 2)
             });
         }
 
@@ -661,9 +677,10 @@
                             html += ' <td class="mail-subject"><a>' + arr[0].content.replace(/<img.*?>/g, "[图片]") + '</a></td>';
                             html += '<td class=""><i class="fa fa-paperclip"></i></td>';
                             html += '<td class="text-right mail-date">' + arr[0].send_time + '</td></tr>';
-
-                            $('#newestMsgTime').html(arr[0].send_time);
                         });
+                        if (Object.keys(formatLetterList).length > 0) {
+                            $('#newestMsgTime').html(Object.values(formatLetterList)[0][0].send_time);
+                        }
                         count += data.letters.length;
                     }
                     if (data.sysMsgs != null) {
@@ -861,7 +878,7 @@
     function sendLetter() {
         var content = $('#sendLetter_area').val();
         var r_uid = $('#currentLetterContent').attr('uid');
-        var send_time = ( new Date() ).getTime();
+        var send_time = new Date().getTime();
         if (content.length > 0 && r_uid != undefined && r_uid != '') {
             $.ajax({
                 url: 'user.do?method=sendLetter',
@@ -876,7 +893,7 @@
                         var letter = {};
                         letter['s_uid'] = $uid;
                         letter['content'] = content;
-                        letter['send_time'] = send_time;
+                        letter['send_time'] = common_utils.formatDate(send_time, "yyyy-MM-dd | hh:mm:ss");
                         if (!formatLetterList[r_uid]) {
                             formatLetterList[r_uid] = [];
                         }
@@ -940,16 +957,18 @@
             "photo_page": {
                 "full_background": false,
                 "default_col": {
-                    "1200": 4,
+                    "2000": 6,
+                    "1800": 5,
+                    "1600": 4,
                     "940": 3,
-                    "520": 3,
-                    "400": 2
+                    "720": 2
                 },
-                "default_size": 40,
-                "default_query_size": 520,
+                "default_size": 0,
+                "default_query_size": 600,
                 "video": {
                     "load_mode": "popupLoad",
                     "popup_iframe_border": true,
+                    "popup_video_border": false,
                     "popup_btn_display": "inline",
                     "popup_height_scale": 0.91,
                     "popup_hide_btn": true
@@ -958,15 +977,17 @@
                     "width": 500,
                     "height": 500,
                     "scale": 1.6
-                }
+                },
+                "preview_compress": true
             },
             "album_page": {
                 "full_background": false,
                 "default_col": {
-                    "1200": 4,
+                    "2000": 4,
+                    "1800": 4,
+                    "1600": 4,
                     "940": 3,
-                    "520": 3,
-                    "400": 2
+                    "720": 2
                 },
                 "default_size": 40
             }
@@ -998,6 +1019,11 @@
         } else {
             settingTab.find('#setting_album_form input[name="setting_full_background_photo"][value="false"]').prop("checked", true);
         }
+        if (albumConfig.photo_page.preview_compress) {
+            settingTab.find('#setting_album_form input[name="setting_photo_preview_compress"][value="true"]').prop("checked", true);
+        } else {
+            settingTab.find('#setting_album_form input[name="setting_photo_preview_compress"][value="false"]').prop("checked", true);
+        }
         settingTab.find('#setting_album_form input[name="setting_blow_up_width"]').val(albumConfig.photo_page.blow_up.width);
         settingTab.find('#setting_album_form input[name="setting_blow_up_height"]').val(albumConfig.photo_page.blow_up.height);
         settingTab.find('#setting_album_form input[name="setting_blow_up_scale"]').val(albumConfig.photo_page.blow_up.scale);
@@ -1011,6 +1037,11 @@
         } else {
             settingTab.find('#setting_album_form input[name="setting_video_iframe_border"][value="false"]').prop("checked", true);
         }
+        if (albumConfig.photo_page.video.popup_video_border) {
+            settingTab.find('#setting_album_form input[name="setting_video_video_border"][value="true"]').prop("checked", true);
+        } else {
+            settingTab.find('#setting_album_form input[name="setting_video_video_border"][value="false"]').prop("checked", true);
+        }
         settingTab.find('#setting_album_form input[name="setting_popup_btn_display"]').each(function (i, mode) {
             if (mode.value == albumConfig.photo_page.video.popup_btn_display) {
                 $(mode).prop("checked", true);
@@ -1022,10 +1053,11 @@
             settingTab.find('#setting_album_form input[name="setting_popup_hide_btn"][value="false"]').prop("checked", true);
         }
         settingTab.find('#setting_album_form input[name="setting_video_height_scale"]').val(albumConfig.photo_page.video.popup_height_scale);
-        settingTab.find('#setting_album_form input[name="setting_default_col_photo_1200"]').val(albumConfig.photo_page.default_col["1200"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_photo_2000"]').val(albumConfig.photo_page.default_col["2000"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_photo_1800"]').val(albumConfig.photo_page.default_col["1800"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_photo_1600"]').val(albumConfig.photo_page.default_col["1600"]);
         settingTab.find('#setting_album_form input[name="setting_default_col_photo_940"]').val(albumConfig.photo_page.default_col["940"]);
-        settingTab.find('#setting_album_form input[name="setting_default_col_photo_520"]').val(albumConfig.photo_page.default_col["520"]);
-        settingTab.find('#setting_album_form input[name="setting_default_col_photo_400"]').val(albumConfig.photo_page.default_col["400"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_photo_720"]').val(albumConfig.photo_page.default_col["720"]);
         settingTab.find('#setting_album_form input[name="setting_default_size_photo"]').val(albumConfig.photo_page.default_size);
         settingTab.find('#setting_album_form input[name="setting_default_query_size"]').val(albumConfig.photo_page.default_query_size);
 
@@ -1035,10 +1067,11 @@
         } else {
             settingTab.find('#setting_album_form input[name="setting_full_background_album"][value="false"]').prop("checked", true);
         }
-        settingTab.find('#setting_album_form input[name="setting_default_col_album_1200"]').val(albumConfig.album_page.default_col["1200"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_album_2000"]').val(albumConfig.album_page.default_col["2000"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_album_1800"]').val(albumConfig.album_page.default_col["1800"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_album_1600"]').val(albumConfig.album_page.default_col["1600"]);
         settingTab.find('#setting_album_form input[name="setting_default_col_album_940"]').val(albumConfig.album_page.default_col["940"]);
-        settingTab.find('#setting_album_form input[name="setting_default_col_album_520"]').val(albumConfig.album_page.default_col["520"]);
-        settingTab.find('#setting_album_form input[name="setting_default_col_album_400"]').val(albumConfig.album_page.default_col["400"]);
+        settingTab.find('#setting_album_form input[name="setting_default_col_album_720"]').val(albumConfig.album_page.default_col["720"]);
         settingTab.find('#setting_album_form input[name="setting_default_size_album"]').val(albumConfig.album_page.default_size);
 
         // 点击保存事件
@@ -1074,9 +1107,11 @@
             // photo_page
             config.photo_page = {};
             config.photo_page.full_background = settingTab.find('#setting_album_form input[name="setting_full_background_photo"]:checked').val() == "true" ? true : false;
+            config.photo_page.preview_compress = settingTab.find('#setting_album_form input[name="setting_photo_preview_compress"]:checked').val() == "true" ? true : false;
             config.photo_page.video = {};
             config.photo_page.video.load_mode = settingTab.find('#setting_album_form input[name="setting_video_load_mode"]:checked').val();
             config.photo_page.video.popup_iframe_border = settingTab.find('#setting_album_form input[name="setting_video_iframe_border"]:checked').val() == "true" ? true : false;
+            config.photo_page.video.popup_video_border = settingTab.find('#setting_album_form input[name="setting_video_video_border"]:checked').val() == "true" ? true : false;
             config.photo_page.video.popup_btn_display = settingTab.find('#setting_album_form input[name="setting_popup_btn_display"]:checked').val();
             config.photo_page.video.popup_hide_btn = settingTab.find('#setting_album_form input[name="setting_popup_hide_btn"]:checked').val() == "true" ? true : false;
             var height_scale = settingTab.find('#setting_album_form input[name="setting_video_height_scale"]').val();
@@ -1105,20 +1140,22 @@
             config.photo_page.blow_up.height = parseInt(blow_up_height);
             config.photo_page.blow_up.scale = parseFloat(blow_up_scale);
             config.photo_page.default_col = {};
-            config.photo_page.default_col["1200"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_1200"]').val());
+            config.photo_page.default_col["2000"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_2000"]').val());
+            config.photo_page.default_col["1800"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_1800"]').val());
+            config.photo_page.default_col["1600"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_1600"]').val());
             config.photo_page.default_col["940"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_940"]').val());
-            config.photo_page.default_col["520"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_520"]').val());
-            config.photo_page.default_col["400"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_400"]').val());
+            config.photo_page.default_col["720"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_720"]').val());
             config.photo_page.default_size = parseInt(settingTab.find('#setting_album_form input[name="setting_default_size_photo"]').val());
             config.photo_page.default_query_size = parseInt(settingTab.find('#setting_album_form input[name="setting_default_query_size"]').val());
             // album_page
             config.album_page = {};
             config.album_page.full_background = settingTab.find('#setting_album_form input[name="setting_full_background_album"]:checked').val() == "true" ? true : false;
             config.album_page.default_col = {};
-            config.album_page.default_col["1200"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_1200"]').val());
+            config.album_page.default_col["2000"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_2000"]').val());
+            config.album_page.default_col["1800"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_1800"]').val());
+            config.album_page.default_col["1600"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_1600"]').val());
             config.album_page.default_col["940"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_940"]').val());
-            config.album_page.default_col["520"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_520"]').val());
-            config.album_page.default_col["400"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_400"]').val());
+            config.album_page.default_col["720"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_720"]').val());
             config.album_page.default_size = parseInt(settingTab.find('#setting_album_form input[name="setting_default_size_album"]').val());
             common_utils.setLocalConfig("album", config);
             toastr.success("相册配置保存成功！", "", {"progressBar": false});

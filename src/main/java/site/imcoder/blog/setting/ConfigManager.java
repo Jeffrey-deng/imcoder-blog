@@ -9,13 +9,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import site.imcoder.blog.common.AudioUtil;
 import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.service.IFileService;
 
 import javax.servlet.ServletContext;
 import java.io.*;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 /**
  * 配置管理类
@@ -57,6 +55,40 @@ public class ConfigManager {
         }
     }
 
+    public static Properties loadProperties(String filePath) {
+        return loadProperties(filePath, "");
+    }
+
+    public static Properties loadProperties(String filePath, String alias) {
+        if (filePath == null || filePath.length() == 0) {
+            return null;
+        }
+        Properties properties = new Properties();
+        BufferedReader bufferedReader = null;
+        try {
+            bufferedReader = new BufferedReader(new FileReader(filePath));
+            properties.load(bufferedReader);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            logger.error(alias + "文件流读取出错, 文件未找到: " + filePath, e);
+            return null;
+        } catch (IOException e) {
+            e.printStackTrace();
+            logger.error(alias + "文件流读取出错", e);
+            return null;
+        } finally {
+            if (bufferedReader != null) {
+                try {
+                    bufferedReader.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    logger.error(alias + "文件流关闭出错", e);
+                }
+            }
+        }
+        return properties;
+    }
+
     private void initLogFilePath() {
         String default_info_path = Config.get(ConfigConstants.LOG_FILE_INFO_PATH);
         String default_warn_path = Config.get(ConfigConstants.LOG_FILE_WARN_PATH);
@@ -65,11 +97,8 @@ public class ConfigManager {
             String path = servletContext.getInitParameter(Config.get(ConfigConstants.LOG_CONFIG_PATH_PARAM_NAME));
             String filePath = this.convertClassPathAndGetRealPath(path);
             if (filePath != null) {
-                Properties properties = new Properties();
-                BufferedReader bufferedReader = null;
-                try {
-                    bufferedReader = new BufferedReader(new FileReader(filePath));
-                    properties.load(bufferedReader);
+                Properties properties = loadProperties(filePath, "日志");
+                if (properties != null) {
                     Enumeration<String> enumeration = (Enumeration<String>) properties.propertyNames();
                     while (enumeration.hasMoreElements()) {
                         String name = enumeration.nextElement();
@@ -79,21 +108,6 @@ public class ConfigManager {
                             initAssignment(ConfigConstants.LOG_FILE_WARN_PATH, properties.getProperty(name).trim());
                         } else if (default_error_path == null && name.endsWith("Error.File")) {
                             initAssignment(ConfigConstants.LOG_FILE_ERROR_PATH, properties.getProperty(name).trim());
-                        }
-                    }
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                    logger.error("日志文件流读取出错, 文件未找到: " + filePath, e);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    logger.error("日志文件流读取出错", e);
-                } finally {
-                    if (bufferedReader != null) {
-                        try {
-                            bufferedReader.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                            logger.error("日志文件流关闭出错", e);
                         }
                     }
                 }
@@ -109,6 +123,12 @@ public class ConfigManager {
         loadConfigFromXML(Config.get(ConfigConstants.SERVER_CONFIG_LOCATION), "init");
         initLogFilePath();
         AudioUtil.updateTokenInfo();
+        if (IFileService.Mode.REMOTE.value.equals(Config.get(ConfigConstants.CLOUD_FILE_SYSTEM_MODE))) {
+            Config.set(ConfigConstants.CLOUD_FILE_BASEPATH, "");
+            Config.set(ConfigConstants.ARTICLE_UPLOAD_BASEPATH, "");
+            Config.set(ConfigConstants.TRASH_RECYCLE_BASEPATH, "");
+            logger.info("远程文件系统模式下，重置各basePath为空");
+        }
         for (Map.Entry<String, String> entry : Config.getAll().entrySet()) {
             // 输出日志
             logger.info("设置 \"" + entry.getKey() + "\" : " + getPublicValue(entry.getKey(), entry.getValue()));
@@ -128,9 +148,16 @@ public class ConfigManager {
      * @param key
      * @param value
      */
-    public void updateConfig(String key, String value) {
+    public boolean updateConfig(String key, String value) {
         if (key != null && value != null && !key.equals("") && !value.equals("")) {
-            updateAssignment(key, value);
+            if (value.equals(Config.get(ConfigConstants.EMPTY))) {
+                updateAssignment(key, "");
+            } else {
+                updateAssignment(key, value);
+            }
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -163,6 +190,9 @@ public class ConfigManager {
             String key = kv.elementTextTrim("param");
             String value = kv.elementTextTrim("value");
             if (key != null && value != null && !key.equals("") && !value.equals("")) {
+                if (value.equals(Config.get(ConfigConstants.EMPTY))) {
+                    value = "";
+                }
                 if ("init".equalsIgnoreCase(type)) {
                     initAssignment(key.toLowerCase(), value);
                 } else if ("update".equalsIgnoreCase(type)) {
@@ -176,12 +206,32 @@ public class ConfigManager {
         if (key.equals(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) || key.equals(ConfigConstants.CLOUD_FILE_BASEPATH) || key.equals(ConfigConstants.TRASH_RECYCLE_BASEPATH)) {
             value = getRealFromConfigBasePath(value);
         }
+        if (key.equals(ConfigConstants.REMOTE_OSS_CONFIG_LOCATION)) {
+            value = convertClassPathAndGetRealPath(value);
+        }
+        if (key.equals(ConfigConstants.SITE_CDN_ADDR_ARGS)) {
+            Date date = new Date();
+            value = value.replace("{time}", date.getTime() + "").replace("{date}", Utils.formatDate(date, "yyMMdd"));
+        }
         Config.set(key, value);
     }
 
     private void updateAssignment(String key, String value) {
+        if (key.equals(ConfigConstants.CLOUD_FILE_SYSTEM_MODE)) {
+            logger.warn("更改文件系统模式 \"" + key + "\" , 只能通过重启，不能热更新~");
+            return;
+        }
         if (key.equals(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) || key.equals(ConfigConstants.CLOUD_FILE_BASEPATH) || key.equals(ConfigConstants.TRASH_RECYCLE_BASEPATH)) {
-            value = getRealFromConfigBasePath(value);
+            if (!IFileService.Mode.REMOTE.value.equals(Config.get(ConfigConstants.CLOUD_FILE_SYSTEM_MODE))) {
+                value = getRealFromConfigBasePath(value);
+            }
+        }
+        if (key.equals(ConfigConstants.REMOTE_OSS_CONFIG_LOCATION)) {
+            value = convertClassPathAndGetRealPath(value);
+        }
+        if (key.equals(ConfigConstants.SITE_CDN_ADDR_ARGS)) {
+            Date date = new Date();
+            value = value.replace("{time}", date.getTime() + "").replace("{date}", Utils.formatDate(date, "yyMMdd"));
         }
         String preValue = Config.get(key);
         if (value.equals(preValue)) {
@@ -256,6 +306,10 @@ public class ConfigManager {
     }
 
     public void setDefault() {
+
+        //空值标志
+        Config.set(ConfigConstants.EMPTY, "EMPTY");
+
         //博客网址
         Config.set(ConfigConstants.SITE_ADDR, "http://localhost:8080/blog/");
 
@@ -277,11 +331,26 @@ public class ConfigManager {
         //云盘文件存储基础路径 相对于context父文件夹
         Config.set(ConfigConstants.CLOUD_FILE_BASEPATH, getRealFromConfigBasePath("blog/cloud/"));
 
+        //静态文件地址后缀(仅限js、css)
+        Config.set(ConfigConstants.SITE_CDN_ADDR_ARGS, "");
+
+        //图片文件预览参数
+        Config.set(ConfigConstants.CLOUD_PHOTO_PREVIEW_ARGS, "");
+
         //垃圾回收路径
         Config.set(ConfigConstants.TRASH_RECYCLE_BASEPATH, getRealFromConfigBasePath("blog/cloud/.trash/"));
 
+        //项目context目录
+        Config.set(ConfigConstants.SITE_CONTEXT_REAL_PATH, Utils.getContextRealPath());
+
+        //项目context父目录
+        Config.set(ConfigConstants.SITE_CONTEXT_FATHER_REAL_PATH, Utils.getContextFatherPath());
+
         //“关于我”对应的文章号
         Config.set(ConfigConstants.SITE_ABOUT_ARTICLE_ID, "0");
+
+        //“帮助”对应的文章号
+        Config.set(ConfigConstants.SITE_HELP_ARTICLE_ID, "0");
 
         //登录严格模式将校验IP
         Config.set(ConfigConstants.USER_LOGIN_STRICT, "false");
@@ -328,6 +397,10 @@ public class ConfigManager {
         Config.set(ConfigConstants.TOOL_SPEECH_TOKEN_API_KEY, "");
 
         Config.set(ConfigConstants.TOOL_SPEECH_TOKEN_SECRET_KEY, "");
+
+        Config.set(ConfigConstants.SITE_CLIENT_CONFIG, "");
+
+        Config.set(ConfigConstants.SITE_ALLOW_RUN_UPGRADE, "false");
 
         AudioUtil.updateTokenInfo();
     }

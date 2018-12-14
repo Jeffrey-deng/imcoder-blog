@@ -97,9 +97,32 @@ public abstract class BaseController {
      * @param errorInfo
      * @return
      */
-    private String setErrorInfo(HttpServletRequest request, String errorPage, String errorInfo) {
+    protected String setErrorInfo(HttpServletRequest request, String errorPage, String errorInfo) {
         request.setAttribute(KEY_ERROR_INFO, errorInfo);
         return errorPage;
+    }
+
+    /**
+     * 得到flag_code对于错误页jsp地址
+     *
+     * @param flag
+     * @return
+     */
+    protected String getErrorPage(int flag) {
+        switch (flag) {
+            case 400:
+                return PAGE_PARAM_ERROR;
+            case 401:
+                return PAGE_LOGIN;
+            case 403:
+                return PAGE_FORBIDDEN_ERROR;
+            case 404:
+                return PAGE_NOT_FOUND_ERROR;
+            case 500:
+                return PAGE_SERVER_ERROR;
+            default:
+                return PAGE_NOT_FOUND_ERROR;
+        }
     }
 
     /**

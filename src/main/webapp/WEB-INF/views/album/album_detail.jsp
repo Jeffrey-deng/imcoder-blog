@@ -7,13 +7,14 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <!DOCTYPE html>
 <html class="no-js">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>${album.name} - ${album.user.nickname}的相册 | ImCODER's 博客</title>
     <meta name="description" content="${album.description}">
     <meta name="keywords" content="相册,相册详情,${album.name},ImCODER's 博客">
@@ -22,12 +23,12 @@
 
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <style>
         /* button.mfp-arrow {
             opacity: 0;
@@ -73,7 +74,7 @@
             <div class="container">
                 <div class="" style="text-align:center;">
                     <h1 class="album_name" hostUid="${album.user.uid}">${album.name}</h1>
-                    <h3 class="album_description" style="font-size:16.5px;">${album.description}</h3>
+                    <h3 class="album_description">${album.description}</h3>
                 </div>
             </div>
         </div>
@@ -110,7 +111,7 @@
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">教程</a></div>
+                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
@@ -221,15 +222,6 @@
                 <!-- 相册管理  start -->
                 <header class="post post-container album_options">
                     <h1 class="post-title" itemprop="name headline">
-                        <style>
-                            .post-title a:hover {
-                                text-decoration: none;
-                            }
-
-                            .post-title a {
-                                cursor: pointer
-                            }
-                        </style>
                         <c:choose>
                             <c:when test="${ not empty loginUser and loginUser.uid == album.user.uid }">
                                 <a class="option_upload" itemtype="url" id="uploadPhoto" albumId="${album.album_id}" author="${album.user.uid}">上传新照片</a>
@@ -246,10 +238,10 @@
                 </header>
                 <!-- 相册管理  end -->
 
-                <article class="post" style="background-color: #f2f2f2;box-shadow: 0px 0px 1px 0.5px #ddd;">
+                <article class="post" style="background-color: #f8f8f8;box-shadow: 0px 0px 1px 0.5px #ddd;">
                     <!-- 文章内容 start -->
                     <section>
-                        <div id="masonryContainer" class="" style="margin-top: 20px;">
+                        <div id="masonryContainer" class="" style="margin: 7px 6px 1px 6px">
                             <%--<c:forEach items="${album.photos}" var="photo"  varStatus="status">
                                 <div class="photo photo-size"  id="photo_${photo.photo_id}" data-order="${status.index}" photo-id=${photo.photo_id} title="${photo.name}" photo-desc="${photo.description}"
                                     image-width="${photo.width}" image-height="${photo.height}" iscover="${photo.iscover}" photo-path="${photo.path}">
@@ -265,15 +257,15 @@
                 </article>
 
                 <!-- 评论区 start -->
-                <header class="post post-container row" style="width: 100%;background-color: #f2f2f2;box-shadow: 0px 0px 1px 0.5px #ddd;">
-                    <ul class="post-meta" style="display: inline-block;margin-top: 3px;margin-bottom: 0px;font-size: 14px;">
+                <header class="post post-container row album-footer">
+                    <ul class="post-meta footer-left">
                         <li>数量: <a id="album_size" hostUser="${album.user.uid}" album_id="${album.album_id}">${album.size}</a></li>
                         <li>创建时间：<a id="album_create_time">
                             <time itemprop="datePublished"><fmt:formatDate value="${album.create_time}" pattern="yyyy-MM-dd HH:mm"/></time>
                         </a></li>
                     </ul>
-                    <ul class="post-meta" style="display: inline-block;margin-top: 3px;margin-bottom: 0px;font-size: 14px;">
-                        <ol class="page-navigator" style="display: inline-block;margin: 0 auto;padding:0px;"></ol>
+                    <ul class="post-meta footer-right">
+                        <ol class="page-navigator"></ol>
                     </ul>
                 </header>
                 <!-- 评论区 end -->
@@ -298,19 +290,6 @@
     <div class="stick"></div>
 </div>
 
-<style>
-    @media (min-width: 768px) {
-        #uploadPhotoModal .modal-dialog {
-            width: 500px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        #uploadPhotoModal .modal-dialog {
-            width: 100%;
-        }
-    }
-</style>
 <div class="note-editor">
     <div class="modal fade in" id="uploadPhotoModal" aria-hidden="false" tabindex="-1">
         <div class="modal-dialog">
@@ -358,19 +337,6 @@
     </div>
 </div>
 
-<style>
-    @media (min-width: 768px) {
-        #updatePhotoModal .modal-dialog {
-            width: 500px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        #updatePhotoModal .modal-dialog {
-            width: 100%;
-        }
-    }
-</style>
 <div class="note-editor">
     <div class="modal fade in" id="updatePhotoModal" aria-hidden="false" tabindex="-1">
         <div class="modal-dialog">
@@ -442,19 +408,6 @@
     </div>
 </div>
 
-<style>
-    @media (min-width: 768px) {
-        #updateAlbumModal .modal-dialog {
-            width: 500px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        #updateAlbumModal .modal-dialog {
-            width: 100%;
-        }
-    }
-</style>
 <div class="note-editor">
     <div class="modal fade in" id="updateAlbumModal" aria-hidden="false" tabindex="-1" style="padding-right: 0 !important;">
         <div class="modal-dialog">
@@ -528,15 +481,15 @@
 </div>
 
 <!-- login modal start -->
-<div style="margin-top:100px;" class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
-    <div style="width: 350px;" class="modal-dialog" role="document">
+<div class="modal fade" id="login_Modal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
+    <div class="modal-dialog" role="document">
         <div class="modal-content animated flipInY">
             <div class="modal-header text-center">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <h2 class="modal-title" id="loginModalLabel">登录/<a href="user.do?method=toregister" target="_blank">注册</a></h2>
             </div>
             <form role="form" id="login_form">
-                <div class="modal-body" style="height:200px;">
+                <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
                         <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
@@ -573,7 +526,7 @@
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="album_detail"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="album_detail"></script>
 
 </body>
 </html>

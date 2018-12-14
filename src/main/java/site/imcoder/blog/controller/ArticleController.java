@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
+import site.imcoder.blog.Interceptor.GZIP;
 import site.imcoder.blog.Interceptor.LoginRequired;
 import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.entity.Article;
@@ -16,7 +17,6 @@ import site.imcoder.blog.entity.Category;
 import site.imcoder.blog.entity.Comment;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.service.IArticleService;
-import site.imcoder.blog.service.IFileService;
 import site.imcoder.blog.service.IUserService;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
@@ -46,9 +46,6 @@ public class ArticleController extends BaseController {
 
     @Resource
     private IUserService userService;
-
-    @Resource
-    private IFileService fileService;
 
     @Resource
     private Cache cache;
@@ -110,6 +107,7 @@ public class ArticleController extends BaseController {
      * @return
      */
     @RequestMapping(params = "method=detail")
+    @GZIP
     public ModelAndView detail(ModelAndView mv, int aid, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> queryMap = articleService.detail(aid, loginUser);
@@ -146,6 +144,7 @@ public class ArticleController extends BaseController {
      */
     @RequestMapping(params = "method=getArticle")
     @ResponseBody
+    @GZIP
     public Map<String, Object> getArticle(HttpSession session, @RequestParam(defaultValue = "0") int aid) {
         User loginUser = (User) session.getAttribute("loginUser");
         Map<String, Object> queryMap = articleService.detail(aid, loginUser);
@@ -160,6 +159,7 @@ public class ArticleController extends BaseController {
      * 跳转到编辑 flag=new : jump to article_edit.jsp / flag=update : jump to article_update.jsp
      */
     @RequestMapping(params = "method=edit")
+    @GZIP
     public ModelAndView edit(HttpSession session, HttpServletRequest request, ModelAndView mv,
                              @RequestParam(defaultValue = "new") String flag, @RequestParam(defaultValue = "0") int aid) {
         User loginUser = (User) session.getAttribute("loginUser");
@@ -250,6 +250,7 @@ public class ArticleController extends BaseController {
      */
     @RequestMapping(params = "method=getArticleList")
     @ResponseBody
+    @GZIP
     public List<Article> list(Article condition, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         return articleService.list(condition, loginUser);
@@ -260,10 +261,12 @@ public class ArticleController extends BaseController {
     @RequestMapping(params = "method=addComment")
     @ResponseBody
     public Map<String, Object> addComment(Comment comment, HttpSession session) {
-        Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
-        int flag = articleService.addComment(comment, loginUser);
-        map.put(KEY_STATUS, flag);
+        Map<String, Object> map = articleService.addComment(comment, loginUser);
+        int flag = (int) map.get(KEY_STATUS);
+        if (flag != 200) {
+            map.put("comment", null);
+        }
         convertStatusCodeToWord(map);
         return map;
     }
@@ -316,11 +319,11 @@ public class ArticleController extends BaseController {
      */
     @RequestMapping(params = "method=ranking_list")
     @ResponseBody
-    public Map<String, Object> ranking_list(@RequestParam(defaultValue = "0") int uid, @RequestParam(defaultValue = "0") int size) {
+    public Map<String, Object> ranking_list(@RequestParam(defaultValue = "0") int uid, @RequestParam(defaultValue = "0") int size, HttpSession session) {
         if (size == 0) {
             size = Config.getInt(ConfigConstants.ARTICLE_HOME_SIZE_RANK);
         }
-        return articleService.listRanking(uid, size);
+        return articleService.listRanking(uid, size, getLoginUser(session));
     }
 
     /**

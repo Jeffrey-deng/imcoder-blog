@@ -8,6 +8,7 @@ import site.imcoder.blog.dao.CommonDao;
 import site.imcoder.blog.dao.IAlbumDao;
 import site.imcoder.blog.entity.Album;
 import site.imcoder.blog.entity.Photo;
+import site.imcoder.blog.entity.PhotoTagWrapper;
 import site.imcoder.blog.entity.User;
 
 import java.util.HashMap;
@@ -253,6 +254,27 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
         } catch (Exception e) {
             e.printStackTrace();
             logger.warn("findPhotoList fail", e);
+            return null;
+        }
+    }
+
+    /**
+     * 查询出用户设置的特殊标签
+     *
+     * @param tagWrapper
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public List<PhotoTagWrapper> findPhotoTagWrappers(PhotoTagWrapper tagWrapper, User loginUser) {
+        try {
+            Map<String, Object> map = new HashMap<>();
+            map.put("wrapper", tagWrapper);
+            map.put("loginUser", loginUser);
+            return this.getSqlSession().selectList("album.findPhotoTagWrappers", map);
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.warn("findPhotoTagWrappers fail", e);
             return null;
         }
     }

@@ -1,6 +1,7 @@
 package site.imcoder.blog.common;
 
 import org.apache.log4j.Logger;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -20,6 +21,12 @@ public class IpUtil {
 
     private static Logger logger = Logger.getLogger(IpUtil.class);
 
+    private static final String IP_CALLBACK_URL_TAOBAO = "http://ip.taobao.com/service/getIpInfo.php?ip=";
+
+    private static final String IP_CALLBACK_URL_IPIP = "http://freeapi.ipip.net/";
+
+    private static String IP_CALLBACK_USR_WHO = "ipip";
+
     private static final List<String> MUNICIPALITY = Arrays.asList(new String[]{"北京", "天津", "上海", "重庆"});
 
     private static final List<String> AUTONOMOUS = Arrays.asList(new String[]{"内蒙古", "广西", "宁夏", "新疆", "西藏"});
@@ -37,6 +44,39 @@ public class IpUtil {
     private static final String ISP = "isp";
 
     /**
+     * 从输入流中获取字节数组
+     *
+     * @param inputStream
+     * @return
+     * @throws IOException
+     */
+    public static byte[] readInputStream(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream bos = null;
+        try {
+            byte[] buffer = new byte[8192];
+            int len = 0;
+            bos = new ByteArrayOutputStream();
+            while ((len = inputStream.read(buffer)) != -1) {
+                bos.write(buffer, 0, len);
+            }
+            return bos.toByteArray();
+        } catch (IOException e) {
+            throw e;
+        } finally {
+            try {
+                if (bos != null) {
+                    bos.close();
+                }
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
      * 请求ip接口
      *
      * @param ip
@@ -48,7 +88,7 @@ public class IpUtil {
             return ipLocationStr;
         }
         try {
-            URL url = new URL("http://ip.taobao.com/service/getIpInfo.php?ip=" + ip);
+            URL url = new URL((IP_CALLBACK_USR_WHO.equals("taobao") ? IP_CALLBACK_URL_TAOBAO : IP_CALLBACK_URL_IPIP) + ip);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             //设置超时间为7秒
             conn.setConnectTimeout(7 * 1000);
@@ -58,11 +98,8 @@ public class IpUtil {
             //得到输入流
             InputStream inputStream = conn.getInputStream();
             //获取自己数组
-            byte[] getData = readInputStream(inputStream);
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            ipLocationStr = new String(getData, "utf-8");
+            byte[] bytes = readInputStream(inputStream);
+            ipLocationStr = new String(bytes, "utf-8");
         } catch (IOException e) {
             logger.warn("请求IP地址失败, ip: " + ip + " , exception: " + e.getMessage());
             ipLocationStr = null;
@@ -82,7 +119,7 @@ public class IpUtil {
      */
     public static String generateIpLocation(String country, String region, String city, String isp) {
         String location = "";
-        if (isp.equals("内网") || isp.equals("内网IP")) {
+        if (isp.equals("内网") || isp.equals("内网IP") || isp.equals("局域网")) {
             location = "局域网";
             return location;
         }
@@ -100,13 +137,13 @@ public class IpUtil {
                 location += (region + "省");
             }
             if (contentIsNotEmpty(region, city)) {
-                location += (city + "市");
+                location += (city + (city.endsWith("市") ? "" : "市"));
             }
             if (contentIsNotEmpty(isp)) {
                 location += isp;
             }
         } else if (country.equals("美国")) {
-            location += (region + "州");
+            location += (region + (region.endsWith("州") ? "" : "州"));
             if (contentIsNotEmpty(region, city)) {
                 location += (city + "市");
             }
@@ -128,7 +165,7 @@ public class IpUtil {
     }
 
     private static boolean contentIsNotEmpty(String content) {
-        if (!content.equals(EMPTY)) {
+        if (content != null && content.length() > 0 && !content.equals(EMPTY)) {
             return true;
         } else {
             return false;
@@ -153,26 +190,10 @@ public class IpUtil {
         String location = null;
         String locationStr = requestIpLocation(ip);
         try {
-            if (locationStr != null) {
-                JSONObject json = new JSONObject(locationStr);
-                if (json.getInt("code") == 0) {
-                    JSONObject data = json.getJSONObject("data");
-                    if (data.getString("isp_id").equals("local")) {
-                        location = generateIpLocation(
-                                data.getString(COUNTRY),
-                                data.getString(REGION),
-                                data.getString(CITY),
-                                "内网");
-                    } else {
-                        location = generateIpLocation(
-                                data.getString(COUNTRY),
-                                data.getString(REGION),
-                                data.getString(CITY),
-                                data.getString(ISP));
-                    }
-                } else {
-                    throw new Exception("taobao interface return code == 1");
-                }
+            if (IP_CALLBACK_USR_WHO.equals("taobao")) {
+                location = parseTabbaoJson(locationStr);
+            } else {
+                location = parseIpipNetJson(locationStr);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -183,21 +204,50 @@ public class IpUtil {
         }
     }
 
-    /**
-     * 从输入流中获取字节数组
-     *
-     * @param inputStream
-     * @return
-     * @throws IOException
-     */
-    private static byte[] readInputStream(InputStream inputStream) throws IOException {
-        byte[] buffer = new byte[10240];
-        int len = 0;
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        while ((len = inputStream.read(buffer)) != -1) {
-            bos.write(buffer, 0, len);
+    private static String parseTabbaoJson(String str) throws Exception {
+        JSONObject json = new JSONObject(str);
+        if (json.getInt("code") == 0) {
+            JSONObject data = json.getJSONObject("data");
+            if (data.getString("isp_id").equals("local")) {
+                return generateIpLocation(
+                        data.getString(COUNTRY),
+                        data.getString(REGION),
+                        data.getString(CITY),
+                        "内网");
+            } else {
+                return generateIpLocation(
+                        data.getString(COUNTRY),
+                        data.getString(REGION),
+                        data.getString(CITY),
+                        data.getString(ISP));
+            }
+        } else {
+            throw new Exception("taobao interface return code == 1");
         }
-        bos.close();
-        return bos.toByteArray();
     }
+
+    private static String parseIpipNetJson(String str) throws Exception {
+        if (str == null || "".equals(str)) {
+            throw new Exception("return data is empty");
+        }
+        JSONArray array = new JSONArray(str);
+        if (array != null && array.length() > 0) {
+            if ("本机地址".equals(array.getString(0))) {
+                return generateIpLocation(
+                        array.getString(0),
+                        array.getString(1),
+                        array.getString(2),
+                        "局域网");
+            } else {
+                return generateIpLocation(
+                        array.getString(0),
+                        array.getString(1),
+                        array.getString(2),
+                        array.getString(4));
+            }
+        } else {
+            throw new Exception("return data is empty");
+        }
+    }
+
 }

@@ -7,24 +7,25 @@
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
+    String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
 %>
 <!DOCTYPE html>
 <html class="no-js">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>${loginUser.nickname}的个人中心 - ImCODER's 博客</title>
     <meta name="description" content="${loginUser.nickname}的个人中心">
     <meta name="keywords" content="个人中心">
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
-    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css">
-    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css">
+    <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
 
 </head>
 
@@ -35,10 +36,8 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center">
-                    <br>
                     <h1>${loginUser.nickname}</h1>
-                    <p>${loginUser.description}</p>
-                    <br>
+                    <h3>${loginUser.description}</h3>
                 </div>
             </div>
         </div>
@@ -75,7 +74,7 @@
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">教程</a></div>
+                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
                                 <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
@@ -209,8 +208,8 @@
                                         <div class="col-sm-3 col-xs-12" style="margin:0 auto;">
                                             <h3>头像</h3>
                                             <div style="width:100%">
-                                                <img id='head_photo' db_src="${loginUser.head_photo}" src="<%=staticPath%>${loginUser.head_photo}" style="margin:0px auto;height:200px;width:200px;" class="avatar img-circle"/>
-                                                <input style="margin:0px auto;padding-top:20px;padding-bottom:20px;" type="file" name="file" id="file"/>
+                                                <img id='head_photo' db_src="${loginUser.head_photo}" src="<%=staticPath%>${loginUser.head_photo}" style="margin:0px auto;height:14.2857em;width:14.2857em;" class="avatar img-circle"/>
+                                                <input style="margin:0px auto;padding-top:1.42857em;padding-bottom:1.42857em;" type="file" name="file" id="file"/>
                                             </div>
                                         </div>
                                         <!-- profile left end -->
@@ -589,6 +588,15 @@
                                                         </label>
                                                     </div>
                                                     <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label" title="打开的照片列表时是否加载压缩的照片">照片预览压缩</label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1" style="margin-left:40px;" title="压缩">
+                                                            <input type="radio" name="setting_photo_preview_compress" value="true" checked="checked"> 压缩
+                                                        </label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1" title="显示原图">
+                                                            <input type="radio" name="setting_photo_preview_compress" value="false"> 原图
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-group">
                                                         <label class="col-sm-2 col-xs-2 control-label">放大镜</label>
                                                         <div class="col-sm-10 col-xs-10">
                                                             <label class="control-label col-sm-1 col-xs-6">宽度</label>
@@ -612,12 +620,21 @@
                                                         </label>
                                                     </div>
                                                     <div class="form-group">
-                                                        <label class="col-sm-2 col-xs-2 control-label">视频IFrame黑边</label>
+                                                        <label class="col-sm-2 col-xs-2 control-label">视频窗口IFrame黑边</label>
                                                         <label class="radio-inline col-sm-1 col-xs-1" style="margin-left:40px;">
                                                             <input type="radio" name="setting_video_iframe_border" value="true" checked="checked"> 保留
                                                         </label>
                                                         <label class="radio-inline col-sm-1 col-xs-1">
                                                             <input type="radio" name="setting_video_iframe_border" value="false"> 去除
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 col-xs-2 control-label">视频窗口Video黑边</label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1" style="margin-left:40px;">
+                                                            <input type="radio" name="setting_video_video_border" value="true" checked="checked"> 保留
+                                                        </label>
+                                                        <label class="radio-inline col-sm-1 col-xs-1">
+                                                            <input type="radio" name="setting_video_video_border" value="false"> 去除
                                                         </label>
                                                     </div>
                                                     <div class="form-group">
@@ -649,18 +666,20 @@
                                                     <div class="form-group">
                                                         <label class="col-sm-2 col-xs-2 control-label">每列展示照片个数</label>
                                                         <div class="col-sm-10 col-xs-10">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1200px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_1200">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">2000px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_2000">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1800px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_1800">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1600px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_1600">
                                                             <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">940px</label>
                                                             <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_940">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">520px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_520">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">400px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_400">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">720px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_720">
                                                         </div>
                                                     </div>
                                                     <div class="form-group">
-                                                        <label class="col-sm-2 col-xs-2 control-label">每页显示照片个数</label>
+                                                        <label class="col-sm-2 col-xs-2 control-label" title="设置为0，表示自适应：每页 列数*10 张">每页显示照片个数</label>
                                                         <label class="col-sm-1 col-xs-3 control-label inline" style="font-weight: normal;">每页</label>
                                                         <div class="col-sm-1 col-xs-4" style="padding-left: 0px;">
                                                             <input name="setting_default_size_photo" class="col-sm-12 col-xs-12">
@@ -693,18 +712,20 @@
                                                     <div class="form-group">
                                                         <label class="col-sm-2 col-xs-2 control-label">每列展示相簿个数</label>
                                                         <div class="col-sm-10 col-xs-10">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1200px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_1200">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">2000px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_2000">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1800px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_1800">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1600px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_1600">
                                                             <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">940px</label>
                                                             <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_940">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">520px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_520">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">400px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_400">
+                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">720px</label>
+                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_720">
                                                         </div>
                                                     </div>
                                                     <div class="form-group">
-                                                        <label class="col-sm-2 col-xs-2 control-label">每页显示相簿个数</label>
+                                                        <label class="col-sm-2 col-xs-2 control-label" title="设置为0，表示自适应：每页 列数*10 张">每页显示相簿个数</label>
                                                         <label class="col-sm-1 col-xs-3 control-label inline" style="font-weight: normal;">每页</label>
                                                         <div class="col-sm-1 col-xs-4" style="padding-left: 0px;">
                                                             <input name="setting_default_size_album" class="col-sm-12 col-xs-12">
@@ -722,7 +743,7 @@
                                                 </form>
                                             </div>
                                         </div>
-                                </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -743,7 +764,7 @@
 
 <!--validateMailModal start -->
 <div class="modal fade" id="validateMailModal" tabindex="-1" role="dialog" aria-labelledby="validateMailModalLabel">
-    <div style="width:340px;margin-top:180px;" class="modal-dialog" role="document">
+    <div style="width:340px;" class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
@@ -823,7 +844,7 @@
 <!-- Bootstrap & Plugins core JavaScript -->
 <!-- ######################################### -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" data-main="<%=staticPath%>js/config.js" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="profilecenter"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="profilecenter"></script>
 
 </body>
 </html>

@@ -144,10 +144,24 @@ public class SiteController extends BaseController {
     }
 
     @RequestMapping(params = "method=help")
-    public String about(@RequestParam(defaultValue = "search") String module, HttpServletRequest request, HttpSession session) {
+    public String help(String module, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
-        String configKey = ConfigConstants.HelpConfigEnum.getModuleConfigKey(module);
-        int aid = Config.getInt(configKey);
+        int aid = 0;
+        if (module == null || module.length() == 0) {
+            String value = Config.getChildDefault(ConfigConstants.SITE_HELP_ARTICLE_ID, "@");
+            if (value == null || value.length() == 0 || value.equals("0")) {
+                return setNotFoundInfo(request, "站点还未设置默认帮助页~");
+            } else {
+                aid = Integer.valueOf(value);
+            }
+        } else {
+            String value = Config.getChildNotDefault(ConfigConstants.SITE_HELP_ARTICLE_ID, "@", module, ":");
+            if (value == null || value.length() == 0 || value.equals("0")) {
+                return setNotFoundInfo(request, "站点还未设置" + module + "帮助页~");
+            } else {
+                aid = Integer.valueOf(value);
+            }
+        }
         Map<String, Object> queryMap = articleService.detail(aid, loginUser);
         Article article = (Article) queryMap.get("article");
         int flag = (int) queryMap.get(KEY_STATUS);
@@ -156,7 +170,7 @@ public class SiteController extends BaseController {
             request.setAttribute("http_code", 401);
             page = PAGE_LOGIN;
         } else if (flag == 404) {
-            page = setNotFoundInfo(request, "站点还未设置" + module + "帮助页~");
+            page = setNotFoundInfo(request, "帮助页不见了~ 请联系管理员");
         } else if (flag == 403) {
             page = PAGE_FORBIDDEN_ERROR;
         } else {
@@ -174,16 +188,54 @@ public class SiteController extends BaseController {
      * @param session
      * @return code
      */
-    @LoginRequired(content = "")
-    @RequestMapping(params = "method=sendValidateMail")
+    @LoginRequired
+    @RequestMapping(params = "method=sendValidateCode")
     @ResponseBody
-    public String sendValidateMail(HttpSession session) {
+    public Map<String, Object> sendValidateCode(HttpSession session) {
+        Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
         String code = notifyService.validateCode(loginUser);
-        if (code != null) {
+        if (Utils.isNotEmpty(code)) {
             session.setAttribute("validateCode", code);
+            map.put(KEY_STATUS, 200);
+            map.put(KEY_STATUS_FRIENDLY, "邮件发送成功~");
+        } else {
+            map.put(KEY_STATUS, 500);
+            map.put(KEY_STATUS_FRIENDLY, "邮件发送失败~");
         }
-        return code;
+        return map;
+    }
+
+    /**
+     * 验证验证码
+     *
+     * @param code
+     * @param session
+     * @return
+     */
+    @LoginRequired
+    @RequestMapping(params = "method=checkValidateCode")
+    @ResponseBody
+    public Map<String, Object> checkValidateCode(String code, HttpSession session) {
+        if (Utils.isNotEmpty(code)) {
+            code = code.trim();
+        }
+        Map<String, Object> map = new HashMap<String, Object>();
+        String validateCode = (String) session.getAttribute("validateCode");
+        if (Utils.isEmpty(validateCode)) {
+            map.put(KEY_STATUS, 404);
+            map.put(KEY_STATUS_FRIENDLY, "未发送邮件呢~");
+        } else if (Utils.isEmpty(code)) {
+            map.put(KEY_STATUS, 400);
+            map.put(KEY_STATUS_FRIENDLY, "请提交验证码~");
+        } else if (validateCode.equalsIgnoreCase(code)) {
+            map.put(KEY_STATUS, 200);
+            map.put(KEY_STATUS_FRIENDLY, "验证码正确");
+        } else {
+            map.put(KEY_STATUS, 401);
+            map.put(KEY_STATUS_FRIENDLY, "验证码错误");
+        }
+        return map;
     }
 
     /**
@@ -269,6 +321,25 @@ public class SiteController extends BaseController {
         Map<String, Object> map = siteService.getIpLocation(ip);
         convertStatusCodeToWord(map);
         return map;
+    }
+
+    /**
+     * 获取新的客户端配置
+     *
+     * @return flag: {200：成功，404：没有配置}； config: 配置
+     */
+    @RequestMapping(params = "method=getConfigUpgrade", produces = "application/json;charset=UTF-8")
+    @ResponseBody
+    public String getConfigUpgrade() {
+        String clientConfigStr = Config.get(ConfigConstants.SITE_CLIENT_CONFIG);
+        int flag = 200;
+        if (Utils.isBlank(clientConfigStr)) {
+            flag = 404;
+            clientConfigStr = "null";
+        } else {
+            clientConfigStr = clientConfigStr.replace('\'', '"').replaceFirst("\\^\"", "").replaceFirst("\"\\$", "");
+        }
+        return String.format("{\"flag\": %d, \"config\": %s}", flag, clientConfigStr);
     }
 
 }

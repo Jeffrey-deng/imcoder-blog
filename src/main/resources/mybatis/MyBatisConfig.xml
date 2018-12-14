@@ -18,6 +18,7 @@
         <typeAlias type="site.imcoder.blog.entity.Album" alias="album"/>
         <typeAlias type="site.imcoder.blog.entity.Photo" alias="photo"/>
         <typeAlias type="site.imcoder.blog.entity.Video" alias="video"/>
+        <typeAlias type="site.imcoder.blog.entity.PhotoTagWrapper" alias="photoTagWrapper"/>
     </typeAliases>
 
     <!-- 注册类型转换器 -->
