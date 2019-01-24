@@ -10,6 +10,8 @@ import java.io.Serializable;
  */
 public class PhotoTagWrapper implements Serializable {
 
+    private static final long serialVersionUID = -6137609606621612556L;
+
     /**
      * 标签包装ID
      */

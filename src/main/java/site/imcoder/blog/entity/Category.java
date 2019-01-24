@@ -10,7 +10,7 @@ import java.io.Serializable;
  */
 public class Category implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = -6062563580975894350L;
 
     /**
      * 类型id

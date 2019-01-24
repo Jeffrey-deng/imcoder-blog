@@ -1,9 +1,7 @@
 package site.imcoder.blog.service;
 
-import site.imcoder.blog.entity.Article;
-import site.imcoder.blog.entity.Comment;
-import site.imcoder.blog.entity.SysMsg;
-import site.imcoder.blog.entity.User;
+import site.imcoder.blog.common.Callable;
+import site.imcoder.blog.entity.*;
 
 import java.util.List;
 
@@ -45,10 +43,9 @@ public interface INotifyService {
     /**
      * 收到私信提醒通知
      *
-     * @param user     接收者
-     * @param sendUser 发送者
+     * @param letter 私信
      */
-    public void receivedLetter(User user, User sendUser);
+    public void receivedLetter(Letter letter);
 
     /**
      * 收到评论提醒通知
@@ -105,4 +102,45 @@ public interface INotifyService {
      * @return flag - 200：成功，404：未影响到行，500: 失败
      */
     public int updateSystemMessageStatus(List<Integer> smIdList);
+
+    /**
+     * 向一位已登录的用户推送消息
+     *
+     * @param user
+     * @param wsMessage
+     * @return boolean 是否发送成功，既该用户是否登录
+     */
+    public boolean pushWsMessage(User user, WsMessage wsMessage);
+
+    /**
+     * 向一批已登录的用户推送消息
+     *
+     * @param users
+     * @param wsMessage
+     */
+    public void pushWsMessage(List<User> users, WsMessage wsMessage);
+
+    /**
+     * 向所有已登录的用户推送消息
+     *
+     * @param wsMessage
+     */
+    public void pushWsMessageToAll(WsMessage wsMessage);
+
+    /**
+     * 注册在接收到用户的消息后触发的回调方法，全局回调（任何消息都响应）
+     * 回到方法中，入参为接收到的消息，回参为返回的消息
+     *
+     * @param callback
+     */
+    public void onmessage(Callable<WsMessage, WsMessage> callback);
+
+    /**
+     * 注册在接收到用户的消息后触发的回调方法，只响应mapping对应的回调方法
+     * 回到方法中，入参为接收到的消息，回参为返回的消息
+     *
+     * @param mapping  mapping名，收到消息时，对应的mapping将响应
+     * @param callback
+     */
+    public void onmessage(String mapping, Callable<WsMessage, WsMessage> callback);
 }

@@ -1,12 +1,16 @@
 package site.imcoder.blog.entity;
 
+import java.io.Serializable;
+
 /**
  * description: USER_FOLLOW 表映射
  *
  * @author dengchao
  * @date 2017-4-13
  */
-public class Follow {
+public class Follow implements Serializable {
+
+    private static final long serialVersionUID = -4177029507883563139L;
 
     /**
      * user_follow 表 主键

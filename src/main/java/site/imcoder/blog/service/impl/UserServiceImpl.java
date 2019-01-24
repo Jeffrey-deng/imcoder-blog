@@ -149,6 +149,19 @@ public class UserServiceImpl implements IUserService {
             map.put("user", cacheUser);
             map.put("flag", 200);
         }
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if ((int) map.get("flag") == 200) {
+                    WsMessage pushMessage = new WsMessage();    // 推送消息
+                    pushMessage.setMapping("user_has_login");
+                    pushMessage.setContent("用户<" + dbUser.getNickname() + ">登录~, ip: " + user.getLoginIP() + "");
+                    pushMessage.setMetadata("user", cache.cloneUser(dbUser));
+                    notifyService.pushWsMessage(cache.getManagers(), pushMessage);
+                }
+            }
+        }).start();
         return map;
     }
 
@@ -432,12 +445,10 @@ public class UserServiceImpl implements IUserService {
         } else {
             letter.setS_uid(loginUser.getUid());
         }
-        User sendUser = cache.getUser(letter.getS_uid(), Cache.READ);
-        User user = cache.getUser(letter.getR_uid(), Cache.READ);
         int row = userDao.saveLetter(letter);
         if (row > 0) {
             //收到私信通知
-            notifyService.receivedLetter(user, sendUser);
+            notifyService.receivedLetter(letter);
         }
         return row > 0 ? 200 : 500;
     }

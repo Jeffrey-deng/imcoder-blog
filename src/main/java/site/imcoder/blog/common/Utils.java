@@ -20,10 +20,6 @@ import java.util.regex.Pattern;
  */
 public class Utils {
 
-    public static interface Callback<I, R> {
-        public R call(I i) throws Exception;
-    }
-
     /**
      * 得到classPath
      *

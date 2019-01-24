@@ -27,8 +27,8 @@
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
 </head>
 <body uid="${loginUser.uid}">
 <!-- <body background="../../img/bg-site.png"> -->
@@ -239,6 +239,27 @@
                 </div>
             </div>
 
+            <div class="col-md-6 col-sm-6 col-xs-12">
+                <div class="panel panel-success" id="ws_panel">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">WebSocket Status</h3>
+                    </div>
+                    <div class="panel-footer">
+                        <div class="btn-group btn-group-justified" role="group" aria-label="...">
+                            <div class="btn-group" role="group" id="btn_ws_pv">
+                                <button type="button" class="btn btn-info">pv：0</button>
+                            </div>
+                            <div class="btn-group" role="group" id="btn_ws_uv">
+                                <button type="button" class="btn btn-warning">uv：0</button>
+                            </div>
+                            <div class="btn-group" role="group" id="btn_push_message">
+                                <button type="button" class="btn btn-danger">push</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div><!-- end .row -->
     </div>
 </div>
@@ -282,6 +303,35 @@
                 <div class="form-group">
                     <label>配置值：</label>
                     <input class="form-control config_value" type="text" name="config_value">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default modal_btn_cancel" data-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary modal_btn_confirm">确定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" tabindex="-1" role="dialog" id="modal_push_message">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">推送消息</h4>
+            </div>
+            <div class="modal-body" style="padding-bottom: 0px;">
+                <div class="form-group">
+                    <label>推送对象：</label>
+                    <select multiple="multiple" class="form-control push_users" name="push_users" style="height: 100px;"></select>
+                </div>
+                <div class="form-group">
+                    <label>推送内容：</label>
+                    <textarea class="form-control push_content" type="text" name="push_notify_opts" rows="5"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>显示选项：</label>
+                    <textarea class="form-control push_notify_opts" type="text" name="push_notify_opts"></textarea>
                 </div>
             </div>
             <div class="modal-footer">

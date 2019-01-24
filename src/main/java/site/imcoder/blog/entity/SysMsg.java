@@ -13,7 +13,7 @@ import java.io.Serializable;
  */
 public class SysMsg implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = -1479873806746563444L;
 
     private int smid;
 

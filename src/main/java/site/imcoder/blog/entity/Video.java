@@ -10,6 +10,8 @@ import java.util.Date;
  */
 public class Video implements Serializable {
 
+    private static final long serialVersionUID = -440348456487975266L;
+
     /**
      * 视频ID
      */

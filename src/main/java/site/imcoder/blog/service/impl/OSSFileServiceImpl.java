@@ -14,6 +14,7 @@ import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.commons.CommonsMultipartFile;
+import site.imcoder.blog.common.Callable;
 import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.entity.Album;
 import site.imcoder.blog.entity.Photo;
@@ -157,7 +158,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
     // 返回一个文件夹下的所有文件
     protected List<OSSObjectSummary> listPath(OSSClient client, String path) throws OSSException, ClientException {
         List<OSSObjectSummary> objectSummaries = new ArrayList<>();
-        listPath(client, path, new Utils.Callback<OSSObjectSummary, Boolean>() {
+        listPath(client, path, new Callable<OSSObjectSummary, Boolean>() {
             @Override
             public Boolean call(OSSObjectSummary objectSummary) throws Exception {
                 objectSummaries.add(objectSummary);
@@ -168,7 +169,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
     }
 
     // 回调一个文件夹下的所有文件（递归）
-    protected void listPath(OSSClient client, String path, Utils.Callback<OSSObjectSummary, Boolean> callback) throws OSSException, ClientException {
+    protected void listPath(OSSClient client, String path, Callable<OSSObjectSummary, Boolean> callback) throws OSSException, ClientException {
         ListObjectsRequest listObjectsRequest = new ListObjectsRequest(bucketName);
         // 每次读取最大长度，需小于1000，默认100
         listObjectsRequest.setMaxKeys(BATCH_SIZE);
@@ -210,7 +211,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
     }
 
     // 回调一个文件夹下的所有子文件夹
-    protected void listPathSubDirs(OSSClient client, String path, Utils.Callback<String, Boolean> callback) throws OSSException, ClientException {
+    protected void listPathSubDirs(OSSClient client, String path, Callable<String, Boolean> callback) throws OSSException, ClientException {
         ListObjectsRequest listObjectsRequest = new ListObjectsRequest(bucketName);
         // 每次读取最大长度，需小于1000，默认100
         listObjectsRequest.setMaxKeys(BATCH_SIZE);
@@ -300,7 +301,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
             }
             final String finalFromPath = fromPath;
             final String finalToPath = toPath;
-            listPath(client, fromPath, new Utils.Callback<OSSObjectSummary, Boolean>() {
+            listPath(client, fromPath, new Callable<OSSObjectSummary, Boolean>() {
                 @Override
                 public Boolean call(OSSObjectSummary objectSummary) throws Exception {
                     copy(client, objectSummary.getKey(), finalToPath + objectSummary.getKey().replace(finalFromPath, ""), true);
@@ -343,7 +344,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
             final String finalFromPath = fromPath;
             final String finalToPath = toPath;
             List<String> fileKeys = new ArrayList<>();
-            listPath(client, fromPath, new Utils.Callback<OSSObjectSummary, Boolean>() {
+            listPath(client, fromPath, new Callable<OSSObjectSummary, Boolean>() {
                 @Override
                 public Boolean call(OSSObjectSummary objectSummary) throws Exception {
                     fileKeys.add(objectSummary.getKey());
@@ -414,7 +415,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
 
     protected void deleteDirectory(OSSClient client, String path) throws OSSException, ClientException {
         List<String> fileKeys = new ArrayList<>();
-        listPath(client, path, new Utils.Callback<OSSObjectSummary, Boolean>() {
+        listPath(client, path, new Callable<OSSObjectSummary, Boolean>() {
             @Override
             public Boolean call(OSSObjectSummary objectSummary) throws Exception {
                 fileKeys.add(objectSummary.getKey());
@@ -454,7 +455,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
         OSSClient client = getClient();
         final String[] keys = new String[1];
         try {
-            listPath(client, dirPath, new Utils.Callback<OSSObjectSummary, Boolean>() {
+            listPath(client, dirPath, new Callable<OSSObjectSummary, Boolean>() {
                 @Override
                 public Boolean call(OSSObjectSummary objectSummary) throws Exception {
                     keys[0] = objectSummary.getKey();
@@ -615,7 +616,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
             Map<String, String> userMetadata = new HashMap<>(); // user-meta
             userMetadata.put("handle-sdk", "java-server");
             meta.setUserMetadata(userMetadata);
-            //BinaryUtil.toBase64String("".getBytes());
+            // BinaryUtil.toBase64String("".getBytes());
             // meta.setContentMD5(encoder.encode(FileUtil.getMD5Value(getUploadFileInputSteam(file, relativePath + fileName)).getBytes()));
             save(client, fileInputSteam, relativePath + fileName, meta);
             logger.info("savePhotoFile: upload file \"" + (relativePath + fileName) + "\" to remote file system successfully");
@@ -764,7 +765,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
         try {
             String albumPath = generateAlbumPath(album);
             String[] maxSubDir = new String[1];
-            listPathSubDirs(client, albumPath, new Utils.Callback<String, Boolean>() {
+            listPathSubDirs(client, albumPath, new Callable<String, Boolean>() {
                 @Override
                 public Boolean call(String subDir) throws Exception {
                     maxSubDir[0] = subDir;
@@ -809,7 +810,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
         OSSClient client = getClient();
         try {
             String[] maxFileName = new String[1];
-            listPath(client, savePath, new Utils.Callback<OSSObjectSummary, Boolean>() {
+            listPath(client, savePath, new Callable<OSSObjectSummary, Boolean>() {
                 @Override
                 public Boolean call(OSSObjectSummary objectSummary) throws Exception {
                     maxFileName[0] = objectSummary.getKey();
@@ -873,7 +874,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
         OSSClient client = getClient();
         try {
             String[] maxFileName = new String[1];
-            listPath(client, savePath, new Utils.Callback<OSSObjectSummary, Boolean>() {
+            listPath(client, savePath, new Callable<OSSObjectSummary, Boolean>() {
                 @Override
                 public Boolean call(OSSObjectSummary objectSummary) throws Exception {
                     maxFileName[0] = objectSummary.getKey();

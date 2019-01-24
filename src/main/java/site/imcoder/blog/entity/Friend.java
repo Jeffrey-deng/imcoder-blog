@@ -1,12 +1,16 @@
 package site.imcoder.blog.entity;
 
+import java.io.Serializable;
+
 /**
  * description: FRIENDS 表映射
  *
  * @author dengchao
  * @date 2017-4-13
  */
-public class Friend {
+public class Friend implements Serializable{
+
+    private static final long serialVersionUID = 7676702524167413369L;
 
     /**
      * friend 表 主键

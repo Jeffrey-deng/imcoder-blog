@@ -14,6 +14,8 @@ import java.util.List;
  */
 public class Album implements Serializable {
 
+    private static final long serialVersionUID = 5400452065266800725L;
+
     /**
      * 相册ID
      */

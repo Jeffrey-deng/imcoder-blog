@@ -549,32 +549,30 @@ public class AlbumServiceImpl implements IAlbumService {
      */
     @Override
     public List<Photo> findPhotoList(String base, Photo photo, String logic_conn, int start, int size, User loginUser, boolean extend) {
-        if (extend && photo.getTags() != null && photo.getTags().length() > 0) {
+        if (extend && photo != null && photo.getTags() != null && photo.getTags().length() > 0) {
             String tags = photo.getTags();
-            photo.setTags(null);
-            List<Photo> photos = findPhotoList(base, photo, logic_conn, 0, 0, loginUser);
-            if (photos != null) {
-                PhotoTagWrapper queryWrapper = new PhotoTagWrapper();
-                queryWrapper.setUid(photo.getUid());
-                queryWrapper.setName(tags);
-                List<PhotoTagWrapper> tagWrappers = albumDao.findPhotoTagWrappers(queryWrapper, loginUser);
-                List<Photo> newList = new ArrayList<>();
-                if (tagWrappers == null || tagWrappers.size() == 0) {
-                    return newList;
-                }
-                for (Photo p : photos) {
-                    if (belongTagWrapper(p, tagWrappers)) {
-                        newList.add(p);
+            PhotoTagWrapper queryWrapper = new PhotoTagWrapper();
+            queryWrapper.setUid(photo.getUid());
+            queryWrapper.setName(tags);
+            List<PhotoTagWrapper> tagWrappers = albumDao.findPhotoTagWrappers(queryWrapper, loginUser);
+            if (tagWrappers != null && tagWrappers.size() > 0) {
+                photo.setTags(null);
+                List<Photo> photos = findPhotoList(base, photo, logic_conn, 0, 0, loginUser);
+                if (photos != null) {
+                    List<Photo> newList = new ArrayList<>();
+                    for (Photo p : photos) {
+                        if (belongTagWrapper(p, tagWrappers)) {
+                            newList.add(p);
+                        }
                     }
+                    photos = null;
+                    return newList;
+                } else {
+                    return null;
                 }
-                photos = null;
-                return newList;
-            } else {
-                return null;
             }
-        } else {
-            return findPhotoList(base, photo, logic_conn, start, size, loginUser);
         }
+        return findPhotoList(base, photo, logic_conn, start, size, loginUser);
     }
 
     private boolean belongTagWrapper(Photo photo, List<PhotoTagWrapper> tagWrappers) {

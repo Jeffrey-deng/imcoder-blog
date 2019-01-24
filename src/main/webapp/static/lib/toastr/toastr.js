@@ -107,11 +107,11 @@
                 }
             }
 
-            function remove($toastElement, force) {
+            function remove($toastElement, force) { // modify by Jeffrey.deng
                 var options = getOptions();
                 if (!$container) { getContainer(options); }
                 if ($toastElement && (force || $(':focus', $toastElement).length === 0)) {
-                    $toastElement.css("display", "none");
+                    $toastElement.css("display", "none");   // modify by Jeffrey.deng
                     removeToast($toastElement);
                     return;
                 }
@@ -130,7 +130,7 @@
             }
 
             function clearToast ($toastElement, options, clearOptions) {
-                var force = clearOptions && clearOptions.force ? clearOptions.force : false;
+                var force = clearOptions && clearOptions.force ? clearOptions.force : false;    // modify by Jeffrey.deng
                 if ($toastElement && (force || $(':focus', $toastElement).length === 0)) {
                     $toastElement[options.hideMethod]({
                         duration: options.hideDuration,
@@ -156,7 +156,7 @@
             function getDefaults() {
                 return {
                     tapToDismiss: true,
-                    hideOnHover: true,
+                    hideOnHover: true,  // modify by Jeffrey.deng
                     toastClass: 'toast',
                     containerId: 'toast-container',
                     debug: false,
@@ -253,7 +253,7 @@
                 }
 
                 function handleEvents() {
-                    if (!options.hideOnHover && options.timeOut == 0) {
+                    if (!options.hideOnHover && options.timeOut == 0) { // modify by Jeffrey.deng
                         $toastElement.hover(stickAround);
                     } else {
                         $toastElement.hover(stickAround, delayedHideToast);
@@ -275,9 +275,11 @@
                     }
 
                     if (options.onclick) {
-                        $toastElement.click(function () {
-                            options.onclick();
-                            hideToast();
+                        $toastElement.click(function (e) {
+                            var isHide = options.onclick(e);    // modify by Jeffrey.deng
+                            if (isHide !== false) {
+                                hideToast();
+                            }
                         });
                     }
                 }

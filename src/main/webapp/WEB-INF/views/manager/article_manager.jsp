@@ -26,9 +26,9 @@
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
 </head>
 <body uid="${loginUser.uid}">
 <!-- <body background="../../img/bg-site.png"> -->

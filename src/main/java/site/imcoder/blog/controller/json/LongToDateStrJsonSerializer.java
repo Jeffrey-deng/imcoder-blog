@@ -26,10 +26,12 @@ import java.util.Date;
  */
 public class LongToDateStrJsonSerializer extends JsonSerializer<Long> {
 
+    private static final String PATTERN = "yyyy-MM-dd | HH:mm:ss";
+
     @Override
     public void serialize(Long value, JsonGenerator jgen, SerializerProvider arg2)
             throws IOException, JsonProcessingException {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd | HH:mm:ss");
+        SimpleDateFormat sdf = new SimpleDateFormat(PATTERN);
         String formattedDate = sdf.format(new Date(value));
         jgen.writeString(formattedDate);
     }

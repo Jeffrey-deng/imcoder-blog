@@ -326,6 +326,47 @@
     };
 
     /**
+     * 判断元素是否在出现在可见区域内
+     *
+     * @param element
+     * @param ON_SCREEN_HEIGHT  用来设置元素出现在屏幕中 N px的条件，也就是这里的ON_SCREEN_HEIGHT。只要保证元素的上下左右四个边界都在屏幕内显示超过npx，我们就可以认为元素出现在页面中了。
+     * @param ON_SCREEN_WIDTH
+     * @returns {boolean}
+     */
+    var isOnScreen = function (element, ON_SCREEN_HEIGHT, ON_SCREEN_WIDTH) {
+        var ON_SCREEN_HEIGHT = ON_SCREEN_HEIGHT || 20;
+        var ON_SCREEN_WIDTH = ON_SCREEN_WIDTH || 20;
+
+        var rect = element.getBoundingClientRect();
+        var windowHeight = window.innerHeight || document.documentElement.clientHeight;
+        var windowWidth = window.innerWidth || document.documentElement.clientWidth;
+
+        var elementHeight = element.offsetHeight;
+        var elementWidth = element.offsetWidth;
+
+        var onScreenHeight = ON_SCREEN_HEIGHT > elementHeight ? elementHeight : ON_SCREEN_HEIGHT;
+        var onScreenWidth = ON_SCREEN_WIDTH > elementWidth ? elementWidth : ON_SCREEN_WIDTH;
+
+        // 元素在屏幕上方
+        var elementBottomToWindowTop = rect.top + elementHeight;
+        var bottomBoundingOnScreen = elementBottomToWindowTop >= onScreenHeight;
+
+        // 元素在屏幕下方
+        var elementTopToWindowBottom = windowHeight - (rect.bottom - elementHeight);
+        var topBoundingOnScreen = elementTopToWindowBottom >= onScreenHeight;
+
+        // 元素在屏幕左侧
+        var elementRightToWindowLeft = rect.left + elementWidth;
+        var rightBoundingOnScreen = elementRightToWindowLeft >= onScreenWidth;
+
+        // 元素在屏幕右侧
+        var elementLeftToWindowRight = windowWidth - (rect.right - elementWidth);
+        var leftBoundingOnScreen = elementLeftToWindowRight >= onScreenWidth;
+
+        return bottomBoundingOnScreen && topBoundingOnScreen && rightBoundingOnScreen && leftBoundingOnScreen;
+    };
+
+    /**
      *  用JS实现EL表达式功能，默认支持 " "、{ }、${ }、“”包裹，
      *  可通过设置 sepLeft，sepRight 自定义, 如果想自定义匹配正则，那么设置sepLeft为你需要的正则
      *  不允许嵌套
@@ -862,6 +903,7 @@
         "addStyle": addStyle,
         "encodeHTML": encodeHTML,
         "decodeHTML": decodeHTML,
+        "isOnScreen": isOnScreen,
         "replaceByEL": replaceByEL,
         "TaskQueue": TaskQueue,
         "ajaxDownload": ajaxDownload,

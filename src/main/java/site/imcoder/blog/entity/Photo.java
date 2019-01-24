@@ -11,6 +11,8 @@ import java.util.Date;
  */
 public class Photo implements Serializable {
 
+    private static final long serialVersionUID = -4593648958985805003L;
+
     /**
      * 照片ID
      */

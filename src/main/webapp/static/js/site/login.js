@@ -5,12 +5,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'toastr', 'common_utils'], factory);
+        define(['jquery', 'bootstrap', 'toastr', 'common_utils', 'websocket_util'], factory);
     } else {
         // Browser globals
-        window.login_handle = factory(window.jQuery, null, toastr, common_utils);
+        window.login_handle = factory(window.jQuery, null, toastr, common_utils, websocket_util);
     }
-})(function ($, bootstrap, toastr, common_utils) {
+})(function ($, bootstrap, toastr, common_utils, websocket_util) {
 
     $(document).ajaxError(function () {
         toastr.error("An error occurred!", "执行Ajax请求时发生错误");
@@ -54,8 +54,10 @@
             pointer.login_form.find('input[name="remember"]').prop("checked", false);
         }
         bindEvent();
-        //初始化JumpUrl
+        // 初始化JumpUrl
         initJumpUrl();
+        // 初始化WebSocket
+        initWebSocket();
     };
 
     /**
@@ -430,6 +432,128 @@
                 window.location.reload(true);
             }
             window.location.href = jumpUrl;
+        }
+    };
+
+    /**
+     * 初始化WebSocket
+     */
+    var initWebSocket = function () {
+        if (validateLogin()) {
+            // 初始化
+            setTimeout(function () {
+                websocket_util.init({
+                        heartbeat: {
+                            pingTimeout: 15000,
+                            pongTimeout: 10000,
+                            reconnectInterval: 8000
+                        }
+                    }
+                );
+            }, 100);
+            var notify_ws_opts = {
+                "progressBar": false,
+                "positionClass": "toast-top-right",
+                "iconClass": "toast-success-no-icon",
+                "timeOut": 0,
+                "onclick": function () {
+
+                },
+                "onShown": function () {
+                    $(this).css("opacity", "1");
+                }
+            };
+            // 管理员通知
+            websocket_util.onPush("push_manager_notify", function (e, wsMessage, wsEvent) {
+                if (!wsMessage.metadata) {
+                    wsMessage.metadata = {};
+                }
+                var notify_opts = $.extend({}, notify_ws_opts, {
+                    "onclick": function () {
+                        return false;
+                    }
+                }, wsMessage.metadata.notify);
+                common_utils.notify(notify_opts).success(wsMessage.content, "管理员 " + (wsMessage.metadata.users ? "对你" : "") + "说：", "push_manager_notify");
+            });
+            // 通知管理员用户登录
+            websocket_util.onPush("user_has_login", function (e, wsMessage, wsEvent) {
+                var user = wsMessage.metadata.user;
+                var notify_opts = $.extend({}, notify_ws_opts, {
+                    "onclick": function () {
+                        window.open("user.do?method=home&uid=" + user.uid);
+                    }
+                });
+                common_utils.notify(notify_opts).success("用户 <b>" + user.nickname + "</b> 刚刚登录~", "用户动态：", "user_has_login");
+                console.log("用户 " + user.nickname + " 刚刚登录~，profile：", user);
+            });
+            // 通知管理员新用户注册
+            websocket_util.onPush("new_register_user", function (e, wsMessage, wsEvent) {
+                var user = wsMessage.metadata.user;
+                var notify_opts = $.extend({}, notify_ws_opts, {
+                    "onclick": function () {
+                        window.open("user.do?method=home&uid=" + user.uid);
+                    }
+                });
+                common_utils.notify(notify_opts).success("“" + user.nickname + "”", "新用户注册：", "new_register_user");
+            });
+            // 新的关注者
+            websocket_util.onPush("new_follower", function (e, wsMessage, wsEvent) {
+                var user = wsMessage.metadata.user;
+                var isFriend = wsMessage.metadata.isFriend;
+                var notify_opts = $.extend({}, notify_ws_opts, {
+                    "onclick": function () {
+                        window.open("user.do?method=home&uid=" + user.uid);
+                    }
+                });
+                common_utils.notify(notify_opts).success("“" + user.nickname + "”", "新的粉丝：", "new_follower");
+                if (isFriend) {
+                    common_utils.notify(notify_opts).success("由于相互关注，你与<br>“" + user.nickname + "”<br>成为好友", "新的好友：", "new_friend");
+                }
+            });
+            // 收到新私信
+            websocket_util.onPush("receive_letter", function (e, wsMessage, wsEvent) {
+                var user = wsMessage.metadata.user;
+                var letter = wsMessage.metadata.letter;
+                var notify_opts = $.extend({}, notify_ws_opts, {
+                    "onclick": function () {
+                        window.open("user.do?method=profilecenter&action=sendLetter&chatuid=" + user.uid);
+                    }
+                });
+                common_utils.notify(notify_opts).success("<b>“" + letter.content + "”</b>", user.nickname + " 对你说：", "receive_letter");
+            });
+            // 收到新评论
+            websocket_util.onPush("receive_comment", function (e, wsMessage, wsEvent) {
+                var comment = wsMessage.metadata.comment;
+                var article = wsMessage.metadata.article;
+                var notify_opts = $.extend({}, notify_ws_opts, {
+                    "onclick": function () {
+                        window.open("article.do?method=detail&aid=" + comment.aid + "#comments");
+                    }
+                });
+                var msg = null;
+                if (comment.parentid == 0) {
+                    msg = comment.user.nickname + " 在你的文章<br><b>“" + article.title + "”</b><br>发表了评论~";
+                } else {
+                    msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
+                }
+                common_utils.notify(notify_opts).success(msg, "", "receive_comment");
+            });
+            // 文章被收藏
+            websocket_util.onPush("new_article_collected", function (e, wsMessage, wsEvent) {
+                var user = wsMessage.metadata.user;
+                var article = wsMessage.metadata.article;
+                var notify_opts = $.extend({}, notify_ws_opts, {
+                    "onclick": function (e) {
+                        if (e.target.nodeName != "A") {
+                            window.open("user.do?method=home&uid=" + user.uid);
+                        }
+                    },
+                    "timeOut": 60000
+                });
+                common_utils.notify(notify_opts).success("用户 <a style='text-decoration: underline;' href='user.do?method=home&uid=" + user.uid + "' target='_blank'>" + user.nickname +
+                    "</a><br>收藏了你的文章<br><b>“ <a style='text-decoration: underline;' href='article.do?method=detail&aid=" + article.aid + "' target='_blank'>" + article.title + "</a> ”</b>",
+                    "", "new_article_collected");
+            });
         }
     };
 

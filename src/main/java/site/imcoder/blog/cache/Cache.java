@@ -1,5 +1,6 @@
 package site.imcoder.blog.cache;
 
+import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.log4j.Logger;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Scope;
@@ -321,6 +322,55 @@ public class Cache {
             hasUpdateUser.add(uid);
         }
         return user;
+    }
+
+    /**
+     * 克隆一个用户对象，不包含隐私信息
+     *
+     * @param user
+     * @return
+     */
+    public User cloneSafetyUser(User user) {
+        if (user != null) {
+            User fullUser = getUser(user.getUid(), Cache.READ);
+            if (fullUser != null) {
+                User newUser = new User();
+                try {
+                    PropertyUtils.copyProperties(newUser, fullUser);
+                    newUser.setPassword(null);
+                    newUser.setToken(null);
+                    newUser.setLoginIP(null);
+                    newUser.setUsername(null);
+                    newUser.setEmail(null);
+                    return newUser;
+                } catch (Exception e) {
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 克隆一个用户对象, 供管理员使用
+     *
+     * @param user
+     * @return
+     */
+    public User cloneUser(User user) {
+        if (user != null) {
+            User fullUser = getUser(user.getUid(), Cache.READ);
+            if (fullUser != null) {
+                User newUser = new User();
+                try {
+                    PropertyUtils.copyProperties(newUser, fullUser);
+                    newUser.setPassword(null);
+                    newUser.setToken(null);
+                    return newUser;
+                } catch (Exception e) {
+                }
+            }
+        }
+        return null;
     }
 
     /**

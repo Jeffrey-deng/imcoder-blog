@@ -4,6 +4,7 @@ import org.apache.log4j.Logger;
 import org.json.JSONObject;
 import org.springframework.stereotype.Service;
 import site.imcoder.blog.cache.Cache;
+import site.imcoder.blog.common.Callable;
 import site.imcoder.blog.dao.IAlbumDao;
 import site.imcoder.blog.dao.IArticleDao;
 import site.imcoder.blog.dao.ISiteDao;
@@ -12,16 +13,15 @@ import site.imcoder.blog.entity.*;
 import site.imcoder.blog.event.IEventTrigger;
 import site.imcoder.blog.service.IFileService;
 import site.imcoder.blog.service.IManagerService;
+import site.imcoder.blog.service.INotifyService;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
 import site.imcoder.blog.setting.ConfigManager;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.File;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
 /**
@@ -54,10 +54,42 @@ public class ManagerServiceImpl implements IManagerService {
     private IFileService fileService;
 
     @Resource
+    private INotifyService notifyService;
+
+    @Resource
     private IEventTrigger trigger;
 
     @Resource
     private ConfigManager configManager;
+
+    @PostConstruct
+    public void init() {
+        // 注册“管理推送消息”事件
+        notifyService.onmessage("push_manager_notify", new Callable<WsMessage, WsMessage>() {
+            @Override
+            public WsMessage call(WsMessage wsMessage) throws Exception {
+                if (isAdmin(wsMessage.getUser()) == 200) {
+                    WsMessage pushMessage = new WsMessage();
+                    pushMessage.setMapping("push_manager_notify");
+                    pushMessage.setContent(wsMessage.getContent());
+                    pushMessage.setMetadata(wsMessage.getMetadata());
+                    if (wsMessage.getMetadata("users") != null) {   // 推送给某些用户
+                        List<Integer> userIds = (List<Integer>) wsMessage.getMetadata("users");
+                        List<User> users = new ArrayList<>();
+                        for (Integer userId : userIds) {
+                            User u = new User();
+                            u.setUid(userId);
+                            users.add(u);
+                        }
+                        notifyService.pushWsMessage(users, pushMessage);
+                    } else {    // 推送给全部用户
+                        notifyService.pushWsMessageToAll(pushMessage);
+                    }
+                }
+                return null;
+            }
+        });
+    }
 
     /**
      * 重新初始化缓存

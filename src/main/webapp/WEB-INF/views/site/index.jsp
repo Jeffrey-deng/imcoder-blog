@@ -63,8 +63,8 @@
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
 </head>
 
 <body background="<%=staticPath%>img/bg-site.png" uid="${loginUser.uid}">

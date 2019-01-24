@@ -6,6 +6,14 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
 
 ## develop log
 
+#### 2019.01.25
+
+implement WebSocket for server push
+
+    1、add manager push message to login user.
+    2、add user could receive message notify in page when user is online.
+    3、add message insert current page when user in message handle page.
+
 #### 2019.01.15
 
 add remote file system, new file name style, and so forth.
@@ -22,7 +30,7 @@ add remote file system, new file name style, and so forth.
     9、add new query ip location callback.
     10、enhanced verification code verification security.
     >
-    (1) file module
+    (2) file module
     1、optimize the code structure in file service.
     2、add remote file system interface.
     2、add remote file system implement base aliyun oss - "ServerConfig.xml#remote_oss_config_location, oss.properties".
@@ -31,7 +39,7 @@ add remote file system, new file name style, and so forth.
         set "true" for "site_allow_run_upgrade" in ServerConfig.xml,
         then run "http://hostname/manager.do?method=upgradeNewFileNameStyle" to upgrade.
     >
-    (1) album module
+    (3) album module
     1、add photo preview compress setting - "ServerConfig.xml#cloud_photo_preview_args".
     2、add album tags support users with special setting for each tag.
     3、increased display column count in album pages for better support for retina screen.

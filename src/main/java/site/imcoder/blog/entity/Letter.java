@@ -13,7 +13,7 @@ import java.io.Serializable;
  */
 public class Letter implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = -6525783722879412058L;
 
     /**
      * 私信ID

@@ -59,7 +59,7 @@
             "updateCompleted": "album.update.completed",
             "deleteCompleted": "album.delete.completed"
         },
-        "album_default_col": 4
+        "album_default_col": "0"
     };
 
     var init = function (options) {
@@ -74,6 +74,10 @@
             album.description = pointer.createModal.find('textarea[name="album_desc"]').val();
             album.permission = pointer.createModal.find('input[name="album_permission"]:checked').val();
             album.show_col = pointer.createModal.find('select[name="album_show_col"]').val();
+            if (!album.name) {
+                toastr.info("输入相册的名称", "");
+                return;
+            }
             createAlbum(album);
         });
 
@@ -264,7 +268,7 @@
         }
         var openCreateModal_callback = function () {
             pointer.createModal.find('input[name="album_permission"][value="0"]').prop("checked", true);
-            pointer.createModal.find('input[name="album_show_col"]').val(config.album_default_col).parent().css("display", "none");
+            pointer.createModal.find('select[name="album_show_col"]').val(config.album_default_col).parent().css("display", "none");
             pointer.createModal.modal();
         };
         config.callback.beforeCreateModalOpen.call(context, pointer.createModal, openCreateModal_callback);

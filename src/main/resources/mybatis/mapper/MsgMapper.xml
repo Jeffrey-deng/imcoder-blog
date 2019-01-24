@@ -6,7 +6,7 @@
 <mapper namespace="msg">
 
     <!-- 保存私信 -->
-    <insert id="saveLetter" parameterType="letter">
+    <insert id="saveLetter" parameterType="letter" useGeneratedKeys="true" keyProperty="leid" keyColumn="leid">
         insert into letter (s_uid,r_uid,content,send_time)
         values (#{s_uid},#{r_uid},#{content},#{send_time})
     </insert>

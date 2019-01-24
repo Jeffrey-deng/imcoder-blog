@@ -2,12 +2,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'cityselect', 'birthday', 'common_utils'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'cityselect', 'birthday', 'common_utils', 'login_handle', 'websocket_util'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, null, null, common_utils);
+        factory(window.jQuery, null, $(document).ready, toastr, null, null, common_utils, login_handle, websocket_util);
     }
-})(function ($, bootstrap, domReady, toastr, cityselect, birthday, common_utils) {
+})(function ($, bootstrap, domReady, toastr, cityselect, birthday, common_utils, login_handle, websocket_util) {
 
     //将表单中的参数拼装成可用json格式  serialize方式不能应付‘&’字符这种
     window.getFormJson = function (form) {
@@ -656,6 +656,9 @@
         $('a[href="#listSysMsgs"]').click(function () {
             clearSysMsgStatus();
         });
+
+        // 注册监控服务器的未读消息推送
+        initWsReceiveServerPush();
     }
 
     var unreadList;
@@ -678,8 +681,8 @@
                             html += '<td class=""><i class="fa fa-paperclip"></i></td>';
                             html += '<td class="text-right mail-date">' + arr[0].send_time + '</td></tr>';
                         });
-                        if (Object.keys(formatLetterList).length > 0) {
-                            $('#newestMsgTime').html(Object.values(formatLetterList)[0][0].send_time);
+                        if (data.letters) {
+                            $('#newestMsgTime').html(data.letters[0].send_time);
                         }
                         count += data.letters.length;
                     }
@@ -715,9 +718,9 @@
                 'read_status': 1
             },
             success: function (data) {
-                LetterList = data;
+                letterList = data || [];
                 if (data != null) {
-                    formatLetterList = formatLetter(data);
+                    formatLetterList = formatLetter(letterList);
                     var html = '';
                     $.each(formatLetterList, function (key, arr) {
                         html += '<tr class="unread"><td class="check-mail"><input type="checkbox" class="i-checks"></td>';
@@ -773,7 +776,7 @@
     //将私信列表分类 key为chatuser 的id
     function formatLetter(letterList) {
         var formatLetterList = {};
-        $(letterList).each(function (i, letter) {
+        $.each(letterList, function (i, letter) {
             if (!(formatLetterList.hasOwnProperty(letter.chatUser.uid))) {
                 formatLetterList[letter.chatUser.uid] = [];
                 formatLetterList[letter.chatUser.uid].push(letter);
@@ -786,9 +789,10 @@
 
     function showChatModal(uid) {
         if (uid && !isNaN(uid) && parseInt(uid) > 0) {
-            //没有此用户则先加载
-            if ($('#chat_uid_' + uid).length <= 0) {
-                asbChatUserLetterList(uid);
+            if ($('#chat_uid_' + uid).length <= 0) { // 如果此用户不在聊天用户列表中，则先放入
+                appendToChatUserList(uid, function () {
+                    $('#chat_uid_' + uid).click();
+                });
             } else {
                 $('#chat_uid_' + uid).click();
             }
@@ -798,14 +802,17 @@
 
     //组装聊天用户列表
     function asbChatUserList() {
-        if (formatLetterList != null) {
+        if (formatLetterList) {
             var html = '';
             $.each(formatLetterList, function (key, arr) {
+                if (!arr || arr.length == 0) {
+                    return;
+                }
                 html += '<div class="chat-user asbChatUserLetterList_trigger" id="chat_uid_' + arr[0].chatUser.uid + '" uid="' + arr[0].chatUser.uid + '">';
                 html += '<img class="chat-avatar" src="' + staticPath + arr[0].chatUser.head_photo + '" alt="">';
                 html += '<div class="chat-user-name">';
                 html += '<a >' + arr[0].chatUser.nickname + '</a>';
-                html += ' </div></div>';
+                html += '</div></div>';
             });
             $('#letter_userList').html(html);
             $('#letter_userList').find('.asbChatUserLetterList_trigger').click(function () {
@@ -817,10 +824,54 @@
     }
 
     var tempChatUser = null;
-    //组装当前消息列表
+
+    function appendToChatUserList(chatUid, callback) {  // 追加新的用户（用户不在聊天用户列表中时）
+        if (!formatLetterList[chatUid] || formatLetterList[chatUid].length == 0) {
+            if (!tempChatUser || tempChatUser.uid != chatUid) {
+                $.get("user.do?method=profile&uid=" + chatUid, function (chatUser) {
+                    if (chatUser) {
+                        tempChatUser = chatUser;
+                        var html = "";
+                        html += '<div class="chat-user asbChatUserLetterList_trigger" id="chat_uid_' + chatUser.uid + '" uid="' + chatUser.uid + '" >';
+                        html += '<img class="chat-avatar" src="' + staticPath + chatUser.head_photo + '" title="' + chatUser.nickname + '">';
+                        html += '<div class="chat-user-name">';
+                        html += '<a >' + chatUser.nickname + '</a>';
+                        html += ' </div></div>';
+                        $('#letter_userList').append(html);
+                        $('#chat_uid_' + chatUser.uid).click(function () {
+                            var uid = this.getAttribute('uid');
+                            asbChatUserLetterList(uid);
+                            setAsbChatColor(uid);
+                        });
+                        callback && callback();
+                        console.log("用户 " + chatUid + " 不存在聊天列表中，请求数据加载成功！ ");
+                    } else {
+                        toastr.error("用户 ：" + chatUid + " 不存在！ ", '提示', {"timeOut": 0});
+                    }
+                });
+            }
+        } else {
+            var chatUser = formatLetterList[chatUid][0].chatUser;
+            var html = "";
+            html += '<div class="chat-user asbChatUserLetterList_trigger" id="chat_uid_' + chatUser.uid + '" uid="' + chatUser.uid + '" >';
+            html += '<img class="chat-avatar" src="' + staticPath + chatUser.head_photo + '" title="' + chatUser.nickname + '">';
+            html += '<div class="chat-user-name">';
+            html += '<a >' + chatUser.nickname + '</a>';
+            html += ' </div></div>';
+            $('#letter_userList').append(html);
+            $('#chat_uid_' + chatUser.uid).click(function () {
+                var uid = this.getAttribute('uid');
+                asbChatUserLetterList(uid);
+                setAsbChatColor(uid);
+            });
+            callback && callback();
+        }
+    }
+
+    //组装当前要查看用户的消息列表
     function asbChatUserLetterList(chatUid) {
         $('#currentLetterContent').attr("uid", chatUid);
-        if (formatLetterList != null) {
+        if (formatLetterList) {
             var letterList = formatLetterList[chatUid];
             var html = '';
             if (letterList) {
@@ -834,7 +885,7 @@
                     html += '<div class="message">';
                     html += ' <a class="message-author" target="_blank" href="user.do?method=home&uid=' + letter.s_uid + '">' + (letter.s_uid == $uid ? loginUserNickname : letter.chatUser.nickname) + '</a>';
                     html += '<span class="message-date" >' + letter.send_time + '</span>';
-                    html += '<span class="message-content" >' + letter.content + '</span> </div></div>';
+                    html += '<span class="message-content" >' + letter.content + '</span></div></div>';
                 }
                 html += '<div class="chat-discussion-end" style="height:0px; overflow:hidden"></div>';
                 $('#currentLetterContent').html(html);
@@ -843,29 +894,6 @@
             } else {
                 $('#currentLetterContent').html("");
             }
-        }
-        if (formatLetterList[chatUid] == undefined && tempChatUser == null) {
-            $.get("user.do?method=profile&uid=" + chatUid, function (chatUser) {
-                if (chatUser) {
-                    tempChatUser = chatUser;
-                    var html = "";
-                    html += '<div class="chat-user asbChatUserLetterList_trigger" id="chat_uid_' + chatUser.uid + '" uid="' + chatUser.uid + '" >';
-                    html += '<img class="chat-avatar" src="' + staticPath + chatUser.head_photo + '" title="' + chatUser.nickname + '">';
-                    html += '<div class="chat-user-name">';
-                    html += '<a >' + chatUser.nickname + '</a>';
-                    html += ' </div></div>';
-                    $('#letter_userList').append(html);
-                    $('#letter_userList').find('.asbChatUserLetterList_trigger').unbind().click(function () {
-                        var uid = this.getAttribute('uid');
-                        asbChatUserLetterList(uid);
-                        setAsbChatColor(uid);
-                    });
-                    $('#chat_uid_' + chatUser.uid).click();
-                    console.log("用户 " + chatUid + " 不存在聊天列表中，请求数据加载成功！ ");
-                } else {
-                    toastr.error("用户 ：" + chatUid + " 不存在！ ", '提示', {"timeOut": 0});
-                }
-            });
         }
     }
 
@@ -894,12 +922,13 @@
                         letter['s_uid'] = $uid;
                         letter['content'] = content;
                         letter['send_time'] = common_utils.formatDate(send_time, "yyyy-MM-dd | hh:mm:ss");
+                        letterList.unshift(letter); // 追加到放入缓存中
                         if (!formatLetterList[r_uid]) {
                             formatLetterList[r_uid] = [];
                         }
                         //从头部插入
                         formatLetterList[r_uid].unshift(letter);
-                        $('#chat_uid_' + r_uid).click();
+                        $('#chat_uid_' + r_uid).click(); // 追加显示新的消息
                         $('#sendLetter_area').val("");
                         toastr.success('发送消息成功！');
                     } else {
@@ -940,6 +969,73 @@
                 error: function (xhr, ts) {
                     console.log("Clear msg status found error, Error Code: " + ts);
                 }
+            });
+        }
+    }
+
+    // 注册监控服务器的未读消息推送
+    function initWsReceiveServerPush() {
+        if (login_handle.validateLogin()) {
+            var eventPrefix = websocket_util.config.event.messageReceive + ".";
+            var notify_ws_opts = {
+                "progressBar": false,
+                "positionClass": "toast-top-right",
+                "iconClass": "toast-success-no-icon",
+                "timeOut": 0,
+                "onclick": function () {
+
+                },
+                "onShown": function () {
+                    $(this).css("opacity", "1");
+                }
+            };
+            // 收到新私信，unbind取消login.js中的默认处理
+            websocket_util.unbind(eventPrefix + "receive_letter").bind(eventPrefix + "receive_letter", function (e, wsMessage, wsEvent) {
+                var user = wsMessage.metadata.user;
+                var letter = wsMessage.metadata.letter; // 新私信
+                if (!letter) {
+                    return;
+                }
+                // 追加到放入缓存中
+                if (!letterList) {  // 放入到全部消息中
+                    letterList = [];
+                }
+                if (!formatLetterList) {
+                    formatLetterList = {};
+                }
+                letterList.unshift(letter);
+                if (!formatLetterList[letter.s_uid]) {
+                    formatLetterList[letter.s_uid] = [];
+                }
+                formatLetterList[letter.s_uid].unshift(letter);
+                if (!unreadList) {  // 放入到未读消息中
+                    unreadList = {};
+                }
+                if (!unreadList.letters) {
+                    unreadList.letters = [];
+                }
+                unreadList.letters.unshift(letter);
+                // 显示
+                var notify_opts = $.extend({}, notify_ws_opts, {
+                    "timeOut": 0,
+                    "hideOnHover": false,
+                    "onclick": function () {
+                        showChatModal(letter.s_uid); // 打开聊天框
+                    }
+                });
+                common_utils.notify(notify_opts).success("<b>“" + letter.content + "”</b>", user.nickname + " 对你说：", "receive_letter");
+                if ($('#chat_uid_' + letter.s_uid).length <= 0) { // 如果此用户不在聊天用户列表中，则先放入
+                    appendToChatUserList(letter.s_uid, function () {
+                        if (letter.s_uid == $('#currentLetterContent').attr("uid")) {
+                            $('#chat_uid_' + letter.s_uid).click();
+                        }
+                    });
+                } else {
+                    if (letter.s_uid == $('#currentLetterContent').attr("uid")) { // 如果正在查看该用户的消息，则直接插入
+                        $('#chat_uid_' + letter.s_uid).click();
+                    }
+                }
+                $('#newestMsgTime').html(letter.send_time);
             });
         }
     }
@@ -1195,18 +1291,18 @@
         var hostUserName = document.title.substring(0, document.title.indexOf(" "));
         $('#main_tab_ul a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
             // e.target // newly activated tab
-            //e.relatedTarget // previous active tab
-            //if ( !(action !== undefined && action.length > 0)) {
+            // e.relatedTarget // previous active tab
+            // if ( !(action !== undefined && action.length > 0)) {
 
             history.replaceState(
                 null,
                 hostUserName + "_" + e.target.innerText + " - ImCODER's 博客",
                 location.pathname + "?method=profilecenter&action=" + $(e.target).attr('href').substring(1));
             document.title = hostUserName + "_" + e.target.innerText + " - ImCODER's 博客";
-            /*document.location.href = $(e.target).attr('href');
-             //document.body.scrollTop = document.documentElement.scrollTop = 0;
-             scrollTo(0,0);*/
-            //}
+            //    document.location.href = $(e.target).attr('href');
+            //    //document.body.scrollTop = document.documentElement.scrollTop = 0;
+            //    scrollTo(0,0);
+            // }
         });
 
         load_profile();

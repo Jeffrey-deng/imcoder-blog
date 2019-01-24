@@ -64,7 +64,7 @@
 
     // 从照片列表中查询出标签列表，并按照用户设置的权重排序，并用filter参数过滤
     function takeOutTags(data, config) {
-        var isExtend = data.tag_wrappers ? true : false;
+        var isExtend = (config.load_condition.extend != "false" && data.tag_wrappers && data.tag_wrappers.length > 0);
         var wrappers = data.tag_wrappers;
         if (wrappers == null) {
             wrappers = [];
@@ -272,11 +272,14 @@
                         "timeOut": 0,
                         "closeButton": false
                     }).success("正在加载数据", "", "notify_photos_loading");
-                    var object = $.extend(true, {"query_size": 0, "extend": "true"}, config.load_condition);
+                    var object = $.extend(true, {"query_size": 0}, config.load_condition);
                     if (fromAlbumDetailPage) {
                         object.base = object.from;
                     } else {
                         object.base = "album_tags_square";
+                    }
+                    if (!config.load_condition.extend) {   // 加载数据时extend默认为true, 显示指定为false时，不加载tag_wrappers，同时不会按tag_wrapper排序
+                        object.extend = "true";
                     }
                     object.from = "album_tags_square"; // extend=true + from=album_tags_square 将返回tag_wrappers列表
                     $.get("photo.do?method=photoListByAjax", object, function (data) {
@@ -289,9 +292,10 @@
                                 common_utils.removeNotify("notify_photos_loading");
                                 return;
                             }
-                            var isExtend = config.load_condition.extend == "true";
+                            var isNotExtend = config.load_condition.extend == "false";
                             var tagInfos = null;
-                            if (!isExtend || data.tag_wrappers) {
+                            if (isNotExtend || data.tag_wrappers) {
+                                config.tag_wrappers = data.tag_wrappers;
                                 tagInfos = takeOutTags(data, config);
                                 common_utils.removeNotify("notify_photos_loading");
                                 success({"albums": tagInfos});
@@ -308,6 +312,7 @@
                                 var params = {};
                                 params.uid = config.load_condition.uid || 0;
                                 $.get("photo.do?method=getTagWrappers", params, function (twData) {
+                                    config.tag_wrappers = twData.tag_wrappers;
                                     if (twData.flag != 200) {
                                         data.tag_wrappers = [];
                                     } else {
@@ -346,10 +351,11 @@
                 },
                 "makeupNode_callback": function (album_node, album) {
                     var context = this;
-                    var album_href_suffix = this.config.album_href_suffix;
+                    var config = context.config;
+                    var album_href_suffix = config.album_href_suffix;
                     if (album_href_suffix == undefined) {
                         album_href_suffix = "";
-                        $.each(context.config.load_condition, function (key, value) {
+                        $.each(config.load_condition, function (key, value) {
                             if (!value) {
                                 return true;
                             }
@@ -357,25 +363,32 @@
                                 return true;
                             }
                             if (key == "tags") {
-                                if (context.config.load_condition.extend == "true") { // 显示指明extend时，不支持正则匹配
-                                    context.config.album_href_tags_regex = toolbar.utils.encodeRegexSearch("tags", "@ANOTHER");
+                                if (config.load_condition.extend == "false") {
+                                    config.album_href_tags_regex = toolbar.utils.encodeRegexSearch("tags", "@ANOTHER#" + value);
                                 } else {
-                                    context.config.album_href_tags_regex = toolbar.utils.encodeRegexSearch("tags", "@ANOTHER#" + value);
+                                    var supportRegex = (config.tag_wrappers && config.tag_wrappers.filter(function (wrapper) {
+                                        return wrapper.name == value;
+                                    }).length > 0) ? false : true;
+                                    if (supportRegex) {
+                                        config.album_href_tags_regex = toolbar.utils.encodeRegexSearch("tags", "@ANOTHER#" + value);
+                                    } else { // // 如果tags不支持正则匹配，则去掉条件
+                                        config.album_href_tags_regex = null;
+                                    }
                                 }
                             } else {
                                 album_href_suffix += "&" + key + "=" + value;
                             }
 
                         });
-                        this.config.album_href_suffix = album_href_suffix;
+                        config.album_href_suffix = album_href_suffix;
                     }
                     var a = album_node.querySelector("a");
-                    if (context.config.album_href_tags_regex && context.config.load_condition.tags != album.album_id) {
+                    if (album.extend != true && context.config.album_href_tags_regex && context.config.load_condition.tags != album.album_id) {
                         a.href = this.config.album_href_prefix + context.config.album_href_tags_regex.replace(new RegExp(encodeURIComponent("@ANOTHER"), "g"), album.album_id) + album_href_suffix;
                     } else {
                         a.href = this.config.album_href_prefix + album.album_id + album_href_suffix;
                     }
-                    if (album.extend) {
+                    if (album.extend) { // 是否是用户特殊标注的标签
                         a.href = a.href + "&extend=true";
                     }
                     a.title = (album_href_suffix || context.config.album_href_tags_regex) ? ("查看该条件下的" + album.album_id + "标签") : "点击查看照片";

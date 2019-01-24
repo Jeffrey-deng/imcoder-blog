@@ -345,7 +345,7 @@ public class PhotoController extends BaseController {
         List<Photo> photos = albumService.findPhotoList(base, photo, logic_conn, query_start, query_size, loginUser, extend);
         map.put("photos", photos);
         if (photos != null) {
-            if (extend && from != null && from.equals("album_tags_square")) {   // 来自标签广场的请求的话，返回用户的标签设置
+            if (extend && from != null && from.equals("album_tags_square")) {   // 来自标签广场的请求且extend=true的话，返回用户的标签设置
                 PhotoTagWrapper queryTagWrapper = null;
                 if (photo != null && photo.getUid() > 0) {
                     queryTagWrapper = new PhotoTagWrapper();

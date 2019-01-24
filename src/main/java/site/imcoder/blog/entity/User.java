@@ -15,7 +15,7 @@ import java.util.Date;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class User implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 7859498874005586724L;
 
     private int uid; //用户id
 
@@ -74,6 +74,10 @@ public class User implements Serializable {
     public User(int uid, String nickname) {
         this.uid = uid;
         this.nickname = nickname;
+    }
+
+    public User(int uid) {
+        this.uid = uid;
     }
 
     public int getUid() {

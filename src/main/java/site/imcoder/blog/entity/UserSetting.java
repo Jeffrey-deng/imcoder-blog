@@ -8,6 +8,8 @@ import java.util.List;
  */
 public class UserSetting implements Serializable {
 
+    private static final long serialVersionUID = 1336765578106043573L;
+
     private int uid;
 
     /**

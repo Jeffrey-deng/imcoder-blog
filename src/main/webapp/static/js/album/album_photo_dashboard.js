@@ -176,6 +176,7 @@
                         object.query_size = config.query_size;
                         object.query_start = config.query_start;
                     }
+                    object.from = "album_photo_dashboard";
                     $.get("photo.do?method=photoListByAjax", object, function (data) {
                         common_utils.removeNotify("notify_photos_loading");
                         if (data.flag == 200) {
@@ -434,19 +435,15 @@
         bindBlowup(albumConfig.photo_page.blow_up);
 
         if (load_condition.tags) {
+            var href = "redirect.do?model=photo_tag";
+            $.each(load_condition, function (key, value) {
+                href += "&" + key + "=" + value
+            });
             if (load_condition.extend == "true") {
-                var href = "photo.do?method=tags_square";
-                $.each(load_condition, function (key, value) {
-                    href += "&" + key + "=" + value
-                });
-                href += "&filter=" + load_condition.tags;
+                href += "&casting=down";    // 查看子标签
                 $(".album_options .option_tags_subtag").attr("href", href).show();
             } else {
-                var href = "redirect.do?model=photo_tag";
-                $.each(load_condition, function (key, value) {
-                    href += "&" + key + "=" + value
-                });
-                href += "&casting=up";
+                href += "&casting=up";  // 查看相似标签
                 $(".album_options .option_tags_upcasting").attr("href", href).show();
             }
         }

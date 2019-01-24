@@ -2,12 +2,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'common_utils', 'magnificPopup', 'login_handle'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'common_utils', 'magnificPopup', 'login_handle', 'websocket_util'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, common_utils, null, login_handle);
+        factory(window.jQuery, null, $(document).ready, toastr, common_utils, null, login_handle, websocket_util);
     }
-})(function ($, bootstrap, domReady, toastr, common_utils, magnificPopup, login_handle) {
+})(function ($, bootstrap, domReady, toastr, common_utils, magnificPopup, login_handle, websocket_util) {
 
     var list = []; //评论列表
     var aid = $('#h_aid').attr('aid');
@@ -133,7 +133,7 @@
         var topics = getTopics(list);
 
         //组装HTM
-        var listHtml = '<h3 class="comment-meta-count">已有 ' + list.length + '条评论<a class="comment-add-new" style="float:right;" href="#addcomment">添加评论</a></h3>';
+        var listHtml = '<h3 class="comment-meta-count">已有 ' + list.length + ' 条评论<a class="comment-add-new" style="float:right;" href="#addcomment">添加评论</a></h3>';
         listHtml += '<ol class="comment-list">';
         for (var i = 0; i < topics.length; i++) {
             var comment = topics[i];
@@ -161,7 +161,7 @@
     function setEditorFocus() {
         // $comment_editor.focus();
         $('html, body').animate({
-            scrollTop: $comment_editor.offset().top
+            scrollTop: $comment_editor.offset().top - 80
         }, 400);
         $comment_editor.focus();
         //window.location.href = "#comment_form_content";
@@ -454,6 +454,71 @@
         });
     }
 
+    // 注册监控服务器的未读评论消息推送
+    function initWsReceiveServerPush() {
+        if (login_handle.validateLogin()) {
+            var eventPrefix = websocket_util.config.event.messageReceive + ".";
+            var notify_ws_opts = {
+                "progressBar": false,
+                "positionClass": "toast-top-right",
+                "iconClass": "toast-success-no-icon",
+                "timeOut": 0,
+                "onclick": function () {
+
+                },
+                "onShown": function () {
+                    $(this).css("opacity", "1");
+                }
+            };
+            // 收到新评论，unbind取消login.js中的默认处理
+            websocket_util.unbind(eventPrefix + "receive_comment").bind(eventPrefix + "receive_comment", function (e, wsMessage, wsEvent) {
+                var comment = wsMessage.metadata.comment;
+                var article = wsMessage.metadata.article;
+                var notify_opts = $.extend({}, notify_ws_opts, {
+                    "onclick": function () {
+                        if (article.aid == aid) {   // 当前文章是被评论的文章
+                            $('html, body').animate({
+                                scrollTop: $("#li_" + comment.cid).offset().top - ($(window).height() / 2 - 75)
+                            }, 380);
+                            // var commentDiv = document.getElementById("li_" + comment.cid);
+                            // // 实现当前评论出现可见区域内，就不滚动，否则就滚动到屏幕内
+                            // if ("scrollIntoViewIfNeeded" in commentDiv) {   // chrome
+                            //     commentDiv.scrollIntoViewIfNeeded();
+                            // } else {
+                            //     if (!common_utils.isOnScreen(commentDiv, 150, 150)) { // 不在可见区域
+                            //         if ("scrollIntoView" in commentDiv) {   // ie, firefox
+                            //             commentDiv.scrollIntoView({
+                            //                 block: "end",   // 与底部齐平
+                            //                 behavior: "smooth"  // 动画
+                            //             });
+                            //         } else {    // opera
+                            //             $('html, body').animate({
+                            //                 scrollTop: $(commentDiv).offset().top - ($(window).height() / 2 - 75)
+                            //             }, 400);
+                            //         }
+                            //     }
+                            // }
+                        } else {
+                            window.open("article.do?method=detail&aid=" + comment.aid + "#comments");
+                        }
+                    }
+                });
+                if (article.aid == aid) {   // 当前文章是被评论的文章
+                    // 直接显示
+                    list.push(comment);
+                    buildCommentAreaHtml(list, 1);
+                }
+                var msg = null;
+                if (comment.parentid == 0) {
+                    msg = comment.user.nickname + " 在你的文章<br><b>“" + article.title + "”</b><br>发表了评论~";
+                } else {
+                    msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
+                }
+                common_utils.notify(notify_opts).success(msg, "", "receive_comment");
+            });
+        }
+    }
+
     function fullArticleMainArea(preStatus) {
         var url = document.location.href;
         var hashIndex = url.indexOf('#');
@@ -566,6 +631,8 @@
                 $("#main .article_header .article_handle").find(".dropdown-toggle").eq(0).click();
                 fullArticleMainArea("no");
             }
+        } else if (hash == "comments") {
+            $('html, body').animate({scrollTop: $("#comments").offset().top - 80}, 400);
         } else if (!hash) {
             //滚动效果（除去有hash值时）
             $('html, body').animate({scrollTop: x}, 'slow');
@@ -595,6 +662,9 @@
         checkCollection();
 
         initClickEnlarge();
+
+        // 注册监控服务器的未读评论消息推送
+        initWsReceiveServerPush();
     });
 
 });

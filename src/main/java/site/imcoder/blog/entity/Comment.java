@@ -13,7 +13,7 @@ import java.io.Serializable;
  */
 public class Comment implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2963202692398506374L;
 
     /**
      * 评论ID

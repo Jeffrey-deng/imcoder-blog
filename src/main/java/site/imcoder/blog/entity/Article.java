@@ -13,7 +13,7 @@ import java.util.Date;
  */
 public class Article implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = -744480313377931423L;
 
     /**
      * 文章id

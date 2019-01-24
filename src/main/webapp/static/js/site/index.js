@@ -42,7 +42,7 @@
                         nav_tab += '<li class="' + (i == 0 ? "active" : "") + '"><a data-toggle="tab" href="#tab-' + i + '" aria-expanded="' + (i == 0 ? "true" : "false") + '">' + (i + 1) + '</a></li>';
                         html += '<div id="tab-' + i + '" class="tab-pane ' + (i == 0 ? "active" : "") + '">';
                         html += '<div class="panel-body" style="width: 90%;">';
-                        html += '<h2 class="post-title" itemprop="name headline"><p class="ui red ribbon label" style="margin-top:-0.6em"><a target="_blank" style="color:white;" href="article.do?method=list&recommend=1">推荐文章</a></p>';
+                        html += '<h2 class="post-title" itemprop="name headline"><p class="ui red ribbon label" style="font-size: 1rem;margin-top:-0.6em"><a target="_blank" style="color:white;" href="article.do?method=list&recommend=1">推荐文章</a></p>';
                         html += '<a itemtype="url" target="_blank" href="article.do?method=detail&aid=' + article.aid + '" article-top="' + article.top + '">' + article.title + '</a></h2>';
                         html += '<ul class="post-meta">';
                         html += '<li> 作者: <a href="user.do?method=home&uid=' + article.author.uid + '" target="_blank"> ' + article.author.nickname + '</a> </li>';

@@ -58,6 +58,7 @@
             "common_utils": ["js/site/common_utils"],
             "period_cache": ["js/site/period_cache"],
             "results_cache": ["js/site/results_cache"],
+            "websocket_util": ["js/site/websocket_util"],
             "index": ["js/site/index"],
             "register": ["js/site/register"],
             "login_handle": ["js/site/login"],

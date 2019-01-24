@@ -168,7 +168,8 @@ public class RedirectController extends BaseController {
                             .replace("model=photo_tag", "method=tags_square")
                             .replaceFirst("&casting=[^&]*", "") +
                             albumIndex +
-                            "&extend=true&&filter=" + Utils.encoder(tags);
+                            (wrappers.size() > 0 ? "&extend=true" : "&extend=false") +
+                            "&filter=" + Utils.encoder(tags);
                 }
             } else {
                 page = PAGE_PARAM_ERROR;

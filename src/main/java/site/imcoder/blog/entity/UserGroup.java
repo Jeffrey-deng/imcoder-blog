@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 public class UserGroup implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 3920289753006374715L;
 
     private int gid;
 

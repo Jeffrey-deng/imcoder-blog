@@ -17,16 +17,14 @@
     <title>系统日志 - Website Administer System</title>
     <!-- 使用url函数转换相关路径 -->
     <!-- <script async="" src="http://www.google-analytics.com/analytics.js"></script> -->
-
     <!-- 引入文件 -->
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
-    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote.min.css<%=urlArgs%>">
-
+    <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
 </head>
 <body uid="${loginUser.uid}" onload=" ">
 <div id="first" class="" style="z-index:1000;background-image: url(<%=staticPath%>img/bg-site.png);">
