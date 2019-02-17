@@ -35,13 +35,11 @@ public class DateTypeHandler implements TypeHandler<Date> {
         }
     }
 
-    public Date getResult(CallableStatement arg0, int arg1)
-            throws SQLException {
+    public Date getResult(CallableStatement arg0, int arg1) throws SQLException {
         return null;
     }
 
-    public void setParameter(PreparedStatement stmt, int index, Date date,
-                             JdbcType arg3) throws SQLException {
+    public void setParameter(PreparedStatement stmt, int index, Date date, JdbcType arg3) throws SQLException {
         long time = date.getTime();
         stmt.setLong(index, time);
     }

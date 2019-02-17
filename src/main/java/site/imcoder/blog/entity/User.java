@@ -1,10 +1,10 @@
 package site.imcoder.blog.entity;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import site.imcoder.blog.common.type.UserAuthType;
 
 import java.io.Serializable;
-import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -18,12 +18,6 @@ public class User implements Serializable {
     private static final long serialVersionUID = 7859498874005586724L;
 
     private int uid; //用户id
-
-    private UserGroup userGroup;  //分组
-
-    private String username; //用户名
-
-    private String password; //用户密码
 
     private String nickname; //用户昵称
 
@@ -41,43 +35,32 @@ public class User implements Serializable {
 
     private String head_photo; //'用户头像存储路径
 
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
-    private Date register_time; //用户注册时间
-
     private String qq; //用户QQ号码
 
     private String weibo; //用户微博
 
+    private String site; //用户主页
+
     private String says; //用户语录
 
-    private Integer lock_status; //锁定状态
+    private UserGroup userGroup;  //分组
 
-    private Integer articleCount; //文章数
+    private UserStatus userStatus;  // 用户状态信息
 
-    private Integer followCount; //关注数
+    private List<UserAuth> userAuths;    // 用户权限信息
 
-    private Integer fansCount; //粉丝数
-
-    private String token; //自动登陆用令牌
-
-    private String loginIP; //登陆IP
+    private UserSetting userSetting;    // 用户的设置
 
     public User() {
     }
 
-    public User(int uid, String username, String nickname) {
+    public User(int uid) {
         this.uid = uid;
-        this.username = username;
-        this.nickname = nickname;
     }
 
     public User(int uid, String nickname) {
         this.uid = uid;
         this.nickname = nickname;
-    }
-
-    public User(int uid) {
-        this.uid = uid;
     }
 
     public int getUid() {
@@ -86,30 +69,6 @@ public class User implements Serializable {
 
     public void setUid(int uid) {
         this.uid = uid;
-    }
-
-    public UserGroup getUserGroup() {
-        return userGroup;
-    }
-
-    public void setUserGroup(UserGroup userGroup) {
-        this.userGroup = userGroup;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public String getNickname() {
@@ -176,14 +135,6 @@ public class User implements Serializable {
         this.head_photo = head_photo;
     }
 
-    public Date getRegister_time() {
-        return register_time;
-    }
-
-    public void setRegister_time(Date register_time) {
-        this.register_time = register_time;
-    }
-
     public String getQq() {
         return qq;
     }
@@ -200,6 +151,14 @@ public class User implements Serializable {
         this.weibo = weibo;
     }
 
+    public String getSite() {
+        return site;
+    }
+
+    public void setSite(String site) {
+        this.site = site;
+    }
+
     public String getSays() {
         return says;
     }
@@ -208,51 +167,46 @@ public class User implements Serializable {
         this.says = says;
     }
 
-    public Integer getLock_status() {
-        return lock_status;
+    public UserGroup getUserGroup() {
+        return userGroup;
     }
 
-    public void setLock_status(Integer lock_status) {
-        this.lock_status = lock_status;
+    public void setUserGroup(UserGroup userGroup) {
+        this.userGroup = userGroup;
     }
 
-    public Integer getArticleCount() {
-        return articleCount;
+    public UserStatus getUserStatus() {
+        return userStatus;
     }
 
-    public void setArticleCount(Integer articleCount) {
-        this.articleCount = articleCount;
+    public void setUserStatus(UserStatus userStatus) {
+        this.userStatus = userStatus;
     }
 
-    public Integer getFollowCount() {
-        return followCount;
+    public List<UserAuth> getUserAuths() {
+        return userAuths;
     }
 
-    public void setFollowCount(Integer followCount) {
-        this.followCount = followCount;
+    public void setUserAuths(List<UserAuth> userAuths) {
+        this.userAuths = userAuths;
     }
 
-    public Integer getFansCount() {
-        return fansCount;
+    public UserSetting getUserSetting() {
+        return userSetting;
     }
 
-    public void setFansCount(Integer fansCount) {
-        this.fansCount = fansCount;
+    public void setUserSetting(UserSetting userSetting) {
+        this.userSetting = userSetting;
     }
 
-    public String getLoginIP() {
-        return loginIP;
-    }
-
-    public void setLoginIP(String loginIP) {
-        this.loginIP = loginIP;
-    }
-
-    public String getToken() {
-        return token;
-    }
-
-    public void setToken(String token) {
-        this.token = token;
+    public UserAuth getUserAuth(UserAuthType userAuthType) {
+        if (userAuths != null && !userAuths.isEmpty()) {
+            for (UserAuth userAuth : userAuths) {
+                if (userAuth.getIdentity_type() == userAuthType.value) {
+                    return userAuth;
+                }
+            }
+        }
+        return null;
     }
 }

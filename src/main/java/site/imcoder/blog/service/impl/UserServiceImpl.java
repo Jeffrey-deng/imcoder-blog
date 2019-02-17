@@ -1,12 +1,16 @@
 package site.imcoder.blog.service.impl;
 
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.common.PageUtil;
 import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.common.type.UserAuthType;
+import site.imcoder.blog.common.type.UserGroupType;
 import site.imcoder.blog.dao.IUserDao;
 import site.imcoder.blog.entity.*;
+import site.imcoder.blog.entity.Collection;
 import site.imcoder.blog.event.IEventTrigger;
 import site.imcoder.blog.service.IFileService;
 import site.imcoder.blog.service.INotifyService;
@@ -15,11 +19,8 @@ import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
 
 import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
+import java.util.*;
 
 /**
  * 业务实现类
@@ -27,6 +28,7 @@ import java.util.Map;
  * @author dengchao
  */
 @Service("userService")
+@DependsOn({"configManager"})
 public class UserServiceImpl implements IUserService {
 
     //依赖注入DAO
@@ -39,11 +41,29 @@ public class UserServiceImpl implements IUserService {
     @Resource
     private INotifyService notifyService;
 
-    @Resource(name = "localFileService")
+    @Resource(name = "fileService")
     private IFileService fileService;
 
     @Resource
     private IEventTrigger trigger;
+
+    private List<String> userDefaultManHeadPhotos;  //  默认的男生用户头像列表
+
+    private List<String> userDefaultMissHeadPhotos; // 默认的女生用户头像列表
+
+    public UserServiceImpl() {
+        userDefaultManHeadPhotos = Config.getList(ConfigConstants.USER_DEFAULT_MAN_HEADPHOTOS, String.class);
+        userDefaultMissHeadPhotos = Config.getList(ConfigConstants.USER_DEFAULT_MISS_HEADPHOTOS, String.class);
+    }
+
+    private String getRandomUserHeadPhoto(List<String> headPhotos) {
+        if (headPhotos.size() == 1) {
+            return headPhotos.get(0);
+        } else {
+            Random random = new Random();
+            return headPhotos.get(random.nextInt(headPhotos.size()));
+        }
+    }
 
     /**
      * 注册用户
@@ -51,21 +71,46 @@ public class UserServiceImpl implements IUserService {
      * @param user
      * @return flag - 200：成功，500: 失败
      */
+    @Override
     public int register(User user) {
-        user.setUserGroup(new UserGroup(0));
-        user.setRegister_time(new Date());
-        user.setHead_photo("img/default_man.jpg");
-        user.setLock_status(0);
-        user.setArticleCount(0);
-        user.setFollowCount(0);
-        user.setFansCount(0);
+        if (user == null) {
+            return 400;
+        } else if (user.getUserAuths() == null || user.getUserAuths().isEmpty()) {
+            return 400;
+        }
+        user.setUserGroup(new UserGroup(UserGroupType.NOVICE_USER.value));
+        user.setHead_photo(getRandomUserHeadPhoto(userDefaultManHeadPhotos));
+
+        UserStatus userStatus = user.getUserStatus();
+        if (userStatus == null) {
+            userStatus = new UserStatus();
+            user.setUserStatus(userStatus);
+        }
+        if (userStatus.getRegister_ip() == null) {
+            userStatus.setRegister_ip("");
+        }
+        userStatus.setRegister_time(new Date());
+        userStatus.setLock_status(0);
+        userStatus.setArticleCount(0);
+        userStatus.setFollowCount(0);
+        userStatus.setFansCount(0);
+
+        // 校正检查账号凭证
+        List<UserAuth> userAuths = reviseUserAuthList(user.getUserAuths());
+        if (userAuths == null) {
+            return 400;
+        } else {
+            user.setUserAuths(userAuths);
+            user.setEmail(getUserAuthFromList(userAuths, UserAuthType.EMAIL).getIdentifier());
+        }
+
         if (user.getNickname() == null || user.getNickname().equals("")) {
-            user.setNickname("用户xx");
+            user.setNickname("用户-" + Utils.getValidateCode());
         }
         if (user.getSex() == null || user.getSex().equals("")) {
-            user.setSex("未知");
+            user.setSex("男");
         } else if (user.getSex().equals("女")) {
-            user.setHead_photo("img/default_miss.jpg");
+            user.setHead_photo(getRandomUserHeadPhoto(userDefaultMissHeadPhotos));
         }
         if (user.getPhone() == null) {
             user.setPhone("");
@@ -76,11 +121,11 @@ public class UserServiceImpl implements IUserService {
         if (user.getDescription() == null) {
             user.setDescription("");
         }
-        //md5 加密
-        user.setPassword(Utils.MD("MD5", user.getPassword()));
 
         int row = userDao.saveUser(user);
         if (row > 0) {
+            UserSetting userSetting = userDao.findUserSetting(user);
+            user.setUserSetting(userSetting);
             trigger.newUser(user);
             //欢迎通知
             notifyService.welcomeNewUser(user);
@@ -92,93 +137,67 @@ public class UserServiceImpl implements IUserService {
         return row > 0 ? 200 : 500;
     }
 
-
-    /**
-     * 根据ID或name email 密码 登陆用户
-     *
-     * @param user
-     * @param remember
-     * @return flag - 200：成功，400: 无参数，401：凭证错误，403：账号冻结，404：无此用户
-     * user - 用户对象
-     */
-    public Map<String, Object> login(User user, boolean remember) {
-        Map<String, Object> map = new HashMap<>();
-        if (user == null || "".equals(user.getPassword()) || "".equals(user.getToken())) {
-            map.put("flag", 400);
-            return map;
+    // 校正检查账号凭证
+    private List<UserAuth> reviseUserAuthList(List<UserAuth> userAuthList) {
+        if (userAuthList == null || userAuthList.isEmpty()) {
+            return null;
         }
-        User dbUser = userDao.findUser(user);
-        map.put("flag", 401);
-        if (dbUser == null) {
-            map.put("flag", 404);
-        } else if (dbUser.getLock_status() == 1) {
-            map.put("flag", 403);
-            // 如果是令牌登录，则判断令牌
-        } else if (user.getPassword() == null && user.getToken() != null && dbUser.getToken() != null) {
-            if ("false".equals(Config.get(ConfigConstants.USER_LOGIN_STRICT)) || user.getLoginIP().equals(dbUser.getLoginIP())) {
-                String encryptedToken = Utils.MD("MD5", dbUser.getUid() + user.getToken());
-                if (encryptedToken.equals(dbUser.getToken())) {
-                    User cacheUser = cache.getUser(dbUser.getUid(), Cache.READ);
-                    map.put("user", cacheUser);
-                    map.put("flag", 200);
-                    cache.putTokenEntry(encryptedToken, user.getToken()); // 在服务器重启时重新注入映射关系到缓存
-                }
+        for (UserAuth userAuth : userAuthList) {
+            if (userAuth.getIdentity_type() == null) {
+                return null;
             }
-            //如果是密码登录，判断（用户存在且密码相等）
-        } else if (user.getPassword() != null && dbUser.getPassword().equals(Utils.MD("MD5", user.getPassword()))) {
-            User cacheUser = cache.getUser(dbUser.getUid(), Cache.READ);
-            cacheUser.setLoginIP(user.getLoginIP());
-            if (remember) {
-                String beforeUseToken = cache.getTokenEntry(dbUser.getToken()); //获取上次用户的token
-                if ("false".equals(Config.get(ConfigConstants.USER_LOGIN_STRICT)) && beforeUseToken != null && dbUser.getToken() != null && dbUser.getToken().length() > 0) {
-                    cacheUser.setToken(dbUser.getToken()); //非严格模式下，如果之前有了token，则复用，让多个终端保持自动登陆
-                    map.put("token", beforeUseToken);
-                } else {
-                    String encryptedToken = Utils.MD("MD5", dbUser.getUid() + user.getToken()); // 加密token
-                    cacheUser.setToken(encryptedToken); //上面条件不成立则产生新的token
-                    cache.putTokenEntry(encryptedToken, user.getToken()); //缓存下加密的token与未加密的token的映射关系
-                    map.put("token", user.getToken());
-                }
-                userDao.updateTokenAndIp(cacheUser);
-            } else if (!user.getLoginIP().equals(dbUser.getLoginIP())) {
-                if ("true".equals(Config.get(ConfigConstants.USER_LOGIN_STRICT))) {
-                    cacheUser.setToken(""); //当是严格模式且登录IP不同时，清除token
-                }
-                userDao.updateTokenAndIp(cacheUser);
-            }
-            map.put("user", cacheUser);
-            map.put("flag", 200);
         }
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                if ((int) map.get("flag") == 200) {
-                    WsMessage pushMessage = new WsMessage();    // 推送消息
-                    pushMessage.setMapping("user_has_login");
-                    pushMessage.setContent("用户<" + dbUser.getNickname() + ">登录~, ip: " + user.getLoginIP() + "");
-                    pushMessage.setMetadata("user", cache.cloneUser(dbUser));
-                    notifyService.pushWsMessage(cache.getManagers(), pushMessage);
-                }
+        UserAuth userNameUserAuth = getUserAuthFromList(userAuthList, UserAuthType.USERNAME);
+        UserAuth emailUserAuth = getUserAuthFromList(userAuthList, UserAuthType.EMAIL);
+        if (userNameUserAuth != null) {
+            userNameUserAuth.setGroup_type(UserAuthType.USERNAME.group);
+        }
+        if (emailUserAuth != null) {
+            userNameUserAuth.setGroup_type(UserAuthType.EMAIL.group);
+        }
+        for (UserAuth userAuth : userAuthList) {
+            if (!userAuth.typeOfLegalAuth()) {
+                return null;
             }
-        }).start();
-        return map;
+        }
+        if (userNameUserAuth != null && emailUserAuth != null && userNameUserAuth.getCredential().equals(emailUserAuth.getCredential())) {
+            UserAuth uidUserAuth = getUserAuthFromList(userAuthList, UserAuthType.UID);
+            if (uidUserAuth != null) {
+                userAuthList.remove(uidUserAuth);
+                return null;
+            } else {
+                uidUserAuth = new UserAuth(null, UserAuthType.UID, null, userNameUserAuth.getCredential());
+                userAuthList.add(uidUserAuth);
+                UserAuth tempUserAuth = userAuthList.get(0);
+                userAuthList.set(0, uidUserAuth);
+                userAuthList.set(userAuthList.size() - 1, tempUserAuth);
+                String encryptedPassword = Utils.MD("MD5", userNameUserAuth.getCredential());
+                for (UserAuth userAuth : userAuthList) {
+                    userAuth.setVerified(1);
+                    userAuth.setLogin_ip("");
+                    if (userAuth.getGroup_type() == null) {
+                        userAuth.setGroup_type(UserAuthType.QQ.group);
+                    }
+                    if (userAuth.typeOfInsideGroup()) {
+                        userAuth.setCredential(encryptedPassword);  // 加密
+                    }
+                }
+                return userAuthList;
+            }
+        } else {
+            return null;
+        }
     }
 
-    /**
-     * 清除自动登录令牌
-     *
-     * @param loginUser
-     * @return flag - 200：成功，401：需要登录，404：无此用户，500: 失败
-     */
-    public int clearToken(User loginUser) {
-        if (loginUser == null) {
-            return 401;
+    private UserAuth getUserAuthFromList(List<UserAuth> userAuths, UserAuthType userAuthType) {
+        if (userAuths != null && !userAuths.isEmpty()) {
+            for (UserAuth userAuth : userAuths) {
+                if (userAuth.getIdentity_type() == userAuthType.value) {
+                    return userAuth;
+                }
+            }
         }
-        cache.removeTokenEntry(loginUser.getToken());
-        loginUser.setToken("");
-        loginUser.setLoginIP(null);
-        return convertRowToHttpCode(userDao.updateTokenAndIp(loginUser));
+        return null;
     }
 
     /**
@@ -188,20 +207,25 @@ public class UserServiceImpl implements IUserService {
      * @param loginUser
      * @return
      */
+    @Override
     public User findUser(User user, User loginUser) {
         User hostUser = userDao.findUser(user);
         if (hostUser != null) {
             if (cache.getUser(hostUser.getUid(), Cache.READ) == null) {
+                UserSetting userSetting = userDao.findUserSetting(user);
+                user.setUserSetting(userSetting);
                 trigger.newUser(hostUser);
             }
-            boolean enableSecurity = (loginUser == null || (user.getUid() != loginUser.getUid() && loginUser.getUserGroup().getGid() == 0));
+            boolean enableSecurity = (loginUser == null || (loginUser.getUserGroup().isGeneralUser() && user.getUid() != loginUser.getUid()));
             cache.fillUserStats(hostUser, enableSecurity);
-            hostUser.setPassword(null);
-            hostUser.setToken(null);
+            hostUser.setUserAuths(null);
             //loginUser-->判断主人各项资料访客的查看权限
             if (enableSecurity) {
-                hostUser.setLoginIP(null);
-                hostUser.setUsername(null);
+                UserStatus userStatus = hostUser.getUserStatus();
+                userStatus.setLast_login_ip(null);
+                userStatus.setLast_login_time(null);
+                userStatus.setRegister_ip(null);
+                userStatus.setRegister_time(null);
                 hostUser.setEmail(null);
             }
         }
@@ -213,9 +237,10 @@ public class UserServiceImpl implements IUserService {
      *
      * @param user
      * @param loginUser
-     * @param synchronize 是否从缓存中查找
+     * @param synchronize 是否从缓存中查找，谨慎使用，安全性严重危险
      * @return
      */
+    @Override
     public User findUser(User user, User loginUser, boolean synchronize) {
         if (synchronize) {
             return cache.getUser(user.getUid(), Cache.READ);
@@ -231,6 +256,7 @@ public class UserServiceImpl implements IUserService {
      * @param user
      * @return
      */
+    @Override
     public Map<String, Object> findUserList(int currentPage, User user) {
         //根据条件查询总行数
         int rowCount = userDao.findUserListCount(user);
@@ -254,11 +280,15 @@ public class UserServiceImpl implements IUserService {
      * @param loginUser
      * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
      */
+    @Override
     public int deleteUser(User user, User loginUser) {
+        if (true) {
+            return 403;
+        }
         if (loginUser == null) {
             return 401;
         }
-        if (loginUser.getUserGroup().getGid() != 1) {
+        if (loginUser.getUserGroup().isGeneralUser()) {
             return 403;
         }
         return convertRowToHttpCode(userDao.deleteUser(user));
@@ -271,24 +301,26 @@ public class UserServiceImpl implements IUserService {
      * @param loginUser
      * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
      */
+    @Override
     public int saveProfile(User user, User loginUser) {
         if (loginUser == null) {
             return 401;
-        }
-        if (user.getUid() != loginUser.getUid() && loginUser.getUserGroup().getGid() == 0) {
+        } else if (user == null || user.getUid() == 0) {
+            return 400;
+        } else if (user.getUid() != loginUser.getUid() && loginUser.getUserGroup().isGeneralUser()) {
             return 403;
         }
-        if (user.getHead_photo().equals("img/default_miss.jpg") || user.getHead_photo().equals("img/default_man.jpg")) {
-            if (user.getSex().equals("女")) {
-                user.setHead_photo("img/default_miss.jpg");
-            } else {
-                user.setHead_photo("img/default_man.jpg");
-            }
+        User cacheUser = cache.getUser(user.getUid(), Cache.READ);
+        if (cacheUser == null) {
+            return 404;
+        } else {
+            user.setHead_photo(cacheUser.getHead_photo());
         }
         int row = userDao.saveProfile(user);
         if (row > 0) {
             User newUser = userDao.findUser(user);
-            newUser.setPassword("");
+            UserSetting userSetting = userDao.findUserSetting(newUser);
+            newUser.setUserSetting(userSetting);
             //更新缓存中用户
             trigger.updateUser(newUser);
         }
@@ -296,33 +328,91 @@ public class UserServiceImpl implements IUserService {
     }
 
     /**
-     * 更新账号信息
+     * 返回用户的账户设置
      *
-     * @param user
+     * @param user      为null返回当前登陆用户，设置值时当uid与loginUser相同或loginUser为管理员时才返回
      * @param loginUser
      * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * userSetting - 用户设置
      */
-    public int updateAccount(User user, User loginUser) {
+    @Override
+    public Map<String, Object> getUserSetting(User user, User loginUser) {
+        Map<String, Object> map = new HashMap<>();
+        int flag = 200;
+        if (loginUser == null || loginUser.getUid() == 0) {
+            flag = 401;
+        } else if (user == null || user.getUid() == 0) {
+            user = loginUser;
+        }
+        if (flag == 200) {
+            if (user.getUid() == loginUser.getUid() || loginUser.getUserGroup().isManager()) {
+                UserSetting userSetting = userDao.findUserSetting(user);
+                if (userSetting != null) {
+                    map.put("userSetting", userSetting);
+                } else {
+                    flag = 500;
+                }
+            } else {
+                flag = 403;
+            }
+        }
+        map.put("flag", flag);
+        return map;
+    }
+
+    /**
+     * 更新用户的账户设置
+     *
+     * @param userSetting 不设置uid时默认为当前登陆用户，当uid与loginUser相同或loginUser为管理员时才返回
+     * @param loginUser
+     * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * userSetting - 用户设置
+     */
+    @Override
+    public Map<String, Object> updateUserSetting(UserSetting userSetting, User loginUser) {
+        Map<String, Object> map = new HashMap<>();
+        int flag = 200;
         if (loginUser == null) {
-            return 401;
+            flag = 401;
+        } else if (userSetting == null) {
+            flag = 400;
+        } else if (userSetting.getUid() == 0) {
+            userSetting.setUid(loginUser.getUid());
         }
-        if (user.getUid() != loginUser.getUid() && loginUser.getUserGroup().getGid() == 0) {
-            return 403;
+        if (userSetting.getUid() != loginUser.getUid() && loginUser.getUserGroup().isGeneralUser()) {
+            flag = 403;
         }
-        if (user.getPassword() != null && !user.getPassword().equals("")) {
-            //md5 加密
-            user.setPassword(Utils.MD("MD5", user.getPassword()));
+        User cacheUser = null;
+        if (flag == 200) {
+            cacheUser = cache.getUser(userSetting.getUid(), Cache.READ);
+            if (cacheUser == null) {
+                flag = 404;
+            } else {
+                UserSetting dbUserSetting = userDao.findUserSetting(cacheUser);
+                if (dbUserSetting != null) {
+                    if (userSetting.getPageBackground() == null) {
+                        userSetting.setPageBackground(dbUserSetting.getPageBackground());
+                    }
+                    if (userSetting.getProfileViewLevel() == null) {
+                        userSetting.setProfileViewLevel(dbUserSetting.getProfileViewLevel());
+                    }
+                    if (userSetting.getReceiveNotifyEmail() == null) {
+                        userSetting.setReceiveNotifyEmail(dbUserSetting.getReceiveNotifyEmail());
+                    }
+                    flag = userDao.updateUserSetting(userSetting) > 0 ? 200 : 500;
+                } else {
+                    flag = 500;
+                }
+            }
+
         }
-        int row = userDao.updateAccount(user);
-        if (row > 0) {
-            User newUser = userDao.findUser(user);
-            newUser.setPassword(null);
-            //清除token，使所有终端自动登录失效
-            clearToken(newUser);
-            //更新缓存中用户
-            trigger.updateUser(newUser);
+        map.put("flag", flag);
+        if (flag == 200) {
+            UserSetting newUserSetting = userDao.findUserSetting(cacheUser);
+            cacheUser.setUserSetting(newUserSetting);
+            map.put("userSetting", userSetting);
         }
-        return convertRowToHttpCode(row);
+        return map;
     }
 
     /**
@@ -332,10 +422,17 @@ public class UserServiceImpl implements IUserService {
      * @param loginUser
      * @return flag - 200：已关注，404：未关注
      */
+    @Override
     public int checkFollow(User hostUser, User loginUser) {
-        Follow follow = new Follow(loginUser.getUid(), hostUser.getUid());
-        //userDao.checkFollow(follow)
-        return cache.containsFollow(follow) > 0 ? 200 : 404;
+        if (loginUser == null || loginUser.getUid() == 0) {
+            return 401;
+        } else if (hostUser == null || hostUser.getUid() == 0) {
+            return 400;
+        } else {
+            Follow follow = new Follow(loginUser.getUid(), hostUser.getUid());
+            //userDao.checkFollow(follow)
+            return cache.containsFollow(follow) > 0 ? 200 : 404;
+        }
     }
 
     /**
@@ -345,14 +442,19 @@ public class UserServiceImpl implements IUserService {
      * @param loginUser
      * @return flag - 200：关注成功，201：关注成功并成为好友，204：重复插入，401：需要登录，404：无此用户，500: 失败
      */
+    @Override
     public int follow(User hostUser, User loginUser) {
-        if (loginUser == null) {
+        if (loginUser == null || loginUser.getUid() == 0) {
             return 401;
+        } else if (hostUser == null || hostUser.getUid() == 0) {
+            return 400;
+        }
+        hostUser = cache.getUser(hostUser.getUid(), Cache.READ);
+        if (hostUser == null) {
+            return 404;
         }
         Follow follow = new Follow(loginUser.getUid(), hostUser.getUid());
         int index = userDao.saveFollow(follow);
-        loginUser = cache.getUser(loginUser.getUid(), Cache.READ);
-        hostUser = cache.getUser(hostUser.getUid(), Cache.READ);
         if (index == 0) {
             return 404;
         } else if (index == 11) {
@@ -360,13 +462,13 @@ public class UserServiceImpl implements IUserService {
         } else if (index == 1) {
             trigger.follow(follow);
             //发送通知
-            notifyService.theNewFollower(cache.getUser(hostUser.getUid(), Cache.READ), loginUser, false);
+            notifyService.theNewFollower(hostUser, loginUser, false);
             return 200;
         } else if (index == 2) {
             trigger.follow(follow);
             trigger.friend(new Friend(loginUser.getUid(), hostUser.getUid()));
             //发送通知
-            notifyService.theNewFollower(cache.getUser(hostUser.getUid(), Cache.READ), loginUser, true);
+            notifyService.theNewFollower(hostUser, loginUser, true);
             return 201;
         } else {
             return 500;
@@ -380,9 +482,12 @@ public class UserServiceImpl implements IUserService {
      * @param loginUser
      * @return flag - 200：取消成功，201：取消成功并取消好友，401：需要登录，404：无此记录，500: 失败
      */
+    @Override
     public int removeFollow(User hostUser, User loginUser) {
-        if (loginUser == null) {
+        if (loginUser == null || loginUser.getUid() == 0) {
             return 401;
+        } else if (hostUser == null || hostUser.getUid() == 0) {
+            return 400;
         }
         Follow follow = new Follow(loginUser.getUid(), hostUser.getUid());
         int row = userDao.deleteFollow(follow);
@@ -407,8 +512,13 @@ public class UserServiceImpl implements IUserService {
      * @param loginUser
      * @return
      */
+    @Override
     public List<User> findFollowList(User user, User loginUser) {
-        return userDao.findFollowList(user);
+        if (user == null || user.getUid() == 0) {
+            return null;
+        } else {
+            return userDao.findFollowList(user);
+        }
     }
 
     /**
@@ -418,8 +528,13 @@ public class UserServiceImpl implements IUserService {
      * @param loginUser
      * @return
      */
+    @Override
     public List<User> findFansList(User user, User loginUser) {
-        return userDao.findFansList(user);
+        if (user == null || user.getUid() == 0) {
+            return null;
+        } else {
+            return userDao.findFansList(user);
+        }
     }
 
     /**
@@ -428,51 +543,13 @@ public class UserServiceImpl implements IUserService {
      * @param loginUser
      * @return
      */
+    @Override
     public List<User> findFriendList(User loginUser) {
-        return userDao.findFriendList(loginUser);
-    }
-
-    /**
-     * 发送私信
-     *
-     * @param letter
-     * @param loginUser
-     * @return flag - 200：发送成功，401：需要登录，500: 失败
-     */
-    public int sendLetter(Letter letter, User loginUser) {
-        if (loginUser == null) {
-            return 401;
+        if (loginUser == null || loginUser.getUid() == 0) {
+            return null;
         } else {
-            letter.setS_uid(loginUser.getUid());
+            return userDao.findFriendList(loginUser);
         }
-        int row = userDao.saveLetter(letter);
-        if (row > 0) {
-            //收到私信通知
-            notifyService.receivedLetter(letter);
-        }
-        return row > 0 ? 200 : 500;
-    }
-
-    /**
-     * 查询私信列表
-     *
-     * @param user
-     * @param read_status 0 未读 1全部
-     * @return
-     */
-    public List<Letter> findLetterList(User user, int read_status) {
-        return userDao.findLetterList(user, read_status);
-    }
-
-    /**
-     * 查询系统消息列表
-     *
-     * @param user
-     * @param read_status 0 未读 1全部
-     * @return
-     */
-    public List<SysMsg> findSysMsgList(User user, int read_status) {
-        return userDao.findSysMsgList(user, read_status);
     }
 
     /**
@@ -482,6 +559,7 @@ public class UserServiceImpl implements IUserService {
      * @param article
      * @return
      */
+    @Override
     public void hasClickArticle(User user, Article article) {
         //trigger event
         trigger.clickArticle(user, article);
@@ -492,11 +570,18 @@ public class UserServiceImpl implements IUserService {
      * 检查是否loginUser收藏了此文章
      *
      * @param article
-     * @param user
+     * @param loginUser
      * @return flag - 200：已收藏，404：未收藏
      */
-    public int checkCollection(Article article, User user) {
-        return userDao.checkCollection(new Collection(user.getUid(), article.getAid())) > 0 ? 200 : 404;
+    @Override
+    public int checkCollection(Article article, User loginUser) {
+        if (loginUser == null || loginUser.getUid() == 0) {
+            return 401;
+        } else if (article == null || article.getAid() == 0) {
+            return 400;
+        } else {
+            return userDao.checkCollection(new Collection(loginUser.getUid(), article.getAid())) > 0 ? 200 : 404;
+        }
     }
 
     /**
@@ -506,6 +591,7 @@ public class UserServiceImpl implements IUserService {
      * @param article
      * @return flag - 200：成功，204: 重复插入，401：需要登录，404: 无此文章，500: 失败
      */
+    @Override
     public int collectArticle(User user, Article article) {
         if (user == null) {
             return 401;
@@ -532,6 +618,7 @@ public class UserServiceImpl implements IUserService {
      * @param user
      * @return list
      */
+    @Override
     public List<Collection> findCollectList(User user) {
         return userDao.findCollectList(user);
     }
@@ -543,6 +630,7 @@ public class UserServiceImpl implements IUserService {
      * @param article
      * @return flag - 200：取消成功，401：需要登录，404：无此记录，500: 失败
      */
+    @Override
     public int unCollectArticle(User user, Article article) {
         if (user == null) {
             return 401;
@@ -560,30 +648,55 @@ public class UserServiceImpl implements IUserService {
     /**
      * 更新头像
      *
-     * @param file
-     * @param user
-     * @param fileName
-     * @param request
-     * @param map
+     * @param imageFile       与headPhotoPath二选一
+     * @param imageRawFile    头像的原图
+     * @param head_photo_path 设置默认头像时传入链接，不需要传file了
+     * @param loginUser
      * @return flag - 200：成功，400: 图片为空，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * head_photo - 头像地址
      */
     @Override
-    public int saveHeadPhoto(MultipartFile file, User user, String fileName, HttpServletRequest request, Map map) {
-        if (user == null) {
-            return 401;
+    public Map<String, Object> saveHeadPhoto(MultipartFile imageFile, MultipartFile imageRawFile, String head_photo_path, User loginUser) {
+        Map<String, Object> map = new HashMap<>();
+        int flag = 200;
+        if (loginUser == null) {
+            flag = 401;
+        } else if ((imageFile == null || imageFile.isEmpty()) && Utils.isEmpty(head_photo_path)) {
+            flag = 400;
         }
-        if (file == null) {
-            return 400;
+        if (flag == 200) {
+            try {
+                String headPhotoValue = null;
+                String headPhotoRawValue = null;
+                if (imageFile != null && !imageFile.isEmpty()) {
+                    String savePath = Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/head/" + loginUser.getUid() + "/";
+                    String fileName = "head_photo_" + loginUser.getUid() + "_" + System.currentTimeMillis() + ".jpg";
+                    String fileRawName = "head_photo_" + loginUser.getUid() + "_" + System.currentTimeMillis() + "_raw.jpg";
+                    if (fileService.saveHeadPhotoFile(imageFile.getInputStream(), savePath, fileName)) {
+                        fileService.saveHeadPhotoFile(imageRawFile.getInputStream(), savePath, fileRawName);
+                        headPhotoValue = savePath + fileName;
+                        headPhotoRawValue = savePath + fileRawName;
+                    } else {
+                        flag = 500;
+                    }
+                } else {
+                    headPhotoValue = head_photo_path;
+                    headPhotoRawValue = head_photo_path;
+                }
+                if (flag == 200) {
+                    User cacheUser = cache.getUser(loginUser.getUid(), Cache.READ);
+                    cacheUser.setHead_photo(headPhotoValue);
+                    flag = saveProfile(cache.cloneUser(cacheUser), loginUser);
+                    map.put("head_photo", headPhotoValue);
+                    map.put("head_photo_raw", headPhotoRawValue);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                flag = 500;
+            }
         }
-        String savePath = Utils.getContextFatherPath() + "cloud/" + "user/" + user.getUid() + "/head";
-        if (fileService.saveHeadPhotoFile(file, savePath, fileName)) {
-            map.put("path", "user/" + user.getUid() + "/head/" + fileName);
-            User updateUser = cache.getUser(user.getUid(), Cache.WRITE);
-            updateUser.setHead_photo((String) map.get("head_photo"));
-            return saveProfile(updateUser, user);
-        } else {
-            return 500;
-        }
+        map.put("flag", flag);
+        return map;
     }
 
     private int convertRowToHttpCode(int row) {

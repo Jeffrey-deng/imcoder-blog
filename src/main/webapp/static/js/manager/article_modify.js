@@ -12,8 +12,12 @@
     //是否已经保存
     var isSaveFlag = false;
 
+    var createConfigInfo = null;
+
     function save() {
         if (validate() == true) {
+            $('#btn_save').attr("disabled", "disabled");
+
             var labels = $("#tags").find('label');
             var detail = $('#article_edit').summernote('code');
             var summary = $('#article_summary').summernote('code');
@@ -62,7 +66,6 @@
                     if (data.flag == 200) {
                         isSaveFlag = true;
                         toastr.success("保存成功!", "提示");
-                        $('#btn_save').attr("disabled", "disabled");
                         $('#btn_cancle').attr("disabled", "disabled");
                         var detail_url = "article.do?method=detail&aid=" + article.aid;
                         $('#a_checkDeatil').attr("href", detail_url);
@@ -76,6 +79,7 @@
                                 toastr.success("登录状态失效，现已重新登录！");
                                 save();
                             } else {
+                                $('#btn_save').removeAttr("disabled");
                                 toastr.error("保存失败！", "提示");
                                 toastr.error('由于您编辑时间过长导致Session过期了，您可以点击下面链接进行登录后，再返回此页面进行保存操作！' +
                                     '<br><br>' +
@@ -91,11 +95,13 @@
                         }, true);
                         console.warn("Error Code: " + data.flag);
                     } else {
+                        $('#btn_save').removeAttr("disabled");
                         toastr.error(data.info, "保存失败！");
                         console.warn("Error Code: " + data.flag);
                     }
                 },
                 error: function (XMLHttpRequest, textStatus, errorThrown) {
+                    $('#btn_save').removeAttr("disabled");
                     toastr.error("服务器连接异常，保存失败！", "提示");
                 },
                 complete: function (XMLHttpRequest, textStatus) {
@@ -325,12 +331,44 @@
         toastr.success("还原完成，请查看！");
     }
 
+    // 初始化文章上传的配置
+    function initCreateConfigInfo() {
+        $.get("article.do?method=getCreateConfigInfo", function (data) {
+            if (data && data.flag == 200) {
+                delete data.flag;
+                createConfigInfo = data;
+                edit_tool.config.maxUploadSize = data.uploadArgs.maxPhotoUploadSize;
+                if (!createConfigInfo || createConfigInfo.isAllowCreate) {
+                    $('#btn_save').removeAttr("disabled");
+                    common_utils.removeNotify("notify-no-allow-create");
+                } else {
+                    var users = null;
+                    var lowestLevel = createConfigInfo.allowCreateLowestLevel;
+                    if (lowestLevel == 1) {
+                        users = "高级会员与管理员";
+                    } else if (lowestLevel == -1) {
+                        users = "管理员";
+                    }
+                    common_utils.notify({timeOut: 0}).info("系统当前配置为只允许 <b>" + users + "</b> 上传文章", "您暂时不能上传", "notify-no-allow-create");
+                    $('#btn_save').attr("disabled", "disabled");
+                }
+            } else {
+                $('#btn_save').attr("disabled", "disabled");
+                toastr.error("加载上传文章配置失败", "错误");
+            }
+        });
+    }
+
     domReady(function () {
+
+        // 初始化文章上传的配置
+        initCreateConfigInfo();
 
         //添加标签事件
         $('#btn_addTag').click(function () {
             addTag();
         });
+
         //保存事件
         $('#btn_save').click(function () {
             save();

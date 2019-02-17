@@ -189,52 +189,6 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
 
     /** --------article dml end----------------- */
 
-    /**----------commment start-------------------*/
-
-    /**
-     * 添加评论
-     */
-    public int saveComment(Comment comment) {
-        try {
-            return this.getSqlSession().insert("article.saveComment", comment);
-        } catch (Exception e) {
-            e.printStackTrace();
-            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            logger.error("saveComment fail", e);
-            return -1;
-        }
-    }
-
-    /**
-     * 查找文章评论
-     */
-    public List<Comment> findCommentList(int aid) {
-        return this.getSqlSession().selectList("article.findCommentList", aid);
-    }
-
-    /**
-     * 删除评论 有子节点 就改content为 ‘已删除’
-     *
-     * @param comment
-     * @return 0：删除失败 1：填充为‘已删除’ 2：完全删除
-     */
-    public int deleteComment(Comment comment) {
-        try {
-            SqlSession session = this.getSqlSession();
-            int childCount = session.selectOne("article.selectCmtChildCount", comment);
-            if (childCount > 0)
-                return session.update("article.deleteComment_1", comment);
-            else
-                return session.delete("article.deleteComment_2", comment) == 1 ? 2 : 0;
-        } catch (Exception e) {
-            e.printStackTrace();
-            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            logger.error("deleteComment fail", e);
-            return -1;
-        }
-    }
-    /**----------commment end-------------------*/
-
     /** ---------- article rank manager start ------------------- */
 
     /**

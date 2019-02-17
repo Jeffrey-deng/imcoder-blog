@@ -39,9 +39,9 @@
     }
 
     if (title == null) {
-        title = "ImCODER's 博客";
+        title = "ImCoder's 博客";
     } else {
-        title = title + " - ImCODER's 博客";
+        title = title + " - ImCoder's 博客";
     }
     request.setAttribute("description", description);
     request.setAttribute("title", title);
@@ -54,7 +54,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>${title}</title>
     <meta name="description" content="${description}">
-    <meta name="keywords" content="ImCODER's 博客,CODER 博客,程序员,码农,JAVA,大数据">
+    <meta name="keywords" content="ImCoder's 博客,CODER 博客,程序员,码农,JAVA,大数据">
     <!-- 使用url函数转换相关路径 -->
     <!-- <script async="" src="http://www.google-analytics.com/analytics.js"></script> -->
 
@@ -74,9 +74,9 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center;">
-                    <h1>ImCODER's 博客</h1>
-                    <h3>对于攀登者来说，失掉往昔的足迹并不可惜，迷失了继续前进时的方向却很危险。</h3>
-                    <h3>A coder's journal</h3>
+                    <h1>ImCoder's 博客</h1>
+                    <h3>叶落九秋枝未枯兮，水迎孤月遥未有辞，尔胡以有不自平兮，非心之逑兮以为然</h3>
+                    <h3>浮云千里望，路行影自难</h3>
                     <p>
                         <a class="btn btn-large btn-success loginModal_trigger"><b>
                             <c:if test="${ empty loginUser }">登录 or 注册</c:if>
@@ -94,7 +94,7 @@
     <div class="container-fluid">
         <div class="navbar-header">
             <div class="navbar-brand">
-                <p><a class="logo" style="color: #333;" href="<%=basePath%>">博客Blog</a></p>
+                <p><a class="logo" style="color: #333;" href="<%=basePath%>">ImCoder</a></p>
             </div>
             <button type="button" class="navbar-toggle collapsed " data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
                 <span class="sr-only">Toggle navigation</span>
@@ -159,7 +159,7 @@
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
-                            <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
+                            <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
                                 <div class="col-sm-1">
                                     <div class="coldesc"><a class="toolbar_jump_manager" href="manager.do?method=backstage" target="_blank">管理</a></div>
                                 </div>
@@ -220,6 +220,7 @@
                             <h4><a class="anav-menu_user toolbar_user_profilecenter" href="<%=basePath%>user.do?method=profilecenter" target="_blank">个人中心</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_userhome" href="<%=basePath%>user.do?method=home&uid=${loginUser.uid}" target="_blank">我的博客</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_albums" href="<%=basePath%>photo.do?method=user_albums&uid=${loginUser.uid}" target="_blank">我的相册</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_videos" href="<%=basePath%>video.do?method=user_videos&uid=${loginUser.uid}" target="_blank">我的视频</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_messages" href="<%=basePath%>user.do?method=profilecenter&action=messages" target="_blank">我的消息</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_setting" href="<%=basePath%>user.do?method=profilecenter&action=settings" target="_blank">修改设置</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_logout" title="点击退出登录">安全退出</a></h4>
@@ -296,7 +297,7 @@
                                 </span>
                                 <c:choose>
                                     <c:when test="${article.comment == 0 }">
-                                        <a class="post-comments" itemprop="discussionUrl" href="article.do?method=detail&aid=${article.aid}#addcomment" target="_blank">抢占沙发</a>
+                                        <a class="post-comments" itemprop="discussionUrl" href="article.do?method=detail&aid=${article.aid}#addComment" target="_blank">抢占沙发</a>
                                     </c:when>
                                     <c:otherwise>
                                         <a class="post-comments" itemprop="discussionUrl" href="article.do?method=detail&aid=${article.aid}#comments" target="_blank">${article.comment} 条评论</a>
@@ -353,11 +354,11 @@
                             </div>
                             <img src="<%=staticPath%>${loginUser.head_photo}" class="img-circle circle-border m-b-md author-head" alt="profile">
                             <div>
-                                <span><a class="author-articleCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=home&uid=${loginUser.uid}">${loginUser.articleCount} 动态</a></span>
+                                <span><a class="author-articleCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=home&uid=${loginUser.uid}">${loginUser.userStatus.articleCount} 动态</a></span>
                                 |
-                                <span><a class="author-followCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=profilecenter&action=follows">${loginUser.followCount} 关注</a></span>
+                                <span><a class="author-followCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=profilecenter&action=follows">${loginUser.userStatus.followCount} 关注</a></span>
                                 |
-                                <span><a class="author-fansCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=profilecenter&action=fans">${loginUser.fansCount} 关注者</a></span>
+                                <span><a class="author-fansCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=profilecenter&action=fans">${loginUser.userStatus.fansCount} 关注者</a></span>
                             </div>
                         </div>
                         <div class="widget-text-box">
@@ -440,11 +441,11 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
-                        <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
+                        <input type="email" name="identifier" class="form-control" placeholder="输入用户名/email">
                     </div>
                     <div class="form-group">
                         <label>密码</label>
-                        <input type="password" name="password" class="form-control" placeholder="输入密码">
+                        <input type="password" name="credential" class="form-control" placeholder="输入密码">
                     </div>
                     <div class="form-group">
                         <label>

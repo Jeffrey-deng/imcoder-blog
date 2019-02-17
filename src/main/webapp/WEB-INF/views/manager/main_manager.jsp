@@ -16,7 +16,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
-    <title>Website Administer System - ImCODER's 博客</title>
+    <title>Website Administer System - ImCoder's 博客</title>
     <meta name="description" content="博客后台管理中心">
     <meta name="keywords" content="博客后台管理中心">
     <!-- 使用url函数转换相关路径 -->
@@ -50,7 +50,7 @@
     <div class="container-fluid">
         <div class="navbar-header">
             <div class="navbar-brand">
-                <p><a class="logo" style="color: #333;" href="<%=basePath%>">博客Blog</a></p>
+                <p><a class="logo" style="color: #333;" href="<%=basePath%>">ImCoder</a></p>
             </div>
             <button type="button" class="navbar-toggle collapsed " data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
                 <span class="sr-only">Toggle navigation</span>
@@ -115,7 +115,7 @@
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
-                            <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
+                            <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
                                 <div class="col-sm-1">
                                     <div class="coldesc"><a class="toolbar_jump_manager" href="manager.do?method=backstage" target="_blank">管理</a></div>
                                 </div>
@@ -359,11 +359,11 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
-                        <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
+                        <input type="email" name="identifier" class="form-control" placeholder="输入用户名/email">
                     </div>
                     <div class="form-group">
                         <label>密码</label>
-                        <input type="password" name="password" class="form-control" placeholder="输入密码">
+                        <input type="password" name="credential" class="form-control" placeholder="输入密码">
                     </div>
                     <div class="form-group">
                         <label>

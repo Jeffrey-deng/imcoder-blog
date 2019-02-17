@@ -1,5 +1,8 @@
 package site.imcoder.blog.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import site.imcoder.blog.common.type.UserGroupType;
+
 import java.io.Serializable;
 
 public class UserGroup implements Serializable {
@@ -34,5 +37,24 @@ public class UserGroup implements Serializable {
         this.group_name = group_name;
     }
 
+    /**
+     * 是否为管理员
+     *
+     * @return
+     */
+    @JsonIgnore
+    public boolean isManager() {
+        return this.gid == UserGroupType.MANAGER.value;
+    }
+
+    /**
+     * 是否为普通用户（是否不是管理员）
+     *
+     * @return
+     */
+    @JsonIgnore
+    public boolean isGeneralUser() {
+        return !(this.gid == UserGroupType.MANAGER.value);
+    }
 
 }

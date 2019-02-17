@@ -1,5 +1,6 @@
 /**
  * 登录
+ * @author Jeffrey.deng
  */
 (function (factory) {
     /* global define */
@@ -73,9 +74,10 @@
         if (need_login && window.location.href.indexOf("method=jumpLogin") == -1) {
             var data = {};
             data.uid = common_utils.cookieUtil.get("uid");
-            data.token = common_utils.cookieUtil.get("token");
+            data.identifier = common_utils.cookieUtil.get("token");
+            data.identity_type = 4;
             $.ajax({
-                url: 'user.do?method=login',
+                url: 'auth.do?method=login',
                 type: "POST",
                 async: callback ? true : false,
                 data: data,
@@ -106,8 +108,8 @@
     var bindEvent = function () {
         pointer.login_form.find('.login_submit').click(function () {
             var form = {};
-            form.username = pointer.login_form.find('input[name="username"]').val();
-            form.password = pointer.login_form.find('input[name="password"]').val();
+            form.identifier = pointer.login_form.find('input[name="identifier"]').val();
+            form.credential = pointer.login_form.find('input[name="credential"]').val();
             form.remember = pointer.login_form.find('input[name="remember"]').prop('checked');
             form.remember === undefined && (form.remember = true);
             login(form);
@@ -193,13 +195,13 @@
             showLoginModal(url, null);
         } else {
             var encoderUrl = encodeURIComponent(encodeURIComponent(url));
-            window.location.href = "user.do?method=jumpLogin&continue=" + encoderUrl;
+            window.location.href = "auth.do?method=jumpLogin&continue=" + encoderUrl;
         }
     };
 
     /** 弹出登录框
-     * @param {String} url - 登录后跳转的链接，为最高优先级，可以不填
-     * @param {Function} call - 登录后执行的回调函数，可以不填
+     * @param {String=} url - 登录后跳转的链接，为最高优先级，可以不填
+     * @param {Function=} call - 登录后执行的回调函数，可以不填
      */
     var showLoginModal = function (url, call) {
         //再一次执行初始化，防止弹出登录框后不登陆直接关闭后，下次再弹出登陆框jumpUrl错误
@@ -225,14 +227,16 @@
             }
         }
         //isRememberLogin() && pointer.login_form.find('input[name="remember"]').prop("checked", true);
-        pointer.login_modal.modal({backdrop: 'static', keyboard: false});
+        if (pointer.login_modal.length > 0) {
+            pointer.login_modal.modal({backdrop: 'static', keyboard: false});
+        }
     };
 
-    //登录请求
+    // 登录请求
     var login = function (form) {
-        if (utils.validateParams(form.username, form.password)) {
+        if (utils.validateParams(form.identifier, form.credential)) {
             $.ajax({
-                url: 'user.do?method=login',
+                url: 'auth.do?method=login',
                 type: "POST",
                 data: form,
                 dataType: 'json',
@@ -259,10 +263,10 @@
                         localStorage.login_time = common_utils.formatDate(new Date(), "yyyy-MM-dd hh:mm:ss");
                         localStorage.checkLogin_lastTime = new Date().getTime() + "";
 
-                        //如果有回调函数则执行
+                        // 如果有回调函数则执行
                         if (pointer.callback) {
                             pointer.callback();
-                            //让页面跳转慢一点以显示回调函数执行结果给用户
+                            // 让页面跳转慢一点以显示回调函数执行结果给用户
                             setTimeout(function () {
                                 utils.go(config.jumpUrl);
                             }, 1000);
@@ -407,13 +411,13 @@
     };
 
     var utils = {
-        validateParams: function (username, password) {
+        validateParams: function (identifier, credential) {
             var e = true;
-            if (username == "") {
+            if (!identifier) {
                 toastr.info("未填写账号！");
                 e = false;
             }
-            if (password == "") {
+            if (!credential) {
                 toastr.info("未填写密码！");
                 e = false;
             }
@@ -451,6 +455,18 @@
                     }
                 );
             }, 100);
+            // 连接开启或重连时
+            websocket_util.on(websocket_util.config.event.connectionOpen, function () {
+                // 注册页面信息
+                websocket_util.post({
+                    "mapping": "page_info",
+                    "metadata": {
+                        "title": document.title,
+                        "href": document.location.href,
+                        "openTime": common_utils.formatDate(new Date(), "yyyy-MM-dd hh:mm:ss")
+                    }
+                });
+            });
             var notify_ws_opts = {
                 "progressBar": false,
                 "positionClass": "toast-top-right",
@@ -468,12 +484,18 @@
                 if (!wsMessage.metadata) {
                     wsMessage.metadata = {};
                 }
-                var notify_opts = $.extend({}, notify_ws_opts, {
-                    "onclick": function () {
-                        return false;
-                    }
-                }, wsMessage.metadata.notify);
-                common_utils.notify(notify_opts).success(wsMessage.content, "管理员 " + (wsMessage.metadata.users ? "对你" : "") + "说：", "push_manager_notify");
+                if (wsMessage.metadata.type == "withdraw" && wsMessage.metadata.withdraw_id) {
+                    common_utils.removeNotify("push_manager_notify" + "_" + wsMessage.metadata.withdraw_id);
+                } else {
+                    var notify_opts = $.extend({}, notify_ws_opts, {
+                        "onclick": function () {
+                            return false;
+                        }
+                    }, wsMessage.metadata.notify);
+                    common_utils.notify(notify_opts)
+                        .success(wsMessage.content, "管理员 " + (wsMessage.metadata.users ? "对你" : "") + "说：", "push_manager_notify" + "_" + wsMessage.id)
+                        .addClass("wsMessage push_manager_notify").attr("data-wsid", wsMessage.id);
+                }
             });
             // 通知管理员用户登录
             websocket_util.onPush("user_has_login", function (e, wsMessage, wsEvent) {
@@ -483,7 +505,9 @@
                         window.open("user.do?method=home&uid=" + user.uid);
                     }
                 });
-                common_utils.notify(notify_opts).success("用户 <b>" + user.nickname + "</b> 刚刚登录~", "用户动态：", "user_has_login");
+                common_utils.notify(notify_opts)
+                    .success("用户 <b>" + user.nickname + "</b> 刚刚登录~", "用户动态：", "user_has_login" + "_" + wsMessage.id)
+                    .addClass("wsMessage user_has_login").attr("data-wsid", wsMessage.id);
                 console.log("用户 " + user.nickname + " 刚刚登录~，profile：", user);
             });
             // 通知管理员新用户注册
@@ -494,7 +518,9 @@
                         window.open("user.do?method=home&uid=" + user.uid);
                     }
                 });
-                common_utils.notify(notify_opts).success("“" + user.nickname + "”", "新用户注册：", "new_register_user");
+                common_utils.notify(notify_opts)
+                    .success("“" + user.nickname + "”", "新用户注册：", "new_register_user" + "_" + wsMessage.id)
+                    .addClass("wsMessage new_register_user").attr("data-wsid", wsMessage.id);
             });
             // 新的关注者
             websocket_util.onPush("new_follower", function (e, wsMessage, wsEvent) {
@@ -505,9 +531,11 @@
                         window.open("user.do?method=home&uid=" + user.uid);
                     }
                 });
-                common_utils.notify(notify_opts).success("“" + user.nickname + "”", "新的粉丝：", "new_follower");
+                common_utils.notify(notify_opts).success("“" + user.nickname + "”", "新的粉丝：", "new_follower" + "_" + wsMessage.id);
                 if (isFriend) {
-                    common_utils.notify(notify_opts).success("由于相互关注，你与<br>“" + user.nickname + "”<br>成为好友", "新的好友：", "new_friend");
+                    common_utils.notify(notify_opts)
+                        .success("由于相互关注，你与<br>“" + user.nickname + "”<br>成为好友", "新的好友：", "new_friend" + "_" + wsMessage.id)
+                        .addClass("wsMessage new_follower").attr("data-wsid", wsMessage.id);
                 }
             });
             // 收到新私信
@@ -519,24 +547,68 @@
                         window.open("user.do?method=profilecenter&action=sendLetter&chatuid=" + user.uid);
                     }
                 });
-                common_utils.notify(notify_opts).success("<b>“" + letter.content + "”</b>", user.nickname + " 对你说：", "receive_letter");
+                var toastElement = null;
+                if (/<(img|iframe|video|embed).*?>/.test(letter.content)) {
+                    toastElement = common_utils.notify(notify_opts).success(letter.content, user.nickname + " 对你说：", "receive_letter" + "_" + letter.leid);
+                } else {
+                    toastElement = common_utils.notify(notify_opts).success("<b>“" + letter.content + "”</b>", user.nickname + " 对你说：", "receive_letter" + "_" + letter.leid);
+                }
+                toastElement.addClass("receive_letter").attr("data-leid", letter.leid).attr("data-wsid", wsMessage.id);
             });
             // 收到新评论
             websocket_util.onPush("receive_comment", function (e, wsMessage, wsEvent) {
                 var comment = wsMessage.metadata.comment;
-                var article = wsMessage.metadata.article;
-                var notify_opts = $.extend({}, notify_ws_opts, {
-                    "onclick": function () {
-                        window.open("article.do?method=detail&aid=" + comment.aid + "#comments");
-                    }
-                });
+                var notify_opts = null;
                 var msg = null;
-                if (comment.parentid == 0) {
-                    msg = comment.user.nickname + " 在你的文章<br><b>“" + article.title + "”</b><br>发表了评论~";
-                } else {
-                    msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
+                switch (comment.mainType) {
+                    case 0:
+                        var article = wsMessage.metadata.article;
+                        notify_opts = $.extend({}, notify_ws_opts, {
+                            "onclick": function () {
+                                window.open("article.do?method=detail&aid=" + article.aid + "#comment_" + comment.cid);
+                            }
+                        });
+                        msg = null;
+                        if (comment.parentId == 0) {
+                            msg = comment.user.nickname + " 在你的文章<br><b>“" + article.title + "”</b><br>发表了评论~";
+                        } else {
+                            msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
+                        }
+                        break;
+                    case 1:
+                        var photo = wsMessage.metadata.photo;
+                        notify_opts = $.extend({}, notify_ws_opts, {
+                            "onclick": function () {
+                                window.open("photo.do?method=detail&id=" + photo.photo_id + "#comment_" + comment.cid);
+                            }
+                        });
+                        msg = null;
+                        if (comment.parentId == 0) {
+                            msg = comment.user.nickname + " 对你的照片<br><b>“" + photo.photo_id + "”</b><br>发表了评论~";
+                        } else {
+                            msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
+                        }
+                        break;
+                    case 2:
+                        var video = wsMessage.metadata.video;
+                        notify_opts = $.extend({}, notify_ws_opts, {
+                            "onclick": function () {
+                                window.open("video.do?method=detail&id=" + video.video_id + "#comment_" + comment.cid);
+                            }
+                        });
+                        msg = null;
+                        if (comment.parentId == 0) {
+                            msg = comment.user.nickname + " 对你的视频<br><b>“" + video.video_id + "”</b><br>发表了评论~";
+                        } else {
+                            msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
+                        }
+                        break;
                 }
-                common_utils.notify(notify_opts).success(msg, "", "receive_comment");
+                if (msg) {
+                    common_utils.notify(notify_opts)
+                        .success(msg, "", "receive_comment" + "_" + comment.cid)
+                        .addClass("wsMessage receive_comment").attr("data-wsid", wsMessage.id).attr("data-cid", comment.cid);
+                }
             });
             // 文章被收藏
             websocket_util.onPush("new_article_collected", function (e, wsMessage, wsEvent) {
@@ -550,9 +622,29 @@
                     },
                     "timeOut": 60000
                 });
-                common_utils.notify(notify_opts).success("用户 <a style='text-decoration: underline;' href='user.do?method=home&uid=" + user.uid + "' target='_blank'>" + user.nickname +
-                    "</a><br>收藏了你的文章<br><b>“ <a style='text-decoration: underline;' href='article.do?method=detail&aid=" + article.aid + "' target='_blank'>" + article.title + "</a> ”</b>",
-                    "", "new_article_collected");
+                common_utils.notify(notify_opts)
+                    .success("用户 <a style='text-decoration: underline;' href='user.do?method=home&uid=" + user.uid + "' target='_blank'>" + user.nickname +
+                        "</a><br>收藏了你的文章<br><b>“ <a style='text-decoration: underline;' href='article.do?method=detail&aid=" + article.aid + "' target='_blank'>" + article.title + "</a> ”</b>",
+                        "", "new_article_collected" + "_" + wsMessage.id)
+                    .addClass("wsMessage new_article_collected").attr("data-wsid", wsMessage.id);
+            });
+            // 当别的用户撤回私信消息
+            websocket_util.onPush("withdraw_letter", function (e, wsMessage, wsEvent) {
+                var user = wsMessage.metadata.user;
+                var letter = wsMessage.metadata.letter; // 被撤回的私信
+                if (letter) {
+                    $('#toast-container .toast.receive_letter[data-leid="' + letter.leid + '"]').remove();
+                    var notify_opts = $.extend({}, notify_ws_opts, {
+                        "timeOut": 10000,
+                        "hideOnHover": false,
+                        "onclick": function () {
+                            window.open("user.do?method=profilecenter&action=sendLetter&chatuid=" + user.uid); // 打开聊天框
+                        }
+                    });
+                    common_utils.notify(notify_opts)
+                        .info(user.nickname + " 撤回了一条消息.", "", "withdraw_letter" + "_" + wsMessage.id)
+                        .addClass("wsMessage withdraw_letter").attr("data-wsid", wsMessage.id);
+                }
             });
         }
     };

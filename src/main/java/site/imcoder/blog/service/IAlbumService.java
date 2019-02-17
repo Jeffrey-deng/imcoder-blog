@@ -1,10 +1,7 @@
 package site.imcoder.blog.service;
 
 import org.springframework.web.multipart.MultipartFile;
-import site.imcoder.blog.entity.Album;
-import site.imcoder.blog.entity.Photo;
-import site.imcoder.blog.entity.PhotoTagWrapper;
-import site.imcoder.blog.entity.User;
+import site.imcoder.blog.entity.*;
 
 import java.util.List;
 import java.util.Map;
@@ -14,6 +11,14 @@ import java.util.Map;
  * 相册服务接口
  */
 public interface IAlbumService {
+
+    /**
+     * 得到照片上传配置信息
+     *
+     * @param loginUser
+     * @return
+     */
+    public Map<String, Object> getUploadConfigInfo(User loginUser);
 
     /**
      * 创建相册
@@ -75,8 +80,9 @@ public interface IAlbumService {
      * @param album
      * @param loginUser
      * @return flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册ID未找到，500：服务器错误
+     * album - 更新后的album
      */
-    public int updateAlbum(Album album, User loginUser);
+    public Map<String, Object> updateAlbum(Album album, User loginUser);
 
     /**
      * 删除相册
@@ -116,8 +122,9 @@ public interface IAlbumService {
      * @param file      可选，有则更新
      * @param loginUser
      * @return flag - 200：成功，401：需要登录，403：没有权限，404: 照片未找到，500：服务器错误
+     * photo - 更新后的photo
      */
-    public int updatePhoto(Photo photo, MultipartFile file, User loginUser);
+    public Map<String, Object> updatePhoto(Photo photo, MultipartFile file, User loginUser);
 
     /**
      * 删除照片
@@ -169,6 +176,14 @@ public interface IAlbumService {
     public List<Photo> findPhotoList(String base, Photo photo, String logic_conn, int start, int size, User loginUser, boolean extend);
 
     /**
+     * 点击量加1
+     *
+     * @param photo
+     * @return
+     */
+    public int raisePhotoClickCount(Photo photo);
+
+    /**
      * 查询出用户设置的特殊标签
      *
      * @param tagWrapper
@@ -176,5 +191,22 @@ public interface IAlbumService {
      * @return
      */
     public List<PhotoTagWrapper> findPhotoTagWrappers(PhotoTagWrapper tagWrapper, User loginUser);
+
+
+    /**
+     * 保存相册与照片关联类
+     *
+     * @param apr
+     * @return
+     */
+    public int saveAlbumPhotoRelation(AlbumPhotoRelation apr, User loginUser);
+
+    /**
+     * 删除相册与照片关联类
+     *
+     * @param apr
+     * @return
+     */
+    public int deleteAlbumPhotoRelation(AlbumPhotoRelation apr, User loginUser);
 
 }

@@ -1,7 +1,10 @@
 package site.imcoder.blog.entity;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import site.imcoder.blog.controller.json.EscapeEmojiJsonDeserializer;
 import site.imcoder.blog.controller.json.LongToDateStrJsonSerializer;
+import site.imcoder.blog.controller.propertyeditors.EmojiConvert;
 
 import java.io.Serializable;
 
@@ -38,6 +41,8 @@ public class Letter implements Serializable {
     /**
      * 私信内容
      */
+    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
+    @EmojiConvert
     private String content;
 
     /**

@@ -12,7 +12,7 @@ log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
 log4j.appender.stdout.layout.ConversionPattern=%-d{yyyy-MM-dd HH:mm:ss,SSS} [%c]-[%p] %m%n
 
 log4j.appender.All=org.apache.log4j.RollingFileAppender
-log4j.appender.All.File=/root/log/all/blog.log
+log4j.appender.All.File=/var/log/imcoder-blog.log
 log4j.appender.All.Threshold=info
 log4j.appender.All.MaxFileSize=2048KB
 log4j.appender.All.MaxBackupIndex=10
@@ -20,7 +20,7 @@ log4j.appender.All.layout=org.apache.log4j.PatternLayout
 log4j.appender.All.layout.ConversionPattern=%d{yyyy-MM-dd HH\:mm\:ss,SSS} [%t] [%c] [%p] - %m%n
 
 log4j.appender.Warn=org.apache.log4j.RollingFileAppender
-log4j.appender.Warn.File=/root/log/warn/blog-warn.log
+log4j.appender.Warn.File=/var/log/imcoder-blog-warn.log
 log4j.appender.Warn.Threshold=warn
 log4j.appender.Warn.MaxFileSize=1024KB
 log4j.appender.Warn.MaxBackupIndex=5
@@ -28,7 +28,7 @@ log4j.appender.Warn.layout=org.apache.log4j.PatternLayout
 log4j.appender.Warn.layout.ConversionPattern=%d{yyyy-MM-dd HH\:mm\:ss,SSS} [%t] [%c] [%p] - %m%n
 
 log4j.appender.Error=org.apache.log4j.RollingFileAppender
-log4j.appender.Error.File=/root/log/error/blog-error.log
+log4j.appender.Error.File=/var/log/imcoder-blog-error.log
 log4j.appender.Error.Threshold=error
 log4j.appender.Error.MaxFileSize=1024KB
 log4j.appender.Error.MaxBackupIndex=5

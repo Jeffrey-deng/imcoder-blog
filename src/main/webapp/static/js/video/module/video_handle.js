@@ -46,13 +46,27 @@
             },
             "beforeUpdateModalOpen": function (context, updateModal, formatVideoToModal_callback, video) {  // 更新窗口打开前回调
                 // 如果openUpdateVideoModal传入的参数为video对象，直接使用
-                if (typeof video == "object") {
-                    formatVideoToModal_callback(video);
+                if (typeof video == "object" && video.video_id) {
+                    if (login_handle.equalsLoginUser(video.user.uid)) {
+                        context.loadAlbums(video.user.uid, function (data) {
+                            formatVideoToModal_callback(video, data.albums);
+                        });
+                    } else {
+                        formatVideoToModal_callback(video);
+                    }
                     // 如果传入的参数为video_id，异步获取video对象
                 } else {
                     context.loadVideo(video, function (data) {
-                        var video = data.video;
-                        formatVideoToModal_callback(video);
+                        if (data.flag == 200) {
+                            var video = data.video;
+                            if (login_handle.equalsLoginUser(video.user.uid)) {
+                                context.loadAlbums(video.user.uid, function (data) {
+                                    formatVideoToModal_callback(video, data.albums);
+                                });
+                            } else {
+                                formatVideoToModal_callback(video);
+                            }
+                        }
                     });
                 }
             }
@@ -137,6 +151,7 @@
             videoInfo.name = pointer.uploadModal.find('input[name="video_name"]').val();
             videoInfo.description = pointer.uploadModal.find('textarea[name="video_desc"]').val();
             videoInfo.permission = pointer.uploadModal.find('input[name="video_permission"]:checked').val();
+            videoInfo.refer = pointer.uploadModal.find('input[name="video_refer"]').val() || "";
             var tags = "";
             pointer.uploadModal.find(".tags-modify").find(".tag-content").each(function (i, tag) {
                 tags += "#" + tag.innerText;
@@ -146,6 +161,7 @@
             coverInfo.album_id = pointer.uploadModal.find('select[name="cover_album_id"]').val();
             coverInfo.name = videoInfo.name;
             coverInfo.description = videoInfo.description;
+            coverInfo.refer = videoInfo.refer;
             if (videoInfo.tags.indexOf("#视频") == -1) {
                 coverInfo.tags = "#视频" + videoInfo.tags;
             } else {
@@ -153,8 +169,8 @@
             }
             videoInfo.cover = coverInfo;
 
-            if (videoInfo.description.length >= 1000) {
-                toastr.error("描述字数" + videoInfo.description.length + "过长, 应在1000字内", "错误", {"progressBar": false});
+            if (videoInfo.description.length >= 2000) {
+                toastr.error("描述字数" + videoInfo.description.length + "过长, 应在2000字内", "错误", {"progressBar": false});
                 this.removeAttribute("disabled");
                 return;
             }
@@ -264,6 +280,7 @@
             videoInfo.name = pointer.updateModal.find('input[name="video_name"]').val();
             videoInfo.description = pointer.updateModal.find('textarea[name="video_desc"]').val();
             videoInfo.permission = pointer.updateModal.find('input[name="video_permission"]:checked').val();
+            videoInfo.refer = pointer.updateModal.find('input[name="video_refer"]').val() || "";
             var tags = "";
             pointer.updateModal.find(".tags-modify").find(".tag-content").each(function (i, tag) {
                 tags += "#" + tag.innerText;
@@ -273,6 +290,7 @@
             coverInfo.album_id = parseInt(pointer.updateModal.find('select[name="cover_album_id"]').val()) || 0;
             coverInfo.name = videoInfo.name;
             coverInfo.description = videoInfo.description;
+            coverInfo.refer = videoInfo.refer;
             if (videoInfo.tags.indexOf("#视频") == -1) {
                 coverInfo.tags = "#视频" + videoInfo.tags;
             } else {
@@ -280,8 +298,8 @@
             }
             videoInfo.cover = coverInfo;
 
-            if (videoInfo.description.length >= 1000) {
-                toastr.error("描述字数" + videoInfo.description.length + "过长, 应在1000字内", "错误", {"progressBar": false});
+            if (videoInfo.description.length >= 2000) {
+                toastr.error("描述字数" + videoInfo.description.length + "过长, 应在2000字内", "错误", {"progressBar": false});
                 this.removeAttribute("disabled");
                 return;
             }
@@ -325,6 +343,16 @@
         //下载视频事件
         pointer.updateModal.find('a[name="video_path"]').click(function () {
             //downloadVideo(this.getAttribute("path"), config.downloadType);
+        });
+
+        // 打开照片的相关链接
+        pointer.updateModal.find(".open-update-video-refer").click(function () {
+            var url = $(this).prev().val();
+            if (url) {
+                window.open(url);
+            } else {
+                toastr.info("你还没有设置相关页面呢~");
+            }
         });
 
         // upload modal tags 输入框 绑定事件
@@ -414,7 +442,7 @@
         });
     };
 
-    var uploadVideo = function (file, coverFile, videoInfo) {
+    var uploadVideo = function (videoFile, coverFile, videoInfo) {
         var photoInfo = videoInfo.cover;
         var data = new FormData();
         // video
@@ -427,10 +455,15 @@
         } else if (videoInfo.source_type == 2) {
             data.append("code", videoInfo.code);
         } else {
-            data.append("videoFile", file);
-            data.append("originName", (file.name.lastIndexOf(".") != -1 ? file.name : (file.name + ".mp4")));
+            data.append("videoFile", videoFile);
+            data.append("originName", (videoFile.name.lastIndexOf(".") != -1 ? videoFile.name : (videoFile.name + ".mp4")));
+            if (config.maxUploadSize != -1 && videoFile.size > config.maxUploadSize) {
+                toastr.error("视频超出大小，最大" + (config.maxUploadSize / (1024 * 1024)) + "M", videoFile['name'], {timeOut: 0});
+                return;
+            }
         }
         data.append("permission", videoInfo.permission);
+        data.append("refer", videoInfo.refer);
         // photo
         if (photoInfo.photo_id && photoInfo.photo_id > 0) {
             data.append("cover.photo_id", photoInfo.photo_id);
@@ -442,6 +475,7 @@
             data.append("cover.description", photoInfo.description);
             data.append("cover.tags", photoInfo.tags);
             data.append("cover.iscover", 0);
+            data.append("cover.refer", photoInfo.refer);
         }
         common_utils.notify({
             "progressBar": false,
@@ -468,27 +502,95 @@
                     pointer.uploadModal.find('input[name="video_file"]').val("");
                     pointer.uploadModal.find('input[name="cover_file"]').val("");
                 } else {
-                    file == null && (file = {"name": "文件为空"});
+                    videoFile == null && (videoFile = {"name": "文件为空"});
                     common_utils.removeNotify("notify_uploading");
-                    toastr.error(data.info, file.name + ", 上传失败", {timeOut: 0});
-                    console.log("Error Code: " + file.name + " upload fail - " + data.flag);
+                    toastr.error(data.info, videoFile.name + ", 上传失败", {timeOut: 0});
+                    console.log("Error Code: " + videoFile.name + " upload fail - " + data.flag);
                     pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
                 }
             },
             error: function () {
-                file == null && (file = {"name": "文件为空"});
+                videoFile == null && (videoFile = {"name": "文件为空"});
                 common_utils.removeNotify("notify_uploading");
-                toastr.error(file.name + " 上传失败", "未知错误", {timeOut: 0});
+                toastr.error(videoFile.name + " 上传失败", "未知错误", {timeOut: 0});
                 pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
                 pointer.uploadModal.find('input[name="cover_photo_id"]').val("0");
             }
         });
     };
+
     var updateVideo = function (videoFile, coverFile, videoInfo) {
-        console.log(videoFile, coverFile, videoInfo);
-        pointer.updateModal.find('button[name="updateVideo_trigger"]').removeAttr("disabled");
-        toastr.error("更新功能开发中~");
+        var photoInfo = videoInfo.cover;
+        var data = new FormData();
+        // video
+        data.append("video_id", videoInfo.video_id);
+        data.append("name", videoInfo.name);
+        data.append("description", videoInfo.description);
+        data.append("tags", videoInfo.tags);
+        data.append("source_type", videoInfo.source_type);
+        if (videoInfo.source_type == 1) {
+            data.append("path", videoInfo.path);
+        } else if (videoInfo.source_type == 2) {
+            data.append("code", videoInfo.code);
+        } else if (videoFile) {
+            data.append("videoFile", videoFile);
+            data.append("originName", (videoFile.name.lastIndexOf(".") != -1 ? videoFile.name : (videoFile.name + ".mp4")));
+            if (config.maxUploadSize != -1 && videoFile.size > config.maxUploadSize) {
+                toastr.error("视频超出大小，最大" + (config.maxUploadSize / (1024 * 1024)) + "M", videoFile['name'], {timeOut: 0});
+                return;
+            }
+        }
+        data.append("permission", videoInfo.permission);
+        data.append("refer", videoInfo.refer);
+        // photo
+        if (photoInfo.photo_id && photoInfo.photo_id > 0) {
+            data.append("cover.photo_id", photoInfo.photo_id);
+        } else {
+            data.append("coverFile", coverFile);
+            data.append("cover.originName", (coverFile.name.lastIndexOf(".") != -1 ? coverFile.name : (coverFile.name + ".jpg")));
+            data.append("cover.album_id", photoInfo.album_id);
+            data.append("cover.name", photoInfo.name);
+            data.append("cover.description", photoInfo.description);
+            data.append("cover.tags", photoInfo.tags);
+            data.append("cover.iscover", 0);
+            data.append("cover.refer", photoInfo.refer);
+        }
+        common_utils.notify({
+            "progressBar": false,
+            "hideDuration": 0,
+            "timeOut": 0,
+            "closeButton": false
+        }).success("正在" + ((videoFile || coverFile) ? "上传" : "更新") + "上传视频", "", "notify_updating");
+        $.ajax({
+            url: "video.do?method=update",
+            data: data,
+            type: "POST",
+            contentType: false,
+            cache: false,
+            processData: false,
+            success: function (data) {
+                common_utils.removeNotify("notify_updating");
+                if (data.flag == 200) {
+                    toastr.success("更新完成！");
+                    config.callback.updateCompleted.call(context, context, data.video); // 回调
+                    utils.triggerEvent(config.event.updateCompleted, data.video);
+                    pointer.updateModal.modal('hide');
+                    pointer.updateModal.find('input[name="video_file"]').val("");
+                    pointer.updateModal.find('input[name="cover_file"]').val("");
+                } else {
+                    toastr.error(data.info, "更新失败", {timeOut: 0});
+                    console.log("Error Code: " + data.flag + " update fail - " + data.info);
+                }
+                pointer.updateModal.find('button[name="updateVideo_trigger"]').removeAttr("disabled");
+            },
+            error: function (XHR, TS) {
+                common_utils.removeNotify("notify_uploading");
+                toastr.error(" 上传失败, " + TS, "错误", {timeOut: 0});
+                pointer.updateModal.find('button[name="updateVideo_trigger"]').removeAttr("disabled");
+            }
+        });
     };
+
     var deleteVideo = function (video_id) {
         toastr.error("删除功能开发中~");
     };
@@ -536,7 +638,7 @@
                 $.each(albums, function (index, album) {
                     options_str += '<option value="' + album.album_id + '">' + album.name + '</option>';
                 });
-                if (album_select_dom[0].options.length > 0) {
+                if (album_select_dom[0].options.length > 0) {   // 记住上一次的选择
                     selectValue = album_select_dom.val();
                 } else {
                     selectValue = albums[0].album_id + "";
@@ -564,8 +666,21 @@
      *                    或异步获取完video对象后再将该对象传入此方法；
      */
     var openUpdateVideoModal = function (video) {
-        var formatVideoToModal_callback = function (video) {
+        var formatVideoToModal_callback = function (video, albums) {
             var isAuthor = login_handle.equalsLoginUser(video.user.uid);
+            if (albums && isAuthor) {
+                var album_select_dom = pointer.updateModal.find('select[name="cover_album_id"]');
+                var options_str = '';
+                var selectValue = "" + video.cover.album_id;
+                if (albums == null || albums.length == 0) {
+                    options_str = '<option value="0">无相册</option>';
+                } else {
+                    $.each(albums, function (index, album) {
+                        options_str += '<option value="' + album.album_id + '">' + album.name + '</option>';
+                    });
+                }
+                album_select_dom.html(options_str).val(selectValue);
+            }
             // load to modal
             var video_url = "redirect.do?model=album&photo_id=" + video.cover.photo_id;
             pointer.updateModal.find('span[name="video_id"]').text(video.video_id).parent().attr("href", video_url);
@@ -592,10 +707,12 @@
             }
             pointer.updateModal.find('span[name="video_size"]').html(video.size + "MB（" + video.width + "×" + video.height + "）");
             pointer.updateModal.find('span[name="video_upload_time"]').html(video.upload_time);
+            pointer.updateModal.find('input[name="video_refer"]').val(video.refer);
             pointer.updateModal.find('select[name="cover_album_id"]').parent().hide(0);
             pointer.updateModal
                 .find('input[name="cover_file"]').css("display", "none")
-                .parent().css("display", (isAuthor ? "block" : "none")).find('input[name="cover_photo_id"]').css("display", "block").val(video.cover.photo_id);
+                .parent().css("display", (isAuthor ? "block" : "none")).find('input[name="cover_photo_id"]').css("display", "block").val(video.cover.photo_id)
+                .parent().find(".convert-select-cover").click();
             if (isAuthor && video.source_type == 0) {
                 pointer.updateModal.find('.copy-input').prev().attr("title", "原始文件名：" + video.originName)
             }
@@ -728,7 +845,7 @@
             $(context).bind(eventName, func);
         },
         "triggerEvent": function (eventName) {
-            $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
+            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
         },
         "unbindEvent": function (eventName, func) {
             $(context).unbind(eventName, func);

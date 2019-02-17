@@ -8,7 +8,7 @@ import java.io.Serializable;
  * @author dengchao
  * @date 2017-4-13
  */
-public class Friend implements Serializable{
+public class Friend implements Serializable {
 
     private static final long serialVersionUID = 7676702524167413369L;
 

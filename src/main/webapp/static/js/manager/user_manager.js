@@ -23,7 +23,6 @@
                     userInfoModal.find('span[name="uid"]').html(user.uid);
                     userInfoModal.find('span[name="usergroup"]').html(user.userGroup.group_name);
                     userInfoModal.find('span[name="nickname"]').html(user.nickname);
-                    userInfoModal.find('span[name="username"]').html(user.username);
                     userInfoModal.find('span[name="email"]').html(user.email);
                     userInfoModal.find('span[name="sex"]').html(user.sex);
                     userInfoModal.find('span[name="description"]').html(user.description == "" ? "未填写" : user.description);
@@ -31,20 +30,22 @@
                     userInfoModal.find('span[name="address"]').html(user.address == "" ? "未填写" : user.address);
                     userInfoModal.find('span[name="phone"]').html(user.phone == "" ? "未填写" : user.phone);
                     userInfoModal.find('span[name="weibo"]').html(user.weibo == "" ? "未填写" : user.weibo);
+                    userInfoModal.find('span[name="site"]').html(user.site == "" ? "未填写" : user.site);
                     userInfoModal.find('span[name="qq"]').html(user.qq == "" ? "未填写" : user.qq);
-                    userInfoModal.find('span[name="register_time"]').html(user.register_time);
-                    userInfoModal.find('span[name="articleCount"]').html(user.articleCount);
-                    userInfoModal.find('span[name="followCount"]').html(user.followCount);
-                    userInfoModal.find('span[name="fansCount"]').html(user.fansCount);
+                    userInfoModal.find('span[name="register_time"]').html(user.userStatus.register_time);
+                    userInfoModal.find('span[name="articleCount"]').html(user.userStatus.articleCount);
+                    userInfoModal.find('span[name="followCount"]').html(user.userStatus.followCount);
+                    userInfoModal.find('span[name="fansCount"]').html(user.userStatus.fansCount);
                     userInfoModal.find('span[name="says"]').html(user.says == "" ? "未填写" : user.says);
-                    userInfoModal.find('span[name="loginIP"]').html(user.loginIP == "" ? "暂无IP" : user.loginIP);
-                    userInfoModal.find('span[name="lock_status"]').html(user.lock_status == 0 ? "可用" : "冻结");
+                    userInfoModal.find('span[name="last_login_ip"]').html(user.userStatus.last_login_ip == "" ? "暂无IP" : user.userStatus.last_login_ip);
+                    userInfoModal.find('span[name="last_login_time"]').html(user.userStatus.last_login_time);
+                    userInfoModal.find('span[name="lock_status"]').html(user.userStatus.lock_status == 0 ? "可用" : "冻结");
                     userInfoModal.modal();
                 });
             });
         });
 
-        $('#userInfoModal').find('span[name="loginIP"]').click(function (e) {
+        $('#userInfoModal').find('span[name="last_login_ip"]').click(function (e) {
             var ip = this.innerText;
             if (ip != "暂无IP") {
                 getIpLocation(ip)

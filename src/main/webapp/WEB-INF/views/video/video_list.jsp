@@ -15,9 +15,9 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
-    <title>${hostUser.nickname}的视频 - ImCODER's 博客</title>
+    <title>${hostUser.nickname}的视频 - ImCoder's 博客</title>
     <meta name="description" content="${hostUser.nickname}的视频列表">
-    <meta name="keywords" content="${hostUser.nickname},ImCODER's 博客,视频,视频列表,">
+    <meta name="keywords" content="${hostUser.nickname},ImCoder's 博客,视频,视频列表,">
     <!-- 使用url函数转换相关路径 -->
     <!-- <script async="" src="http://www.google-analytics.com/analytics.js"></script> -->
 
@@ -54,7 +54,7 @@
     <div class="container-fluid">
         <div class="navbar-header">
             <div class="navbar-brand">
-                <p><a class="logo" style="color: #333;" href="<%=basePath%>">博客Blog</a></p>
+                <p><a class="logo" style="color: #333;" href="<%=basePath%>">ImCoder</a></p>
             </div>
             <button type="button" class="navbar-toggle collapsed " data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
                 <span class="sr-only">Toggle navigation</span>
@@ -119,7 +119,7 @@
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
-                            <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
+                            <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
                                 <div class="col-sm-1">
                                     <div class="coldesc"><a class="toolbar_jump_manager" href="manager.do?method=backstage" target="_blank">管理</a></div>
                                 </div>
@@ -167,6 +167,7 @@
                             <h4><a class="anav-menu_user toolbar_user_profilecenter" href="<%=basePath%>user.do?method=profilecenter" target="_blank">个人中心</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_userhome" href="<%=basePath%>user.do?method=home&uid=${loginUser.uid}" target="_blank">我的博客</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_albums" href="<%=basePath%>photo.do?method=user_albums&uid=${loginUser.uid}" target="_blank">我的相册</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_videos" href="<%=basePath%>video.do?method=user_videos&uid=${loginUser.uid}" target="_blank">我的视频</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_messages" href="<%=basePath%>user.do?method=profilecenter&action=messages" target="_blank">我的消息</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_setting" href="<%=basePath%>user.do?method=profilecenter&action=settings" target="_blank">修改设置</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_logout" title="点击退出登录">安全退出</a></h4>
@@ -314,6 +315,10 @@
                             <input type="text" class="tag-input" name="tag_input"/>
                         </span>
                     </div>
+                    <div class="form-group">
+                        <label>相关：</label>
+                        <input class="form-control" type="text" name="video_refer">
+                    </div>
                     <div class="form-group " style="padding-top: 7px;">
                         <label class="control-label">可见性</label>
                         <label class="radio-inline" style="margin-left:10px;">
@@ -390,6 +395,13 @@
                         <input class="note-image-input form-control" name="cover_photo_id" value="0" style="margin-top: 5px;display: none;">
                     </div>
                     <div class="form-group">
+                        <label>相关：</label>
+                        <div class="input-group">
+                            <input class="form-control" type="text" name="video_refer">
+                            <span class="input-group-addon btn btn-sm open-update-video-refer">访问</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label>名称：</label>
                         <input class="form-control" type="text" name="video_name">
                     </div>
@@ -448,11 +460,11 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
-                        <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
+                        <input type="email" name="identifier" class="form-control" placeholder="输入用户名/email">
                     </div>
                     <div class="form-group">
                         <label>密码</label>
-                        <input type="password" name="password" class="form-control" placeholder="输入密码">
+                        <input type="password" name="credential" class="form-control" placeholder="输入密码">
                     </div>
                     <div class="form-group">
                         <label>

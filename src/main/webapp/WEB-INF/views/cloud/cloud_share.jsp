@@ -18,9 +18,9 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>Cloud - ImCODER</title>
-    <meta name="keywords" content="Cloud,ImCODER,ImCODER's 博客,blog">
-    <meta name="description" content="Cloud,ImCODER,ImCODER's 博客,blog">
+    <title>Cloud - ImCoder</title>
+    <meta name="keywords" content="Cloud,ImCoder,ImCoder's 博客,blog">
+    <meta name="description" content="Cloud,ImCoder,ImCoder's 博客,blog">
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>"/>
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">

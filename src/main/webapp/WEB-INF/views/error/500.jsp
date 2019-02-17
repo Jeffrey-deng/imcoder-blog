@@ -15,9 +15,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>500 - ImCODER's 博客</title>
-    <meta name="keywords" content="500,ImCODER's 博客">
-    <meta name="description" content="500,ImCODER's 博客">
+    <title>500 - ImCoder's 博客</title>
+    <meta name="keywords" content="500,ImCoder's 博客">
+    <meta name="description" content="500,ImCoder's 博客">
 
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
@@ -83,7 +83,7 @@
         <br/>
         <a href="<%=basePath%>" class="btn btn-primary m-t">主页</a>
         <br/><br/>
-        <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
+        <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
             <p><code style="white-space: normal;">${pageContext.exception}</code></p>
         </c:if>
     </div>

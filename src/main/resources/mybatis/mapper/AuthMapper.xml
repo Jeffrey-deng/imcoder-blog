@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="auth">
+
+    <!-- 保存凭证 -->
+    <insert id="insertUserAuth" parameterType="userAuth" useGeneratedKeys="true" keyProperty="uaid" keyColumn="uaid">
+        insert into user_auth (uid, group_type, identity_type, identifier, credential, verified, login_ip)
+        values (#{uid}, #{group_type}, #{identity_type}, #{identifier}, #{credential}, #{verified}, #{login_ip})
+    </insert>
+
+    <!-- 更新凭证 -->
+    <update id="updateUserAuth" parameterType="userAuth">
+        update user_auth
+        <set>
+            <if test="identifier != null and identifier != ''">identifier = #{identifier}, </if>
+            <if test="credential != null">credential = #{credential}, </if>
+            <if test="verified != null">verified = #{verified}, </if>
+            <if test="login_ip != null">login_ip = #{login_ip}, </if>
+        </set>
+        <where>
+            <if test="uaid != null and uaid > 0">uaid = #{uaid}</if>
+            <if test="uid != null and uid > 0">and uid = #{uid}</if>
+            <if test="group_type != null">and group_type = #{group_type}</if>
+            <if test="identity_type != null">and identity_type = #{identity_type}</if>
+        </where>
+    </update>
+
+    <!-- 查找凭证 -->
+    <select id="findUserAuth" parameterType="userAuth" resultType="userAuth">
+        select uaid, uid, group_type, identity_type, identifier, credential, verified, login_ip from user_auth
+        <where>
+            <if test="uaid != null and uaid > 0">uaid = #{uaid}</if>
+            <if test="uid != null and uid > 0">and uid = #{uid}</if>
+            <if test="group_type != null">and group_type = #{group_type}</if>
+            <if test="identity_type != null">and identity_type = #{identity_type}</if>
+            <if test="identifier != null and identifier != ''">and identifier = #{identifier}</if>
+            <if test="verified != null">and verified = #{verified}</if>
+        </where>
+    </select>
+
+    <!-- 删除凭证 -->
+    <delete id="deleteUserAuth" parameterType="userAuth">
+        delete from user_auth
+        where uaid = #{uaid}
+    </delete>
+
+</mapper>

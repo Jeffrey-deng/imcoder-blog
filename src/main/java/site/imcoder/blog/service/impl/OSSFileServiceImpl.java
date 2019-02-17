@@ -7,13 +7,10 @@ import com.aliyun.oss.common.auth.DefaultCredentialProvider;
 import com.aliyun.oss.common.auth.STSAssumeRoleSessionCredentialsProvider;
 import com.aliyun.oss.common.comm.Protocol;
 import com.aliyun.oss.model.*;
-import org.apache.commons.fileupload.FileItem;
-import org.apache.commons.fileupload.disk.DiskFileItem;
 import org.apache.log4j.Logger;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.multipart.commons.CommonsMultipartFile;
 import site.imcoder.blog.common.Callable;
 import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.entity.Album;
@@ -26,12 +23,18 @@ import site.imcoder.blog.setting.OSSConfigConstants;
 import sun.misc.BASE64Encoder;
 
 import javax.servlet.http.HttpServletRequest;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.*;
 
 /**
  * oss远程文件系统
+ * 约定（优先级从上往下）：
+ * 1、不是为特定功能操作的方法输入都为绝对路径
+ * 2、为特定功能操作的方法输入都为相对路径
+ * 3、变量名没有特别标明relative的都为绝对路径
  *
  * @author Jeffrey.Deng
  * @date 2018-12-25
@@ -77,8 +80,16 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
             regionId = props.getProperty(OSSConfigConstants.REGION_ID);
             sts_role = props.getProperty(OSSConfigConstants.STS_ROLE);
             trash_recycle_basepath = props.getProperty(OSSConfigConstants.TRASH_RECYCLE_BASEPATH);
-            if (trash_recycle_basepath == null || trash_recycle_basepath.length() == 0) {
+            if (Utils.isEmpty(trash_recycle_basepath)) {
                 trash_recycle_basepath = ".trash/";
+            }
+            cloud_file_basepath = props.getProperty(OSSConfigConstants.CLOUD_FILE_BASEPATH);
+            if (Utils.isEmpty(cloud_file_basepath)) {
+                cloud_file_basepath = "";
+            }
+            article_upload_basepath = props.getProperty(OSSConfigConstants.ARTICLE_UPLOAD_BASEPATH);
+            if (Utils.isEmpty(article_upload_basepath)) {
+                article_upload_basepath = "blog/";
             }
             meta_image_max_age = "2678400";
             meta_video_max_age = "16070400";
@@ -268,10 +279,56 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
         }
     }
 
+    /**
+     * 生成基于云盘基础路径的path
+     *
+     * @param relativePath
+     * @return
+     */
+    @Override
+    public String baseCloudDir(String relativePath) {
+        if (Utils.isEmpty(relativePath)) {
+            return cloud_file_basepath;
+        } else {
+            return cloud_file_basepath + relativePath;
+        }
+    }
+
+    /**
+     * 生成基于文章图片上传路径的path
+     *
+     * @param relativePath
+     * @return
+     */
+    @Override
+    public String baseArticleUploadDir(String relativePath) {
+        if (Utils.isEmpty(relativePath)) {
+            return article_upload_basepath;
+        } else {
+            return article_upload_basepath + relativePath;
+        }
+    }
+
+    /**
+     * 生成基于垃圾回收路径的path
+     *
+     * @param relativePath
+     * @return
+     */
+    @Override
+    public String baseTrashRecycleDir(String relativePath) {
+        if (Utils.isEmpty(relativePath)) {
+            return trash_recycle_basepath;
+        } else {
+            return trash_recycle_basepath + relativePath;
+        }
+    }
+
     @Override
     public boolean copy(String fromPath, String toPath, boolean isFile) {
-        OSSClient client = getClient();
+        OSSClient client = null;
         try {
+            client = getClient();
             copy(client, fromPath, toPath, isFile);
             return true;
         } catch (OSSException e) {
@@ -313,8 +370,9 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
 
     @Override
     public boolean move(String fromPath, String toPath, boolean isFile) {
-        OSSClient client = getClient();
+        OSSClient client = null;
         try {
+            client = getClient();
             move(client, fromPath, toPath, isFile);
             return true;
         } catch (OSSException e) {
@@ -364,8 +422,9 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
 
     @Override
     public boolean delete(String filePath) {
-        OSSClient client = getClient();
+        OSSClient client = null;
         try {
+            client = getClient();
             delete(client, filePath);
             logger.info("delete remote file \"" + filePath + "\" successfully");
             return true;
@@ -398,8 +457,9 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
 
     @Override
     public boolean deleteDirectory(String dirPath) {
-        OSSClient client = getClient();
+        OSSClient client = null;
         try {
+            client = getClient();
             deleteDirectory(client, dirPath);
             logger.info("delete remote path \"" + dirPath + "\" successfully");
             return true;
@@ -438,9 +498,10 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
 
     @Override
     public boolean existsFile(String filePath) {
-        OSSClient client = getClient();
+        OSSClient client = null;
         boolean b = false;
         try {
+            client = getClient();
             b = client.doesObjectExist(bucketName, filePath, true);
         } catch (Exception e) {
             logger.error("existsFile error: " + e.getMessage());
@@ -452,9 +513,10 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
 
     @Override
     public boolean existsDir(String dirPath) {
-        OSSClient client = getClient();
+        OSSClient client = null;
         final String[] keys = new String[1];
         try {
+            client = getClient();
             listPath(client, dirPath, new Callable<OSSObjectSummary, Boolean>() {
                 @Override
                 public Boolean call(OSSObjectSummary objectSummary) throws Exception {
@@ -480,14 +542,22 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      */
     @Override
     public boolean saveText(String text, String fileKey) {
-        OSSClient client = getClient();
+        OSSClient client = null;
         try {
+            client = getClient();
             ObjectMetadata meta = new ObjectMetadata(); // meta
             meta.setContentType("text/plain");
             Map<String, String> userMetadata = new HashMap<>(); // user-meta
             userMetadata.put("handle-sdk", "java-server");
             meta.setUserMetadata(userMetadata);
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(text.getBytes());
+            ByteArrayInputStream byteArrayInputStream = null;
+            try {
+                // 统一编码
+                byteArrayInputStream = new ByteArrayInputStream(text.getBytes("UTF-8"));
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+                return false;
+            }
             save(client, byteArrayInputStream, fileKey, meta);
             logger.info("save text to remote system: " + fileKey);
             return true;
@@ -510,8 +580,9 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      */
     @Override
     public boolean save(InputStream inputStream, String fileKey) {
-        OSSClient client = getClient();
+        OSSClient client = null;
         try {
+            client = getClient();
             ObjectMetadata meta = new ObjectMetadata(); // meta
             Map<String, String> userMetadata = new HashMap<>(); // user-meta
             userMetadata.put("handle-sdk", "java-server");
@@ -530,7 +601,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
     }
 
     protected void save(OSSClient client, InputStream inputStream, String fileKey, ObjectMetadata objectMetadata) throws OSSException, ClientException {
-        PutObjectRequest putObjectRequest = new PutObjectRequest(null, null, (File) null); // request
+        PutObjectRequest putObjectRequest = new PutObjectRequest(null, null, (InputStream) null); // request
         putObjectRequest.setBucketName(bucketName);
         putObjectRequest.setKey(fileKey);
         putObjectRequest.setInputStream(inputStream);
@@ -586,30 +657,50 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
     /**
      * 保存用户头像
      *
-     * @param file
+     * @param inputStream
      * @param relativePath
      * @param fileName
      * @return
      */
     @Override
-    public boolean saveHeadPhotoFile(MultipartFile file, String relativePath, String fileName) {
-        return false;
+    public boolean saveHeadPhotoFile(InputStream inputStream, String relativePath, String fileName) {
+        OSSClient client = null;
+        try {
+            client = getClient();
+            ObjectMetadata meta = new ObjectMetadata(); // meta
+            meta.setCacheControl("max-age=" + meta_image_max_age);
+            Map<String, String> userMetadata = new HashMap<>(); // user-meta
+            userMetadata.put("handle-sdk", "java-server");
+            userMetadata.put("file-purpose", "head_photo");
+            meta.setUserMetadata(userMetadata);
+            save(client, inputStream, relativePath + fileName, meta);
+            logger.info("saveHeadPhotoFile: upload file \"" + (relativePath + fileName) + "\" to remote file system successfully");
+        } catch (OSSException e) {
+            logger.error("saveHeadPhotoFile: " + e.getMessage());
+            return false;
+        } catch (ClientException e) {
+            logger.error("saveHeadPhotoFile: " + e.getMessage());
+            return false;
+        } finally {
+            closeClient(client);
+        }
+        return true;
     }
 
     /**
      * 保存用户相片
      *
-     * @param file
+     * @param inputStream
      * @param photo
      * @param relativePath
      * @param fileName
      * @return
      */
     @Override
-    public boolean savePhotoFile(MultipartFile file, Photo photo, String relativePath, String fileName) {
-        OSSClient client = getClient();
+    public boolean savePhotoFile(InputStream inputStream, Photo photo, String relativePath, String fileName) {
+        OSSClient client = null;
         try {
-            InputStream fileInputSteam = getUploadFileInputSteam(file, relativePath + fileName);
+            client = getClient();
             ObjectMetadata meta = new ObjectMetadata(); // meta
             meta.setContentType(photo.getImage_type());
             meta.setCacheControl("max-age=" + meta_image_max_age);
@@ -618,7 +709,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
             meta.setUserMetadata(userMetadata);
             // BinaryUtil.toBase64String("".getBytes());
             // meta.setContentMD5(encoder.encode(FileUtil.getMD5Value(getUploadFileInputSteam(file, relativePath + fileName)).getBytes()));
-            save(client, fileInputSteam, relativePath + fileName, meta);
+            save(client, inputStream, relativePath + fileName, meta);
             logger.info("savePhotoFile: upload file \"" + (relativePath + fileName) + "\" to remote file system successfully");
         } catch (OSSException e) {
             logger.error("savePhotoFile: " + e.getMessage());
@@ -656,7 +747,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
         if (!trashPathDir.endsWith("/")) {
             trashPathDir += "/";
         }
-        return recycleTrash(sourceFilePath, true, trash_recycle_basepath + trashPathDir + filename);
+        return recycleTrash(sourceFilePath, true, trashPathDir + filename);
     }
 
     /**
@@ -668,10 +759,11 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      */
     @Override
     public boolean recycleTrash(String sourcePathPrefix, String sourceRelativePath, boolean isFile) {
+        String sourceFullPath = sourceRelativePath;
         if (sourcePathPrefix != null && sourcePathPrefix.length() > 0) {
-            sourceRelativePath = sourcePathPrefix + sourceRelativePath;
+            sourceFullPath = sourcePathPrefix + sourceRelativePath;
         }
-        return recycleTrash(sourceRelativePath, isFile, sourceRelativePath);
+        return recycleTrash(sourceFullPath, isFile, sourceRelativePath);
     }
 
     /**
@@ -692,10 +784,11 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
         if (sourcePath == null || trashPath == null) {
             return false;
         }
-        OSSClient client = getClient();
+        OSSClient client = null;
         try {
-            move(client, sourcePath, trash_recycle_basepath + trashPath, isFile);
-            logger.info("FileRecycle from \"" + sourcePath + "\" to \"" + (trash_recycle_basepath + trashPath) + "\" in remote file system successfully");
+            client = getClient();
+            move(client, sourcePath, baseTrashRecycleDir(trashPath), isFile);
+            logger.info("FileRecycle from \"" + sourcePath + "\" to \"" + baseTrashRecycleDir(trashPath) + "\" in remote file system successfully");
             return true;
         } catch (OSSException e) {
             //logger.error("recycleTrash: " + e.getErrorCode() + ", " + e.getMessage() + ", requestId is " + e.getRequestId());
@@ -711,24 +804,25 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
     /**
      * 保存用户视频
      *
-     * @param file
+     * @param inputStream
      * @param video
      * @param relativePath
      * @param fileName
      * @return
      */
     @Override
-    public boolean saveVideoFile(MultipartFile file, Video video, String relativePath, String fileName) {
-        OSSClient client = getClient();
+    public boolean saveVideoFile(InputStream inputStream, Video video, String relativePath, String fileName) {
+        OSSClient client = null;
         try {
-            InputStream fileInputSteam = getUploadFileInputSteam(file, relativePath + fileName);
+            client = getClient();
+            // upload
             ObjectMetadata meta = new ObjectMetadata(); // meta
             meta.setContentType(video.getVideo_type());
             meta.setCacheControl("max-age=" + meta_video_max_age);
             Map<String, String> userMetadata = new HashMap<>(); // user-meta
             userMetadata.put("handle-sdk", "java-server");
             meta.setUserMetadata(userMetadata);
-            save(client, fileInputSteam, relativePath + fileName, meta);
+            save(client, inputStream, relativePath + fileName, meta);
             logger.info("saveVideoFile: upload file \"" + (relativePath + fileName) + "\" to remote file system successfully");
         } catch (OSSException e) {
             logger.error("saveVideoFile: " + e.getMessage());
@@ -761,8 +855,9 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      */
     @Override
     public String generatePhotoFolderPath(Album album) {
-        OSSClient client = getClient();
+        OSSClient client = null;
         try {
+            client = getClient();
             String albumPath = generateAlbumPath(album);
             String[] maxSubDir = new String[1];
             listPathSubDirs(client, albumPath, new Callable<String, Boolean>() {
@@ -776,8 +871,8 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
             if (maxSubDir[0] == null) {
                 currentSubPath = albumPath + String.format("%03d", 1) + "/";
             } else {
-                int index = Integer.parseInt(maxSubDir[0].replace("/", ""));
-                List<OSSObjectSummary> objectSummaries = listPath(client, albumPath + maxSubDir[0]);
+                int index = Integer.parseInt(Utils.getSubStr(maxSubDir[0], 2).replace("/", ""));
+                List<OSSObjectSummary> objectSummaries = listPath(client, maxSubDir[0]);
                 if (objectSummaries.size() >= 499) {
                     index++;
                 }
@@ -807,8 +902,9 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      */
     @Override
     public String generateNextPhotoFilename(Photo photo, String savePath) {
-        OSSClient client = getClient();
+        OSSClient client = null;
         try {
+            client = getClient();
             String[] maxFileName = new String[1];
             listPath(client, savePath, new Callable<OSSObjectSummary, Boolean>() {
                 @Override
@@ -871,8 +967,9 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      */
     @Override
     public String generateNextVideoName(Video video, String savePath) {
-        OSSClient client = getClient();
+        OSSClient client = null;
         try {
+            client = getClient();
             String[] maxFileName = new String[1];
             listPath(client, savePath, new Callable<OSSObjectSummary, Boolean>() {
                 @Override
@@ -914,27 +1011,4 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
         return String.format("%05d", video.getCover().getAlbum_id()) + "_" + String.format("%04d", index) + "_" + video.getUpload_time().getTime() + suffix;
     }
 
-    // MultipartFile是否可用
-    private boolean isMultipartFileAvailable(MultipartFile file) {
-        CommonsMultipartFile commonsMultipartFile = (CommonsMultipartFile) file;
-        FileItem fileItem = commonsMultipartFile.getFileItem();
-        return fileItem.isInMemory() ? true : (fileItem instanceof DiskFileItem ? ((DiskFileItem) fileItem).getStoreLocation().exists() : fileItem.getSize() == commonsMultipartFile.getSize());
-    }
-
-    /**
-     * CommonsMultipartFile 只能使用一次，之后就会删除，
-     * 防止出现错误在同步模式
-     */
-    private InputStream getUploadFileInputSteam(MultipartFile file, String fileRelativePath) {
-        try {
-            if (isSyncMode()) {
-                return new FileInputStream(Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + fileRelativePath);
-            } else {
-                return file.getInputStream();
-            }
-        } catch (IOException e) {
-            logger.error("getUploadFileInputSteam: 获取文件流失败，" + e.getMessage());
-            return null;
-        }
-    }
 }

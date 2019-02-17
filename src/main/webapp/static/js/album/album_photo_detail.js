@@ -186,14 +186,14 @@
             var handle = this;
             if (check) {
                 setTimeout(function () { // 要设置一个延迟地址栏与历史才会生效
-                    document.title = handle.pointer.album.name + "_" + check + " - " + handle.pointer.album.user.nickname + "的相册 | ImCODER's 博客";
+                    document.title = handle.pointer.album.name + "_" + check + " - " + handle.pointer.album.user.nickname + "的相册 | ImCoder's 博客";
                 }, 50);
             }
         });
         album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupClosed, function (e, check) {
             var handle = this;
             setTimeout(function () { // 要设置一个延迟地址栏与历史才会生效
-                document.title = handle.pointer.album.name + " - " + handle.pointer.album.user.nickname + "的相册 | ImCODER's 博客";
+                document.title = handle.pointer.album.name + " - " + handle.pointer.album.user.nickname + "的相册 | ImCoder's 博客";
             }, 50);
         });
         album_photo_page_handle.init({
@@ -250,8 +250,23 @@
                     }
                 },
                 "parsePhotosZipName": function (config) {
+                    config.zipPhoto_sortByFact = confirm("点击是以当前显示结果排序，点击否按原文件名排序");
                     var zipName = "album_" + config.load_condition.album_id;
                     return zipName;
+                },
+                "beforeZipPhotos": function (options) {
+                    options.callback.eachFileOnload_callback = function (blob, photo, location_info, options, zipFileLength, zip, main_folder, folder) {
+                        var fileName = photo.path.substring(photo.path.lastIndexOf('/') + 1);
+                        if (album_photo_page_handle.config.zipPhoto_sortByFact) {
+                            fileName = photo.sort + "_" + fileName;
+                        }
+                        photo.fileName = fileName;
+                        if (blob == null) {
+                            toastr.error("照片" + photo.photo_id + "打包失败，已单独下载！", "", {"progressBar": false, timeOut: 0});
+                            common_utils.downloadUrlFile(photo.url, fileName);
+                        }
+                        return true;
+                    }
                 },
                 "actionForEditPhoto": function (photo) {
                     $.magnificPopup.close();
@@ -319,27 +334,23 @@
                     photos = null;
                 },
                 "updateCompleted": function (context, photo) {
-                    album_photo_page_handle.utils.updatePhotoInPage(photo);
                     var photo_source = album_photo_page_handle.utils.getPhotoByCache(photo.photo_id);
+                    var isUpdateFile = photo_source.path != photo.path;
+                    album_photo_page_handle.utils.updatePhotoInPage(photo);
                     var album_id = album_photo_page_handle.config.load_condition.album_id;
                     // 如果其他相册的图片取消挂载在本相册，重新构建布局
-                    var umount = (photo_source.album_id != album_id && photo.tags.indexOf("mount@" + album_id) == -1);
+                    var umount = (photo_source.album_id != album_id && photo.tags.match(new RegExp("\\bmount@" + album_id + "\\b")) == null);
                     if (umount) {
                         album_photo_page_handle.utils.deletePhotoInPage(photo.photo_id);
                     } else if (photo_source.album_id != album_id) {
                         album_photo_page_handle.utils.getPhotoImageDom(photo.photo_id).attr("title", "Refer@" + photo_source.album_id + ": " + photo.name);
                     }
                     // 如果更新了图片文件，重新构建布局
-                    if (!umount && photo.path) {
+                    if (!umount && isUpdateFile) {
                         album_photo_page_handle.jumpPage(album_photo_page_handle.config.page_params.pageNum);
                     }
                     if (photo.iscover == 1) {
-                        album_photo_page_handle.pointer.album.cover = JSON.stringify({
-                            "photo_id": photo_source.photo_id,
-                            "path": photo_source.path,
-                            "width": photo_source.width,
-                            "height": photo_source.height
-                        });
+                        album_photo_page_handle.pointer.album.cover = photo_source;
                         PeriodCache.utils.removeCache("user_albums_cache", login_handle.getCurrentUserId());
                         PeriodCache.utils.removeCache("user_albums_cache", "0_" + login_handle.getCurrentUserId());
                     }
@@ -348,29 +359,77 @@
                     album_photo_page_handle.utils.deletePhotoInPage(photo_id);
                 },
                 "beforeUploadModalOpen": function (context, uploadModal, openUploadModal_callback) {
+                    // 加载上传参数及配置，判断该用户是否允许上传
+                    $.get("photo.do?method=getUploadConfigInfo", function (data) {
+                        if (data && data.flag == 200) {
+                            delete data.flag;
+                            album_photo_handle.config.uploadConfigInfo = data;
+                            album_photo_handle.config.maxUploadSize = data.uploadArgs.maxPhotoUploadSize;
+                            if (!album_photo_handle.config.uploadConfigInfo || album_photo_handle.config.uploadConfigInfo.isAllowUpload) {
+                                // 允许上传才打开上传按钮
+                                album_photo_handle.pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
+                                common_utils.removeNotify("notify-no-allow-upload");
+                            } else {
+                                var users = null;
+                                var lowestLevel = album_photo_handle.config.uploadConfigInfo.allowUploadLowestLevel;
+                                if (lowestLevel == 1) {
+                                    users = "高级会员与管理员";
+                                } else if (lowestLevel == -1) {
+                                    users = "管理员";
+                                }
+                                common_utils.notify({timeOut: 0}).info("系统当前配置为只允许 <b>" + users + "</b> 上传照片", "您暂时不能上传", "notify-no-allow-upload");
+                                // 禁用上传按钮
+                                album_photo_handle.pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').attr("disabled", "disabled");
+                            }
+                        } else {
+                            toastr.error("加载上传配置失败", "错误");
+                        }
+                    });
                     var album_id = context.config.albumId;
                     // 传入的参数可以修改上传的相册ID
                     openUploadModal_callback(album_id);
                 },
                 "beforeUpdateModalOpen": function (context, updateModal, formatPhotoToModal_callback, photo) {
+                    context.pointer.updateModal.find(".update-convert-photo-url").click();
+                    album_photo_handle.pointer.updateModal.find('input[name="photo_sort"]').val(photo.sort / 1000).attr("data-val-sort", photo.sort);
+                    // 如果图片为视频的封面，则添加视频链接
+                    var video_id = album_photo_page_handle.utils.getPhotoImageDom(photo.photo_id).children(0).attr("video_id");
+                    if (video_id) {
+                        var video_href_span = updateModal.find('span[name="video_id"]');
+                        if (video_href_span.length == 0) {
+                            updateModal.find('span[name="photo_id"]').parent().parent().after(
+                                '<div class="form-group"><label class="control-label">视频ID：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>' +
+                                '<a target="_blank" style="color: #666; cursor: pointer" title="点击查看关联视频" >' +
+                                '<span name="video_id" class="control-label"></span></a></div>'
+                            );
+                            video_href_span = updateModal.find('span[name="video_id"]');
+                        } else {
+                            video_href_span.parent().parent().show(0);
+                        }
+                        video_href_span.text(video_id).parent().attr("href", "video.do?method=user_videos&uid=" + photo.uid + "&check=" + photo.photo_id);
+                    } else {
+                        updateModal.find('span[name="video_id"]').parent().parent().hide(0);
+                    }
                     //如果是引用别的相册的照片
-                    if (photo.tags.indexOf("mount@" + album_photo_page_handle.config.load_condition.album_id) != -1) {
+                    if (album_photo_page_handle.config.load_condition.album_id != photo.album_id) {
                         // 引用的照片 添加照片所属相册链接
-                        if (updateModal.find('span[name="album_id"]').length == 0) {
+                        var album_href_span = updateModal.find('span[name="album_id"]');
+                        if (album_href_span.length == 0) {
                             updateModal.find('span[name="photo_id"]').parent().parent().after(
                                 '<div class="form-group"><label class="control-label">所属簿：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>' +
                                 '<a target="_blank" style="color: #666; cursor: pointer" title="点击查看该相簿" >' +
                                 '<span name="album_id" class="control-label"></span></a></div>'
                             );
+                            album_href_span = updateModal.find('span[name="album_id"]');
                         } else {
-                            updateModal.find('span[name="album_id"]').parent().parent().show(0);
+                            album_href_span.parent().parent().show(0);
                         }
                         secureAlbumInfoConn.get(photo.album_id, function (album) {
                             var album_url = "photo.do?method=album_detail&id=" + photo.album_id;
                             if (album) {
-                                updateModal.find('span[name="album_id"]').text(album.name).parent().attr("href", album_url);
+                                album_href_span.text(album.name).parent().attr("href", album_url);
                             } else {
-                                updateModal.find('span[name="album_id"]').text(photo.album_id).parent().attr("href", album_url);
+                                album_href_span.text(photo.album_id).parent().attr("href", album_url);
                             }
                             formatPhotoToModal_callback(photo);
                         });
@@ -384,6 +443,87 @@
             "downloadType": (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ? "url" : "ajax")
         });
 
+        // 增加保存照片在相册内排序权重按钮
+        album_photo_handle.pointer.updateModal.find(".update-photo-refer").after('<div class="update-photo-sort" style="display: none">' +
+            '<div class="input-group"><input title="默认值为照片id大小，最多支持三位小数" class="form-control" type="text" name="photo_sort">' +
+            '<span class="input-group-addon btn btn-sm save-update-photo-sort">保存</span></div></div>');
+        album_photo_handle.pointer.updateModal.find(".update-convert-photo-refer")
+            .after(' / <div class="update-convert-photo-sort" style="font-weight: normal;display: inline;">图片排序</div>');
+        // 切换按钮
+        album_photo_handle.pointer.updateModal.find(".update-convert-photo-url").off("click").click(function (e) {
+            var _self = $(this);
+            _self.css("font-weight", "bold")
+                .parent().find(".update-convert-photo-refer").css("font-weight", "normal")
+                .parent().find(".update-convert-photo-sort").css("font-weight", "normal");
+            _self.parent().parent()
+                .find('.update-photo-url').css("display", "block")
+                .parent().find('.update-photo-refer').css("display", "none")
+                .parent().find('.update-photo-sort').css("display", "none");
+        });
+        album_photo_handle.pointer.updateModal.find(".update-convert-photo-refer").off("click").click(function (e) {
+            var _self = $(this);
+            _self.css("font-weight", "bold")
+                .parent().find(".update-convert-photo-url").css("font-weight", "normal")
+                .parent().find(".update-convert-photo-sort").css("font-weight", "normal");
+            _self.parent().parent()
+                .find('.update-photo-refer').css("display", "block")
+                .parent().find('.update-photo-sort').css("display", "none")
+                .parent().find('.update-photo-url').css("display", "none");
+        });
+        album_photo_handle.pointer.updateModal.find(".update-convert-photo-sort").click(function (e) {
+            var _self = $(this);
+            _self.css("font-weight", "bold")
+                .parent().find(".update-convert-photo-url").css("font-weight", "normal")
+                .parent().find(".update-convert-photo-refer").css("font-weight", "normal");
+            _self.parent().parent()
+                .find('.update-photo-sort').css("display", "block")
+                .parent().find('.update-photo-url').css("display", "none")
+                .parent().find('.update-photo-refer').css("display", "none");
+        });
+        // 保存照片在相册内的排序
+        album_photo_handle.pointer.updateModal.find(".save-update-photo-sort").click(function (e) {
+            var apr = {
+                "album_id": album_photo_handle.config.albumId,
+                "photo_id": album_photo_handle.pointer.updateModal.find('span[name="photo_id"]').text(),
+                "sort": album_photo_handle.pointer.updateModal.find('input[name="photo_sort"]').val() || 0,
+                "before_sort": album_photo_handle.pointer.updateModal.find('input[name="photo_sort"]').attr("data-val-sort") || 0
+            };
+            if (!(apr.album_id > 0 && apr.photo_id > 0)) {
+                toastr.error("相册id或照片id参数错误~");
+                return;
+            } else {
+                apr.album_id = parseInt(apr.album_id);
+                apr.photo_id = parseInt(apr.photo_id);
+                apr.before_sort = parseInt(apr.before_sort) || apr.photo_id * 1000;
+            }
+            if (isNaN(apr.sort)) {
+                toastr.error("请输入数字，最多支持小数点后三位~");
+                return;
+            } else {
+                apr.sort = parseInt(parseFloat(apr.sort) * 1000);
+            }
+            if (apr.before_sort == apr.sort) {
+                toastr.info("已是默认值，无需更新~");
+                return;
+            } else if (apr.sort == apr.photo_id) {
+                apr.sort = 0;
+            }
+            $.post("photo.do?method=saveAlbumPhotoRelation", apr, function (data) {
+                if (data && data.flag == 200) {
+                    toastr.success("更新成功~");
+                    album_photo_page_handle.utils.getPhotoByCache(apr.photo_id).sort = (apr.sort || apr.photo_id * 1000);
+                    album_photo_page_handle.pointer.album.photos.sort(function (a, b) {
+                        return (a.sort || a.photo_id * 1000) - (b.sort || b.photo_id * 1000);
+                    });
+                    album_photo_page_handle.jumpPage(album_photo_page_handle.utils.getPhotoPageNum(apr.photo_id));
+                    album_photo_handle.pointer.updateModal.modal('hide');
+                } else {
+                    toastr.error(data.info, "保存失败");
+                }
+            });
+        });
+
+        // 绑定事件打开上传窗口
         $('#uploadPhoto').click(function () {
             album_photo_handle.openUploadPhotoModal();
         });
@@ -434,7 +574,6 @@
 
                 },
                 "updateCompleted": function (album) {  // 在相册更新完成后回调
-                    album.cover = ((typeof album.cover == "object") ? JSON.stringify(album.cover) : album.cover);
                     var cacheAlbum = album_photo_page_handle.pointer.album;
                     $.extend(cacheAlbum, album);
                     $("#first .album_name").text(cacheAlbum.name);
@@ -452,6 +591,22 @@
                     formatAlbumToModal_callback(album);
                 }
             }
+        });
+        // 要删除的相册中包含视频时提示用户
+        album_handle.utils.bindEvent(album_handle.config.event.beforeDelete, function (e, album_id, album_name) {
+            var photos = album_photo_page_handle.pointer.album.photos;
+            var videoCount = 0;
+            for (var i in photos) {
+                if (photos[i].image_type.indexOf("video") != -1) {
+                    videoCount++;
+                }
+            }
+            if (videoCount > 0) {
+                if (!window.confirm("你删除的相册包含" + videoCount + "个视频，确定要继续吗？（建议先删除视频）")) {
+                    return false;
+                }
+            }
+            return true;
         });
 
         $('#album_create_time').click(function () {

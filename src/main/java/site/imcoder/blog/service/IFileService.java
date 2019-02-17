@@ -39,6 +39,30 @@ public interface IFileService {
         }
     }
 
+    /**
+     * 生成基于云盘基础路径的path
+     *
+     * @param relativePath
+     * @return
+     */
+    public String baseCloudDir(String relativePath);
+
+    /**
+     * 生成基于文章图片上传路径的path
+     *
+     * @param relativePath
+     * @return
+     */
+    public String baseArticleUploadDir(String relativePath);
+
+    /**
+     * 生成基于垃圾回收路径的path
+     *
+     * @param relativePath
+     * @return
+     */
+    public String baseTrashRecycleDir(String relativePath);
+
     public boolean copy(String fromPath, String toPath, boolean isFile);
 
     public boolean move(String fromPath, String toPath, boolean isFile);
@@ -110,23 +134,23 @@ public interface IFileService {
     /**
      * 保存用户头像
      *
-     * @param file
+     * @param inputStream
      * @param relativePath
      * @param fileName
      * @return
      */
-    public boolean saveHeadPhotoFile(MultipartFile file, String relativePath, String fileName);
+    public boolean saveHeadPhotoFile(InputStream inputStream, String relativePath, String fileName);
 
     /**
      * 保存用户相片
      *
-     * @param file
+     * @param inputStream
      * @param photo
      * @param relativePath
      * @param fileName
      * @return
      */
-    public boolean savePhotoFile(MultipartFile file, Photo photo, String relativePath, String fileName);
+    public boolean savePhotoFile(InputStream inputStream, Photo photo, String relativePath, String fileName);
 
     /**
      * 创建相册文件夹
@@ -172,13 +196,13 @@ public interface IFileService {
     /**
      * 保存用户视频
      *
-     * @param file
+     * @param inputStream
      * @param video
      * @param relativePath
      * @param fileName
      * @return
      */
-    public boolean saveVideoFile(MultipartFile file, Video video, String relativePath, String fileName);
+    public boolean saveVideoFile(InputStream inputStream, Video video, String relativePath, String fileName);
 
     /**
      * 生成相册相对路径

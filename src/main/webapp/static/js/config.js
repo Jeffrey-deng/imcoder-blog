@@ -31,6 +31,12 @@
             "jquery_validate": ["lib/validate/jquery.validate.min"],
             "jquery_validate_messages_zh": ["lib/validate/messages_zh"],
             "aliyun-oss-sdk": ["lib/aliyun/aliyun-oss-sdk.min"],
+            "Plyr": ["lib/plyr/plyr.min"],
+            "cropper": ["lib/cropper/cropper.min"],
+            // "jquery-mousewheel": ["lib/jquery/jquery-mousewheel/jquery.mousewheel.min"],
+            // "threedubmedia-event-drag": ["lib/jquery.threedubmedia/event.drag/jquery.event.drag.min"],
+            // "mag": ["lib/magnificent/js/mag.min"],
+            // "mag-jquery": ["lib/magnificent/js/mag-jquery.min"],
 
             "album_photo_handle": ["js/album/module/album_photo_handle"],
             "album_photo_page_handle": ["js/album/module/album_photo_page_handle"],
@@ -44,6 +50,7 @@
             "video_list": ["js/video/video_list"],
             "video_handle": ["js/video/module/video_handle"],
             "album_video_plugin": ["js/video/module/album_video_plugin"],
+            "comment_plugin": ["js/article/comment_plugin"],
             "article_detail": ["js/article/article_detail"],
             "article_edit": ["js/article/article_edit"],
             "edit_tool": ["js/article/edit_tool"],
@@ -71,6 +78,9 @@
             "profilecenter": ["js/user/profilecenter"],
             "user_home": ["js/user/user_home"],
             "cloud_share": ["js/cloud/cloud_share"],
+            "video_embed": ["js/video/video_embed"],
+            "photo_detail": ["js/album/photo_detail"],
+            "video_detail": ["js/video/video_detail"]
         },
         shim: {
             bootstrap: {
@@ -140,13 +150,13 @@
 
                     require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "notice"]);
 
-                } else if (page == "about") {
+                } else if (page == "site_board") {
 
-                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "magnificPopup", "common_utils", "login_handle", "toolbar", "article_detail", "sideCol", "contact_with"]);
+                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "magnificPopup", "common_utils", "login_handle", "toolbar", "comment_plugin", "article_detail", "sideCol", "contact_with"]);
 
                 } else if (page == "article_detail") {
 
-                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "magnificPopup", "common_utils", "login_handle", "toolbar", "article_detail", "sideCol", "contact_with"]);
+                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "magnificPopup", "common_utils", "login_handle", "toolbar", "comment_plugin", "article_detail", "sideCol", "contact_with"]);
 
                 } else if (page == "article_edit") {
 
@@ -214,6 +224,18 @@
                 } else if (page == "article_tags") {
 
                     require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar"]);
+
+                } else if (page == "video_embed") {
+
+                    require(["jquery", "toastr", "Plyr", "video_embed"]);
+
+                } else if (page == "photo_detail") {
+
+                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "clipboard", "common_utils", "login_handle", "toolbar", "blowup", "album_photo_handle", "photo_detail"]);
+
+                } else if (page == "video_detail") {
+
+                    require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "clipboard", "common_utils", "login_handle", "toolbar", "video_handle", "video_detail"]);
 
                 }
             }

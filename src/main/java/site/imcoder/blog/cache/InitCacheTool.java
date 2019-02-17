@@ -3,6 +3,7 @@ package site.imcoder.blog.cache;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
 import site.imcoder.blog.dao.ISiteDao;
+import site.imcoder.blog.dao.IUserDao;
 import site.imcoder.blog.entity.*;
 
 import javax.annotation.Resource;
@@ -23,6 +24,10 @@ public class InitCacheTool {
     //依赖注入DAO
     @Resource
     private ISiteDao siteDao;
+
+    //依赖注入DAO
+    @Resource
+    private IUserDao userDao;
 
     /**
      * 初始化文章的缓存
@@ -68,6 +73,10 @@ public class InitCacheTool {
             int userCount = 0;
 
             for (User user : userBaseList) {
+                // 用户配置
+                if (user.getUserSetting() == null || user.getUserSetting().isEmpty()) {
+                    user.setUserSetting(userDao.findUserSetting(user));
+                }
 
                 //该用户文章数
                 int userArticleCount = 0;
@@ -77,7 +86,7 @@ public class InitCacheTool {
                         userArticleCount++;
                     }
                 }
-                user.setArticleCount(userArticleCount);
+                user.getUserStatus().setArticleCount(userArticleCount);
 
                 int followCount = 0;
                 int fansCount = 0;
@@ -91,8 +100,8 @@ public class InitCacheTool {
                         fansCount++;
                     }
                 }
-                user.setFollowCount(followCount);
-                user.setFansCount(fansCount);
+                user.getUserStatus().setFollowCount(followCount);
+                user.getUserStatus().setFansCount(fansCount);
 
                 userCount++;
             }

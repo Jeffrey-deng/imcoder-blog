@@ -5,6 +5,7 @@ import org.apache.log4j.Logger;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import site.imcoder.blog.common.PageUtil;
+import site.imcoder.blog.common.type.UserAuthType;
 import site.imcoder.blog.dao.CommonDao;
 import site.imcoder.blog.dao.IUserDao;
 import site.imcoder.blog.entity.*;
@@ -40,7 +41,24 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
      */
     public int saveUser(User user) {
         try {
-            return this.getSqlSession().insert("user.saveUser", user);
+            SqlSession sqlSession = this.getSqlSession();
+            int i = sqlSession.insert("user.saveUser", user);
+            if (i > 0) {
+                for (UserAuth userAuth : user.getUserAuths()) {
+                    if (userAuth.getIdentity_type() == UserAuthType.UID.value) {
+                        userAuth.setIdentifier(String.valueOf(user.getUid()));
+                    }
+                    if (userAuth.typeOfLegalAuth()) {
+                        userAuth.setUid(user.getUid());
+                        sqlSession.insert("auth.insertUserAuth", userAuth);
+                    }
+                }
+                user.getUserStatus().setUid(user.getUid());
+                sqlSession.insert("user.insertUserStatus", user.getUserStatus());
+                return 1;
+            } else {
+                return -1;
+            }
         } catch (Exception e) {
             e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
@@ -57,7 +75,7 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
      */
     public int saveProfile(User user) {
         try {
-            return this.getSqlSession().update("user.saveprofile", user);
+            return this.getSqlSession().update("user.updateUserProfile", user);
         } catch (Exception e) {
             e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
@@ -67,36 +85,19 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
     }
 
     /**
-     * 更新加密后的令牌和登录IP
+     * 更新账号状态信息
      *
-     * @param user
-     * @return
-     */
-    public int updateTokenAndIp(User user) {
-        try {
-            return this.getSqlSession().update("user.updateTokenAndIp", user);
-        } catch (Exception e) {
-            e.printStackTrace();
-            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            logger.error("updateTokenAndIp fail", e);
-            return -1;
-        }
-    }
-
-    /**
-     * 更新账号信息
-     *
-     * @param user
+     * @param userStatus
      * @return
      */
     @Override
-    public int updateAccount(User user) {
+    public int updateUserStatus(UserStatus userStatus) {
         try {
-            return this.getSqlSession().update("user.updateAccount", user);
+            return this.getSqlSession().insert("user.updateUserStatus", userStatus);
         } catch (Exception e) {
             e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            logger.error("updateAccount fail", e);
+            logger.error("updateUserStatus fail", e);
             return -1;
         }
     }
@@ -135,6 +136,57 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
      */
     public Map<String, Object> countUserInfo(User user) {
         return null;
+    }
+
+    /**
+     * 返回用户的账户设置
+     *
+     * @param user
+     * @return
+     */
+    @Override
+    public UserSetting findUserSetting(User user) {
+        try {
+            SqlSession sqlSession = this.getSqlSession();
+            UserSetting userSetting = sqlSession.selectOne("user.findUserSetting", user);
+            if (userSetting == null && user != null && user.getUid() > 0) {
+                userSetting = new UserSetting(user.getUid());
+                sqlSession.insert("user.insertUserSetting", userSetting);
+            }
+            return userSetting;
+        } catch (Exception e) {
+            e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("findUserSetting fail", e);
+            return null;
+        }
+    }
+
+    /**
+     * 更新用户配置
+     *
+     * @param userSetting
+     * @return
+     */
+    @Override
+    public int updateUserSetting(UserSetting userSetting) {
+        try {
+            if (userSetting != null && userSetting.getUid() > 0) {
+                SqlSession sqlSession = this.getSqlSession();
+                UserSetting saveUserSetting = sqlSession.selectOne("user.findUserSetting", new User(userSetting.getUid()));
+                if (saveUserSetting == null) {
+                    sqlSession.insert("user.insertUserSetting", new UserSetting(userSetting.getUid()));
+                }
+                return sqlSession.update("user.updateUserSetting", userSetting);
+            } else {
+                return 0;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("updateUserSetting fail", e);
+            return -1;
+        }
     }
 
 
@@ -259,52 +311,6 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
             e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("deleteFollow fail", e);
-            return -1;
-        }
-    }
-
-
-    /**
-     * 查询私信列表
-     *
-     * @param user
-     * @param read_status 0 未读  1全部
-     * @return
-     */
-    public List<Letter> findLetterList(User user, int read_status) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        map.put("user", user);
-        map.put("read_status", read_status);
-        return this.getSqlSession().selectList("msg.findLetterList", map);
-    }
-
-    /**
-     * 查询系统消息列表
-     *
-     * @param user
-     * @param read_status 0 未读  1全部
-     * @return
-     */
-    public List<SysMsg> findSysMsgList(User user, int read_status) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        map.put("user", user);
-        map.put("read_status", read_status);
-        return this.getSqlSession().selectList("msg.findSysMsgList", map);
-    }
-
-    /**
-     * 发送私信
-     *
-     * @param letter
-     * @return
-     */
-    public int saveLetter(Letter letter) {
-        try {
-            return this.getSqlSession().insert("msg.saveLetter", letter);
-        } catch (Exception e) {
-            e.printStackTrace();
-            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            logger.error("saveLetter fail", e);
             return -1;
         }
     }

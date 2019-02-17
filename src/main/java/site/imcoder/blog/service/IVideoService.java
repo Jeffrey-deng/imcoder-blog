@@ -15,16 +15,24 @@ import java.util.Map;
 public interface IVideoService {
 
     /**
+     * 得到上传配置信息
+     *
+     * @param loginUser
+     * @return
+     */
+    public Map<String, Object> getUploadConfigInfo(User loginUser);
+
+    /**
      * 保存上传的视频
      *
-     * @param file
+     * @param videoFile
      * @param video
      * @param loginUser
      * @return map
      * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 封面未找到, 500: 服务器错误
      * photo - photo对象
      */
-    public Map<String, Object> saveVideo(MultipartFile file, Video video, User loginUser);
+    public Map<String, Object> saveVideo(MultipartFile videoFile, Video video, User loginUser);
 
     /**
      * 返回视频
@@ -45,5 +53,25 @@ public interface IVideoService {
      * @return videoList
      */
     public List<Video> findVideoListByCoverArray(List<Integer> covers, User loginUser);
+
+    /**
+     * 保存上传的视频
+     *
+     * @param videoFile
+     * @param video
+     * @param loginUser
+     * @return map
+     * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 封面未找到, 500: 服务器错误
+     * photo - photo对象
+     */
+    public Map<String, Object> updateVideo(MultipartFile videoFile, Video video, User loginUser);
+
+    /**
+     * 点击量加1
+     *
+     * @param video
+     * @return
+     */
+    public int raiseVideoClickCount(Video video);
 
 }

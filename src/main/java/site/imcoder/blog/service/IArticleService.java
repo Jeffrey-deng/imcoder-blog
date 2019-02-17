@@ -3,7 +3,6 @@ package site.imcoder.blog.service;
 import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.Category;
-import site.imcoder.blog.entity.Comment;
 import site.imcoder.blog.entity.User;
 
 import java.util.List;
@@ -11,6 +10,14 @@ import java.util.Map;
 
 
 public interface IArticleService {
+
+    /**
+     * 得到文章上传的配置信息
+     *
+     * @param loginUser
+     * @return
+     */
+    public Map<String, Object> getCreateConfigInfo(User loginUser);
 
     /**
      * description:保存文章
@@ -78,33 +85,6 @@ public interface IArticleService {
      * @return
      */
     public List<Category> getCategoryCount();
-
-    /**
-     * 得到评论列表
-     *
-     * @param aid
-     * @return
-     */
-    public List<Comment> findCommentList(int aid);
-
-    /**
-     * 添加评论
-     *
-     * @param comment
-     * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，500: 失败
-     * comment 对象
-     */
-    public Map<String, Object> addComment(Comment comment, User loginUser);
-
-    /**
-     * 删除评论
-     *
-     * @param comment
-     * @param loginUser
-     * @return flag - 200：成功，201：填充为‘已删除’，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
-     */
-    public int deleteComment(Comment comment, User loginUser);
 
     /**
      * description: 获得置顶列表

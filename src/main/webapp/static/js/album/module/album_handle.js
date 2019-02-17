@@ -57,7 +57,8 @@
         event: { // 以事件方式添加回调，以便支持多个回调，这时定义的是事件名
             "createCompleted": "album.create.completed",
             "updateCompleted": "album.update.completed",
-            "deleteCompleted": "album.delete.completed"
+            "deleteCompleted": "album.delete.completed",
+            "beforeDelete": "album.delete.before"
         },
         "album_default_col": "0"
     };
@@ -88,36 +89,34 @@
             album.name = pointer.updateModal.find('input[name="album_name"]').val();
             album.description = pointer.updateModal.find('textarea[name="album_desc"]').val();
             album.permission = pointer.updateModal.find('input[name="album_permission"]:checked').val();
-            album.cover = pointer.updateModal.find('input[name="album_cover_path"]').val().trim();
             album.show_col = pointer.updateModal.find('select[name="album_show_col"]').val();
-            var isJson = false;
-            album.cover = album.cover.replace(config.path_params.cloudPath, "").replace(config.path_params.staticPath, "");
-            try {
-                var coverJson = JSON.stringify(JSON.parse(album.cover));
-                album.cover = coverJson;
-                isJson = true;
-            } catch (e) {
-                if (album.cover.indexOf("{") == -1) {
-                    $.get("photo.do?method=photoListByAjax", {"path": album.cover}, function (data) {
-                        if (data.flag == 200 && data.photos.length > 0) {
-                            var photo = data.photos[0];
-                            album.cover = JSON.stringify({
-                                "photo_id": photo.photo_id,
-                                "path": photo.path,
-                                "width": photo.width,
-                                "height": photo.height
-                            });
-                            updateAlbum(album);
-                        } else {
-                            pointer.updateModal.find('input[name="album_cover_path"]').val(JSON.stringify({"path": album.cover}));
-                            toastr.error("你输入相册封面不存在或没有权限或格式错误", "请重新输入");
-                        }
-                    });
-                } else {
-                    toastr.error("你输入相册封面格式错误", "请重新输入");
+            var coverUrl = pointer.updateModal.find('input[name="album_cover_path"]').val().trim();
+            var beforeCoverUrl = pointer.updateModal.find('input[name="album_cover_path"]').attr("data-re-cover-url");
+            var beforeCoverId = parseInt(pointer.updateModal.find('input[name="album_cover_path"]').attr("data-re-cover-id"));
+            album.cover = {"photo_id": beforeCoverId};
+            // 检查
+            if (coverUrl) {
+                if (coverUrl != beforeCoverUrl) {   // 如果用户修改封面图片地址，则查询数据库，是否有该图片
+                    if (coverUrl.match(/^(https?:\/\/.*?\/(blog\/)?)?(user\/\d+\/album\/\d+\/\d+\/[0-9a-zA-Z_\.]+\.(gif|jpe?g|png|bmp|svg|ico))(\?[\x21-\x7e]*)?$/)) {
+                        $.get("photo.do?method=photoListByAjax", {"path": RegExp.$3}, function (data) {
+                            if (data.flag == 200 && data.photos.length > 0) {
+                                var photo = data.photos[0];
+                                album.cover.photo_id = photo.photo_id;
+                                updateAlbum(album);
+                            } else {
+                                toastr.error("你输入相册封面不存在或没有权限或格式错误", "请重新输入");
+                            }
+                        });
+                    } else {
+                        toastr.error("你输入相册封面格式错误", "请重新输入");
+                    }
                 }
+            } else {    // 如果用户清空了输入框代表用户要使用默认封面
+                album.cover.photo_id = 0;
             }
-            isJson && updateAlbum(album);
+            if (!coverUrl || coverUrl == beforeCoverUrl) {
+                updateAlbum(album); // 不需要查询数据库就直接更新
+            }
         });
 
         //删除相册事件
@@ -186,11 +185,6 @@
             if (data.flag == 200) {
                 toastr.success("创建成功 ");
                 pointer.createModal.modal('hide');
-                try {
-                    data.album.cover = JSON.parse(data.album.cover);
-                } catch (e) {
-                    data.album.cover = {"path": data.album.cover};
-                }
                 config.callback.createCompleted.call(context, data.album);
                 utils.triggerEvent(config.event.createCompleted, data.album);
             } else {
@@ -203,11 +197,6 @@
     var loadAlbum = function (album_id, success) {
         $.get("photo.do?method=albumByAjax", {"id": album_id}, function (data) {
             if (data.flag == 200) {
-                try {
-                    data.album.cover = JSON.parse(data.album.cover);
-                } catch (e) {
-                    data.album.cover = {"path": data.album.cover};
-                }
                 success(data);
             } else {
                 toastr.error(data.info, "加载相册信息失败!");
@@ -217,6 +206,10 @@
     };
 
     var deleteAlbum = function (album_id, album_name) {
+        var allow = utils.triggerEvent(config.event.beforeDelete, album_id, album_name);
+        if (allow === false) {
+            return;
+        }
         common_utils.notify({
             "progressBar": false,
             "hideDuration": 0,
@@ -243,17 +236,15 @@
     };
 
     var updateAlbum = function (album) {
-        $.post("photo.do?method=updateAlbum", album, function (data) {
+        var postAlbum = $.extend(true, {}, album);
+        delete postAlbum.cover;
+        postAlbum["cover.photo_id"] = album.cover.photo_id;
+        $.post("photo.do?method=updateAlbum", postAlbum, function (data) {
             if (data.flag == 200) {
-                try {
-                    album.cover = JSON.parse(album.cover);
-                } catch (e) {
-                    album.cover = {"path": album.cover};
-                }
                 toastr.success("更新成功 ");
                 pointer.updateModal.modal('hide');
-                config.callback.updateCompleted.call(context, album);
-                utils.triggerEvent(config.event.updateCompleted, album);
+                config.callback.updateCompleted.call(context, data.album);
+                utils.triggerEvent(config.event.updateCompleted, data.album);
             } else {
                 toastr.error(data.info, "更新失败");
                 console.warn("Error Code: " + data.flag);
@@ -267,7 +258,7 @@
             return false;
         }
         var openCreateModal_callback = function () {
-            pointer.createModal.find('input[name="album_permission"][value="0"]').prop("checked", true);
+            pointer.createModal.find('input[name="album_permission"][value="2"]').prop("checked", true);
             pointer.createModal.find('select[name="album_show_col"]').val(config.album_default_col).parent().css("display", "none");
             pointer.createModal.modal();
         };
@@ -293,8 +284,8 @@
                     $(this).prop("checked", true);
                 }
             });
-            var coverJson = ((typeof album.cover == "object") ? JSON.stringify(album.cover) : album.cover);
-            pointer.updateModal.find('input[name="album_cover_path"]').val(coverJson);
+            pointer.updateModal.find('input[name="album_cover_path"]')
+                .val(album.cover.photo_id == 0 ? "" : album.cover.path).attr("data-re-cover-id", album.cover.photo_id).attr("data-re-cover-url", album.cover.path);
             pointer.updateModal.find('select[name="album_show_col"]').val(album.show_col);
             pointer.updateModal.find('span[name="album_size"]').html(album.size);
             pointer.updateModal.find('span[name="album_create_time"]').html(album.create_time);
@@ -321,7 +312,7 @@
             $(context).bind(eventName, func);
         },
         "triggerEvent": function (eventName) {
-            $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
+            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
         },
         "unbindEvent": function (eventName, func) {
             $(context).unbind(eventName, func);

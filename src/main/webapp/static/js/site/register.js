@@ -1,5 +1,6 @@
 /**
- * Created by Jeffrey.Deng on 2018/7/10.
+ * 注册
+ * @author Jeffrey.deng
  */
 (function (factory) {
     /* global define */
@@ -21,7 +22,7 @@
             success: function (data) {
                 if (data.flag == 200) {
                     var username = $('#username').val();
-                    var a_login = "user.do?method=jumpLogin&username=" + username;
+                    var a_login = "auth.do?method=jumpLogin&identity_type=1&identifier=" + username;
                     $("#span_username").html(username);
                     $('#a_jump').attr("href", a_login);
                     $('#TipsModal').modal();
@@ -51,15 +52,18 @@
                 result = false;
             } else if (reg.test(value)) {
                 $.ajax({
-                    url: "user.do?method=checkUsername",
+                    url: "auth.do?method=checkUsername",
                     async: false,
                     data: {"username": value},
                     success: function (data) {
                         if (data.flag == 200) {
                             errormsg = "该用户名已经被使用了";
                             result = false;
-                        } else {
+                        } else if (data.flag == 404) {
                             result = true;
+                        } else {
+                            errormsg = "参数错误~ 有bug";
+                            result = false;
                         }
                     },
                     error: function () {
@@ -83,15 +87,18 @@
                 result = false;
             } else {
                 $.ajax({
-                    url: "user.do?method=checkEmail",
+                    url: "auth.do?method=checkEmail",
                     async: false,
                     data: {"email": value},
                     success: function (data) {
                         if (data.flag == 200) {
                             errormsg = "该邮箱已经被使用了";
                             result = false;
-                        } else {
+                        } else if (data.flag == 404) {
                             result = true;
+                        } else {
+                            errormsg = "参数错误~ 有bug";
+                            result = false;
                         }
                     },
                     error: function () {

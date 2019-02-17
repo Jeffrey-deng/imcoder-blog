@@ -38,24 +38,19 @@
 
     <!-- 保存 -->
     <insert id="saveUser" parameterType="user" useGeneratedKeys="true" keyProperty="uid">
-        insert into
-        user(gid,username,password,nickname,phone,sex,email,description,head_photo,register_time,qq,lock_status)
-        values(#{userGroup.gid},#{username},#{password},#{nickname},#{phone},#{sex},#{email},#{description},#{head_photo},
-        #{register_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler},
-        #{qq},#{lock_status})
+        insert into user(gid,nickname,phone,sex,email,description,head_photo,qq)
+        values(#{userGroup.gid},#{nickname},#{phone},#{sex},#{email},#{description},#{head_photo},#{qq})
     </insert>
 
     <!-- 保存 个人资料-->
-    <update id="saveprofile" parameterType="user">
+    <update id="updateUserProfile" parameterType="user">
         update user set
-        head_photo=#{head_photo},nickname=#{nickname},phone=#{phone},sex=#{sex},description=#{description},qq=#{qq},weibo=#{weibo},address=#{address},birthday=#{birthday},says=#{says}
+        head_photo=#{head_photo},nickname=#{nickname},phone=#{phone},sex=#{sex},description=#{description},qq=#{qq},weibo=#{weibo},site=#{site},address=#{address},birthday=#{birthday},says=#{says}
         where uid = #{uid}
     </update>
 
     <resultMap id="userMap" type="user">
         <result column="uid" property="uid"/>
-        <result column="username" property="username"/>
-        <result column="password" property="password"/>
         <result column="nickname" property="nickname"/>
         <result column="phone" property="phone"/>
         <result column="sex" property="sex"/>
@@ -64,60 +59,77 @@
         <result column="birthday" property="birthday"/>
         <result column="description" property="description"/>
         <result column="head_photo" property="head_photo"/>
-        <result column="register_time" property="register_time" javaType="java.util.Date" jdbcType="BIGINT"/>
         <result column="qq" property="qq"/>
         <result column="weibo" property="weibo"/>
+        <result column="site" property="site"/>
         <result column="says" property="says"/>
-        <result column="lock_status" property="lock_status"/>
-        <result column="token" property="token"/>
-        <result column="login_ip" property="loginIP"/>
         <association property="userGroup" column="gid" javaType="userGroup">
             <result column="gid" property="gid"/>
             <result column="group_name" property="group_name"/>
         </association>
+        <association property="userStatus" javaType="userStatus">
+            <result column="uid" property="uid"/>
+            <result column="lock_status" property="lock_status"/>
+            <result column="register_ip" property="register_ip"/>
+            <result column="register_time" property="register_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+            <result column="last_login_ip" property="last_login_ip"/>
+            <result column="last_login_time" property="last_login_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+        </association>
     </resultMap>
 
-    <!-- 更新用户令牌 -->
-    <update id="updateTokenAndIp" parameterType="user">
-        update user
-        <set>
-            <if test="token!=null">token=#{token},</if>
-            <if test="loginIP!=null">login_ip=#{loginIP},</if>
-        </set>
-        where uid=#{uid}
-    </update>
-
-    <!-- 更新用户 -->
-    <update id="updateAccount" parameterType="user">
-        update user
-        <set>
-            <if test=" username!=null and username !='' ">username=#{username},</if>
-            <if test=" email!=null and email !='' ">email=#{email},</if>
-            <if test=" password!=null and password !='' ">password=#{password},</if>
-        </set>
-        where uid=#{uid}
-    </update>
-
-    <!-- 根据用户名或ID、email查询 -->
+    <!-- 根据ID查询 -->
     <select id="findUser" parameterType="user" resultMap="userMap">
         select
-        uid,u.gid,username,password,nickname,phone,sex,email,address,birthday,description,head_photo,register_time,qq,weibo,says,lock_status,token,
-        login_ip,
-        ug.group_name
-        from user u left join user_group ug on u.gid=ug.gid
-        <where>
-            <choose>
-                <when test="uid>0">uid=#{uid}</when>
-                <when test="username!=null">username=#{username}</when>
-                <when test="email!=null">email=#{email}</when>
-                <otherwise>1=-1</otherwise>
-            </choose>
-            <if test="uid == 0 and username!=null and email!=null and username==email">
-                or email=#{username}
-            </if>
-        </where>
+        u.uid,nickname,phone,sex,email,address,birthday,description,head_photo,qq,weibo,site,says,
+        ust.lock_status,ust.register_ip,ust.register_time,ust.last_login_ip,ust.last_login_time,
+        ug.gid,ug.group_name
+        from (user u left join user_group ug on u.gid=ug.gid) left join user_status ust on u.uid = ust.uid
+        where u.uid = #{uid}
         limit 1
     </select>
+
+    <!-- 插入用户配置新行 -->
+    <insert id="insertUserSetting" parameterType="userSetting">
+        insert into user_setting (uid, receive_notify_email, profile_view_level, page_background) values (#{uid}, #{receiveNotifyEmail}, #{profileViewLevel}, #{pageBackground});
+    </insert>
+
+    <!-- 查找用户配置 -->
+    <select id="findUserSetting" parameterType="user" resultMap="userSettingMap">
+        select uid, receive_notify_email, profile_view_level, page_background from user_setting where uid = #{uid}
+    </select>
+
+    <!-- 更新用户配置 -->
+    <update id="updateUserSetting" parameterType="userSetting">
+        update user_setting set receive_notify_email = #{receiveNotifyEmail}, profile_view_level = #{profileViewLevel}, page_background = #{pageBackground} where uid = #{uid}
+    </update>
+
+    <resultMap id="userSettingMap" type="userSetting">
+        <result column="uid" property="uid"/>
+        <result column="receive_notify_email" property="receiveNotifyEmail"/>
+        <result column="profile_view_level" property="profileViewLevel"/>
+        <result column="page_background" property="pageBackground"/>
+    </resultMap>
+
+    <!-- 插入用户状态新行 -->
+    <insert id="insertUserStatus" parameterType="userStatus">
+        insert into user_status (uid, lock_status, register_ip, register_time)
+        values (#{uid},#{lock_status},
+        #{register_ip},#{register_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler})
+    </insert>
+
+    <!-- 更新用户状态 -->
+    <update id="updateUserStatus" parameterType="userStatus">
+        update user_status
+        <set>
+            <if test="register_ip != null">register_ip = #{register_ip}, </if>
+            <if test="register_time != null">register_time = #{register_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}, </if>
+            <if test="last_login_ip != null">last_login_ip = #{last_login_ip}, </if>
+            <if test="last_login_time != null">last_login_time = #{last_login_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}, </if>
+        </set>
+        <where>
+            uid = #{uid}
+        </where>
+    </update>
 
     <!-- *************************关注 start********************* -->
     <!-- 检查是否fansUser关注了hostUser -->
@@ -140,7 +152,7 @@
 
     <!-- 查询用户关注列表 -->
     <select id="findFollowList" parameterType="user" resultMap="userMap_contact">
-        select uf.fuid as userid,nickname,sex,email,address,birthday,description,head_photo,register_time,qq,weibo,says,
+        select uf.fuid as userid,nickname,sex,email,address,birthday,description,head_photo,qq,weibo,says,site,
         ug.gid,ug.group_name
         from user_follow uf left join
         ( user u left join user_group ug on u.gid=ug.gid ) on uf.fuid=u.uid
@@ -151,7 +163,7 @@
 
     <!-- 查询粉丝关注列表 -->
     <select id="findFansList" parameterType="user" resultMap="userMap_contact">
-        select uf.uid as userid,nickname,sex,email,address,birthday,description,head_photo,register_time,qq,weibo,says,
+        select uf.uid as userid,nickname,sex,email,address,birthday,description,head_photo,qq,weibo,says,site,
         ug.gid,ug.group_name
         from user_follow uf left join
         ( user u left join user_group ug on u.gid=ug.gid ) on uf.uid=u.uid
@@ -169,9 +181,9 @@
         <result column="birthday" property="birthday"/>
         <result column="description" property="description"/>
         <result column="head_photo" property="head_photo"/>
-        <result column="register_time" property="register_time" javaType="java.util.Date" jdbcType="BIGINT"/>
         <result column="qq" property="qq"/>
         <result column="weibo" property="weibo"/>
+        <result column="site" property="site"/>
         <result column="says" property="says"/>
         <association property="userGroup" javaType="userGroup">
             <result column="gid" property="gid"/>
@@ -207,7 +219,7 @@
 
     <!-- 查询用户好友 -->
     <select id="findFriendList" parameterType="user" resultMap="userMap_contact">
-        select f.fid as userid,nickname,sex,email,address,birthday,description,head_photo,register_time,qq,weibo,says,
+        select f.fid as userid,nickname,sex,email,address,birthday,description,head_photo,qq,weibo,says,site,
         ug.gid,ug.group_name
         from friends f left join
         ( user u left join user_group ug on u.gid=ug.gid ) on f.fid=u.uid

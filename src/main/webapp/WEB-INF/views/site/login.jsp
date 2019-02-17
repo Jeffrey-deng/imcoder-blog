@@ -22,8 +22,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>登录 - ImCODER's 博客</title>
-    <meta name="keywords" content="imcoder.site,登录,ImCODER's 博客">
+    <title>登录 - ImCoder's 博客</title>
+    <meta name="keywords" content="imcoder.site,登录,ImCoder's 博客">
     <meta name="description" content="登录，输入账号密码登录到imcoder.site">
 
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
@@ -112,10 +112,10 @@
         <form class="m-t" role="form" id="login_form" action="user.do?method=login">
             <div class="form-group">
                 <!--  <input type="email" class="form-control" placeholder="用户名" required=""> -->
-                <input name="username" type="text" class="form-control" placeholder="用户名" required="">
+                <input name="identifier" type="text" class="form-control" placeholder="用户名" required="">
             </div>
             <div class="form-group">
-                <input name="password" type="password" class="form-control" placeholder="密码" required="">
+                <input name="credential" type="password" class="form-control" placeholder="密码" required="">
                 <input name="remember" type="checkbox" checked="checked" style="display: none;">
             </div>
             <button type="button" jumpUrl="<%=basePath%>" class="btn btn-primary block full-width m-b login_submit">登 录</button>

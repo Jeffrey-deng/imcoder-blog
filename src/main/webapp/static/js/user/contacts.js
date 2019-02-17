@@ -157,10 +157,10 @@
             search += "&action=" + $(e.target).attr('href').substring(1);
             history.replaceState(
                 null,
-                e.target.innerText + "_联系人页 - ImCODER's 博客",
+                e.target.innerText + "_联系人页 - ImCoder's 博客",
                 location.pathname + search
             );
-            document.title = e.target.innerText + "_联系人页 - ImCODER's 博客";
+            document.title = e.target.innerText + "_联系人页 - ImCoder's 博客";
         });
 
         // 打开时显示的tab

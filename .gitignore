@@ -21,3 +21,6 @@ Desktop.ini
 /src/main/resources/server/ServerConfig.xml
 /src/main/resources/server/jdbc.properties
 /src/main/resources/server/oss.properties
+/src/main/resources/server/email.properties
+/src/main/resources/server/tool.properties
+/src/main/resources/log4j.properties

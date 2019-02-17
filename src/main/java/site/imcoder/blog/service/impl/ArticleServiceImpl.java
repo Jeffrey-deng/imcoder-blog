@@ -1,12 +1,17 @@
 package site.imcoder.blog.service.impl;
 
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.common.PageUtil;
+import site.imcoder.blog.common.type.UserGroupType;
 import site.imcoder.blog.dao.IArticleDao;
-import site.imcoder.blog.entity.*;
+import site.imcoder.blog.entity.Article;
+import site.imcoder.blog.entity.Category;
+import site.imcoder.blog.entity.Friend;
+import site.imcoder.blog.entity.User;
 import site.imcoder.blog.event.IEventTrigger;
 import site.imcoder.blog.service.IArticleService;
 import site.imcoder.blog.service.IFileService;
@@ -35,7 +40,7 @@ public class ArticleServiceImpl implements IArticleService {
     @Resource
     private INotifyService notifyService;
 
-    @Resource(name = "localFileService")
+    @Resource(name = "fileService")
     private IFileService fileService;
 
     @Resource
@@ -48,6 +53,48 @@ public class ArticleServiceImpl implements IArticleService {
     private IEventTrigger trigger;
 
     /**
+     * 得到文章上传的配置信息
+     *
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public Map<String, Object> getCreateConfigInfo(User loginUser) {
+        Map<String, Object> createConfig = new HashedMap();
+        createConfig.put("allowCreateLowestLevel", Config.getInt(ConfigConstants.ARTICLE_ALLOW_CREATE_LOWEST_LEVEL));
+        createConfig.put("isAllowCreate", isAllowCreate(loginUser));
+        // uploadArgs
+        Map<String, Object> uploadArgs = new HashedMap();
+        uploadArgs.put("mode", site.imcoder.blog.service.IFileService.Mode.LOCAL.value);
+        uploadArgs.put("maxPhotoUploadSize", Config.getInt(ConfigConstants.CLOUD_PHOTO_MAX_UPLOADSIZE));
+        uploadArgs.put("maxVideoUploadSize", Config.getInt(ConfigConstants.CLOUD_VIDEO_MAX_UPLOADSIZE));
+        createConfig.put("uploadArgs", uploadArgs);
+        //
+        createConfig.put("flag", 200);
+        return createConfig;
+    }
+
+    // 当前用户是否允许创建文章
+    private boolean isAllowCreate(User loginUser) {
+        if (loginUser == null) {
+            return false;
+        }
+        // 允许发表文章的用户组最低等级，值为对应用户组的Gid
+        int lowestLevel = Config.getInt(ConfigConstants.ARTICLE_ALLOW_CREATE_LOWEST_LEVEL);
+        switch (UserGroupType.valueOfName(lowestLevel)) {
+            case NOVICE_USER:
+                return true;
+            case SENIOR_USER:
+                int gid = loginUser.getUserGroup().getGid();
+                return gid == UserGroupType.SENIOR_USER.value || gid == UserGroupType.MANAGER.value;
+            case MANAGER:
+                return loginUser.getUserGroup().isManager();
+            default:
+                return false;
+        }
+    }
+
+    /**
      * description:保存文章
      *
      * @param article
@@ -57,6 +104,9 @@ public class ArticleServiceImpl implements IArticleService {
     public int save(Article article, User loginUser) {
         if (loginUser == null) {
             return 401;
+        }
+        if (!isAllowCreate(loginUser)) {
+            return 403;
         }
         if (article == null || article.getAuthor() == null || article.getCategory() == null) {
             return 400;
@@ -90,7 +140,7 @@ public class ArticleServiceImpl implements IArticleService {
         }
         User author = cacheArticle.getAuthor();
         article.setAuthor(author);
-        if (author.getUid() == loginUser.getUid() || loginUser.getUserGroup().getGid() == 1) {
+        if (author.getUid() == loginUser.getUid() || loginUser.getUserGroup().isManager()) {
             Date date = new Date();
             article.setUpdate_time(date);
             int row = articleDao.update(article);
@@ -113,35 +163,9 @@ public class ArticleServiceImpl implements IArticleService {
      * @return map (article:文章，flag：{200, 401, 403：无权限，404：无此文章})
      */
     public Map<String, Object> detail(int aid, User loginUser) {
-        Article article = articleDao.find(aid);
         Map<String, Object> map = new HashMap<String, Object>();
-        int flag = 200;
-        //文章为空时info返回404
-        if (article != null) {
-            //需要权限
-            int permission = article.getPermission();
-            if (permission > 0) {
-                //需要权限却没登录直接返回401
-                if (loginUser != null) {
-                    //权限--仅好友可见时
-                    if (permission == 1 && article.getAuthor().getUid() != loginUser.getUid()) {
-                        //userDao.checkFriendRelationship(new Friend(loginUser.getUid(),article.getAuthor().getUid()));
-                        if (cache.containsFriend(new Friend(loginUser.getUid(), article.getAuthor().getUid())) != 2) {
-                            flag = 403;
-                        }
-                        //权限--为私有时
-                    } else if (permission == 2) {
-                        if (article.getAuthor().getUid() != loginUser.getUid()) {
-                            flag = 403;
-                        }
-                    }
-                } else {
-                    flag = 401;
-                }
-            }
-        } else {
-            flag = 404;
-        }
+        Article article = articleDao.find(aid);
+        int flag = checkUserHasPermission(article, loginUser);
         map.put("flag", flag);
         if (flag == 200) {
             //填充缓存中的统计信息
@@ -235,75 +259,6 @@ public class ArticleServiceImpl implements IArticleService {
      */
     public List<Category> getCategoryCount() {
         return cache.getCategoryCount();
-    }
-
-    /**
-     * 得到评论列表
-     *
-     * @param aid
-     * @return
-     */
-    public List<Comment> findCommentList(int aid) {
-        return articleDao.findCommentList(aid);
-    }
-
-    /**
-     * 添加评论
-     *
-     * @param comment
-     * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，500: 失败
-     * comment 对象
-     */
-    public Map<String, Object> addComment(Comment comment, User loginUser) {
-        Map<String, Object> map = new HashMap<>();
-        if (loginUser == null) {
-            map.put("flag", 401);
-            return map;
-        }
-        comment.setUser(loginUser);
-        comment.setSend_time(new Date().getTime());
-        int index = articleDao.saveComment(comment);
-        if (index > 0) {
-            map.put("comment", comment);
-
-            //触发发送新评论通知
-            notifyService.receivedComment(comment);
-
-            //增加评论数
-            //articleDao.raiseCommentCnt(comment);
-            trigger.addComment(comment);
-        }
-        map.put("flag", convertRowToHttpCode(index));
-        return map;
-    }
-
-    /**
-     * 删除评论
-     *
-     * @param comment
-     * @param loginUser
-     * @return flag - 200：成功，201：填充为‘已删除’，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
-     */
-    public int deleteComment(Comment comment, User loginUser) {
-        if (loginUser == null) {
-            return 401;
-        } else {
-            comment.setUser(loginUser);
-        }
-        int index = articleDao.deleteComment(comment);
-        if (index == 2) {
-            //减少评论数
-            //articleDao.reduceCommentCnt(comment);
-            trigger.deleteComment(comment);
-            return 200;
-        } else if (index == 1) {
-            return 201;
-        } else if (index == 0) {
-            return 404;
-        } else {
-            return 500;
-        }
     }
 
     /**
@@ -456,6 +411,38 @@ public class ArticleServiceImpl implements IArticleService {
             map.put("flag", flag);
         }
         return map;
+    }
+
+    // 检查该用户是否对该文章有查看权限
+    private int checkUserHasPermission(Article article, User loginUser) {
+        int flag = 200;
+        // 文章为空时info返回404
+        if (article != null) {
+            // 需要权限
+            int permission = article.getPermission();
+            if (permission > 0) {
+                // 需要权限却没登录直接返回401
+                if (loginUser != null) {
+                    //权限--仅好友可见时
+                    if (permission == 1 && article.getAuthor().getUid() != loginUser.getUid()) {
+                        // userDao.checkFriendRelationship(new Friend(loginUser.getUid(),article.getAuthor().getUid()));
+                        if (cache.containsFriend(new Friend(loginUser.getUid(), article.getAuthor().getUid())) != 2) {
+                            flag = 403;
+                        }
+                        // 权限--为私有时
+                    } else if (permission == 2) {
+                        if (article.getAuthor().getUid() != loginUser.getUid()) {
+                            flag = 403;
+                        }
+                    }
+                } else {
+                    flag = 401;
+                }
+            }
+        } else {
+            flag = 404;
+        }
+        return flag;
     }
 
     private int convertRowToHttpCode(int row) {

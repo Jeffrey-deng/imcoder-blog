@@ -2,6 +2,7 @@
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%
     String path = request.getContextPath();
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
@@ -15,9 +16,9 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
-    <title>${album.name} - ${album.user.nickname}的相册 | ImCODER's 博客</title>
-    <meta name="description" content="${album.description}">
-    <meta name="keywords" content="相册,相册详情,${album.name},ImCODER's 博客">
+    <title>${album.name} - ${album.user.nickname}的相册 | ImCoder's 博客</title>
+    <meta name="description" content="${fn:escapeXml(album.description)}">
+    <meta name="keywords" content="相册,相册详情,${album.name},ImCoder's 博客">
     <!-- 使用url函数转换相关路径 -->
     <!-- <script async="" src="http://www.google-analytics.com/analytics.js"></script> -->
 
@@ -86,7 +87,7 @@
     <div class="container-fluid">
         <div class="navbar-header">
             <div class="navbar-brand">
-                <p><a class="logo" style="color: #333;" href="<%=basePath%>">博客Blog</a></p>
+                <p><a class="logo" style="color: #333;" href="<%=basePath%>">ImCoder</a></p>
             </div>
             <button type="button" class="navbar-toggle collapsed " data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
                 <span class="sr-only">Toggle navigation</span>
@@ -151,7 +152,7 @@
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
-                            <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
+                            <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
                                 <div class="col-sm-1">
                                     <div class="coldesc"><a class="toolbar_jump_manager" href="manager.do?method=backstage" target="_blank">管理</a></div>
                                 </div>
@@ -199,6 +200,7 @@
                             <h4><a class="anav-menu_user toolbar_user_profilecenter" href="<%=basePath%>user.do?method=profilecenter" target="_blank">个人中心</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_userhome" href="<%=basePath%>user.do?method=home&uid=${loginUser.uid}" target="_blank">我的博客</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_albums" href="<%=basePath%>photo.do?method=user_albums&uid=${loginUser.uid}" target="_blank">我的相册</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_videos" href="<%=basePath%>video.do?method=user_videos&uid=${loginUser.uid}" target="_blank">我的视频</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_messages" href="<%=basePath%>user.do?method=profilecenter&action=messages" target="_blank">我的消息</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_setting" href="<%=basePath%>user.do?method=profilecenter&action=settings" target="_blank">修改设置</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_logout" title="点击退出登录">安全退出</a></h4>
@@ -319,6 +321,10 @@
                             <input type="text" class="tag-input" name="tag_input"/>
                         </span>
                     </div>
+                    <div class="form-group" style="overflow:auto;">
+                        <label>引用：</label>
+                        <input class="form-control" type="text" name="photo_refer">
+                    </div>
                     <div class="form-group " style="padding-top: 7px;">
                         <label class="control-label">是否作为封面</label>
                         <label class="radio-inline" style="margin-left:10px;">
@@ -353,12 +359,27 @@
                         </a>
                     </div>
                     <div class="form-group">
-                        <label>图片地址&nbsp;&nbsp;</label>
-                        <input class="form-control copy-input" type="text" value="http://imcoder.site/"/>
-                        <span class="control-label">
-                            <a class="copyPhotoUrl_btn" data-clipboard-target=".copy-input" style="cursor: pointer">点击复制</a>
-                            <a name="photo_path" style="cursor: pointer">点击下载</a>
-                        </span>
+                        <label>
+                            <div class="update-convert-photo-url" style="font-weight: bold;display: inline;">图片地址</div>
+                            /
+                            <div class="update-convert-photo-refer" style="font-weight: normal;display: inline;">图片相关</div>
+                        </label>
+                        <div class="update-photo-url" style="display: block">
+                            <div class="input-group">
+                                <input class="form-control copy-input" type="text" value="http://imcoder.site/"/>
+                                <span class="input-group-addon btn btn-sm open-update-photo-url">访问</span>
+                            </div>
+                            <span class="control-label">
+                                <a class="copyPhotoUrl_btn" data-clipboard-target=".copy-input" style="cursor: pointer">点击复制</a>
+                                <a name="photo_path" style="cursor: pointer">点击下载</a>
+                            </span>
+                        </div>
+                        <div class="update-photo-refer" style="display: none">
+                            <div class="input-group">
+                                <input class="form-control" type="text" name="photo_refer">
+                                <span class="input-group-addon btn btn-sm open-update-photo-refer">访问</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group note-group-select-from-files">
                         <label title="不选择则不更新">更新图片文件</label>
@@ -431,7 +452,7 @@
                     </div>
                     <div class="form-group">
                         <label>封面地址：</label>
-                        <input class="form-control" type="text" name="album_cover_path"/>
+                        <input class="form-control" type="text" name="album_cover_path" placeholder="置空则使用默认封面"/>
                     </div>
                     <div class="form-group" style="padding-top: 5px;">
                         <label>相册权限：</label>
@@ -492,11 +513,11 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
-                        <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
+                        <input type="email" name="identifier" class="form-control" placeholder="输入用户名/email">
                     </div>
                     <div class="form-group">
                         <label>密码</label>
-                        <input type="password" name="password" class="form-control" placeholder="输入密码">
+                        <input type="password" name="credential" class="form-control" placeholder="输入密码">
                     </div>
                     <div class="form-group">
                         <label>

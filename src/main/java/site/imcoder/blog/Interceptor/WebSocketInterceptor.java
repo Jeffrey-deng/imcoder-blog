@@ -7,7 +7,7 @@ import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.support.HttpSessionHandshakeInterceptor;
 import site.imcoder.blog.entity.User;
-import site.imcoder.blog.setting.Constants;
+import site.imcoder.blog.setting.GlobalConstants;
 
 import javax.servlet.http.HttpSession;
 import java.util.Map;
@@ -24,9 +24,9 @@ public class WebSocketInterceptor extends HttpSessionHandshakeInterceptor {
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
 //        HttpSession session = this.getSession(request);
 //        if(session != null) {
-//            User loginUser = (User)session.getAttribute(Constants.LOGIN_USER_KEY);
+//            User loginUser = (User)session.getAttribute(GlobalConstants.LOGIN_USER_KEY);
 //            if (loginUser != null) {
-//                attributes.put(Constants.LOGIN_USER_KEY, loginUser);
+//                attributes.put(GlobalConstants.LOGIN_USER_KEY, loginUser);
 //            }
 //        }
         // 父类中实现了复制session中所有元素
@@ -38,7 +38,7 @@ public class WebSocketInterceptor extends HttpSessionHandshakeInterceptor {
         if (logger.isDebugEnabled()) {
             HttpSession session = this.getSession(request);
             if (session != null) {
-                User loginUser = (User) session.getAttribute(Constants.LOGIN_USER_KEY);
+                User loginUser = (User) session.getAttribute(GlobalConstants.LOGIN_USER_KEY);
                 if (loginUser != null) {
                     logger.debug("user " + loginUser.getUid() + " hand shake with server successfully");
                 }

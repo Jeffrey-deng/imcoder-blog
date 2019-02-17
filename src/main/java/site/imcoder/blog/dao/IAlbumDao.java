@@ -1,9 +1,6 @@
 package site.imcoder.blog.dao;
 
-import site.imcoder.blog.entity.Album;
-import site.imcoder.blog.entity.Photo;
-import site.imcoder.blog.entity.PhotoTagWrapper;
-import site.imcoder.blog.entity.User;
+import site.imcoder.blog.entity.*;
 
 import java.util.List;
 
@@ -115,6 +112,14 @@ public interface IAlbumDao {
     public List<Photo> findPhotoList(Photo photo, String logic_conn, int start, int size, User loginUser);
 
     /**
+     * 点击量加1
+     *
+     * @param photo
+     * @return
+     */
+    public int raisePhotoClickCount(Photo photo);
+
+    /**
      * 查询出用户设置的特殊标签
      *
      * @param tagWrapper
@@ -122,4 +127,44 @@ public interface IAlbumDao {
      * @return
      */
     public List<PhotoTagWrapper> findPhotoTagWrappers(PhotoTagWrapper tagWrapper, User loginUser);
+
+    /**
+     * 查询一个相册的AlbumPhotoRelation类列表
+     *
+     * @param album
+     * @return
+     */
+    public List<AlbumPhotoRelation> findAlbumPhotoRelationList(Album album);
+
+    /**
+     * 只查询一对相册与照片关联类
+     *
+     * @param albumPhotoRelation
+     * @return
+     */
+    public AlbumPhotoRelation findAlbumPhotoRelation(AlbumPhotoRelation albumPhotoRelation);
+
+    /**
+     * 保存相册与照片关联类
+     *
+     * @param albumPhotoRelation
+     * @return
+     */
+    public int saveAlbumPhotoRelation(AlbumPhotoRelation albumPhotoRelation);
+
+    /**
+     * 更新相册与照片关联类
+     *
+     * @param albumPhotoRelation
+     * @return
+     */
+    public int updateAlbumPhotoRelation(AlbumPhotoRelation albumPhotoRelation);
+
+    /**
+     * 删除相册与照片关联类
+     *
+     * @param albumPhotoRelation
+     * @return
+     */
+    public int deleteAlbumPhotoRelation(AlbumPhotoRelation albumPhotoRelation);
 }

@@ -144,8 +144,12 @@ public class EmailUtil {
             success = email.sendEmail();
         } catch (Exception e) {
             success = false;
-            e.printStackTrace();
-            logger.warn("邮件推送：发送给 " + toAddress + " 邮件失败！" + e.toString());
+            if (e.toString() != null && e.toString().indexOf("559 Invalid rcptto") != -1) {
+                logger.warn("邮件推送：发送给 " + toAddress + " 邮件失败！目的地址无效~");
+            } else {
+                e.printStackTrace();
+                logger.warn("邮件推送：发送给 " + toAddress + " 邮件失败！" + e.toString());
+            }
         }
         return success;
     }

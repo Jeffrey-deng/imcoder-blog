@@ -32,4 +32,10 @@ public class OSSConfigConstants {
     // 垃圾回收路径
     public static final String TRASH_RECYCLE_BASEPATH = "trash_recycle_basepath";
 
+    // 云盘文件存储基础路径
+    public static final String CLOUD_FILE_BASEPATH = "cloud_file_basepath";
+
+    // 文章上传文件存储基础路径
+    public static final String ARTICLE_UPLOAD_BASEPATH = "article_upload_basepath";
+
 }

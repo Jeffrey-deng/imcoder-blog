@@ -1,10 +1,15 @@
 package site.imcoder.blog.service.impl;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.cache.Cache;
+import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.common.type.UserGroupType;
 import site.imcoder.blog.dao.IAlbumDao;
 import site.imcoder.blog.entity.*;
 import site.imcoder.blog.service.IAlbumService;
@@ -13,6 +18,7 @@ import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
 
 import javax.annotation.Resource;
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,18 +41,62 @@ public class AlbumServiceImpl implements IAlbumService {
     private static Comparator<Photo> ALBUM_PHOTO_COMPARATOR = new Comparator<Photo>() {
         @Override
         public int compare(Photo b, Photo n) {
-            return b.getPhoto_id() - n.getPhoto_id();
+            int x = (b.getSort() == 0 ? b.getPhoto_id() * 1000 : b.getSort());
+            int y = (n.getSort() == 0 ? n.getPhoto_id() * 1000 : n.getSort());
+            return x - y;
         }
     };
 
     @Resource
     private IAlbumDao albumDao;
 
-    @Resource(name = "localFileService")
+    @Resource(name = "fileService")
     private IFileService fileService;
 
     @Resource
     private Cache cache;
+
+    /**
+     * 得到照片上传配置信息
+     *
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public Map<String, Object> getUploadConfigInfo(User loginUser) {
+        Map<String, Object> uploadConfig = new HashedMap();
+        uploadConfig.put("allowUploadLowestLevel", Config.getInt(ConfigConstants.CLOUD_ALLOW_UPLOAD_LOWEST_LEVEL));
+        uploadConfig.put("isAllowUpload", isAllowUpload(loginUser));
+        // uploadArgs
+        Map<String, Object> uploadArgs = new HashedMap();
+        uploadArgs.put("mode", Config.get(ConfigConstants.CLOUD_FILE_SYSTEM_MODE));
+        uploadArgs.put("maxPhotoUploadSize", Config.getInt(ConfigConstants.CLOUD_PHOTO_MAX_UPLOADSIZE));
+        uploadArgs.put("maxVideoUploadSize", Config.getInt(ConfigConstants.CLOUD_VIDEO_MAX_UPLOADSIZE));
+        uploadConfig.put("uploadArgs", uploadArgs);
+        //
+        uploadConfig.put("flag", 200);
+        return uploadConfig;
+    }
+
+    // 当前用户是否允许上传文件
+    private boolean isAllowUpload(User loginUser) {
+        if (loginUser == null) {
+            return false;
+        }
+        // 云盘允许上传文件的用户组最低等级，值为对应用户组的Gid
+        int lowestLevel = Config.getInt(ConfigConstants.CLOUD_ALLOW_UPLOAD_LOWEST_LEVEL);
+        switch (UserGroupType.valueOfName(lowestLevel)) {
+            case NOVICE_USER:
+                return true;
+            case SENIOR_USER:
+                int gid = loginUser.getUserGroup().getGid();
+                return gid == UserGroupType.SENIOR_USER.value || gid == UserGroupType.MANAGER.value;
+            case MANAGER:
+                return loginUser.getUserGroup().isManager();
+            default:
+                return false;
+        }
+    }
 
     /**
      * 创建相册
@@ -67,7 +117,7 @@ public class AlbumServiceImpl implements IAlbumService {
             map.put("flag", 400);
         } else {
             album.setUser(loginUser);
-            album.setCover(Config.get(ConfigConstants.ALBUM_DEFAULT_COVER));
+            album.setCover(generateDefaultCover());
             album.setCreate_time(new Date());
             album.setSize(0);
             int index = albumDao.saveAlbum(album);
@@ -103,7 +153,11 @@ public class AlbumServiceImpl implements IAlbumService {
         if (db_album == null) {
             map.put("flag", 404);
             return map;
+        } else if (db_album.getCover() == null || db_album.getCover().getPhoto_id() == 0) {
+            // 添加默认封面photo对象
+            db_album.setCover(generateDefaultCover());
         }
+        db_album.setPhotos(null);
 
         //作者本人查看时直接返回
         if (loginUser != null && loginUser.getUid() == db_album.getUser().getUid()) {
@@ -168,13 +222,31 @@ public class AlbumServiceImpl implements IAlbumService {
             if (mount) {
                 Photo mountCondition = new Photo(); // 该相册挂载的查找条件
                 mountCondition.setUid(db_album.getUser().getUid());
-                mountCondition.setTags(MOUNT_PREFIX + db_album.getAlbum_id());
+                mountCondition.setTags("<" + MOUNT_PREFIX + db_album.getAlbum_id() + ">");
                 List<Photo> mountPhotos = findPhotoList(mountCondition, "and", 0, 0, loginUser);
                 photos.addAll(mountPhotos);
-                Collections.sort(photos, ALBUM_PHOTO_COMPARATOR); // 重新排序
                 db_album.setSize(photos.size());
             } else {
                 db_album.setSize(photos.size());
+            }
+            // 获取排序权重
+            List<AlbumPhotoRelation> aprList = albumDao.findAlbumPhotoRelationList(album);
+            Map<Integer, AlbumPhotoRelation> aprMap = new HashMap<>();
+            if (aprList != null) {
+                for (AlbumPhotoRelation apr : aprList) {
+                    aprMap.put(apr.getPhoto_id(), apr);
+                }
+            }
+            for (Photo p : photos) {
+                AlbumPhotoRelation apr = aprMap.get(p.getPhoto_id());
+                if (apr != null) {
+                    p.setSort(apr.getSort());
+                } else {
+                    p.setSort(p.getPhoto_id() * 1000);
+                }
+            }
+            if (mount || (aprList != null && aprList.size() > 0)) {
+                Collections.sort(photos, ALBUM_PHOTO_COMPARATOR); // 重新排序
             }
         }
         return map;
@@ -189,7 +261,20 @@ public class AlbumServiceImpl implements IAlbumService {
      */
     @Override
     public List<Album> findAlbumList(Album album, User loginUser) {
-        return albumDao.findAlbumInfoList(album, loginUser);
+        List<Album> albumList = albumDao.findAlbumInfoList(album, loginUser);
+        if (albumList != null && albumList.size() > 0) {
+            // 添加默认封面photo对象
+            Photo defaultCover = null;
+            for (Album db_album : albumList) {
+                if (db_album.getCover() == null || db_album.getCover().getPhoto_id() == 0) {
+                    if (defaultCover == null) {
+                        defaultCover = generateDefaultCover();
+                    }
+                    db_album.setCover(defaultCover);
+                }
+            }
+        }
+        return albumList;
     }
 
     /**
@@ -198,25 +283,50 @@ public class AlbumServiceImpl implements IAlbumService {
      * @param album
      * @param loginUser
      * @return flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 相册ID未找到，500：服务器错误
+     * album - 更新后的album
      */
     @Override
-    public int updateAlbum(Album album, User loginUser) {
-        if (loginUser == null) {
-            return 401;
+    public Map<String, Object> updateAlbum(Album album, User loginUser) {
+        Map<String, Object> map = new HashMap<>();
+        int flag = 200;
+        if (album == null) {
+            flag = 400;
+            map.put("flag", flag);
+            return map;
+        } else if (loginUser == null) {
+            flag = 401;
+            map.put("flag", flag);
+            return map;
         }
-        Map<String, Object> map = this.findAlbumInfo(album, loginUser);
-        int flag = (Integer) map.get("flag");
-        if (flag == 200) {
-            Album db_album = (Album) map.get("album");
+        Map<String, Object> albumQuery = this.findAlbumInfo(album, loginUser);
+        int photoQueryFlag = (Integer) albumQuery.get("flag");
+        if (photoQueryFlag == 200) {
+            Album db_album = (Album) albumQuery.get("album");
             if (db_album.getUser().getUid() == loginUser.getUid()) {
-                int index = albumDao.updateAlbum(album);
-                return index > 0 ? 200 : 500;
+                // 检查封面
+                if (album.getCover() == null) {
+                    album.setCover(db_album.getCover());
+                } else if (album.getCover().getPhoto_id() > 0) {
+                    Map<String, Object> photoQuery = this.findPhoto(album.getCover(), loginUser);
+                    if ((int) photoQuery.get("flag") != 200 || ((Photo) photoQuery.get("photo")).getUid() != loginUser.getUid()) {
+                        flag = 400;
+                    }
+                }
+                if (flag == 200) {
+                    int index = albumDao.updateAlbum(album);
+                    flag = index > 0 ? 200 : 500;
+                }
             } else {
-                return 403;
+                flag = 403;
             }
         } else {
-            return flag;
+            flag = photoQueryFlag;
         }
+        map.put("flag", flag);
+        if (flag == 200) {
+            map.put("album", this.findAlbumInfo(album, loginUser).get("album"));
+        }
+        return map;
     }
 
     /**
@@ -232,7 +342,8 @@ public class AlbumServiceImpl implements IAlbumService {
         if (loginUser == null) {
             return 401;
         }
-        Map<String, Object> map = this.findAlbumWithPhotos(album, loginUser);
+        // set umount=false filte mount
+        Map<String, Object> map = this.findAlbumWithPhotos(album, false, loginUser);
         int flag = (Integer) map.get("flag");
         if (flag == 200) {
             Album db_album = (Album) map.get("album");
@@ -242,10 +353,10 @@ public class AlbumServiceImpl implements IAlbumService {
                 boolean rs = false;
                 if (deleteFromDisk) {
                     // 回收相册文件夹
-                    rs = fileService.recycleTrash(Config.get(ConfigConstants.CLOUD_FILE_BASEPATH), relativePath, false);
+                    rs = fileService.recycleTrash(fileService.baseCloudDir(null), relativePath, false);
                 }
                 if (rs || !deleteFromDisk) {
-                    String sqlBackupPath = Config.get(ConfigConstants.TRASH_RECYCLE_BASEPATH) + relativePath + "album_data_" + db_album.getAlbum_id() + "_" + new Date().getTime() + ".sql";
+                    String sqlBackupPath = fileService.baseTrashRecycleDir(relativePath + "album_data_" + db_album.getAlbum_id() + "_" + new Date().getTime() + ".sql");
                     fileService.saveText(convertAlbumToInsertSQL(db_album), sqlBackupPath); // 备份SQL文件
                     logger.info("FileRecycle backup album(" + db_album.getAlbum_id() + ") sql file in \"" + sqlBackupPath + "\"");
                     int index = albumDao.deleteAlbum(album);
@@ -277,33 +388,43 @@ public class AlbumServiceImpl implements IAlbumService {
         map.put("photo", photo);
         if (loginUser == null) {
             map.put("flag", 401);
+        } else if (!isAllowUpload(loginUser)) {
+            map.put("flag", 403);
         } else if (file == null || photo == null) {
             map.put("flag", 400);
         } else {
-            Album album = new Album();
-            album.setAlbum_id(photo.getAlbum_id());
-            Map<String, Object> albumFindMap = this.findAlbumInfo(album, loginUser);
-            int albumFindFlag = (int) albumFindMap.get("flag");
-            if (albumFindFlag == 200) {
-                Album albumFindAlbum = (Album) albumFindMap.get("album");
-                if (albumFindAlbum.getUser().getUid() == loginUser.getUid()) {
+            fillPhotoNotRequiredValueIfNull(photo);
+            if (photo.getOriginName() == null) {
+                photo.setOriginName(file.getOriginalFilename());
+            }
+            Map<String, Object> albumQuery = this.findAlbumInfo(new Album(photo.getAlbum_id()), loginUser);
+            int albumQueryFlag = (int) albumQuery.get("flag");
+            if (albumQueryFlag == 200) {
+                Album db_album = (Album) albumQuery.get("album");
+                if (db_album.getUser().getUid() == loginUser.getUid()) {
                     photo.setUid(loginUser.getUid());
                     photo.setUpload_time(new Date());
-                    String relativePath = fileService.generatePhotoFolderPath(albumFindAlbum);
-                    String fileName = fileService.generateNextPhotoFilename(photo, Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + relativePath);
-                    boolean isSave = fileService.savePhotoFile(file, photo, relativePath, fileName);
+                    String relativePath = fileService.generatePhotoFolderPath(db_album);
+                    String fileName = fileService.generateNextPhotoFilename(photo, relativePath);
+                    boolean isSave = false;
+                    try {
+                        isSave = fileService.savePhotoFile(file.getInputStream(), photo, relativePath, fileName);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        isSave = false;
+                    }
                     if (isSave) {
                         photo.setPath(relativePath + fileName);
-                        // 更新相册封面
-                        if (photo.getIscover() == 1) {
-                            updateCoverForAlbum(photo);
-                        }
                         int index = albumDao.savePhoto(photo);
                         if (index > 0) {
                             map.put("flag", 200);
+                            // 更新相册封面
+                            if (photo.getIscover() == 1) {
+                                updateCoverForAlbum(photo);
+                            }
                         } else {
                             map.put("flag", 500);
-                            String diskPath = Config.get(ConfigConstants.CLOUD_FILE_BASEPATH) + photo.getPath();
+                            String diskPath = fileService.baseCloudDir(photo.getPath());
                             fileService.delete(diskPath);
                         }
                     } else {
@@ -313,7 +434,7 @@ public class AlbumServiceImpl implements IAlbumService {
                     map.put("flag", 403);
                 }
             } else {
-                map.put("flag", albumFindFlag);
+                map.put("flag", albumQueryFlag);
             }
         }
         return map;
@@ -341,9 +462,7 @@ public class AlbumServiceImpl implements IAlbumService {
             return map;
         }
 
-        Album album = new Album();
-        album.setAlbum_id(photo.getAlbum_id());
-        Album albumInfo = albumDao.findAlbumInfo(album);
+        Album albumInfo = albumDao.findAlbumInfo(new Album(photo.getAlbum_id()));
 
         //作者本人查看时直接返回
         if (loginUser != null && loginUser.getUid() == albumInfo.getUser().getUid()) {
@@ -393,13 +512,13 @@ public class AlbumServiceImpl implements IAlbumService {
                 int left = albumDao.deletePhoto(db_photo);
                 if (deleteFromDisk) {
                     // int right = fileService.deleteFileByUrl(db_photo.getPath(), "cloud", request);
-                    int right = fileService.recycleTrash(Config.get(ConfigConstants.CLOUD_FILE_BASEPATH), db_photo.getPath(), true) ? 1 : 0; //回收
+                    int right = fileService.recycleTrash(fileService.baseCloudDir(null), db_photo.getPath(), true) ? 1 : 0; //回收
                     left = left * right;
                 }
-                Pattern pattern = Pattern.compile("^(.*/).+/(.*)\\.(.*)?$");
+                Pattern pattern = Pattern.compile("^(.*/).+/(.*)\\.(.*)?$"); // 去掉分块的文件夹
                 Matcher matcher = pattern.matcher(db_photo.getPath());
                 matcher.find();
-                fileService.saveText(backupSql, Config.get(ConfigConstants.TRASH_RECYCLE_BASEPATH) + matcher.group(1) + matcher.group(2) + ".sql");
+                fileService.saveText(backupSql, fileService.baseTrashRecycleDir(matcher.group(1) + matcher.group(2) + ".sql"));
                 return left > 0 ? 200 : 500;
             } else {
                 return 403;
@@ -415,23 +534,34 @@ public class AlbumServiceImpl implements IAlbumService {
      * @param photo
      * @param file      可选，有则更新
      * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 照片未找到，500：服务器错误
+     * @flag = flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 照片未找到，500：服务器错误
+     * photo - 更新后的photo
      */
     @Override
-    public int updatePhoto(Photo photo, MultipartFile file, User loginUser) {
+    public Map<String, Object> updatePhoto(Photo photo, MultipartFile file, User loginUser) {
+        Map<String, Object> map = new HashMap<>();
+        int flag = 200;
         if (loginUser == null) {
-            return 401;
+            flag = 401;
+            map.put("flag", flag);
+            return map;
+        } else if (photo == null) {
+            flag = 400;
+            map.put("flag", flag);
+            return map;
         }
-        Map<String, Object> map = this.findPhoto(photo, loginUser);
-        int flag = (Integer) map.get("flag");
-        if (flag == 200) {
-            Photo db_photo = (Photo) map.get("photo");
+        Map<String, Object> photoQuery = this.findPhoto(photo, loginUser);
+        int photoQueryFlag = (int) photoQuery.get("flag");
+        if (photoQueryFlag == 200) {
+            Photo db_photo = (Photo) photoQuery.get("photo");
             if (db_photo.getUid() == loginUser.getUid()) {
-                photo.setAlbum_id(db_photo.getAlbum_id());
+                fillPhotoNotRequiredValueIfNull(photo, db_photo);
                 String oldPath = db_photo.getPath();
                 if (file != null && !file.isEmpty() && file.getContentType().indexOf("image") != -1) {
                     if (photo.getOriginName() == null) {
-                        if (db_photo.getOriginName() != null) {
+                        if (Utils.isNotEmpty(file.getOriginalFilename())) {
+                            photo.setOriginName(file.getOriginalFilename());
+                        } else if (db_photo.getOriginName() != null) {
                             photo.setOriginName(db_photo.getOriginName());
                         } else {
                             photo.setOriginName("");
@@ -442,14 +572,20 @@ public class AlbumServiceImpl implements IAlbumService {
                     String newPathDir = matcher.group(1); //文件夹
                     String newPathExt = photo.getOriginName().lastIndexOf('.') != -1 ? photo.getOriginName().substring(photo.getOriginName().lastIndexOf('.')) : ".jpg";
                     String newPathFileName = matcher.group(2) + new Date().getTime() + newPathExt; // 新文件名
-                    if (fileService.savePhotoFile(file, photo, newPathDir, newPathFileName)) { //保存新文件到磁盘
-                        if (db_photo.getImage_type() != null && db_photo.getImage_type().indexOf("video") != -1) {
-                            photo.setImage_type(db_photo.getImage_type()); // 视频：更新视频封面图片文件时，避免旧类型被覆盖
+                    photo.setPath(null);
+                    try {
+                        if (fileService.savePhotoFile(file.getInputStream(), photo, newPathDir, newPathFileName)) { //保存新文件到磁盘
+                            if (db_photo.getImage_type() != null && db_photo.getImage_type().indexOf("video") != -1) {
+                                photo.setImage_type(db_photo.getImage_type()); // 视频：更新视频封面图片文件时，避免旧类型被覆盖
+                            }
+                            photo.setPath(newPathDir + newPathFileName);
+                            flag = 200;
+                        } else {
+                            flag = 500;
                         }
-                        photo.setPath(newPathDir + newPathFileName);
-                        fileService.recycleTrash(Config.get(ConfigConstants.CLOUD_FILE_BASEPATH), oldPath, true); // 回收旧文件
-                    } else {
-                        return 500;
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        flag = 500;
                     }
                 } else {
                     photo.setWidth(db_photo.getWidth());
@@ -460,19 +596,35 @@ public class AlbumServiceImpl implements IAlbumService {
                     photo.setSize(db_photo.getSize());
                     photo.setPath(oldPath);
                     photo.setOriginName(db_photo.getOriginName());
+                    flag = 200;
                 }
-                // 更新相册封面 需要先更新 album_cover 在更新photo
-                if (photo.getIscover() == 1) {
-                    updateCoverForAlbum(photo);
+                if (flag == 200) {
+                    // 更新相册封面 需要先更新 album_cover 在更新photo
+                    if (photo.getIscover() == 1) {
+                        updateCoverForAlbum(photo);
+                    }
+                    int index = albumDao.updatePhoto(photo);
+                    flag = index > 0 ? 200 : 500;
+                    if (flag == 200) {
+                        if (!oldPath.equals(photo.getPath())) {
+                            fileService.recycleTrash(fileService.baseCloudDir(null), oldPath, true); // 回收旧文件
+                        }
+                    } else if (photo.getPath() != null && !oldPath.equals(photo.getPath())) {
+                        String diskPath = fileService.baseCloudDir(photo.getPath());
+                        fileService.delete(diskPath);
+                    }
                 }
-                int index = albumDao.updatePhoto(photo);
-                return index > 0 ? 200 : 500;
             } else {
-                return 403;
+                flag = 403;
             }
         } else {
-            return flag;
+            flag = photoQueryFlag;
         }
+        map.put("flag", flag);
+        if (flag == 200) {
+            map.put("photo", this.findPhoto(photo, loginUser).get("photo"));
+        }
+        return map;
     }
 
     /**
@@ -505,20 +657,18 @@ public class AlbumServiceImpl implements IAlbumService {
     public List<Photo> findPhotoList(String base, Photo photo, String logic_conn, int start, int size, User loginUser) {
         if (base != null && base.startsWith("album_detail") && photo != null && photo.getAlbum_id() > 0) {
             int album_id = photo.getAlbum_id();
-            Album album = new Album();
-            album.setAlbum_id(album_id);
-            Map<String, Object> albumInfo = findAlbumInfo(album, loginUser);
-            int flag = (int) albumInfo.get("flag");
+            Map<String, Object> albumQuery = findAlbumInfo(new Album(album_id), loginUser);
+            int flag = (int) albumQuery.get("flag");
             if (flag == 200) {
-                Album lcd = (Album) albumInfo.get("album");
-                int lcd_uid = lcd.getUser().getUid();
-                String lcf_tags = MOUNT_PREFIX + album_id;
+                Album albumInfo = (Album) albumQuery.get("album");
+                int query_host_uid = albumInfo.getUser().getUid();
+                Pattern belong_album_test_regex = Pattern.compile(".*\\b" + MOUNT_PREFIX + album_id + "\\b.*");
                 photo.setAlbum_id(0); // 去掉相册条件
                 List<Photo> photoList = albumDao.findPhotoList(photo, logic_conn, 0, 0, loginUser);
                 if (photoList != null) {
                     List<Photo> newList = new ArrayList<>();
                     for (Photo p : photoList) {
-                        if (p.getUid() == lcd_uid && (p.getAlbum_id() == album_id || (p.getTags() != null && p.getTags().indexOf(lcf_tags) != -1))) {
+                        if (p.getUid() == query_host_uid && (p.getAlbum_id() == album_id || (p.getTags() != null && belong_album_test_regex.matcher(p.getTags()).matches()))) {
                             newList.add(p);
                         }
                     }
@@ -573,6 +723,17 @@ public class AlbumServiceImpl implements IAlbumService {
             }
         }
         return findPhotoList(base, photo, logic_conn, start, size, loginUser);
+    }
+
+    /**
+     * 点击量加1
+     *
+     * @param photo
+     * @return
+     */
+    @Override
+    public int raisePhotoClickCount(Photo photo) {
+        return albumDao.raisePhotoClickCount(photo);
     }
 
     private boolean belongTagWrapper(Photo photo, List<PhotoTagWrapper> tagWrappers) {
@@ -638,12 +799,138 @@ public class AlbumServiceImpl implements IAlbumService {
         return albumDao.findPhotoTagWrappers(tagWrapper, loginUser);
     }
 
+    /**
+     * 保存相册与照片关联类
+     *
+     * @param apr
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public int saveAlbumPhotoRelation(AlbumPhotoRelation apr, User loginUser) {
+        if (loginUser == null) {
+            return 401;
+        }
+        if (apr == null || apr.getAlbum_id() == 0 || apr.getPhoto_id() == 0) {
+            return 400;
+        }
+        Map<String, Object> albumQuery = findAlbumInfo(new Album(apr.getAlbum_id()), loginUser);
+        int albumFlag = (int) albumQuery.get("flag");
+        if (albumFlag == 200) {
+            if (((Album) albumQuery.get("album")).getUser().getUid() == loginUser.getUid()) {
+                Map<String, Object> photoResult = findPhoto(new Photo(apr.getPhoto_id()), loginUser);
+                int photoFlag = (int) photoResult.get("flag");
+                if (photoFlag == 200) {
+                    if (((Photo) photoResult.get("photo")).getUid() == loginUser.getUid()) {
+                        // 更新排序权重
+                        if (apr.getSort() == 0) {
+                            return albumDao.deleteAlbumPhotoRelation(apr) >= 0 ? 200 : 500;
+                        } else {
+                            AlbumPhotoRelation dbApr = albumDao.findAlbumPhotoRelation(apr);
+                            if (dbApr == null) {
+                                return albumDao.saveAlbumPhotoRelation(apr) > 0 ? 200 : 500;
+                            } else {
+                                apr.setAprid(dbApr.getAprid());
+                                return albumDao.updateAlbumPhotoRelation(apr) > 0 ? 200 : 500;
+                            }
+                        }
+                    } else {
+                        return 403;
+                    }
+                } else {
+                    return photoFlag;
+                }
+            } else {
+                return 403;
+            }
+        } else {
+            return albumFlag;
+        }
+    }
+
+    /**
+     * 删除相册与照片关联类
+     *
+     * @param albumPhotoRelation
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public int deleteAlbumPhotoRelation(AlbumPhotoRelation albumPhotoRelation, User loginUser) {
+        return 0;
+    }
+
+    // 生成默认封面photo对象
+    private Photo generateDefaultCover() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        String coverJson = Config.get(ConfigConstants.ALBUM_DEFAULT_COVER);
+        try {
+            return objectMapper.readValue(coverJson, Photo.class);
+        } catch (IOException e) {
+            logger.error("相册默认封面配置错误： ", e);
+            try {
+                return objectMapper.readValue("{\"path\":\"res/img/album_default.jpg\",\"width\": 800,\"height\": 800}", Photo.class);
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+        }
+        return new Photo(0);
+    }
+
+    // 填充非必需填项的null值为空字符串
+    private void fillPhotoNotRequiredValueIfNull(Photo photo) {
+        if (photo == null) {
+            return;
+        }
+        String EMPTY = "";
+        if (photo.getTags() == null) {
+            photo.setTags(EMPTY);
+        }
+        if (photo.getDescription() == null) {
+            photo.setDescription(EMPTY);
+        }
+        if (photo.getName() == null) {
+            photo.setName(EMPTY);
+        }
+        if (photo.getRefer() == null) {
+            photo.setRefer(EMPTY);
+        }
+    }
+
+    // 如果非必需填项的值为null, 则填充为db_photo的值
+    private void fillPhotoNotRequiredValueIfNull(Photo photo, Photo db_photo) {
+        if (photo == null) {
+            return;
+        } else if (db_photo == null) {
+            fillPhotoNotRequiredValueIfNull(photo);
+        } else {
+            if (photo.getAlbum_id() == 0) {
+                photo.setAlbum_id(db_photo.getAlbum_id());
+            }
+            if (photo.getUid() == 0) {
+                photo.setUid(db_photo.getUid());
+            }
+            if (photo.getTags() == null) {
+                photo.setTags(db_photo.getTags());
+            }
+            if (photo.getDescription() == null) {
+                photo.setDescription(db_photo.getDescription());
+            }
+            if (photo.getName() == null) {
+                photo.setName(db_photo.getName());
+            }
+            if (photo.getRefer() == null) {
+                photo.setRefer(db_photo.getRefer());
+            }
+        }
+    }
+
     // 更新相册封面
     private void updateCoverForAlbum(Photo photo) {
-        Album album = new Album();
-        album.setAlbum_id(photo.getAlbum_id());
-        String json = "{\"path\": \"" + photo.getPath() + "\", \"photo_id\": " + photo.getPhoto_id() + ", \"width\": " + photo.getWidth() + ", \"height\": " + photo.getHeight() + "}";
-        album.setCover(json);
+        Album album = new Album(photo.getAlbum_id());
+        // String json = "{\"path\": \"" + photo.getPath() + "\", \"photo_id\": " + photo.getPhoto_id() + ", \"width\": " + photo.getWidth() + ", \"height\": " + photo.getHeight() + "}";
+        album.setCover(photo);
         albumDao.updateCoverForAlbum(album);
     }
 
@@ -655,30 +942,75 @@ public class AlbumServiceImpl implements IAlbumService {
      */
     private String convertAlbumToInsertSQL(Album album) {
         StringBuilder sb = new StringBuilder();
+        // album sql
+        sb.append("# album\r\n");
         sb.append("INSERT INTO `album` (`ALBUM_ID`, `UID`, `name`, `cover`, `description`, `create_time`, `permission`, `size`, `show_col`) VALUES (");
         sb.append(album.getAlbum_id()).append(COMMA).append(album.getUser().getUid()).append(COMMA).append(escapeSql(album.getName())).append(COMMA);
-        sb.append(escapeSql(album.getCover())).append(COMMA).append(escapeSql(album.getDescription())).append(COMMA);
+        sb.append(album.getCover().getPhoto_id()).append(COMMA).append(escapeSql(album.getDescription())).append(COMMA);
         sb.append(album.getCreate_time().getTime()).append(COMMA).append(album.getPermission()).append(COMMA).append(album.getSize()).append(COMMA).append(album.getShow_col()).append(");\r\n");
-        sb.append("\r\n");
+        // photo sql
+        sb.append("\r\n# photo list\r\n");
         List<Photo> photos = album.getPhotos();
         for (Photo photo : photos) {
-            convertPhotoToInsertSQL(sb, photo);
+            if (photo.getAlbum_id() == album.getAlbum_id()) {
+                convertPhotoToInsertSQL(sb, photo);
+            }
+        }
+        // album_photo_relation sql
+        sb.append("\r\n# 排序权重\r\n");
+        List<AlbumPhotoRelation> aprList = albumDao.findAlbumPhotoRelationList(null);
+        if (aprList != null) {
+            for (AlbumPhotoRelation apr : aprList) {
+                if (apr.getAlbum_id() == album.getAlbum_id()) {
+                    convertAprToInsertSQL(sb, apr);
+                } else {
+                    for (Photo photo : photos) {
+                        if (photo.getPhoto_id() == apr.getPhoto_id()) {
+                            convertAprToInsertSQL(sb, apr);
+                            break;
+                        }
+                    }
+                }
+            }
         }
         return sb.toString();
     }
 
     private void convertPhotoToInsertSQL(StringBuilder sb, Photo photo) {
-        sb.append("INSERT INTO `photo` (`PHOTO_ID`, `UID`, `ALBUM_ID`, `name`, `path`, `description`, `tags`, `upload_time`, `width`, `height`, `size`, `image_type`, `iscover`, `originName`) VALUES (");
+        sb.append("INSERT INTO `photo` (`PHOTO_ID`, `UID`, `ALBUM_ID`, `name`, `path`, `description`, `tags`, `upload_time`, `width`, `height`, `size`, `image_type`, `iscover`, `originName`, `refer`) VALUES (");
         sb.append(photo.getPhoto_id()).append(COMMA).append(photo.getUid()).append(COMMA).append(photo.getAlbum_id()).append(COMMA).append(escapeSql(photo.getName())).append(COMMA);
         sb.append(escapeSql(photo.getPath())).append(COMMA).append(escapeSql(photo.getDescription())).append(COMMA).append(escapeSql(photo.getTags())).append(COMMA);
         sb.append(photo.getUpload_time().getTime()).append(COMMA).append(photo.getWidth()).append(COMMA).append(photo.getHeight()).append(COMMA).append(photo.getSize()).append(COMMA).append(escapeSql(photo.getImage_type())).append(COMMA);
-        sb.append(photo.getIscover()).append(COMMA).append(escapeSql(photo.getOriginName())).append(");\r\n");
+        sb.append(photo.getIscover()).append(COMMA).append(escapeSql(photo.getOriginName())).append(COMMA).append(escapeSql(photo.getRefer())).append(");\r\n");
     }
 
     private String convertPhotoToInsertSQL(Photo photo) {
         StringBuilder sb = new StringBuilder();
+        // photo sql
+        sb.append("# photo\r\n");
         convertPhotoToInsertSQL(sb, photo);
+        // album_photo_relation sql
+        sb.append("\r\n# 排序权重\r\n");
+        Set<Integer> albumIds = new HashSet<>();
+        albumIds.add(photo.getAlbum_id());
+        if (Utils.isNotEmpty(photo.getTags())) {
+            Matcher matcher = Pattern.compile("#mount@(\\d+)\\b").matcher(photo.getTags());
+            while (matcher.find()) {
+                albumIds.add(Integer.valueOf(matcher.group(1)));
+            }
+        }
+        for (int albumId : albumIds) {
+            AlbumPhotoRelation apr = albumDao.findAlbumPhotoRelation(new AlbumPhotoRelation(albumId, photo.getPhoto_id(), 0));
+            if (apr != null && apr.getAprid() > 0) {
+                convertAprToInsertSQL(sb, apr);
+            }
+        }
         return sb.toString();
+    }
+
+    private void convertAprToInsertSQL(StringBuilder sb, AlbumPhotoRelation apr) {
+        sb.append("insert into album_photo_relation (`aprid`, `album_id`, `photo_id`, `sort`) values (");
+        sb.append(apr.getAprid()).append(COMMA).append(apr.getAlbum_id()).append(COMMA).append(apr.getPhoto_id()).append(COMMA).append(apr.getSort()).append(");\r\n");
     }
 
     private String escapeSql(String str) {

@@ -68,24 +68,6 @@ public interface IArticleDao {
     public int delete(Article article);
 
     /**
-     * 添加评论
-     */
-    public int saveComment(Comment comment);
-
-    /**
-     * 查找文章评论
-     */
-    public List<Comment> findCommentList(int aid);
-
-    /**
-     * 删除评论 有子节点 就改content为 ‘已删除’
-     *
-     * @param comment
-     * @return 0：删除失败 1：填充为‘已删除’ 2：完全删除
-     */
-    public int deleteComment(Comment comment);
-
-    /**
      * 增加评论数
      */
     public int raiseCommentCnt(Comment comment);

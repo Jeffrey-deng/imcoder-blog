@@ -51,7 +51,7 @@
     <div class="container-fluid">
         <div class="navbar-header">
             <div class="navbar-brand">
-                <p><a class="logo" style="color: #333;" href="<%=basePath%>">博客Blog</a></p>
+                <p><a class="logo" style="color: #333;" href="<%=basePath%>">ImCoder</a></p>
             </div>
             <button type="button" class="navbar-toggle collapsed " data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
                 <span class="sr-only">Toggle navigation</span>
@@ -116,7 +116,7 @@
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
-                            <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
+                            <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
                                 <div class="col-sm-1">
                                     <div class="coldesc"><a class="toolbar_jump_manager" href="manager.do?method=backstage" target="_blank">管理</a></div>
                                 </div>

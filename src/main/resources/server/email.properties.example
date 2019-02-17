@@ -1,0 +1,16 @@
+# ----- 邮件推送服务 ---- #
+
+#  邮件推送的smtp地址
+emailpush_smtp_addr=
+
+# 邮件推送的ssl端口
+emailpush_smtp_port=465
+
+# 邮件推送的账号名（地址）
+emailpush_account_addr=
+
+# 邮件推送的账号密码
+emailpush_account_password=
+
+# 邮件推送的显示的发件人名称
+emailpush_account_nickname=ImCoder Blog Service

@@ -1,13 +1,15 @@
 package site.imcoder.blog.service.impl;
 
 import site.imcoder.blog.service.IFileService;
-import site.imcoder.blog.setting.Config;
-import site.imcoder.blog.setting.ConfigConstants;
 
 import java.io.InputStream;
 
 /**
  * 远程文件系统
+ * 约定（优先级从上往下）：
+ * 1、不是为特定功能操作的方法输入都为绝对路径
+ * 2、为特定功能操作的方法输入都为相对路径
+ * 3、变量名没有特别标明relative的都为绝对路径
  *
  * @author Jeffrey.Deng
  * @date 2018-12-25
@@ -78,14 +80,5 @@ public abstract class RemoteFileServiceWrapper implements IFileService {
      */
     @Override
     public abstract boolean recycleTrash(String sourcePath, boolean isFile, String trashPath);
-
-    /**
-     * 是否时同步模式
-     *
-     * @return
-     */
-    protected boolean isSyncMode() {
-        return Mode.SYNC.value.equals(Config.get(ConfigConstants.CLOUD_FILE_SYSTEM_MODE));
-    }
 
 }

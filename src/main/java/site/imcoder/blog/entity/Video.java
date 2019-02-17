@@ -1,6 +1,9 @@
 package site.imcoder.blog.entity;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import site.imcoder.blog.controller.json.EscapeEmojiJsonDeserializer;
+import site.imcoder.blog.controller.propertyeditors.EmojiConvert;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -30,11 +33,15 @@ public class Video implements Serializable {
     /**
      * 视频名称
      */
+    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
+    @EmojiConvert
     private String name;
 
     /**
      * 视频说明
      */
+    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
+    @EmojiConvert
     private String description;
 
     /**
@@ -89,12 +96,32 @@ public class Video implements Serializable {
     /**
      * 上传时的原始文件名
      */
+    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
+    @EmojiConvert
     private String originName;
+
+    /**
+     * 来源相关页面
+     */
+    private String refer;
+
+    /**
+     * 点击量
+     */
+    private int click;
 
     /**
      * 查看权限 0：公开 ， 1：好友， 2：私有
      */
     private int permission;
+
+    public Video() {
+
+    }
+
+    public Video(int video_id) {
+        this.video_id = video_id;
+    }
 
     public int getVideo_id() {
         return video_id;
@@ -214,6 +241,22 @@ public class Video implements Serializable {
 
     public void setOriginName(String originName) {
         this.originName = originName;
+    }
+
+    public String getRefer() {
+        return refer;
+    }
+
+    public void setRefer(String refer) {
+        this.refer = refer;
+    }
+
+    public int getClick() {
+        return click;
+    }
+
+    public void setClick(int click) {
+        this.click = click;
     }
 
     public int getPermission() {

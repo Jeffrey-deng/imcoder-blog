@@ -71,10 +71,17 @@
                 },
                 "parse": function (cacheCtx, groupName, key, old_object_value, data) {
                     if (data.flag == 200) {
-                        var new_object_value = {"album_id": key, "size": data.album.size};
+                        var videoCovers = data.album.photos.filter(function (photo) {
+                            return photo.image_type.indexOf("video") != -1;
+                        });
+                        var new_object_value = {
+                            "album_id": key,
+                            "size": data.album.size,
+                            "videoCount": videoCovers.length
+                        };
                         return new_object_value;
                     } else {
-                        return {"album_id": key, "size": 0};
+                        return {"album_id": key, "size": 0, "videoCount": 0};
                     }
                 }
             }
@@ -91,14 +98,6 @@
                     $.get("photo.do?method=albumListByAjax", config.load_condition, function (data) {
                         common_utils.removeNotify("notify_albums_loading");
                         if (data.flag == 200) {
-                            $.each(data.albums, function (i, album) {
-                                try {
-                                    var coverJson = JSON.parse(album.cover);
-                                    album.cover = coverJson;
-                                } catch (e) {
-                                    album.cover = {"path": album.cover};
-                                }
-                            });
                             cloud_photo_preview_args = data.cloud_photo_preview_args;
                             success(data);
                             if (data.albums.length == 0) {
@@ -181,9 +180,11 @@
                 },
                 "updateCompleted": function (album) {  // 在相册更新完成后回调
                     if (album_page_handle.utils.getAlbumByCache(album.album_id).cover.path != album.cover.path) {
+                        album_page_handle.utils.updateAlbumInPage(album);
                         album_page_handle.jumpPage(album_page_handle.config.page_params.pageNum);
+                    } else {
+                        album_page_handle.utils.updateAlbumInPage(album);
                     }
-                    album_page_handle.utils.updateAlbumInPage(album);
                     PeriodCache.utils.removeCache("user_albums_cache", login_handle.getCurrentUserId());
                     PeriodCache.utils.removeCache("user_albums_cache", "0_" + login_handle.getCurrentUserId());
                 },
@@ -209,6 +210,16 @@
                     formatAlbumToModal_callback(album);
                 }
             }
+        });
+        // 要删除的相册中包含视频时提示用户
+        album_handle.utils.bindEvent(album_handle.config.event.beforeDelete, function (e, album_id, album_name) {
+            var albumSizeInfo = PeriodCache.utils.getCacheValue(album_size_cache_conn.groupConfig.groupName, album_id);
+            if (albumSizeInfo.videoCount) {
+                if (!window.confirm("你删除的相册包含" + albumSizeInfo.videoCount + "个视频，确定要继续吗？（建议先删除视频）")) {
+                    return false;
+                }
+            }
+            return true;
         });
 
         $('#createAlbum').click(function () {

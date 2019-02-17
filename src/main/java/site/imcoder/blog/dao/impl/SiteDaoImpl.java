@@ -24,6 +24,34 @@ public class SiteDaoImpl extends CommonDao implements ISiteDao {
     private static Logger logger = Logger.getLogger(SiteDaoImpl.class);
 
     /**
+     * 查询所有的用户组信息
+     *
+     * @return
+     */
+    @Override
+    public List<UserGroup> findUserGroupList() {
+        return this.getSqlSession().selectList("site.findUserGroupList");
+    }
+
+    /**
+     * 更换用户组
+     *
+     * @param user 需要参数：user.uid, user.userGroup.gid
+     * @return
+     */
+    @Override
+    public int updateUserGroup(User user) {
+        try {
+            return this.getSqlSession().update("site.updateUserGroup", user);
+        } catch (Exception e) {
+            e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("updateUserGroup fail", e);
+            return -1;
+        }
+    }
+
+    /**
      * 文章的基本信息
      */
     public List<Article> findArticleBaseList() {
@@ -107,30 +135,6 @@ public class SiteDaoImpl extends CommonDao implements ISiteDao {
             e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("updateArticleInfoByManager fail", e);
-            return -1;
-        }
-    }
-
-    @Override
-    public int saveSystemMessage(SysMsg sysMsg) {
-        try {
-            return this.getSqlSession().update("msg.insertSystemMessage", sysMsg);
-        } catch (Exception e) {
-            e.printStackTrace();
-            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            logger.error("saveSystemMessage fail", e);
-            return -1;
-        }
-    }
-
-    @Override
-    public int updateSystemMessageStatus(List<Integer> smIdList) {
-        try {
-            return this.getSqlSession().update("msg.updateSystemMessageStatus", smIdList);
-        } catch (Exception e) {
-            e.printStackTrace();
-            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            logger.error("updateSystemMessageStatus fail", e);
             return -1;
         }
     }

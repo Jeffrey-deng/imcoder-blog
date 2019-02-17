@@ -18,9 +18,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 
-    <title>404 - ImCODER's 博客</title>
-    <meta name="keywords" content="404,ImCODER's 博客">
-    <meta name="description" content="404,ImCODER's 博客">
+    <title>404 - ImCoder's 博客</title>
+    <meta name="keywords" content="404,ImCoder's 博客">
+    <meta name="description" content="404,ImCoder's 博客">
 
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">

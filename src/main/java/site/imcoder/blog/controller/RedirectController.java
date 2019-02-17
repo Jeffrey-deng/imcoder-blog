@@ -129,7 +129,7 @@ public class RedirectController extends BaseController {
                     }
                     if (matchWrapper != null) {
                         page = "redirect:/photo.do?"
-                                + request.getQueryString()
+                                + request.getQueryString().replaceAll("&?extend=[^&]*", "")
                                 .replace("model=photo_tag", "method=tags_square")
                                 .replaceFirst("tags=[^&]*", "tags=" + Utils.encoder(matchWrapper.getName()))
                                 .replace("&casting=up", "") +
@@ -164,7 +164,7 @@ public class RedirectController extends BaseController {
                         }
                     }
                     page = "redirect:/photo.do?"
-                            + request.getQueryString()
+                            + request.getQueryString().replaceAll("&?extend=[^&]*", "")
                             .replace("model=photo_tag", "method=tags_square")
                             .replaceFirst("&casting=[^&]*", "") +
                             albumIndex +

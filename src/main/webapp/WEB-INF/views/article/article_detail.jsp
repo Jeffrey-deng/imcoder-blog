@@ -1,4 +1,5 @@
-﻿﻿<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
+﻿﻿
+<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
@@ -15,7 +16,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
-    <title>${article.title} - ImCODER博客's 文章</title>
+    <title>${article.title} - ImCoder博客's 文章</title>
     <meta name="description" content="${article.title}...">
     <meta name="keywords" content="<c:forTokens items='${article.tags}' delims='#' var='tag'>${tag},</c:forTokens>">
     <!-- 使用url函数转换相关路径 -->
@@ -59,7 +60,7 @@
     <div class="container-fluid">
         <div class="navbar-header">
             <div class="navbar-brand">
-                <p><a class="logo" style="color: #333;" href="<%=basePath%>">博客Blog</a></p>
+                <p><a class="logo" style="color: #333;" href="<%=basePath%>">ImCoder</a></p>
             </div>
             <button type="button" class="navbar-toggle collapsed " data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
                 <span class="sr-only">Toggle navigation</span>
@@ -124,7 +125,7 @@
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
-                            <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
+                            <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
                                 <div class="col-sm-1">
                                     <div class="coldesc"><a class="toolbar_jump_manager" href="manager.do?method=backstage" target="_blank">管理</a></div>
                                 </div>
@@ -201,9 +202,9 @@
                         </address>
                         <img src="<%=staticPath%>${article.author.head_photo}" class="img-circle circle-border m-b-md author-head" style="width:120px;height:120px;" alt="profile">
                         <div>
-                            <span><a class="author-articleCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=home&uid=${article.author.uid}">${article.author.articleCount} 动态</a></span> |
-                            <span><a class="author-followCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=contact&action=follows&query_uid=${article.author.uid}">${article.author.followCount} 关注</a></span> |
-                            <span><a class="author-fansCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=contact&action=fans&query_uid=${article.author.uid}">${article.author.fansCount} 关注者</a></span>
+                            <span><a class="author-articleCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=home&uid=${article.author.uid}">${article.author.userStatus.articleCount} 动态</a></span> |
+                            <span><a class="author-followCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=contact&action=follows&query_uid=${article.author.uid}">${article.author.userStatus.followCount} 关注</a></span> |
+                            <span><a class="author-fansCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=contact&action=fans&query_uid=${article.author.uid}">${article.author.userStatus.fansCount} 关注者</a></span>
                         </div>
                     </div>
                     <div class="widget-text-box">
@@ -285,19 +286,18 @@
                         </li>
                         <li>分类: <a class="article_category" href="article.do?method=list&category.atid=${article.category.atid}" target="_blank">${article.category.atname}</a></li>
                     </ul>
-                    <div class="btn-group	article_handle" style="margin-top:-33px;float:right">
+                    <div class="btn-group article_handle" style="margin-top:-33px;float:right">
                         <button type="button" style="margin-right:-7px;" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown"><b>操作</b></button>
                         <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <span class="glyphicon glyphicon-align-justify"></span>
                             <span class="sr-only">Toggle Dropdown</span>
                         </button>
                         <ul class="dropdown-menu" style="min-width:30px">
-                            <li class="hidden-xs"><a style="padding:4px 12px 3px 12px;" id="fullArticleBtn" status="no"><span class="glyphicon glyphicon-star-empty" aria-hidden="true"></span><b> 全屏</b></a></li>
+                            <li class="hidden-xs"><a style="padding:4px 12px 3px 12px;" id="fillArticleToMainAreaBtn" status="no"><span class="glyphicon glyphicon-star-empty" aria-hidden="true"></span><b> 全屏</b></a></li>
                             <li><a style="padding:4px 12px 3px 12px;" id="collectArticleBtn" status="no"><span class="glyphicon glyphicon-star-empty" aria-hidden="true"></span><b> 收藏</b></a></li>
                             <c:if test="${ not empty loginUser and loginUser.uid == article.author.uid }">
                                 <li><a style="padding:4px 12px 3px 12px;" href="article.do?method=edit&flag=update&aid=${ article.aid }"><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span><b> 编辑</b></a></li>
-                                <li><a style="padding:4px 12px 3px 12px;" id="showDeleteModalBtn" onclick="$('#validateMailModal').modal({backdrop: 'static', keyboard: false});"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span><b>
-                                    删除</b></a></li>
+                                <li><a style="padding:4px 12px 3px 12px;" id="showDeleteModalBtn"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span><b> 删除</b></a></li>
                             </c:if>
                             <c:if test="${ not empty loginUser and loginUser.userGroup.gid == 1 }">
                                 <li><a style="padding:4px 12px 3px 12px;" href="manager.do?method=article_modify&aid=${ article.aid }"><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span><b> 管理</b></a></li>
@@ -334,18 +334,18 @@
                     <section id="comments">
                     </section>
                     <!-- 评论 input start -->
-                    <div id="comments-respond-post" class="respond">
+                    <div class="respond comment-post">
                         <div class="cancel-comment-reply">
                             <a id="cancel-comment-reply-link" href="" rel="nofollow" style="display:none" onclick="return cancelReply();">取消回复</a>
                         </div>
-
                         <form method="post" action="" id="comment-form" role="form" class="card">
                             <h3 id="response">添加新评论</h3>
                             <p>
                                 <label for="comment_form_content" class="required">内容</label>
-                                <input type="checkbox" id="tagInner" value="tagInner"/>html注入
-                                <input type="hidden" name="parentid" id="comment_form_parentid" value="0"/>
-                                <input type="hidden" name="replyuid" id="comment_form_replyuid" value="${article.author.uid}"/>
+                                <label class="checkForCommentUseHtmlTag"><input type="checkbox" id="useInputCommentUseHtmlTag" value="useHtmlTag"/> html注入</label>
+                                <label class="checkForCommentSendAnonymously"><input type="checkbox" id="useSendCommentAnonymously" value="sendAnonymously"/> 匿名评论</label>
+                                <input type="hidden" name="parentId" id="comment_form_parentId" value="0"/>
+                                <input type="hidden" name="replyUid" id="comment_form_replyUid" value="${article.author.uid}"/>
                                 <textarea rows="4" cols="50" name="content" id="comment_form_content" class="textarea" required="" placeholder=""></textarea>
                             </p>
                             <p>
@@ -436,11 +436,11 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
-                        <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
+                        <input type="email" name="identifier" class="form-control" placeholder="输入用户名/email">
                     </div>
                     <div class="form-group">
                         <label>密码</label>
-                        <input type="password" name="password" class="form-control" placeholder="输入密码">
+                        <input type="password" name="credential" class="form-control" placeholder="输入密码">
                     </div>
                     <div class="form-group">
                         <label>

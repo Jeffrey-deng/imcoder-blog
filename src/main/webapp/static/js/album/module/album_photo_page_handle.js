@@ -67,7 +67,7 @@
                         var album = {};
                         album.photos = data.photos;
                         album.size = data.photos ? data.photos.length : 0;
-                        album.show_col = 4;
+                        album.show_col = 0;
                         data.album = album;
                         success(data);
                     } else {
@@ -83,17 +83,20 @@
                 var zipName = "pack_" + new Date().getTime();
                 return zipName;
             },
-            "makeupNode_callback": function (photo_node, photo) {
+            "beforeZipPhotos": function (options) { // 打包下载前可修改下载参数
                 return;
             },
-            "actionForEditPhoto": function (photo) {
+            "makeupNode_callback": function (photo_node, photo) {   // 每个照片节点构建时
+                return;
+            },
+            "actionForEditPhoto": function (photo) {    // 用户触发编辑事件时
                 //var PhotoImageDom = this.utils.getPhotoImageDom(photo.photo_id);
                 return;
             },
-            "paginationClick_callback": function (paginationNode) {
+            "paginationClick_callback": function (paginationNode) { // 页码被点击
                 return;
             },
-            "photosOnLoad_callback": function (masonryInstance) {
+            "photosOnLoad_callback": function (masonryInstance) {   // 页面加载完成
                 return;
             }
         },
@@ -130,6 +133,7 @@
                 "720": 2
             }
         },
+        isMagnificPopupOpen: false,
         use_album_col: true,
         page_method_address: "dashboard",
         load_condition: null,
@@ -336,7 +340,7 @@
             $(context).bind(eventName, func);
         },
         "triggerEvent": function (eventName) {
-            $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
+            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
         },
         "unbindEvent": function (eventName, func) {
             $(context).unbind(eventName, func);
@@ -510,7 +514,7 @@
                 cloudPath: config.path_params.cloudPath,
                 album: pointer.album,
                 key: config.search_params,
-                "callback": {
+                callback: {
                     "parseFiles_callback": function (location_info, options) {
                         // options.photos.slice(0)
                         /*var photo_arr = [];
@@ -553,6 +557,7 @@
                     }
                 }
             };
+            config.callback.beforeZipPhotos.call(context, options);
             common_utils.zipRemoteFilesAndDownload(JSZip, options);
         },
         "closePhotoPopup": function () {
@@ -680,9 +685,9 @@
             //console.log(data);
             if (data == null) {
                 return;
-            } else if (data.flag == "page" && isMagnificPopupOpen) { // 转到列表界面时，当灯箱未关闭时运行（即只有当点击浏览器返回按钮时运行）
+            } else if (data.flag == "page" && config.isMagnificPopupOpen) { // 转到列表界面时，当灯箱未关闭时运行（即只有当点击浏览器返回按钮时运行）
                 $.magnificPopup.close();
-            } else if (data.flag == "check" && !isMagnificPopupOpen) { // 转到详情界面时，当灯箱未开启时运行（即只有当点击浏览器前进按钮时运行）
+            } else if (data.flag == "check" && !config.isMagnificPopupOpen) { // 转到详情界面时，当灯箱未开启时运行（即只有当点击浏览器前进按钮时运行）
                 var params = common_utils.parseURL(window.location.href).params;
                 var photo_id = params.check;
                 if (photo_id) {
@@ -691,7 +696,6 @@
             }
         });
     };
-    var isMagnificPopupOpen = false;
     var initClickEnlarge = function () {
         //图片查看modal
         $('.photo').magnificPopup({
@@ -706,47 +710,19 @@
                     item.src = config.path_params.cloudPath + item.el[0].parentNode.getAttribute("data-path");
                     item.photo_id = item.el[0].parentNode.getAttribute("data-id");
                 },
-                open: function () {
-                    // Will fire when this exact popup is opened
-                    // this - is Magnific Popup object
-                    isMagnificPopupOpen = true;
-                    var params = common_utils.parseURL(window.location.href).params;
-                    if (!params.check) { // 当已经到详情页，就不运行
-                        var search = "?method=" + config.page_method_address;
-                        $.each(params, function (key, value) {
-                            if (key != "method" && key != "check") {
-                                search += "&" + key + "=" + value;
-                            }
-                        });
-                        search += "&check=" + $.magnificPopup.instance.currItem.photo_id;
-                        history.pushState(
-                            {"flag": "check"},
-                            document.title,
-                            location.pathname + search
-                        );
-                    }
-                    utils.triggerEvent(config.event.popupOpened, params.check);
-                },
-                close: function () {
-                    // Will fire when popup is closed
-                    isMagnificPopupOpen = false;
-                    var params = common_utils.parseURL(window.location.href).params;
-                    if (params.check) { // 当已经到列表页就不运行
-                        history.back();
-                    }
-                    utils.triggerEvent(config.event.popupClosed, params.check);
-                },
                 markupParse: function (template, values, item) {
                     // Triggers each time when content of popup changes
-                    //console.log('Parsing:', template, values, item);
+                    // console.log('Parsing:', template, values, item);
                     var photo_node = item.el[0].parentNode;
                     var isAuthor = login_handle.equalsLoginUser(parseInt(photo_node.getAttribute("data-uid")));
                     var photo_id = photo_node.getAttribute("data-id");
-                    var trigger = null;
+                    var trigger = '<a style="color:white;cursor: pointer;margin-right: 5px" class="openPhotoDetailPage" photo-id=' + photo_id + ' title="点击打开图片详情页"' +
+                        ' href="photo.do?method=detail&id=' + photo_id + '" target="_blank"' +
+                        '>评论</a>';
                     if (isAuthor) {
-                        trigger = '<a style="color:white;cursor: pointer;" class="openUpdateModal" photo-id=' + photo_id + ' title="点击编辑图片信息">编辑</a>'
+                        trigger += '<a style="color:white;cursor: pointer;" class="openUpdateModal" photo-id=' + photo_id + ' title="点击编辑图片信息">编辑</a>'
                     } else {
-                        trigger = '<a style="color:white;cursor: pointer;" class="openUpdateModal" photo-id=' + photo_id + ' title="点击查看图片信息">属性</a>'
+                        trigger += '<a style="color:white;cursor: pointer;" class="openUpdateModal" photo-id=' + photo_id + ' title="点击查看图片信息">属性</a>'
                     }
                     // 修复只有一张图片时不显示 counter 的BUG
                     var pagePhotoOnlyOne = (config.page_params.pageSize == 1) || ((config.page_params.pageNum == config.page_params.pageCount) && ((pointer.album.photos.length - 1) % config.page_params.pageSize === 0));
@@ -757,22 +733,6 @@
                     values.counter = values.counter.replace(/\{updateModalTrigger\}/, trigger);
 
                     //template.find(".mfp-title").width("calc(100% - 40px)");
-
-                    if (isMagnificPopupOpen) { // 灯箱打开的时候不替换，切换的时候替换
-                        var params = common_utils.parseURL(window.location.href).params;
-                        var search = "?method=" + config.page_method_address;
-                        $.each(params, function (key, value) {
-                            if (key != "method" && key != "check") {
-                                search += "&" + key + "=" + value;
-                            }
-                        });
-                        search += "&check=" + photo_id;
-                        history.replaceState(
-                            {"flag": "check"},
-                            document.title,
-                            location.pathname + search
-                        );
-                    }
                 },
                 change: function () {
                     //console.log(this.content); // Direct reference to your popup element
@@ -781,7 +741,60 @@
                         config.callback.actionForEditPhoto.call(context, photo);
                         utils.triggerEvent(config.event.actionForEditPhoto, photo);
                     });
+                    // 修改地址栏, 改变check, 在切换图片的时候
+                    if (config.isMagnificPopupOpen) { // 灯箱打开的时候不替换，切换的时候替换, 回调markupParse,change在open之前运行
+                        var params = common_utils.parseURL(document.location.href).params;
+                        var search = "?method=" + config.page_method_address;
+                        $.each(params, function (key, value) {
+                            if (key != "method" && key != "check") {
+                                search += "&" + key + "=" + value;
+                            }
+                        });
+                        search += "&check=" + this.currItem.photo_id;
+                        history.replaceState(
+                            {"flag": "check"},
+                            document.title,
+                            location.pathname + search
+                        );
+                    }
                     utils.triggerEvent(config.event.popupChanged, this.currItem.photo_id);
+                },
+                open: function () {
+                    // Will fire when this exact popup is opened
+                    // this - is Magnific Popup object
+                    // 修改地址栏, 增加check, 在打开图片的时候
+                    config.isMagnificPopupOpen = true;
+                    var params = common_utils.parseURL(window.location.href).params;
+                    var check = params.check;
+                    if (!check) { // 当已经到详情页，就不运行
+                        var search = "?method=" + config.page_method_address;
+                        $.each(params, function (key, value) {
+                            if (key != "method" && key != "check") {
+                                search += "&" + key + "=" + value;
+                            }
+                        });
+                        check = $.magnificPopup.instance.currItem.photo_id;
+                        search += "&check=" + check;
+                        history.pushState(
+                            {"flag": "check"},
+                            document.title,
+                            location.pathname + search
+                        );
+                    }
+                    utils.triggerEvent(config.event.popupOpened, check);
+                },
+                close: function () {
+                    // Will fire when popup is closed
+                    // 修改地址栏, 去掉check, 在关闭图片的时候
+                    config.isMagnificPopupOpen = false;
+                    var params = common_utils.parseURL(document.location.href).params;
+                    var check = params.check;
+                    if (check) { // 当已经到列表页就不运行
+                        history.back();
+                    } else {
+                        check = this.currItem.photo_id;
+                    }
+                    utils.triggerEvent(config.event.popupClosed, check);
                 }
             },
             gallery: {
@@ -794,7 +807,7 @@
             },
             removalDelay: 300,
             mainClass: 'mfp-with-zoom',
-            fixedContentPos: false,
+            fixedContentPos: true,
             fixedBgPos: true,
             autoFocusLast: true,
             closeBtnInside: true,
@@ -804,12 +817,13 @@
                     var photoNode = item.el[0].parentNode;
                     var name = photoNode.getAttribute('data-name');
                     var desc = photoNode.getAttribute('data-desc');
-                    var src = config.path_params.cloudPath + photoNode.getAttribute('data-path');
+                    var src = config.path_params.cloudPath + photoNode.getAttribute("data-path");
+                    var photoDetailUrl = "photo.do?method=detail&id=" + item.photo_id;
                     if ((!desc) && name) {
                         desc = name;
                         name = "";
                     }
-                    return '<a style="color:white;cursor: pointer;" href="' + src + '" target="_blank" title="点击新标签打开图片">' + desc + '</a><small>' + name + '</small>';
+                    return '<a style="color:white;cursor: pointer;" href="' + photoDetailUrl + '" target="_blank" title="点击新标签打开图片">' + desc + '</a><small>' + name + '</small>';
                 },
                 verticalFit: true, // Fits image in area vertically
                 tError: '<a href="%url%" target="_blank">此图片</a> 不能加载.' // Error message

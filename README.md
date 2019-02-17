@@ -6,6 +6,48 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
 
 ## develop log
 
+#### 2019.05.06
+
+new account auth system, new message system, photo、video detail page, and so forth.
+
+    （1）site module:
+    1、support admin to set config for article and file upload level, upload size limit.
+    2、support admin to change the group level of user.
+    3、the third-party service config is separated from the config file of self-contained config.
+    >
+    （2）user module
+    1、redesign the account auth system to unify various login methods.
+    2、the user entity class only retains the material information, and other information is set by the user-setting, the user-auth, and the user-status class are saved.
+    3、support users to modify account background settings.
+    4、support users to turn off notify email push.
+    5、support users to modify avatars, support admin to configure default avatar list.
+    >
+    （3）album module:
+    1、support user-customized album photo sorting.
+    2、support for backing up sorting data when deleting photos and albums.
+    3、add image details page.
+    4、support for commenting on photos.
+    5、modify not hardcode album cover in album information.
+    >
+    （4）video module
+    1、add video details page.
+    2、support for video comments.
+    3、support users to update the modified video.
+    4、modify update url address bar when view video.
+    5、use Plyr to replace origin html5 video player.
+    >
+    File Service:
+    1、unified file service, automatically switch according to the configured service type.
+    >
+    （5）message service:
+    1、unified comment, private message, system message to message service class.
+    2、unified commenting service, and pluging for commenting features.
+    3、support user withdrawal private letter.
+    4、support admin message withdraw, system message deletion.
+    5、support system messages, letter clear unread status.
+    6、message support automatic recognition of images, links.
+    7、message supports emoji expressions, adding custom annotations for escaping emoji expressions.
+
 #### 2019.01.25
 
 implement WebSocket for server push

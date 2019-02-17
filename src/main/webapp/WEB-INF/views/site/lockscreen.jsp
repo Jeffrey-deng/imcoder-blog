@@ -19,7 +19,7 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>重新登录 - ImCODER's 博客</title>
+    <title>重新登录 - ImCoder's 博客</title>
     <meta name="keywords" content="imcoder.site,重新验证密码">
     <meta name="description" content="重新验证密码登录到imcoder.site">
 
@@ -118,13 +118,13 @@
         <div class="m-b-md">
             <img alt="image" class="img-circle circle-border" src="<%=staticPath%>${user.head_photo}"/>
         </div>
-        <h3>${user.username}</h3>
+        <h3>${userAuth.identifier}</h3>
         <p>您需要再次输入密码</p>
         <form id="login_form" method="post" action="user.do?method=login" onsubmit="return false;">
             <div class="form-group">
-                <input type="hidden" name="username" value="${user.username}"/>
+                <input type="hidden" name="identifier" value="${userAuth.identifier}"/>
                 <input type="checkbox" name="remember" checked="checked" style="display: none;">
-                <input type="password" name="password" class="form-control" placeholder="*****" required="">
+                <input type="password" name="credential" class="form-control" placeholder="*****" required="">
             </div>
             <button jumpUrl="<%=basePath%>" type="button" class="btn btn-primary block full-width login_submit">登录到blog</button>
         </form>

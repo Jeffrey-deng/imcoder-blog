@@ -177,6 +177,21 @@
             utils.triggerEvent(config.event.actionForEditAlbum, album);
         });
         initWaterfallFlow();
+
+        var params = common_utils.parseURL(document.location.href).params;
+        var search = "";
+        $.each(params, function (key, value) {
+            if (key != "page") {
+                search += "&" + key + "=" + value;
+            }
+        });
+        (pagenum != 1) && (search += "&page=" + pagenum);
+        search = search ? ("?" + search.substring(1)) : "";
+        history.replaceState(
+            {"flag": "page"},
+            document.title,
+            location.pathname + search
+        );
         utils.triggerEvent(config.event.pageJumpCompleted, pagenum); // 页码跳转完成事件
     };
 
@@ -330,7 +345,7 @@
             $(context).bind(eventName, func);
         },
         "triggerEvent": function (eventName) {
-            $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
+            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
         },
         "unbindEvent": function (eventName, func) {
             $(context).unbind(eventName, func);

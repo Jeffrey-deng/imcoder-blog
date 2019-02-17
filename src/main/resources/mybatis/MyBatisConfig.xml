@@ -10,6 +10,9 @@
         <typeAlias type="site.imcoder.blog.entity.Comment" alias="comment"/>
         <typeAlias type="site.imcoder.blog.entity.Category" alias="category"/>
         <typeAlias type="site.imcoder.blog.entity.UserGroup" alias="userGroup"/>
+        <typeAlias type="site.imcoder.blog.entity.UserSetting" alias="userSetting"/>
+        <typeAlias type="site.imcoder.blog.entity.UserAuth" alias="userAuth"/>
+        <typeAlias type="site.imcoder.blog.entity.UserStatus" alias="userStatus"/>
         <typeAlias type="site.imcoder.blog.entity.Letter" alias="letter"/>
         <typeAlias type="site.imcoder.blog.entity.SysMsg" alias="sysMsg"/>
         <typeAlias type="site.imcoder.blog.entity.Collection" alias="collect"/>
@@ -19,6 +22,7 @@
         <typeAlias type="site.imcoder.blog.entity.Photo" alias="photo"/>
         <typeAlias type="site.imcoder.blog.entity.Video" alias="video"/>
         <typeAlias type="site.imcoder.blog.entity.PhotoTagWrapper" alias="photoTagWrapper"/>
+        <typeAlias type="site.imcoder.blog.entity.AlbumPhotoRelation" alias="albumPhotoRelation"/>
     </typeAliases>
 
     <!-- 注册类型转换器 -->

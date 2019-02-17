@@ -68,18 +68,16 @@
 
     <resultMap id="userMap" type="user">
         <result column="uid" property="uid"/>
-        <result column="username" property="username"/>
         <result column="nickname" property="nickname"/>
         <result column="sex" property="sex"/>
         <result column="address" property="address"/>
         <result column="birthday" property="birthday"/>
         <result column="description" property="description"/>
         <result column="head_photo" property="head_photo"/>
-        <result column="register_time" property="register_time" javaType="java.util.Date" jdbcType="BIGINT"/>
         <result column="qq" property="qq"/>
         <result column="weibo" property="weibo"/>
+        <result column="site" property="site"/>
         <result column="says" property="says"/>
-        <result column="lock_status" property="lock_status"/>
         <association property="userGroup" column="gid" javaType="userGroup">
             <result column="gid" property="gid"/>
             <result column="group_name" property="group_name"/>
@@ -89,7 +87,7 @@
     <!-- 根据用户ID查询 -->
     <select id="findUser" parameterType="int" resultMap="userMap">
         select
-        uid,u.gid,username,nickname,sex,address,birthday,description,head_photo,register_time,qq,weibo,says,lock_status,
+        uid,u.gid,nickname,sex,address,birthday,description,head_photo,qq,weibo,site,says,
         ug.group_name
         from user u left join user_group ug on u.gid = ug.gid
         where uid=#{uid} limit 1
@@ -100,7 +98,7 @@
     <select id="findArticleList" parameterType="hashMap" resultMap="articleListMap">
         select a.aid,title,tags,summary,create_time,update_time,click,collection,comment,permission,top,recommend,
         at.atid,at.atname,
-        u.uid as auid,u.gid,username,nickname,sex,head_photo,lock_status,
+        u.uid as auid,u.gid,nickname,sex,head_photo,
         ug.group_name
         from ( article a left join article_type at on a.atid=at.atid )
         left join ( user u left join user_group ug on u.gid = ug.gid )
@@ -199,7 +197,7 @@
     <select id="findTopsList" parameterType="int" resultMap="articleListMap">
         select a.aid,title,tags,summary,create_time,update_time,click,collection,comment,permission,top,recommend,
         at.atid,at.atname,
-        u.uid as auid,u.gid,username,nickname,sex,head_photo,lock_status,
+        u.uid as auid,u.gid,nickname,sex,head_photo,
         ug.group_name
         from ( article a left join article_type at on a.atid = at.atid )
         left join ( user u left join user_group ug on u.gid = ug.gid )
@@ -227,11 +225,9 @@
         </association>
         <association property="author" column="auid" javaType="user">
             <result column="auid" property="uid"/>
-            <result column="username" property="username"/>
             <result column="nickname" property="nickname"/>
             <result column="sex" property="sex"/>
             <result column="head_photo" property="head_photo"/>
-            <result column="lock_status" property="lock_status"/>
             <association property="userGroup" column="gid" javaType="userGroup">
                 <result column="gid" property="gid"/>
                 <result column="group_name" property="group_name"/>
@@ -318,46 +314,6 @@
         </where>
     </select>
 
-    <!-- Comment handle start -->
-
-    <!-- 保存评论 -->
-    <insert id="saveComment" parameterType="comment" useGeneratedKeys="true" keyProperty="cid" keyColumn="cid">
-        insert into comment (aid,uid,r_cid,content,send_time)
-        values (#{aid},#{user.uid},#{parentid},#{content},#{send_time})
-    </insert>
-
-    <!-- 根据文章id查询评论列表 -->
-    <select id="findCommentList" parameterType="int" resultMap="commentMap">
-        select cid,aid,r_cid,content,send_time,u.uid,u.nickname,u.head_photo
-        from comment c left join user u on c.uid=u.uid
-        where c.aid=#{aid}
-    </select>
-
-    <resultMap id="commentMap" type="comment">
-        <result column="cid" property="cid"/>
-        <result column="aid" property="aid"/>
-        <result column="r_cid" property="parentid"/>
-        <result column="content" property="content"/>
-        <result column="send_time" property="send_time"/>
-        <association property="user" javaType="user">
-            <result column="uid" property="uid"/>
-            <result column="nickname" property="nickname"/>
-            <result column="head_photo" property="head_photo"/>
-        </association>
-    </resultMap>
-
-    <update id="deleteComment_1" parameterType="comment">
-        update comment set content='*已删除*' where cid=#{cid}
-    </update>
-    <delete id="deleteComment_2" parameterType="comment">
-        delete from comment where cid=#{cid}
-    </delete>
-    <select id="selectCmtChildCount" parameterType="comment" resultType="int">
-        select count(*) as rows from comment where r_cid=#{cid}
-    </select>
-
-    <!-- Comment handle end -->
-
     <!-- article rank manager start -->
     <!-- 评论数量 -->
     <update id="raiseCommentCnt" parameterType="comment">
@@ -426,7 +382,7 @@
 
     <!-- 删除文章  start -->
     <delete id="deleteArticle_comment" parameterType="article">
-        delete from comment where aid=#{aid}
+        delete from comment where main_type = 0 and main_id=#{aid}
     </delete>
     <delete id="deleteArticle_collection" parameterType="article">
         delete from collection where aid=#{aid}

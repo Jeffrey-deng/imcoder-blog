@@ -26,6 +26,7 @@
         popup_btn_display: "block", // 视频窗口上按钮的显示方式 block,inline
         popup_hide_btn: true, // 视频窗口上失焦时隐藏编辑按钮
         popup_height_scale: 0.91, // 视频高度占窗口高的比例
+        use_site_iframe: true, // 本站的视频也使用ifame方式加载
         event: {
             "actionForEditPhoto": "photo.edit",
             "pagePaginationClick": "page.jump.click",
@@ -67,8 +68,8 @@
                 if (data && data.videos) {
                     $.each(data.videos, function (i, video) {
                         var currentNode = page_handle.utils.getPhotoImageDom(video.cover.photo_id);
-                        var videoNode = makeupVideoNode(currentNode, video);
-                        insertVideoNode(currentNode, videoNode);
+                        var videoNode = makeupVideoNode(video);
+                        insertVideoNode(currentNode, videoNode, video);
                     });
                 }
             });
@@ -88,8 +89,8 @@
                         if (data && data.flag == 200) {
                             var video = data.video;
                             var currentNode = page_handle.utils.getPhotoImageDom(video.cover.photo_id);
-                            var videoNode = makeupVideoNode(currentNode, video);
-                            insertVideoNode(currentNode, videoNode);
+                            var videoNode = makeupVideoNode(video);
+                            insertVideoNode(currentNode, videoNode, video);
                             if (currentNode.find(".video-play-button")) {
                                 currentNode.find(".video-play-button").remove();
                             }
@@ -104,14 +105,36 @@
             addVideoBtnToCover(videoCovers);
         } else { // popupLoad
             //common_utils.addStyle(".mfp-inline-holder .mfp-content {max-width: 1100px;} .mfp-content video {border: 0px;width:100%;}");
+            if (config.checkPhotoId) { // 当用户指定要查看某个视频时，先插入一个点击事件以阻止打开图片的默认事件
+                var stopOpenImage = function (e) {
+                    $(e.currentTarget).unbind("click", stopOpenImage);
+                    return false;
+                };
+                var $imageNode = config.album_photo_page_handle.utils.getPhotoImageDom(config.checkPhotoId).find("img");
+                $imageNode.click(stopOpenImage);
+            }
             var className = "video-popup";
             loadVideosByCovers(videoCovers, function (data) {
                 if (data && data.videos) {
-                    $.each(data.videos, function (i, video) {
-                        var imageNode = page_handle.utils.getPhotoImageDom(video.cover.photo_id).find("img");
-                        imageNode.attr("video_id", video.video_id);
+                    if (data.videos.length > 0) {
+                        $.each(data.videos, function (i, video) {
+                            var imageNode = page_handle.utils.getPhotoImageDom(video.cover.photo_id).find("img");
+                            imageNode.attr("video_id", video.video_id);
+                        });
+                        makePopupAction(data.videos, ("." + className + "[video_id]"));
+                    }
+                    var openFailFunc = function () {
+                        common_utils.notify({"progressBar": false}).error("没有权限~", "打开视频失败~", "notify_open_video_fail");
+                    };
+                    $("." + className).each(function (i, img) {
+                        if (!img.hasAttribute("video_id")) {
+                            $(img).click(openFailFunc);
+                        }
                     });
-                    makePopupAction(data.videos, className);
+                    if (config.checkPhotoId) {  // 当用户指定要查看某个视频时，触发之
+                        page_handle.utils.getPhotoImageDom(config.checkPhotoId).find("img").click();
+                        config.checkPhotoId = null; // 置为null，让其只触发一次
+                    }
                 }
             });
             addVideoBtnToCover(videoCovers);
@@ -125,8 +148,8 @@
 
     var loadVideoByCover = function (cover_id, callback) {
         $.get("video.do?method=detailByAjax", {"cover_id": cover_id}, function (data) {
-            if (data.flag != 200) {
-                toastr.error(data.info, "加载视频失败");
+            if (data && data.flag != 200) {
+                common_utils.notify({"progressBar": false}).error(data.info, "打开视频失败~", "notify_open_video_fail");
                 console.log("Load video found error, Error Code: " + data.flag);
             }
             callback(data);
@@ -192,8 +215,8 @@
     };
 
     // 当视频打开方式为弹出Modal时，构建Modal
-    var makePopupAction = function (videos, className) {
-        $("." + className).magnificPopup({
+    var makePopupAction = function (videos, selector) {
+        $(selector).magnificPopup({
             //items: video,
             type: 'inline',
             fixedBgPos: true,
@@ -242,7 +265,10 @@
                         template.find(".mfp-video-edit-inline").remove();
                         var video_url = "video.do?method=user_videos&uid=" + video.user.uid + "&info=" + video.video_id;
                         template.find(".mfp-title").html('<a href="' + video_url + '" title="' + video.description + '" target="_blank">' + video.name + '</a>');
-                        template.find(".mfp-counter").html('<a class="mfp-video-edit" title="点击编辑视频信息">编辑</a>');
+                        var videoHandleBtnHtml =
+                            '<a class="mfp-video-open-detail" title="点击打开视频详情页" style="margin-right: 7px;" target="_blank" href="video.do?method=detail&id=' + video.video_id + '">评论</a>' +
+                            '<a class="mfp-video-edit" title="点击编辑视频信息">编辑</a>';
+                        template.find(".mfp-counter").html(videoHandleBtnHtml);
                         height_scale = 1;
                         usableHeight = window.innerHeight - block_padding;
                         scale = usableHeight / video.height; // 设定为固定的height，width按视频变化
@@ -258,9 +284,9 @@
                         magnificPopup.contentContainer.css("max-width", generalWidth + "px");
                     }
                     var need_width = scale * video.width; // 设定width的值
-                    if (video.source_type == 2) {
+                    if (config.use_site_iframe || video.source_type == 2) {
                         vd.parent().removeClass("mfp-video-scaler").addClass("mfp-iframe-scaler");
-                        vd.html(video.code);
+                        vd.html(video.code || ('<iframe src="video.do?method=embed&video_id=' + video.video_id + '"></iframe>'));
                         vd.children(0).addClass("mfp-iframe");
                         if (window.innerWidth < need_width) { // 如果width大于窗口的宽度，则取消设置
                             magnificPopup.contentContainer.css("width", "");
@@ -289,7 +315,7 @@
                     } else {
                         // mfp-iframe-scaler这个类未指定高度时会使div向下偏移
                         vd.parent().removeClass("mfp-iframe-scaler").addClass("mfp-video-scaler");
-                        var sourceNode = makeupVideoNode(null, video);
+                        var sourceNode = makeupVideoNode(video);
                         vd.html(sourceNode);
                         magnificPopup.contentContainer.css("height", ""); // 不指定就会居中
                         if (window.innerWidth < need_width) {
@@ -342,7 +368,18 @@
                     if (config.popup_btn_display != "inline") {
                         this.content.find(".mfp-close").removeClass("video-popup-block-close").addClass("video-popup-block-close");
                     }
-                    if (config.popup_hide_btn) { // 鼠标不动一段时间后隐藏视频弹窗的控件
+                    // 鼠标不动一段时间后隐藏视频弹窗的控件
+                    if (config.popup_hide_btn) {
+                        // 暴露设置变量方法的引用，让子类iframe调用，解决子类iframe中移动不触发mousemove问题
+                        window.set_video_popup_mouse_move = function (VIDEO_POPUP_MOUSE_MOVE) {
+                            if (VIDEO_POPUP_MOUSE_MOVE) {
+                                !config.isControlBarShow && utils.showPopupControlBar();
+                                config.isMouseMove = true;
+                            } else {
+                                config.isMouseMove = false;
+                                config.isControlBarShow && utils.hidePopupControlBar();
+                            }
+                        };
                         config.isControlBarShow = true;
                         config.isMouseMove = false;
                         config.mouse_timer = null;
@@ -366,6 +403,49 @@
                         });
                     }
                     this.updateStatus('ready', 'The video ready...');
+                    // 修改地址栏, 改变check, 在切换图片的时候
+                    var page_handle = config.album_photo_page_handle;
+                    if (page_handle.config.isMagnificPopupOpen) { // 灯箱打开的时候不替换，切换的时候替换, 回调markupParse,change在open之前运行
+                        var params = common_utils.parseURL(document.location.href).params;
+                        var search = "?method=" + page_handle.config.page_method_address;
+                        $.each(params, function (key, value) {
+                            if (key != "method" && key != "check") {
+                                search += "&" + key + "=" + value;
+                            }
+                        });
+                        search += "&check=" + this.currItem.video.cover.photo_id;
+                        history.replaceState(
+                            {"flag": "check"},
+                            document.title,
+                            location.pathname + search
+                        );
+                    }
+                    page_handle.utils.triggerEvent(page_handle.config.event.popupChanged, this.currItem.video.cover.photo_id);
+                },
+                open: function () {
+                    // Will fire when this exact popup is opened
+                    // this - is Magnific Popup object
+                    // 修改地址栏, 增加check, 在打开图片的时候
+                    var page_handle = config.album_photo_page_handle;
+                    page_handle.config.isMagnificPopupOpen = true;
+                    var params = common_utils.parseURL(document.location.href).params;
+                    var check = params.check;
+                    if (!check) { // 当已经到详情页，就不运行
+                        var search = "?method=" + page_handle.config.page_method_address;
+                        $.each(params, function (key, value) {
+                            if (key != "method" && key != "check") {
+                                search += "&" + key + "=" + value;
+                            }
+                        });
+                        check = this.currItem.video.cover.photo_id;
+                        search += "&check=" + check;
+                        history.pushState(
+                            {"flag": "check"},
+                            document.title,
+                            location.pathname + search
+                        );
+                    }
+                    page_handle.utils.triggerEvent(page_handle.config.event.popupOpened, check);
                 },
                 beforeClose: function () {
                     // Callback available since v0.9.0
@@ -373,7 +453,21 @@
                         config.mouse_timer && window.clearInterval(config.mouse_timer); // prevent clear timer not run in "mouseleave not run when dom was removed"
                     }
                     this.content && this.content.find(".include-iframe").children().trigger('pause').remove();
-                }
+                },
+                close: function () {
+                    // Will fire when popup is closed
+                    // 修改地址栏, 去掉check, 在关闭图片的时候
+                    var page_handle = config.album_photo_page_handle;
+                    page_handle.config.isMagnificPopupOpen = false;
+                    var params = common_utils.parseURL(document.location.href).params;
+                    var check = params.check;
+                    if (check) { // 当已经到列表页就不运行
+                        history.back();
+                    } else {
+                        check = this.currItem.video.cover.photo_id;
+                    }
+                    page_handle.utils.triggerEvent(page_handle.config.event.popupClosed, check);
+                },
             }
         });
     };
@@ -381,7 +475,7 @@
     // ------ After clicking video to open, make up the video node. ------
 
     // 构建等同于封面大小的视频节点
-    var makeupVideoNode = function (photoDom, video) {
+    var makeupVideoNode = function (video) {
         var node = document.createElement(video.source_type == 2 ? "div" : "video");
         node.id = "video_" + video.video_id;
         node.setAttribute("video_id", video.video_id);
@@ -392,9 +486,16 @@
             node.setAttribute("type", video.video_type);
         } else {
             node.innerHTML = video.code;
+        }
+        return node;
+    };
+
+    // 将照片节点替换为视频节点
+    var insertVideoNode = function (photoDom, videoNode, video) {
+        if (video.source_type == 2) {
             var scale = (photoDom.find("img").width()) / video.width;
             var borderWidth = 0; // 新样式不采用border了
-            $(node).children().removeAttr("width")
+            $(videoNode).children().removeAttr("width")
             //.css("border", borderWidth + "px solid #FFFFFF")
                 .css("width", "100%")
                 //.height(video.height * scale);
@@ -402,11 +503,6 @@
                 // .height(video.height * scale + borderWidth*2); // 既这样等同于原始的写法：
                 .css("height", (video.height * scale + borderWidth * 2) + "px"); // 原始css赋值的宽度会包含border宽度在内
         }
-        return node;
-    };
-
-    // 将照片节点替换为视频节点
-    var insertVideoNode = function (photoDom, videoNode, video) {
         photoDom.html(videoNode);
     };
 
@@ -415,7 +511,7 @@
             $(object).bind(eventName, func);
         },
         "triggerEvent": function (object, eventName) {
-            $(object).triggerHandler(eventName, Array.prototype.slice.call(arguments, 2));
+            return $(object).triggerHandler(eventName, Array.prototype.slice.call(arguments, 2));
         },
         "unbindEvent": function (object, eventName, func) {
             $(object).unbind(eventName, func);
@@ -445,10 +541,12 @@
                 "popup_video_border": false,
                 "popup_btn_display": "block",
                 "popup_hide_btn": true,
-                "popup_height_scale": 0.91
+                "popup_height_scale": 0.91,
+                "use_site_iframe": true
             }
         }
     }).photo_page.video;
+    videoConfig.checkPhotoId = (document.location.href + "&").match(/&?check=(.*?)&/) ? RegExp.$1 : null;
     init(videoConfig);
 
     var context = {

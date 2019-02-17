@@ -4,6 +4,7 @@ import site.imcoder.blog.common.Callable;
 import site.imcoder.blog.entity.*;
 
 import java.util.List;
+import java.util.Set;
 
 public interface INotifyService {
 
@@ -51,8 +52,10 @@ public interface INotifyService {
      * 收到评论提醒通知
      *
      * @param comment
+     * @param replyUid 父类评论的用户id(parentId为0时设置主体对象的作者id)
+     * @param object   评论主体的对象（article?photo?video?）
      */
-    public void receivedComment(Comment comment);
+    public void receivedComment(Comment comment, int replyUid, Object object);
 
     /**
      * 新的关注者提醒
@@ -86,22 +89,6 @@ public interface INotifyService {
      * @return
      */
     public boolean sendEmail(String toMail, String subject, String content);
-
-    /**
-     * 手动发送系统消息
-     *
-     * @param sysMsg
-     * @return flag - 200：成功，500: 失败
-     */
-    public int sendSystemMessage(SysMsg sysMsg);
-
-    /**
-     * 清除系统消息未读状态
-     *
-     * @param smIdList
-     * @return flag - 200：成功，404：未影响到行，500: 失败
-     */
-    public int updateSystemMessageStatus(List<Integer> smIdList);
 
     /**
      * 向一位已登录的用户推送消息
@@ -143,4 +130,12 @@ public interface INotifyService {
      * @param callback
      */
     public void onmessage(String mapping, Callable<WsMessage, WsMessage> callback);
+
+    /**
+     * 得到用户所有实时通信session
+     *
+     * @param <T>
+     * @return
+     */
+    public <T> Set<T> getAllPushSessions();
 }

@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 消息 -->
+<mapper namespace="message">
+
+    <!-- Letter handle start -->
+
+    <!-- 保存私信 -->
+    <insert id="saveLetter" parameterType="letter" useGeneratedKeys="true" keyProperty="leid" keyColumn="leid">
+        insert into letter (s_uid,r_uid,content,send_time)
+        values (#{s_uid},#{r_uid},#{content},#{send_time})
+    </insert>
+
+    <!-- 查询某一条私信 -->
+    <select id="findLetter" parameterType="letter" resultMap="letterMap">
+        select leid,s_uid,r_uid,content,send_time,status,
+        u.uid as chatuid,nickname,email,description,head_photo,ug.gid,ug.group_name
+        from letter l left join
+        ( user u left join user_group ug on u.gid=ug.gid ) on l.s_uid=u.uid
+        <where>
+            l.leid=#{leid} limit 1
+        </where>
+
+    </select>
+
+    <!-- 查询所有私信列表  read_status=0未读/1全部 -->
+    <select id="findLetterList" parameterType="hashMap" resultMap="letterMap">
+        select leid,s_uid,r_uid,content,send_time,status,
+        u.uid as chatuid,nickname,email,description,head_photo,ug.gid,ug.group_name
+        from letter l left join
+        ( user u left join user_group ug on u.gid=ug.gid ) on l.s_uid=u.uid
+        <where>
+            l.r_uid=#{user.uid}
+            <if test="read_status==0">
+                and status = 0
+            </if>
+        </where>
+        <if test="read_status==1">
+            UNION All
+            select leid,s_uid,r_uid,content,send_time,status,
+            u.uid as chatuid,nickname,email,description,head_photo,ug.gid,ug.group_name
+            from letter l left join
+            ( user u left join user_group ug on u.gid=ug.gid ) on l.r_uid=u.uid
+            <where>
+                l.s_uid=#{user.uid}
+            </where>
+        </if>
+        order by leid desc
+    </select>
+
+    <!-- 删除私信 -->
+    <delete id="deleteLetter" parameterType="letter">
+        delete from letter where leid = #{leid}
+    </delete>
+
+    <!-- 清除私信未读状态 只能清除别人发送的，自己发送的不能清除 -->
+    <update id="updateLetterListStatus" parameterType="hashMap">
+        update letter set status = 1
+        where r_uid = #{loginUser.uid} and status = 0 and leid in
+        <foreach collection="leIdList" index="index" item="item" separator="," open="(" close=")">
+            #{item,jdbcType=INTEGER}
+        </foreach>
+    </update>
+
+    <resultMap id="letterMap" type="letter">
+        <result column="leid" property="leid"/>
+        <result column="s_uid" property="s_uid"/>
+        <result column="r_uid" property="r_uid"/>
+        <result column="content" property="content"/>
+        <result column="send_time" property="send_time"/>
+        <result column="status" property="status"/>
+        <association property="chatUser" javaType="user">
+            <result column="chatuid" property="uid"/>
+            <result column="nickname" property="nickname"/>
+            <result column="email" property="email"/>
+            <result column="description" property="description"/>
+            <result column="head_photo" property="head_photo"/>
+            <association property="userGroup" javaType="userGroup">
+                <result column="gid" property="gid"/>
+                <result column="group_name" property="group_name"/>
+            </association>
+        </association>
+    </resultMap>
+
+    <!-- Letter handle end -->
+
+    <!-- Comment handle start -->
+
+    <!-- 保存评论 -->
+    <insert id="saveComment" parameterType="comment" useGeneratedKeys="true" keyProperty="cid" keyColumn="cid">
+        insert into comment (main_type, main_id,uid,r_cid,content,send_time,anonymous)
+        values (#{mainType},#{mainId},#{user.uid},#{parentId},#{content},#{send_time},#{anonymous})
+    </insert>
+
+    <!-- 根据文章id查询评论列表 -->
+    <select id="findCommentList" parameterType="article" resultMap="commentMap">
+        select cid,main_type,main_id,r_cid,content,send_time,anonymous,u.uid,u.nickname,u.head_photo,u.sex
+        from comment c left join user u on c.uid=u.uid
+        where c.main_id=#{mainId} and c.main_type = #{mainType}
+    </select>
+
+    <!-- 根据文章id查询评论列表 -->
+    <select id="findComment" parameterType="comment" resultMap="commentMap">
+        select cid,main_type,main_id,r_cid,content,send_time,anonymous,u.uid,u.nickname,u.head_photo,u.sex
+        from comment c left join user u on c.uid=u.uid
+        where c.cid=#{cid}
+    </select>
+
+    <!-- 删除评论 -->
+    <update id="deleteComment_1" parameterType="comment">
+        update comment set content='*已删除*' where cid=#{cid}
+    </update>
+    <delete id="deleteComment_2" parameterType="comment">
+        delete from comment where cid=#{cid}
+    </delete>
+    <select id="selectCmtChildCount" parameterType="comment" resultType="int">
+        select count(*) as rows from comment where r_cid=#{cid}
+    </select>
+
+    <resultMap id="commentMap" type="comment">
+        <result column="cid" property="cid"/>
+        <result column="main_type" property="mainType"/>
+        <result column="main_id" property="mainId"/>
+        <result column="r_cid" property="parentId"/>
+        <result column="content" property="content"/>
+        <result column="send_time" property="send_time"/>
+        <result column="anonymous" property="anonymous"/>
+        <association property="user" javaType="user">
+            <result column="uid" property="uid"/>
+            <result column="nickname" property="nickname"/>
+            <result column="head_photo" property="head_photo"/>
+            <result column="sex" property="sex"/>
+        </association>
+    </resultMap>
+
+    <!-- Comment handle end -->
+
+    <!-- SysMsg handle start -->
+
+    <!-- 查询系统消息列表  read_status=0 未读 =1全部 -->
+    <select id="findSysMsgList" parameterType="hashMap" resultMap="sysMsgMap">
+        select smid,uid,content,send_time,status
+        from system_message sm
+        <where>
+            sm.uid=#{user.uid}
+            <if test="read_status==0">
+                and status = 0
+            </if>
+        </where>
+        order by smid desc
+    </select>
+
+    <!-- 插入系统消息未读 -->
+    <insert id="insertSystemMessage" parameterType="sysMsg">
+        insert into system_message (uid, content, send_time, status) VALUES
+        (#{uid}, #{content},#{send_time},#{status});
+    </insert>
+
+    <!-- 清除系统消息未读状态 -->
+    <update id="updateSystemMessageListStatus" parameterType="hashMap">
+        update system_message set status = 1
+        where  uid = #{loginUser.uid} and status = 0 and smid in
+        <foreach collection="smIdList" index="index" item="item" separator="," open="(" close=")">
+            #{item,jdbcType=INTEGER}
+        </foreach>
+    </update>
+
+    <!-- 删除系统消息 -->
+    <delete id="deleteSystemMessageList" parameterType="hashMap">
+        delete from system_message
+        where  uid = #{loginUser.uid} and smid in
+        <foreach collection="smIdList" index="index" item="item" separator="," open="(" close=")">
+            #{item,jdbcType=INTEGER}
+        </foreach>
+    </delete>
+
+    <resultMap id="sysMsgMap" type="sysMsg">
+        <result column="smid" property="smid"/>
+        <result column="uid" property="uid"/>
+        <result column="content" property="content"/>
+        <result column="send_time" property="send_time"/>
+        <result column="status" property="status"/>
+    </resultMap>
+
+    <!-- SysMsg handle end -->
+
+</mapper>

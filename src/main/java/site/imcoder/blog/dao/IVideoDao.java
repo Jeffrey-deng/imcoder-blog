@@ -1,5 +1,6 @@
 package site.imcoder.blog.dao;
 
+import site.imcoder.blog.entity.Photo;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.entity.Video;
 
@@ -41,5 +42,21 @@ public interface IVideoDao {
      * @return
      */
     public int updateVideo(Video video);
+
+    /**
+     * 点击量加1
+     *
+     * @param video
+     * @return
+     */
+    public int raiseVideoClickCount(Video video);
+
+    /**
+     * 更新封面图片的image_type
+     *
+     * @param cover
+     * @return
+     */
+    public int updateCoverImageType(Photo cover);
 
 }

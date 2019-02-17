@@ -121,18 +121,18 @@
         album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupChanged, function (e, check) {
             check && setTimeout(function () { // 要设置一个延迟地址栏与历史才会生效
                 if (title_prefix) {
-                    document.title = title_prefix + "_" + check + " - dashboard | ImCODER博客's 相册";
+                    document.title = title_prefix + "_" + check + " - dashboard | ImCoder博客's 相册";
                 } else {
-                    document.title = "照片_" + check + " - dashboard | ImCODER博客's 相册";
+                    document.title = "照片_" + check + " - dashboard | ImCoder博客's 相册";
                 }
             }, 50);
         });
         album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupClosed, function (e, check) {
             setTimeout(function () { // 要设置一个延迟地址栏与历史才会生效
                 if (title_prefix) {
-                    document.title = title_prefix + " - dashboard | ImCODER博客's 相册";
+                    document.title = title_prefix + " - dashboard | ImCoder博客's 相册";
                 } else {
-                    document.title = "dashboard | ImCODER博客's 相册";
+                    document.title = "dashboard | ImCoder博客's 相册";
                 }
             }, 50);
         });
@@ -338,8 +338,10 @@
                     photos = null;
                 },
                 "updateCompleted": function (context, photo) {
+                    var photo_source = album_photo_page_handle.utils.getPhotoByCache(photo.photo_id);
+                    var isUpdateFile = photo_source.path != photo.path;
                     album_photo_page_handle.utils.updatePhotoInPage(photo);
-                    if (photo.path) { // 如果更新了图片文件
+                    if (isUpdateFile) { // 如果更新了图片文件
                         album_photo_page_handle.jumpPage(album_photo_page_handle.config.page_params.pageNum);
                     }
                     if (photo.iscover == 1) {
@@ -356,6 +358,24 @@
                     openUploadModal_callback(album_id);
                 },
                 "beforeUpdateModalOpen": function (context, updateModal, formatPhotoToModal_callback, photo) {
+                    // 如果图片为视频的封面，则添加视频链接
+                    var video_id = album_photo_page_handle.utils.getPhotoImageDom(photo.photo_id).children(0).attr("video_id");
+                    if (video_id) {
+                        var video_href_span = updateModal.find('span[name="video_id"]');
+                        if (video_href_span.length == 0) {
+                            updateModal.find('span[name="photo_id"]').parent().parent().after(
+                                '<div class="form-group"><label class="control-label">视频ID：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>' +
+                                '<a target="_blank" style="color: #666; cursor: pointer" title="点击查看关联视频" >' +
+                                '<span name="video_id" class="control-label"></span></a></div>'
+                            );
+                            video_href_span = updateModal.find('span[name="video_id"]');
+                        } else {
+                            video_href_span.parent().parent().show(0);
+                        }
+                        video_href_span.text(video_id).parent().attr("href", "video.do?method=user_videos&uid=" + photo.uid + "&check=" + photo.photo_id);
+                    } else {
+                        updateModal.find('span[name="video_id"]').parent().parent().hide(0);
+                    }
                     // dashboard页 添加照片所属相册链接
                     if (updateModal.find('span[name="album_id"]').length == 0) {
                         updateModal.find('span[name="photo_id"]').parent().parent().after(
@@ -416,7 +436,7 @@
                             return /^[^\w]+$/.test(key) ? "{" + key + "}" : this[0];
                         }, "\\[\\[\\.", "\\.\\]\\]")
                     }
-                    document.title = value + " - dashboard | ImCODER博客's 相册";
+                    document.title = value + " - dashboard | ImCoder博客's 相册";
                     title_prefix = value;
                 }
                 search_input_value += "," + key + ":";

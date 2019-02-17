@@ -1,4 +1,5 @@
-﻿﻿<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
+﻿﻿
+<%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
@@ -15,7 +16,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
-    <title>${article.title} - ImCODER's 博客</title>
+    <title>${article.title} - ImCoder's 博客</title>
     <meta name="keywords" content="imcoder.site看板,公告,关于">
     <meta name="description" content="此site为大学学完Java后，为练习而开发的，后面发现可以用来总结下平时所学的知识，便一直在维护。欢迎一起学习交流！ contact me ~ Jeffrey.c.deng@gmail.com">
     <!-- 使用url函数转换相关路径 -->
@@ -52,8 +53,8 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center;">
-                    <h1>ImCODER's 博客</h1>
-                    <h3>对于攀登者来说，失掉往昔的足迹并不可惜，迷失了继续前进时的方向却很危险。</h3>
+                    <h1>ImCoder's 博客</h1>
+                    <h3>叶落九秋枝未枯兮，水迎孤月遥未有辞，尔胡以有不自平兮，非心之逑兮以为然</h3>
                     <h3>Welcome to my blog</h3>
                 </div>
             </div>
@@ -66,7 +67,7 @@
     <div class="container-fluid">
         <div class="navbar-header">
             <div class="navbar-brand">
-                <p><a class="logo" style="color: #333;" href="<%=basePath%>">博客Blog</a></p>
+                <p><a class="logo" style="color: #333;" href="<%=basePath%>">ImCoder</a></p>
             </div>
             <button type="button" class="navbar-toggle collapsed " data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
                 <span class="sr-only">Toggle navigation</span>
@@ -131,7 +132,7 @@
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
-                            <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
+                            <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
                                 <div class="col-sm-1">
                                     <div class="coldesc"><a class="toolbar_jump_manager" href="manager.do?method=backstage" target="_blank">管理</a></div>
                                 </div>
@@ -208,9 +209,9 @@
                         </address>
                         <img src="<%=staticPath%>${article.author.head_photo}" class="img-circle circle-border m-b-md author-head" alt="profile">
                         <div>
-                            <span><a class="author-articleCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=home&uid=${article.author.uid}">${article.author.articleCount} 动态</a></span> |
-                            <span><a class="author-followCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=contact&action=follows&query_uid=${article.author.uid}">${article.author.followCount} 关注</a></span> |
-                            <span><a class="author-fansCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=contact&action=fans&query_uid=${article.author.uid}">${article.author.fansCount} 关注者</a></span>
+                            <span><a class="author-articleCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=home&uid=${article.author.uid}">${article.author.userStatus.articleCount} 动态</a></span> |
+                            <span><a class="author-followCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=contact&action=follows&query_uid=${article.author.uid}">${article.author.userStatus.followCount} 关注</a></span> |
+                            <span><a class="author-fansCount" target="_blank" style="color:white;" href="<%=basePath%>user.do?method=contact&action=fans&query_uid=${article.author.uid}">${article.author.userStatus.fansCount} 关注者</a></span>
                         </div>
                     </div>
                     <div class="widget-text-box">
@@ -324,9 +325,10 @@
                             <h3 id="response">添加新评论</h3>
                             <p>
                                 <label for="comment_form_content" class="required">内容</label>
-                                <input type="checkbox" id="tagInner" value="tagInner"/>html注入
-                                <input type="hidden" name="parentid" id="comment_form_parentid" value="0"/>
-                                <input type="hidden" name="replyuid" id="comment_form_replyuid" value="${article.author.uid}"/>
+                                <label class="checkForCommentUseHtmlTag"><input type="checkbox" id="useInputCommentUseHtmlTag" value="useHtmlTag"/> html注入</label>
+                                <label class="checkForCommentSendAnonymously"><input type="checkbox" id="useSendCommentAnonymously" value="sendAnonymously"/> 匿名评论</label>
+                                <input type="hidden" name="parentId" id="comment_form_parentId" value="0"/>
+                                <input type="hidden" name="replyUid" id="comment_form_replyUid" value="${article.author.uid}"/>
                                 <textarea rows="4" cols="50" name="content" id="comment_form_content" class="textarea" required="" placeholder=""></textarea>
                             </p>
                             <p>
@@ -363,11 +365,11 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>用户名</label>
-                        <input type="email" name="username" class="form-control" placeholder="输入用户名/email">
+                        <input type="email" name="identifier" class="form-control" placeholder="输入用户名/email">
                     </div>
                     <div class="form-group">
                         <label>密码</label>
-                        <input type="password" name="password" class="form-control" placeholder="输入密码">
+                        <input type="password" name="credential" class="form-control" placeholder="输入密码">
                     </div>
                     <div class="form-group">
                         <label>
@@ -397,7 +399,7 @@
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="about"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="site_board"></script>
 
 <!-- ######################################### -->
 </body>

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import site.imcoder.blog.dao.CommonDao;
 import site.imcoder.blog.dao.IVideoDao;
+import site.imcoder.blog.entity.Photo;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.entity.Video;
 
@@ -76,6 +77,42 @@ public class VideoDaoImpl extends CommonDao implements IVideoDao {
             e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("updateVideo fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 点击量加1
+     *
+     * @param video
+     * @return
+     */
+    @Override
+    public int raiseVideoClickCount(Video video) {
+        try {
+            return this.getSqlSession().update("video.raiseVideoClickCount", video);
+        } catch (Exception e) {
+            e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.warn("raiseVideoClickCount fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 更新封面图片的image_type
+     *
+     * @param cover
+     * @return
+     */
+    @Override
+    public int updateCoverImageType(Photo cover) {
+        try {
+            return this.getSqlSession().update("video.updateCoverImageType", cover);
+        } catch (Exception e) {
+            e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.warn("updateCoverImageType fail", e);
             return -1;
         }
     }

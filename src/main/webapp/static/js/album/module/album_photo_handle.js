@@ -31,10 +31,16 @@
             "copyPhotoUrlTrigger": ".copyPhotoUrl_btn"
         },
         callback: {
+            "beforeEachUpload": function (context, photo, file, formData) {  // 每一个图片上传之前回调
+                return;
+            },
             "eachUploadCompleted": function (context, photo) {  // 每一个图片上传完成后回调
                 return;
             },
             "allUploadCompleted": function (context, photos) {  // 所有图片上传完成后回调
+                return;
+            },
+            "beforeUpdate": function (context, photo) {  // 更新之前回调
                 return;
             },
             "updateCompleted": function (context, photo) {  // 更新完成后回调
@@ -62,10 +68,13 @@
             }
         },
         event: { // 以事件方式添加回调，以便支持多个回调，这时定义的是事件名
+            "beforeEachUpload": "photo.upload.before",
             "eachUploadCompleted": "photo.upload.completed",
             "allUploadCompleted": "photo.upload.all.completed",
             "updateCompleted": "photo.update.completed",
-            "deleteCompleted": "photo.delete.completed"
+            "beforeUpdate": "photo.update.before",
+            "deleteCompleted": "photo.delete.completed",
+            "beforeDelete": "photo.delete.before"
         },
         albumId: 0,
         downloadType: "url",
@@ -89,6 +98,7 @@
             var photoInfo = {};
             photoInfo.album_id = config.albumId;
             photoInfo.name = pointer.uploadModal.find('input[name="photo_name"]').val();
+            photoInfo.refer = pointer.uploadModal.find('input[name="photo_refer"]').val();
             photoInfo.description = pointer.uploadModal.find('textarea[name="photo_desc"]').val();
             photoInfo.iscover = pointer.uploadModal.find('input[name="photo_cover"]:checked').val();
             (files.length > 1) && (photoInfo.iscover = 0);
@@ -102,8 +112,8 @@
                 }
             });
             photoInfo.tags = (tags == "#" ? "" : tags);
-            if (photoInfo.description.length >= 1000) {
-                toastr.error("描述字数" + photoInfo.description.length + "过长, 应在1000字内", "错误", {"progressBar": false});
+            if (photoInfo.description.length >= 2000) {
+                toastr.error("描述字数" + photoInfo.description.length + "过长, 应在2000字内", "错误", {"progressBar": false});
                 this.removeAttribute("disabled");
                 return;
             }
@@ -127,6 +137,7 @@
             var photo = {};
             photo.photo_id = pointer.updateModal.find('span[name="photo_id"]').html().trim();
             photo.name = pointer.updateModal.find('input[name="photo_name"]').val();
+            photo.refer = pointer.updateModal.find('input[name="photo_refer"]').val();
             photo.description = pointer.updateModal.find('textarea[name="photo_desc"]').val();
             photo.iscover = pointer.updateModal.find('input[name="photo_cover"]:checked').val();
             var tags = "";
@@ -139,8 +150,8 @@
                 }
             });
             photo.tags = (tags == "#" ? "" : tags);
-            if (photo.description.length >= 1000) {
-                toastr.error("描述字数" + photo.description.length + "过长, 应在1000字内", "错误", {"progressBar": false});
+            if (photo.description.length >= 2000) {
+                toastr.error("描述字数" + photo.description.length + "过长, 应在2000字内", "错误", {"progressBar": false});
                 return;
             }
             var file = pointer.updateModal.find('input[name="photo_file"]')[0].files[0];
@@ -156,7 +167,43 @@
         //删除图片事件
         pointer.updateModal.find('button[name="deletePhoto_trigger"]').click(function () {
             var photo_id = pointer.updateModal.find('span[name="photo_id"]').html().trim();
-            deletePhoto(photo_id);
+            if (window.confirm("确定要删除此图片吗？")) {
+                deletePhoto(photo_id);
+            }
+        });
+
+        // 切换按钮
+        pointer.updateModal.find(".update-convert-photo-url").click(function (e) {
+            var _self = $(this);
+            _self.css("font-weight", "bold").parent().find(".update-convert-photo-refer").css("font-weight", "normal");
+            _self.parent().parent().find('.update-photo-url').css("display", "block");
+            _self.parent().parent().find('.update-photo-refer').css("display", "none");
+        });
+        pointer.updateModal.find(".update-convert-photo-refer").click(function (e) {
+            var _self = $(this);
+            _self.css("font-weight", "bold").parent().find(".update-convert-photo-url").css("font-weight", "normal");
+            _self.parent().parent().find('.update-photo-url').css("display", "none");
+            _self.parent().parent().find('.update-photo-refer').css("display", "block");
+        });
+
+        // 新标签打开照片
+        pointer.updateModal.find(".open-update-photo-url").click(function () {
+            var url = $(this).prev().val();
+            if (url) {
+                window.open(url);
+            } else {
+                toastr.error("链接为空呢~");
+            }
+        });
+
+        // 打开照片的相关链接
+        pointer.updateModal.find(".open-update-photo-refer").click(function () {
+            var url = $(this).prev().val();
+            if (url) {
+                window.open(url);
+            } else {
+                toastr.info("你还没有设置相关页面呢~");
+            }
         });
 
         //复制图片地址
@@ -250,7 +297,7 @@
         photos = arguments[3] || [];
 
         var file = files[index];
-        if (file.size > config.maxUploadSize) {
+        if (config.maxUploadSize != -1 && file.size > config.maxUploadSize) {
             toastr.error("换个小的，最大" + (config.maxUploadSize / (1024 * 1024)) + "M", file['name'], {timeOut: 0});
             console.warn("Error : 文件超过大小 - " + file['name']);
             index++;
@@ -280,6 +327,10 @@
         data.append("description", photoInfo.description);
         data.append("tags", photoInfo.tags);
         data.append("iscover", photoInfo.iscover);
+        data.append("refer", photoInfo.refer);
+        // 上传之前回调
+        config.callback.beforeEachUpload.call(context, context, photoInfo, file, data);
+        utils.triggerEvent(config.event.beforeEachUpload, photoInfo, file, data);
         var notify_uploading = common_utils.getNotify("notify_uploading");
         if (notify_uploading) {
             notify_uploading.find(".toast-message").text("正在上传第 " + (index + 1) + " 张");
@@ -336,6 +387,9 @@
         });
     };
     var updatePhoto = function (photo, file) {
+        // 更新之前回调
+        config.callback.beforeUpdate.call(context, context, photo);
+        utils.triggerEvent(config.event.beforeUpdate, photo);
         if (photo != null && photo.photo_id > 0) {
             if (file && /^image.*/.test(file.type)) { // 如果指定了文件，则更新图片文件
                 var formData = new FormData();
@@ -354,10 +408,8 @@
                     success: function (data) {
                         if (data.flag == 200) {
                             toastr.success("更新成功", "", {"progressBar": false});
-                            loadPhoto(photo.photo_id, function (data) {
-                                config.callback.updateCompleted.call(context, context, data.photo);
-                                utils.triggerEvent(config.event.updateCompleted, data.photo);
-                            });
+                            config.callback.updateCompleted.call(context, context, data.photo);
+                            utils.triggerEvent(config.event.updateCompleted, data.photo);
                             pointer.updateModal.modal('hide');
                         } else {
                             toastr.error(data.info, "错误", {"progressBar": false});
@@ -375,8 +427,8 @@
                     if (data.flag == 200) {
                         toastr.success("更新成功", "", {"progressBar": false});
                         pointer.updateModal.modal('hide');
-                        config.callback.updateCompleted.call(context, context, photo); // 回调
-                        utils.triggerEvent(config.event.updateCompleted, photo);
+                        config.callback.updateCompleted.call(context, context, data.photo); // 回调
+                        utils.triggerEvent(config.event.updateCompleted, data.photo);
                     } else {
                         toastr.error(data.info, "错误", {"progressBar": false});
                         console.warn("Error Code: " + data.flag);
@@ -387,7 +439,11 @@
         }
     };
     var deletePhoto = function (photo_id) {
-        if (window.confirm("确定要删除此图片吗？")) {
+        var allow = utils.triggerEvent(config.event.beforeDelete, photo_id);
+        if (allow === false) {
+            return;
+        }
+        if (photo_id) {
             $.post("photo.do?method=delete", {"photo_id": photo_id}, function (data) {
                 if (data.flag == 200) {
                     toastr.success("删除成功", "", {"progressBar": false});
@@ -411,15 +467,15 @@
             }
         });
     };
-    var downloadPhoto = function (url, downloadType) {
+    var downloadPhoto = function (url, downloadType, fileName) {
         downloadType = downloadType || "url";
         if (downloadType == "ajax") {
             common_utils.ajaxDownload(url, function (blob) {
-                common_utils.downloadBlobFile(blob, url.substring(url.lastIndexOf('/') + 1));
+                common_utils.downloadBlobFile(blob, fileName || url.substring(url.lastIndexOf('/') + 1));
                 toastr.success("已下载！", "", {"progressBar": false});
             });
         } else {
-            common_utils.downloadUrlFile(url);
+            common_utils.downloadUrlFile(url, fileName);
             toastr.success("已下载！", "", {"progressBar": false});
         }
     };
@@ -477,6 +533,7 @@
             pointer.updateModal.find('span[name="photo_id"]').text(photo.photo_id).parent().attr("href", photo_album_url);
             pointer.updateModal.find('.copy-input').val(config.path_params.cloudPath + photo.path);
             pointer.updateModal.find('a[name="photo_path"]').attr("path", config.path_params.cloudPath + photo.path);
+            pointer.updateModal.find('input[name="photo_refer"]').val(photo.refer);
             pointer.updateModal.find('input[name="photo_name"]').val(photo.name);
             pointer.updateModal.find('textarea[name="photo_desc"]').val(photo.description);
             pointer.updateModal.find('input[name="photo_cover"]').each(function () {
@@ -487,7 +544,7 @@
             pointer.updateModal.find('span[name="photo_size"]').html(photo.size + "KB（" + photo.width + "×" + photo.height + "）");
             pointer.updateModal.find('span[name="photo_upload_time"]').html(photo.upload_time);
             if (isAuthor) {
-                pointer.updateModal.find('.copy-input').prev().attr("title", "原始文件名：" + photo.originName)
+                pointer.updateModal.find('.update-convert-photo-url').attr("title", "原始文件名：" + photo.originName)
             }
 
             // css
@@ -610,7 +667,7 @@
             $(context).bind(eventName, func);
         },
         "triggerEvent": function (eventName) {
-            $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
+            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
         },
         "unbindEvent": function (eventName, func) {
             $(context).unbind(eventName, func);

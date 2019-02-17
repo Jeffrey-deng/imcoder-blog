@@ -5,9 +5,13 @@
         define(['jquery', 'bootstrap', 'domReady', 'toastr', 'summernote', 'store2', 'common_utils', 'login_handle', 'edit_tool_plugin'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, null, store, common_utils, login_handle, null);
+        window.edit_tool = factory(window.jQuery, null, $(document).ready, toastr, null, store, common_utils, login_handle, null);
     }
 })(function ($, bootstrap, domReady, toastr, summernote, store, common_utils, login_handle, edit_tool_plugin) {
+
+    var config = {
+        maxUploadSize: 5 * 1024 * 1024
+    };
 
     $(document).ajaxError(function () {
         toastr.error("An error occurred!", "执行Ajax请求时发生错误");
@@ -465,8 +469,11 @@
         }
         var file = files[index];
         //检查大小
-        if (file.size > (4 * 1024 * 1000)) {
-            toastr.error(file['name'] + " 换个小的，最大4M", "别丢个这么大的图片给我a", {timeOut: 0, progressBar: false});
+        if (config.maxUploadSize != -1 && file.size > config.maxUploadSize) {
+            toastr.error(file['name'] + " 换个小的，最大" + (config.maxUploadSize / (1024 * 1024)) + "M", "别丢个这么大的图片给我a", {
+                timeOut: 0,
+                progressBar: false
+            });
             return;
         }
 
@@ -752,5 +759,10 @@
         }
     }
 
+    var context = {
+        "config": config
+    }
+
+    return context;
 });
 

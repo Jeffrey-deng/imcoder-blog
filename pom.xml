@@ -253,6 +253,14 @@
             <version>3.4.0</version>
         </dependency>
 
+        <!-- Emoji 表情转换工具 -->
+        <!-- https://mvnrepository.com/artifact/com.github.binarywang/java-emoji-converter -->
+        <dependency>
+            <groupId>com.github.binarywang</groupId>
+            <artifactId>java-emoji-converter</artifactId>
+            <version>0.1.1</version>
+        </dependency>
+
     </dependencies>
 
     <build>

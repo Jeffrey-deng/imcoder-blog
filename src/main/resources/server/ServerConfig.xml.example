@@ -38,12 +38,6 @@
         <value>classpath:server/oss.properties</value>
     </property>
 
-    <!-- 上传文件存储相对路径 相对于其基础路径 -->
-    <property>
-        <param>article_upload_relativepath</param>
-        <value>upload/</value>
-    </property>
-
     <!-- 上传文件存储基础路径 相对于context父文件夹，可以是绝对路径
         仅对本地文件系统有效 -->
     <property>
@@ -51,10 +45,10 @@
         <value>blog/static/</value>
     </property>
 
-    <!-- 云盘文件存储相对路径 相对于其基础路径 -->
+    <!-- 上传文件存储相对路径 相对于其基础路径 -->
     <property>
-        <param>cloud_file_relativepath</param>
-        <value>user/</value>
+        <param>article_upload_relativepath</param>
+        <value>upload/</value>
     </property>
 
     <!-- 云盘文件存储基础路径 相对于context父文件夹，可以是绝对路径，
@@ -64,12 +58,54 @@
         <value>blog/cloud/</value>
     </property>
 
-    <!-- 静态文件地址后缀(仅限js、css)
-        {time} 可取时间戳
-        {date} 可取yyMMdd     -->
+    <!-- 云盘文件存储相对路径 相对于其基础路径 -->
     <property>
-        <param>site_cdn_addr_args</param>
-        <value></value>
+        <param>cloud_file_relativepath</param>
+        <value>user/</value>
+    </property>
+
+    <!-- 垃圾回收路径，仅对本地文件系统有效 -->
+    <property>
+        <param>trash_recycle_basepath</param>
+        <value>blog/cloud/.trash/</value>
+    </property>
+
+    <!-- 允许发表文章的用户组最低等级，值为对应用户组的Gid，
+        0代表所有用户组允许发表文章；
+        1代表高级用户及以上允许发表文章；
+        -1代表只有管理员允许发表文章；
+    -->
+    <property>
+        <param>article_allow_create_lowest_level</param>
+        <value>0</value>
+    </property>
+
+    <!-- 云盘允许上传文件的用户组最低等级，值为对应用户组的Gid，
+        0代表所有用户组允许上传；
+        1代表高级用户及以上允许上传；
+        -1代表只有管理员允许上传；
+    -->
+    <property>
+        <param>cloud_allow_upload_lowest_level</param>
+        <value>0</value>
+    </property>
+
+    <!-- 照片最大上传大小，单位字节，-1代表无限制 -->
+    <property>
+        <param>cloud_photo_max_uploadsize</param>
+        <value>10485760</value>
+    </property>
+
+    <!-- 视频最大上传大小，单位字节，-1代表无限制 -->
+    <property>
+        <param>cloud_video_max_uploadsize</param>
+        <value>-1</value>
+    </property>
+
+    <!-- 文件最大上传大小，单位字节，-1代表无限制 -->
+    <property>
+        <param>cloud_file_max_uploadsize</param>
+        <value>-1</value>
     </property>
 
     <!-- 浏览器端的配置
@@ -82,16 +118,18 @@
         <value></value>
     </property>
 
+    <!-- 静态文件地址后缀(仅限js、css)
+        {time} 可取时间戳
+        {date} 可取yyMMdd     -->
+    <property>
+        <param>site_cdn_addr_args</param>
+        <value></value>
+    </property>
+
     <!-- 图片文件预览参数，支持子集：@user_{uid}:{args} ，{col}可取到运行时显示的列数 -->
     <property>
         <param>cloud_photo_preview_args</param>
         <value></value>
-    </property>
-
-    <!-- 垃圾回收路径，仅对本地文件系统有效 -->
-    <property>
-        <param>trash_recycle_basepath</param>
-        <value>blog/cloud/.trash/</value>
     </property>
 
     <!-- “关于我”对应的文章号 -->
@@ -146,30 +184,10 @@
         <value>4</value>
     </property>
 
-    <!-- 邮件推送服务 *****************************  -->
-
-    <!-- 邮件推送的smtp地址 -->
+    <!-- 邮件推送服务配置文件地址 -->
     <property>
-        <param>emailpush_smtp_addr</param>
-        <value></value>
-    </property>
-
-    <!-- 邮件推送的ssl端口 -->
-    <property>
-        <param>emailpush_smtp_port</param>
-        <value>465</value>
-    </property>
-
-    <!-- 邮件推送的账号名（地址） -->
-    <property>
-        <param>emailpush_account_addr</param>
-        <value></value>
-    </property>
-
-    <!-- 邮件推送的账号密码 -->
-    <property>
-        <param>emailpush_account_password</param>
-        <value></value>
+        <param>emailpush_config_location</param>
+        <value>classpath:server/email.properties</value>
     </property>
 
     <!-- 邮件推送的显示的发件人名称 -->
@@ -222,27 +240,33 @@
         <value>{"path":"res/img/album_default.jpg","width": 800,"height": 800}</value>
     </property>
 
-    <!-- 文字转语音的百度 APP_ID -->
+    <!-- 默认的男生用户头像，列表，至少一个，设置时为json数组字符串，数组类型为头像地址字符串，相对于site_cdn_addr -->
     <property>
-        <param>tool_speech_token_app_id</param>
-        <value></value>
+        <param>USER_DEFAULT_MAN_HEADPHOTOS</param>
+        <value>["img/default_man.jpg"]</value>
     </property>
 
-    <!-- 文字转语音的百度 API_KEY -->
+    <!-- 默认的女生用户头像，列表，至少一个，设置时为json数组字符串，数组类型为头像地址字符串 ，相对于site_cdn_addr -->
     <property>
-        <param>tool_speech_token_api_key</param>
-        <value></value>
+        <param>USER_DEFAULT_MISS_HEADPHOTOS</param>
+        <value>["img/default_miss.jpg"]</value>
     </property>
 
-    <!-- 文字转语音的百度 SECRET_KEY -->
+    <!-- 工具服务配置文件地址 -->
     <property>
-        <param>tool_speech_token_secret_key</param>
-        <value></value>
+        <param>toolservice_config_location</param>
+        <value>classpath:server/tool.properties</value>
     </property>
 
     <!-- 是否允许运行系统升级，true or false -->
     <property>
         <param>site_allow_run_upgrade</param>
+        <value>false</value>
+    </property>
+
+    <!-- 用户在线时是否运行离线通知，true: 同时运行，false: 当用户在线时，不执行其他方式通知，true or false -->
+    <property>
+        <param>run_offline_notify_when_online</param>
         <value>false</value>
     </property>
 

@@ -28,13 +28,6 @@ public interface IUserDao {
      */
     public int saveUser(User user);
 
-    /**
-     * 更新加密后的令牌和登录IP
-     *
-     * @param user
-     * @return
-     */
-    public int updateTokenAndIp(User user);
 
     /**
      * 更新个人资料
@@ -45,12 +38,12 @@ public interface IUserDao {
     public int saveProfile(User user);
 
     /**
-     * 更新账号信息
+     * 更新账号状态信息
      *
-     * @param user
+     * @param userStatus
      * @return
      */
-    public int updateAccount(User user);
+    public int updateUserStatus(UserStatus userStatus);
 
     /**
      * 查询用户BY ID和用户名
@@ -80,6 +73,21 @@ public interface IUserDao {
      */
     public Map<String, Object> countUserInfo(User user);
 
+    /**
+     * 返回用户的账户设置
+     *
+     * @param user
+     * @return
+     */
+    public UserSetting findUserSetting(User user);
+
+    /**
+     * 更新用户配置
+     *
+     * @param userSetting
+     * @return
+     */
+    public int updateUserSetting(UserSetting userSetting);
 
     /**
      * 检查是否为好友
@@ -137,33 +145,6 @@ public interface IUserDao {
      * @return 0:失败 1:成功 2:并删除好友
      */
     public int deleteFollow(Follow follow);
-
-
-    /**
-     * 查询私信列表
-     *
-     * @param user
-     * @param read_status 0 未读  1全部
-     * @return
-     */
-    public List<Letter> findLetterList(User user, int read_status);
-
-    /**
-     * 查询系统消息列表
-     *
-     * @param user
-     * @param read_status 0 未读  1全部
-     * @return
-     */
-    public List<SysMsg> findSysMsgList(User user, int read_status);
-
-    /**
-     * 发送私信
-     *
-     * @param letter
-     * @return
-     */
-    public int saveLetter(Letter letter);
 
     /**
      * 检查是否loginUser收藏了此文章

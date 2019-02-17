@@ -78,7 +78,7 @@
 
 html {
     font-family: 'Open Sans', "Microsoft Yahei", sans-serif;
-    font-size: 100%;
+    font-size: 87.5%;
     -ms-text-size-adjust: 100%;
     -webkit-text-size-adjust: 100%
 }
@@ -87,8 +87,8 @@ body {
     margin: 0;
     color: #666;
     background-color: #f2f2f2;
-    font-family: "Open Sans", "Microsoft Yahei", sans-serif;
-    font-size: 87.5%
+    font-size: 100%;
+    font-family: 'Open Sans', "Microsoft Yahei", sans-serif;
 }
 
 body.modal-open {
@@ -102,7 +102,7 @@ body.modal-open {
 }
 
 @media (min-width: 1537px) {
-    body {
+    html {
         font-size: 15.9px;
     }
 
@@ -160,7 +160,7 @@ body.modal-open {
 }
 
 @media (min-width: 1750px) {
-    body {
+    html {
         font-size: 17.5px;
     }
 
@@ -170,7 +170,7 @@ body.modal-open {
 }
 
 @media ( max-width: 767px) {
-    body {
+    html {
         font-size: 0.8125em;
     }
 }
@@ -1528,11 +1528,11 @@ textarea {
 }
 
 .comment-list li {
-    padding: 1em;
+    position: relative;
     margin-top: 0.71429em;
     box-shadow: 0 2px 3px #ccc;
     background: white;
-    padding-right: 0px;
+    padding: 1em 0px 1em 1em;
 }
 
 .comment-list li.comment-level-odd {
@@ -1578,6 +1578,17 @@ textarea {
     font-style: normal;
 }
 
+.comment-floor {
+    font-size: 0.8571rem;
+    position: absolute;
+    top: 1.1429rem;
+    right: 1.1429rem;
+}
+
+.comment-floor a {
+    color: #555;
+}
+
 .comment-list .respond {
     margin-top: 1.071429em;
     border-top: 1px solid #EEE;
@@ -1595,6 +1606,19 @@ textarea {
     margin-top: 1em;
     margin-bottom: 0.5em;
     font-weight: bold;
+}
+
+#comment-form .checkForCommentSendAnonymously {
+    display: inline;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+#comment-form .checkForCommentUseHtmlTag {
+    display: inline;
+    font-weight: normal;
+    margin-left: 5px;
+    cursor: pointer;
 }
 
 #comment-form > *:last-child {
@@ -1660,6 +1684,7 @@ textarea {
 .comment-content {
     line-height: 1.5;
     word-wrap: break-word;
+    margin-top: 10px;
 }
 
 .post-content h2, .comment-content h2 {
@@ -2333,11 +2358,23 @@ body {
     }
 
     .chatpanel .btngroup {
-        padding-top: 3.571429em;
+        padding-top: 3.905em;
+    }
+
+    .chatpanel .message-input {
+        height: 6.37em !important;
     }
 
     .navbar > .container .navbar-brand, .navbar > .container-fluid .navbar-brand {
         margin-left: -1.07143em;
+    }
+
+    #header .navbar-header .navbar-brand p {
+        margin: auto 0;
+    }
+
+    #navbar-collapse > ul:nth-child(1) {
+        margin-left: -5px;
     }
 
     /* 顶部栏 */
@@ -2428,6 +2465,39 @@ body {
     margin: 0.45714em 0 -0.28571em -0.8286em;
 }
 
+.toast iframe, .toast video, .toast embed {
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.chat-discussion .message iframe, .chat-discussion .message video {
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.chat-discussion .message img {
+    max-width: 100%;
+    margin: 0 auto;
+    display: block;
+}
+
+.chat-discussion .message-del {
+    font-size: 10px;
+    color: #888;
+    cursor: pointer;
+    visibility: hidden;
+}
+
+.chat-discussion .chat-message-left .message-del {
+    float: right;
+    padding-right: 8px;
+}
+
+.chat-discussion .chat-message-right .message-del {
+    float: left;
+    padding-left: 8px;
+}
+
 .m-b-md {
     margin-bottom: 1.42857em;
 }
@@ -2470,6 +2540,25 @@ body {
 
 .note-editor .modal-body {
     padding: 1.42857em;
+}
+
+iframe {
+    border-width: 0px;
+}
+
+.aspect-ratio {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 56.25%;
+}
+
+.aspect-ratio iframe {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
 }
 
 .post-container.album_options {
@@ -2657,10 +2746,10 @@ button.mfp-arrow {
 
 .mfp-title {
     line-height: 1.2857143em;
-    padding-right: 2.5714285em;
+    padding-right: 0em;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: calc(100% - 3em);
+    width: calc(100% - 7.3em);
     overflow: hidden;
 }
 
@@ -2733,6 +2822,10 @@ img.mfp-img {
     display: block;
     margin: 0 auto;
     vertical-align: middle;
+}
+
+.mfp-content video:focus {
+    outline-width: 0px;
 }
 
 .mfp-content iframe, .mfp-content embed {
@@ -2980,4 +3073,325 @@ img.mfp-img {
         padding: 10px;
     }
 
+}
+
+.profile-head-photo {
+    display: block;
+    margin:0px auto;
+    height:14.2857em;
+    width:14.2857em;
+}
+
+.profile-head-photo-upload-trigger-area {
+    margin-top: 1.42857em;
+    margin-bottom: 1.42857em;
+    cursor: pointer;
+}
+
+.profile-head-photo-upload-trigger-modal {
+    margin: 0 auto;
+    width: 80px;
+    display: block;
+    border: #f2f2f2 solid 1px;
+}
+
+#chat_Modal .appendNewUserToChat {
+    font-size: 16px;
+    width: 100%;
+    height: 38px;
+    padding-left: 5px;
+}
+
+.photo-detail-img {
+    width: 100%;
+    background-color: #222;
+    border-width: 0px 0px 4px 0px;
+    border-bottom-color: #ddd;
+    border-style: solid;
+}
+
+.photo-detail-img img {
+    margin: 0 auto;
+    display: block;
+    max-height: 700px;
+    cursor: pointer;
+}
+
+.photo-detail-info {
+    width: 100%;
+    margin-top: 25px;
+    font-size: 16px;
+}
+
+.photo-detail-info a {
+    cursor: pointer;
+}
+
+.photo-detail-info-inline {
+    margin: 0 auto;
+    width: 90%;
+    height: 100%;
+}
+
+.photo-detail-info-inline > form > div {
+    float: left;
+    width: 100%;
+}
+
+.area-set-left {
+    float: left;
+    width: 50%;
+}
+
+.area-set-right {
+    float: left;
+    width: 50%;
+}
+
+hr.fill-width {
+    width: 100%;
+    float: left;
+    clear: both;
+}
+
+.photo-detail-info-header {
+    width: 100%;
+    padding-left: 38px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+.photo-detail-info-header .photo-detail-name {
+    float: left;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    color: #555;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 70%;
+    overflow: hidden;
+}
+
+.photo-detail-info-header .photo-detail-name a {
+    color: #555;
+}
+
+.photo-detail-info-header .photo-detail-set-area {
+    float: right;
+}
+
+.photo-detail-info-header .photo-detail-set-area > div {
+    display: inline;
+}
+
+.photo-detail-info-header .photo-detail-set-area > *:not(:first-child) {
+    margin-left: 15px;
+}
+
+.photo-detail-info .form-group {
+    margin-bottom: 1.551rem;
+}
+
+.photo-detail-info .form-group:last-child {
+    margin-bottom: 0px;
+}
+
+.photo-detail-info-footer .form-group:last-child {
+    margin-bottom: 1.35rem;
+}
+
+.photo-detail-info .help-block {
+    margin-bottom: 0px;
+    font-style: italic;
+}
+
+.photo-detail-info .control-label {
+    margin-top: 5px;
+    padding-top: 0px;
+}
+
+.photo-detail-info .photo-detail-desc p {
+    margin-bottom: 0.5em;
+}
+
+.photo-detail-info span p:last-child {
+    margin-bottom: 0px;
+}
+
+.photo-detail-info .photo-detail-handle-area {
+    float: right;
+}
+
+.photo-detail-info .photo-detail-handle-area > * {
+    display: inline;
+    cursor: pointer;
+}
+
+.photo-detail-info .photo-detail-handle-area > *:not(:first-child) {
+    margin-left: 20px;
+}
+
+.photo-detail-info .photo-detail-like > div {
+    display: inline;
+}
+
+.photo-detail-info .photo-detail-like .photo-detail-like-btn {
+    padding-right: 2px;
+}
+
+.photo-detail-info-footer .photo-detail-video {
+    margin-right: -15px;
+    margin-left: -15px;
+}
+
+.photo-detail-info-footer .photo-detail-video-name, .photo-detail-info-footer .photo-detail-album-name {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+    overflow: hidden;
+}
+
+.video-detail-play {
+    width: 100%;
+    background-color: #222;
+    border-width: 0px 0px 4px 0px;
+    border-bottom-color: #ddd;
+    border-style: solid;
+}
+
+.video-detail-play iframe {
+    margin: 0 auto;
+    display: block;
+    width: 100%;
+    height: 700px;
+}
+
+.video-detail-info {
+    width: 100%;
+    margin-top: 25px;
+    font-size: 16px;
+}
+
+.video-detail-info a {
+    cursor: pointer;
+}
+
+.video-detail-info-inline {
+    margin: 0 auto;
+    width: 90%;
+    height: 100%;
+}
+
+.video-detail-info-inline > form > div {
+    float: left;
+    width: 100%;
+}
+
+.video-detail-info-header {
+    width: 100%;
+    padding-left: 38px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+.video-detail-info-header .video-detail-name {
+    float: left;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    color: #555;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 70%;
+    overflow: hidden;
+}
+
+.video-detail-info-header .video-detail-name a {
+    color: #555;
+}
+
+.video-detail-info-header .video-detail-set-area {
+    float: right;
+}
+
+.video-detail-info-header .video-detail-set-area > div {
+    display: inline;
+}
+
+.video-detail-info-header .video-detail-set-area > *:not(:first-child) {
+    margin-left: 15px;
+}
+
+.video-detail-info .form-group {
+    margin-bottom: 1.551rem;
+}
+
+.video-detail-info .form-group:last-child {
+    margin-bottom: 0px;
+}
+
+.video-detail-info-footer .form-group:last-child {
+    margin-bottom: 1.35rem;
+}
+
+.video-detail-info .help-block {
+    margin-bottom: 0px;
+    font-style: italic;
+}
+
+.video-detail-info .control-label {
+    margin-top: 5px;
+    padding-top: 0px;
+}
+
+.video-detail-info .video-detail-desc p {
+    margin-bottom: 0.5em;
+}
+
+.video-detail-info span p:last-child {
+    margin-bottom: 0px;
+}
+
+.video-detail-info .video-detail-handle-area {
+    float: right;
+}
+
+.video-detail-info .video-detail-handle-area > * {
+    display: inline;
+    cursor: pointer;
+}
+
+.video-detail-info .video-detail-handle-area > *:not(:first-child) {
+    margin-left: 20px;
+}
+
+.video-detail-info .video-detail-like > div {
+    display: inline;
+}
+
+.video-detail-info .video-detail-like .video-detail-like-btn {
+    padding-right: 2px;
+}
+
+.video-detail-info-footer .video-detail-album-name {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+    overflow: hidden;
+}
+
+@media (max-width: 767px) {
+    .area-set-left {
+        width: 100%;
+    }
+
+    .area-set-right {
+        width: 100%;
+        margin-bottom: 1.35rem;
+        margin-top: 1.35rem;
+    }
+
+    .video-detail-info-header .video-detail-set-area, .photo-detail-info-header .photo-detail-set-area {
+        float: left;
+        margin-top: 10px;
+    }
 }

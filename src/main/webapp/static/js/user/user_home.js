@@ -41,11 +41,12 @@
                 userInfoModal.find('span[name="birthday"]').html(user.birthday == "" ? "未填写" : user.birthday);
                 userInfoModal.find('span[name="address"]').html(user.address == "" ? "未填写" : user.address);
                 userInfoModal.find('span[name="weibo"]').html(user.weibo == "" ? "未填写" : user.weibo);
+                userInfoModal.find('span[name="site"]').html(user.site == "" ? "未填写" : user.site);
                 userInfoModal.find('span[name="qq"]').html(user.qq == "" ? "未填写" : user.qq);
-                userInfoModal.find('span[name="register_time"]').html(user.register_time);
-                userInfoModal.find('span[name="articleCount"]').html(user.articleCount);
-                userInfoModal.find('span[name="followCount"]').html(user.followCount);
-                userInfoModal.find('span[name="fansCount"]').html(user.fansCount);
+                userInfoModal.find('span[name="register_time"]').html(user.userStatus.register_time);
+                userInfoModal.find('span[name="articleCount"]').html(user.userStatus.articleCount);
+                userInfoModal.find('span[name="followCount"]').html(user.userStatus.followCount);
+                userInfoModal.find('span[name="fansCount"]').html(user.userStatus.fansCount);
                 userInfoModal.find('span[name="says"]').html(user.says == "" ? "未填写" : user.says);
                 userInfoModal.modal();
             });

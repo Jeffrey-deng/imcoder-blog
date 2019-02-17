@@ -6,14 +6,9 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import site.imcoder.blog.dao.CommonDao;
 import site.imcoder.blog.dao.IAlbumDao;
-import site.imcoder.blog.entity.Album;
-import site.imcoder.blog.entity.Photo;
-import site.imcoder.blog.entity.PhotoTagWrapper;
-import site.imcoder.blog.entity.User;
+import site.imcoder.blog.entity.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by Jeffrey.Deng on 2018/1/5.
@@ -116,7 +111,8 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
     public int updateCoverForAlbum(Album album) {
         try {
             SqlSession session = this.getSqlSession();
-            session.update("album.clearCoverForAlbum", album);
+            session.update("album.clearCoverForPhoto", album);
+            session.update("album.updateCoverForPhoto", album.getCover());
             return session.update("album.updateCoverForAlbum", album);
         } catch (Exception e) {
             e.printStackTrace();
@@ -136,6 +132,31 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
     public int deleteAlbum(Album album) {
         try {
             SqlSession session = this.getSqlSession();
+            // 注意顺序
+            // 删除该相册的AlbumPhotoRelation表行
+            session.delete("album.deleteAlbumPhotoRelationsByAlbum", album.getAlbum_id());
+            // 删除该相册内，照片关联其他相册的AlbumPhotoRelation表行
+            if (album.getPhotos() == null) {
+                album.setPhotos(findPhotosFromAlbum(album));
+            }
+            if (album.getPhotos() != null) {
+                List<AlbumPhotoRelation> aprs = findAlbumPhotoRelationList(null);
+                if (aprs != null && aprs.size() > 0) {
+                    Set<Integer> set = new HashSet<>();
+                    for (Photo photo : album.getPhotos()) {
+                        for (AlbumPhotoRelation apr : aprs) {
+                            if (apr.getPhoto_id() == photo.getPhoto_id()) {
+                                set.add(apr.getPhoto_id());
+                                break;
+                            }
+                        }
+                    }
+                    for (int photo_id : set) {
+                        session.delete("album.deleteAlbumPhotoRelationsByPhoto", photo_id);
+                    }
+                }
+            }
+            // 删除该相册内photo表行
             session.delete("album.deleteAlbumPhotos", album);
             return session.delete("album.deleteAlbum", album);
         } catch (Exception e) {
@@ -173,7 +194,11 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
     @Override
     public int deletePhoto(Photo photo) {
         try {
-            return this.getSqlSession().delete("album.deletePhoto", photo);
+            SqlSession session = this.getSqlSession();
+            // 注意顺序
+            session.update("album.clearCoverForAlbum", photo);
+            session.delete("album.deleteAlbumPhotoRelationsByPhoto", photo.getPhoto_id());
+            return session.delete("album.deletePhoto", photo);
         } catch (Exception e) {
             e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
@@ -259,6 +284,24 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
     }
 
     /**
+     * 点击量加1
+     *
+     * @param photo
+     * @return
+     */
+    @Override
+    public int raisePhotoClickCount(Photo photo) {
+        try {
+            return this.getSqlSession().update("album.raisePhotoClickCount", photo);
+        } catch (Exception e) {
+            e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.warn("raisePhotoClickCount fail", e);
+            return -1;
+        }
+    }
+
+    /**
      * 查询出用户设置的特殊标签
      *
      * @param tagWrapper
@@ -276,6 +319,94 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
             e.printStackTrace();
             logger.warn("findPhotoTagWrappers fail", e);
             return null;
+        }
+    }
+
+    /**
+     * 查询一个相册的AlbumPhotoRelation类列表
+     *
+     * @param album
+     * @return
+     */
+    @Override
+    public List<AlbumPhotoRelation> findAlbumPhotoRelationList(Album album) {
+        try {
+            return this.getSqlSession().selectList("album.findAlbumPhotoRelationList", album);
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.warn("findAlbumPhotoRelationList fail", e);
+            return null;
+        }
+    }
+
+    /**
+     * 只查询一对相册与照片关联类
+     *
+     * @param albumPhotoRelation
+     * @return
+     */
+    @Override
+    public AlbumPhotoRelation findAlbumPhotoRelation(AlbumPhotoRelation albumPhotoRelation) {
+        try {
+            return this.getSqlSession().selectOne("album.findAlbumPhotoRelation", albumPhotoRelation);
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.warn("findAlbumPhotoRelationList fail", e);
+            return null;
+        }
+    }
+
+    /**
+     * 保存相册与照片关联类
+     *
+     * @param albumPhotoRelation
+     * @return
+     */
+    @Override
+    public int saveAlbumPhotoRelation(AlbumPhotoRelation albumPhotoRelation) {
+        try {
+            return this.getSqlSession().update("album.saveAlbumPhotoRelation", albumPhotoRelation);
+        } catch (Exception e) {
+            e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("saveAlbumPhotoRelation fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 更新相册与照片关联类
+     *
+     * @param albumPhotoRelation
+     * @return
+     */
+    @Override
+    public int updateAlbumPhotoRelation(AlbumPhotoRelation albumPhotoRelation) {
+        try {
+            return this.getSqlSession().update("album.updateAlbumPhotoRelation", albumPhotoRelation);
+        } catch (Exception e) {
+            e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("updateAlbumPhotoRelation fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 删除相册与照片关联类
+     *
+     * @param albumPhotoRelation
+     * @return
+     */
+    @Override
+    public int deleteAlbumPhotoRelation(AlbumPhotoRelation albumPhotoRelation) {
+        try {
+            return this.getSqlSession().update("album.deleteAlbumPhotoRelation", albumPhotoRelation);
+        } catch (Exception e) {
+            e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("deleteAlbumPhotoRelation fail", e);
+            return -1;
         }
     }
 }

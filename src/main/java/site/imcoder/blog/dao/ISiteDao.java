@@ -13,6 +13,21 @@ import java.util.List;
 public interface ISiteDao {
 
     /**
+     * 查询所有的用户组信息
+     *
+     * @return
+     */
+    public List<UserGroup> findUserGroupList();
+
+    /**
+     * 更换用户组
+     *
+     * @param user 需要参数：user.uid, user.userGroup.gid
+     * @return
+     */
+    public int updateUserGroup(User user);
+
+    /**
      * 文章的基本信息
      */
     public List<Article> findArticleBaseList();
@@ -51,17 +66,6 @@ public interface ISiteDao {
      * @return
      */
     public int updateArticleInfoByManager(Article article);
-
-
-    public int saveSystemMessage(SysMsg sysMsg);
-
-    /**
-     * 清除系统消息未读状态
-     *
-     * @param smIdList
-     * @return
-     */
-    public int updateSystemMessageStatus(List<Integer> smIdList);
 
     /**
      * 加载相册列表

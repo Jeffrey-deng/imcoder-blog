@@ -10,10 +10,8 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
 import site.imcoder.blog.Interceptor.GZIP;
 import site.imcoder.blog.Interceptor.LoginRequired;
-import site.imcoder.blog.entity.Album;
-import site.imcoder.blog.entity.Photo;
-import site.imcoder.blog.entity.PhotoTagWrapper;
-import site.imcoder.blog.entity.User;
+import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.entity.*;
 import site.imcoder.blog.service.IAlbumService;
 import site.imcoder.blog.service.IUserService;
 import site.imcoder.blog.setting.Config;
@@ -26,6 +24,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * description: 相册控制器
@@ -64,6 +64,19 @@ public class PhotoController extends BaseController {
             mv.setViewName(PAGE_NOT_FOUND_ERROR);
         }
         return mv;
+    }
+
+    /**
+     * 得到照片上传配置信息
+     *
+     * @param session
+     * @return
+     */
+    @RequestMapping(params = "method=getUploadConfigInfo")
+    @ResponseBody
+    public Map<String, Object> getUploadConfigInfo(HttpSession session) {
+        User loginUser = getLoginUser(session);
+        return albumService.getUploadConfigInfo(loginUser);
     }
 
     /**
@@ -226,11 +239,9 @@ public class PhotoController extends BaseController {
     @RequestMapping(params = "method=updateAlbum")
     @ResponseBody
     public Map<String, Object> updateAlbum(Album album, HttpServletRequest request, HttpSession session) {
-        Map<String, Object> map = new HashMap<>();
         User loginUser = (User) session.getAttribute("loginUser");
-        int flag = albumService.updateAlbum(album, loginUser);
-        map.put(KEY_STATUS, flag);
-        if (flag == 200) {
+        Map<String, Object> map = albumService.updateAlbum(album, loginUser);
+        if ((int) map.get(KEY_STATUS) == 200) {
             map.put(KEY_STATUS_FRIENDLY, "更新相册成功！");
         } else {
             convertAlbumStatusCodeToWord(map);
@@ -321,9 +332,9 @@ public class PhotoController extends BaseController {
      * @param logic_conn
      * @param query_start
      * @param query_size
-     * @param base  数据查询的特殊基准
-     * @param from  实际的执行js请求的页面
-     * @param extend    查询的标签是否将其展开查询
+     * @param base        数据查询的特殊基准
+     * @param from        实际的执行js请求的页面
+     * @param extend      查询的标签是否将其展开查询
      * @param session
      * @return
      */
@@ -383,11 +394,9 @@ public class PhotoController extends BaseController {
     @RequestMapping(params = "method=update")
     @ResponseBody
     public Map<String, Object> updatePhoto(Photo photo, @RequestParam(value = "file", required = false) MultipartFile file, HttpServletRequest request, HttpSession session) {
-        Map<String, Object> map = new HashMap<String, Object>();
         User loginUser = (User) session.getAttribute("loginUser");
-        int flag = albumService.updatePhoto(photo, file, loginUser);
-        map.put(KEY_STATUS, flag);
-        if (flag == 200) {
+        Map<String, Object> map = albumService.updatePhoto(photo, file, loginUser);
+        if ((int) map.get(KEY_STATUS) == 200) {
             map.put(KEY_STATUS_FRIENDLY, "更新成功！");
         } else {
             convertPhotoStatusCodeToWord(map);
@@ -474,6 +483,86 @@ public class PhotoController extends BaseController {
         }
         convertStatusCodeToWord(map);
         return map;
+    }
+
+    /**
+     * 保存照片在相册内的排序
+     *
+     * @param apr
+     * @param session
+     * @return map
+     * flag - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 照片或相册未找到，500：服务器错误
+     * info - 详细信息
+     */
+    @LoginRequired
+    @RequestMapping(params = "method=saveAlbumPhotoRelation")
+    @ResponseBody
+    public Map<String, Object> saveAlbumPhotoRelation(AlbumPhotoRelation apr, HttpSession session) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        User loginUser = getLoginUser(session);
+        int flag = albumService.saveAlbumPhotoRelation(apr, loginUser);
+        map.put(KEY_STATUS, flag);
+        if (flag == 200) {
+            map.put(KEY_STATUS_FRIENDLY, "保存成功！");
+        } else {
+            convertPhotoStatusCodeToWord(map);
+        }
+        return map;
+    }
+
+    /**
+     * 打开照片详情
+     *
+     * @param id
+     * @param session
+     * @param request
+     * @return
+     */
+    @RequestMapping(params = "method=detail")
+    public String openPhotoDetail(@RequestParam(defaultValue = "0") int id, String path, HttpSession session, HttpServletRequest request) {
+        User loginUser = (User) session.getAttribute("loginUser");
+        Photo photo = null;
+        int flag = 200;
+        if (id != 0) {
+            Photo queryArgs = new Photo(id);
+            Map<String, Object> photoQuery = albumService.findPhoto(queryArgs, loginUser);
+            flag = (int) photoQuery.get(KEY_STATUS);
+            if (flag == 200) {
+                photo = (Photo) photoQuery.get("photo");
+            }
+        } else if (!Utils.isNotEmpty(path)) {
+            Photo queryArgs = new Photo();
+            Matcher matcher = Pattern.compile("/^https?://.*?/(blog/)?(user/\\d+/album/\\d+/\\d+/[0-9a-zA-Z_\\.]+\\.(gif|jpe?g|png|bmp|svg|ico))(\\?[\\x21-\\x7e]*)?$/").matcher(path);
+            if (matcher.find()) {
+                path = matcher.group(2);
+            }
+            queryArgs.setPath(path);
+            List<Photo> lists = albumService.findPhotoList(queryArgs, "and", 0, -1, loginUser);
+            if (lists != null && lists.size() > 0) {
+                photo = lists.get(0);
+            } else {
+                flag = 404;
+            }
+        } else {
+            flag = 400;
+        }
+        if (flag == 200 && photo != null) {
+            Album album = (Album) albumService.findAlbumInfo(new Album(photo.getAlbum_id()), loginUser).get("album");
+            albumService.raisePhotoClickCount(photo);
+            photo.setClick(photo.getClick() + 1);
+            request.setAttribute("photo", photo);
+            request.setAttribute("album", album);
+            return "/album/photo_detail";
+        } else if (flag == 401) {
+            request.setAttribute("http_code", 403);
+            return PAGE_LOGIN;
+        } else if (flag == 403) {
+            return PAGE_FORBIDDEN_ERROR;
+        } else if (flag == 404) {
+            return PAGE_NOT_FOUND_ERROR;
+        } else {
+            return PAGE_PARAM_ERROR;
+        }
     }
 
     protected void convertPhotoStatusCodeToWord(Map<String, Object> map) {

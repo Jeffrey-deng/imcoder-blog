@@ -50,7 +50,7 @@
     <div class="container-fluid">
         <div class="navbar-header">
             <div class="navbar-brand">
-                <p><a class="logo" style="color: #333;" href="<%=basePath%>">博客Blog</a></p>
+                <p><a class="logo" style="color: #333;" href="<%=basePath%>">ImCoder</a></p>
             </div>
             <button type="button" class="navbar-toggle collapsed " data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
                 <span class="sr-only">Toggle navigation</span>
@@ -115,7 +115,7 @@
                             <div class="col-sm-1">
                                 <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
                             </div>
-                            <c:if test="${ !empty loginUser && loginUser.userGroup.gid == 1 }">
+                            <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
                                 <div class="col-sm-1">
                                     <div class="coldesc"><a class="toolbar_jump_manager" href="manager.do?method=backstage" target="_blank">管理</a></div>
                                 </div>
@@ -193,10 +193,10 @@
                             <tr>
                                 <th style="text-align:center;">头像</th>
                                 <th style="text-align:center;">User ID</th>
-                                <th style="text-align:center;">用户名</th>
                                 <th style="text-align:center;">用户昵称</th>
-                                <th style="text-align:center;">注册时间</th>
-                                <th style="text-align:center;">登录IP</th>
+                                <th style="text-align:center;">用户组</th>
+                                <th style="text-align:center;">最后登录时间</th>
+                                <th style="text-align:center;">最后登录IP</th>
                                 <th style="text-align:center;">状态</th>
                             </tr>
                             </thead>
@@ -205,16 +205,16 @@
                                 <tr style="height: 50px;" uid="${user.uid}">
                                     <td><img src="<%=staticPath%>${user.head_photo}" style="width: 43px;height: 43px;"></td>
                                     <td><b>${user.uid}</b></td>
-                                    <td>${user.username}</td>
                                     <td>${user.nickname}</td>
-                                    <td><fmt:formatDate value='${user.register_time}' pattern='yyyy-MM-dd HH:mm'/></td>
+                                    <td>${user.userGroup.group_name}</td>
+                                    <td><fmt:formatDate value='${user.userStatus.last_login_time}' pattern='yyyy-MM-dd HH:mm'/></td>
                                     <td>
-                                        <c:if test="${empty  user.loginIP}">暂无IP</c:if>
-                                        <c:if test="${not empty user.loginIP}">${user.loginIP}</c:if>
+                                        <c:if test="${empty  user.userStatus.last_login_ip}">暂无IP</c:if>
+                                        <c:if test="${not empty user.userStatus.last_login_ip}">${user.userStatus.last_login_ip}</c:if>
                                     </td>
                                     <td>
-                                        <c:if test="${user.lock_status == 0}">可用</c:if>
-                                        <c:if test="${user.lock_status == 1}">
+                                        <c:if test="${user.userStatus.lock_status == 0}">可用</c:if>
+                                        <c:if test="${user.userStatus.lock_status == 1}">
                                             <div style="color:red;">冻结</div>
                                         </c:if>
                                     </td>
@@ -263,10 +263,6 @@
                         <span class="col-sm-7 col-xs-7 control-label" name="usergroup"></span>
                     </div>
                     <div class="form-group">
-                        <label class="col-sm-4 col-xs-4 control-label">用户名:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="username"></span>
-                    </div>
-                    <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">邮箱:</label>
                         <span class="col-sm-7 col-xs-7 control-label" name="email"></span>
                     </div>
@@ -289,6 +285,10 @@
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">手机:</label>
                         <span class="col-sm-7 col-xs-7 control-label" name="phone"></span>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-4 col-xs-4 control-label">主页:</label>
+                        <span class="col-sm-7 col-xs-7 control-label" name="site"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">微博:</label>
@@ -320,7 +320,11 @@
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">登录IP:</label>
-                        <a><span class="col-sm-7 col-xs-7 control-label" name="loginIP"></span></a>
+                        <a><span class="col-sm-7 col-xs-7 control-label" name="last_login_ip"></span></a>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-4 col-xs-4 control-label">登录时间:</label>
+                        <span class="col-sm-7 col-xs-7 control-label" name="last_login_time"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">账号状态:</label>

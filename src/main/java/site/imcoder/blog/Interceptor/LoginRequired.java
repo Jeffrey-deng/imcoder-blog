@@ -17,6 +17,6 @@ public @interface LoginRequired {
 
     public boolean isRedirect() default false;
 
-    public String url() default "user.do?method=jumpLogin";
+    public String url() default "auth.do?method=jumpLogin";
 
 }

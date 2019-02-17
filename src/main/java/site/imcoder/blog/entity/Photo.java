@@ -1,6 +1,10 @@
 package site.imcoder.blog.entity;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import site.imcoder.blog.controller.json.EscapeEmojiJsonDeserializer;
+import site.imcoder.blog.controller.propertyeditors.EmojiConvert;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -9,9 +13,17 @@ import java.util.Date;
  * Created by Jeffrey.Deng on 2018/1/5.
  * 照片实体类
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Photo implements Serializable {
 
     private static final long serialVersionUID = -4593648958985805003L;
+
+    public Photo() {
+    }
+
+    public Photo(int photo_id) {
+        this.photo_id = photo_id;
+    }
 
     /**
      * 照片ID
@@ -31,6 +43,8 @@ public class Photo implements Serializable {
     /**
      * 照片名字
      */
+    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
+    @EmojiConvert
     private String name;
 
     /**
@@ -41,10 +55,12 @@ public class Photo implements Serializable {
     /**
      * 照片描述
      */
+    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
+    @EmojiConvert
     private String description;
 
     /**
-     * 照片标签，已#隔开
+     * 照片标签，以#隔开
      */
     private String tags;
 
@@ -82,7 +98,24 @@ public class Photo implements Serializable {
     /**
      * 上传时的原始文件名
      */
+    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
+    @EmojiConvert
     private String originName;
+
+    /**
+     * 照片的相关链接
+     */
+    private String refer;
+
+    /**
+     * 点击量
+     */
+    private int click;
+
+    /**
+     * 排序权重
+     */
+    private int sort;
 
     public int getPhoto_id() {
         return photo_id;
@@ -195,4 +228,29 @@ public class Photo implements Serializable {
     public void setTags(String tags) {
         this.tags = tags;
     }
+
+    public String getRefer() {
+        return refer;
+    }
+
+    public void setRefer(String refer) {
+        this.refer = refer;
+    }
+
+    public int getClick() {
+        return click;
+    }
+
+    public void setClick(int click) {
+        this.click = click;
+    }
+
+    public int getSort() {
+        return sort;
+    }
+
+    public void setSort(int sort) {
+        this.sort = sort;
+    }
+
 }

@@ -73,28 +73,36 @@
                     window.open(photo_url);
                     return;
                 }
-                // Users can search exactly by special keywords in input box.
-                // input eg: tags:邓超 ， convert to "&tags=邓超"
-                // input eg: tags:邓超,album_id=5 ， convert to "&tags=邓超&album_id=5"
-                // input EL eg: path:${http://imcoder.site} ， convert to "&path=http://imcoder.site", this way can ignore keyword ":"
-                // 工具方法遍历pair_key每一个在schema中的pair，回调返回false跳出循环
-                context.utils.eachEntry(key, context.config.special_search_object.photo_schema, function (entry) {
-                    // 还原标记位被el表达式保留的value
-                    context.utils.revertELReplaceContent(entry, ["tags", "tag"]);
-                    // 修正变量名
-                    entry[0] == "desc" && (entry[0] = "description");
-                    entry[0] == "origin" && (entry[0] = "originName");
-                    entry[0] == "id" && (entry[0] = "photo_id");
-                    entry[0] == "aid" && (entry[0] = "album_id");
-                    entry[0] == "tag" && (entry[0] = "tags");
-                    entry[0] == "type" && (entry[0] = "image_type");
-                    // 转化图片路径为相对路径
-                    entry[0] == "path" && (entry[1] = entry[1].replace(context.config.path_params.cloudPath, ""));
-                    // 编码正则表达式
-                    entry[0] == "tags" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
-                    photo_url += "&" + entry[0] + "=" + entry[1];
+
+                // 如果不是直接输入的本站图片URL
+                if (!/^https?:\/\/.*?\/(blog\/)?(user\/\d+\/album\/\d+\/\d+\/[0-9a-zA-Z_\.]+\.(gif|jpe?g|png|bmp|svg|ico))(\?[\x21-\x7e]*)?$/.test(key)) {
+                    // Users can search exactly by special keywords in input box.
+                    // input eg: tags:邓超 ， convert to "&tags=邓超"
+                    // input eg: tags:邓超,album_id=5 ， convert to "&tags=邓超&album_id=5"
+                    // input EL eg: path:${http://imcoder.site} ， convert to "&path=http://imcoder.site", this way can ignore keyword ":"
+                    // 工具方法遍历pair_key每一个在schema中的pair，回调返回false跳出循环
+                    context.utils.eachEntry(key, context.config.special_search_object.photo_schema, function (entry) {
+                        // 还原标记位被el表达式保留的value
+                        context.utils.revertELReplaceContent(entry, ["tags", "tag"]);
+                        // 修正变量名
+                        entry[0] == "desc" && (entry[0] = "description");
+                        entry[0] == "origin" && (entry[0] = "originName");
+                        entry[0] == "id" && (entry[0] = "photo_id");
+                        entry[0] == "aid" && (entry[0] = "album_id");
+                        entry[0] == "tag" && (entry[0] = "tags");
+                        entry[0] == "type" && (entry[0] = "image_type");
+                        // 转化图片路径为相对路径
+                        entry[0] == "path" && (entry[1] = encodeURIComponent(
+                            entry[1].match(/^https?:\/\/.*?\/(blog\/)?(user\/\d+\/album\/\d+\/\d+\/[0-9a-zA-Z_\.]+\.(gif|jpe?g|png|bmp|svg|ico))(\?[\x21-\x7e]*)?$/) ? RegExp.$2 : entry[1]));
+                        // 编码正则表达式
+                        entry[0] == "tags" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
+                        photo_url += "&" + entry[0] + "=" + entry[1];
+                        isFindSpecial = true;
+                    });
+                } else { // 直接输入的本站图片URL则直接查找该图片
                     isFindSpecial = true;
-                });
+                    photo_url += "&path=" + encodeURIComponent(RegExp.$2)
+                }
                 if (isFindSpecial) {
                     window.open(photo_url);
                 } else if (/^[\d]+$/.test(key)) {
@@ -264,9 +272,9 @@
             e.defaultPrevented;
             var theEvent = e || window.event;
             var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
-            if (code == 13) {//keyCode=13是回车键
+            if (code == 13) {// keyCode=13是回车键
                 _self.find('.toolbar_search_trigger').click();
-                //防止触发表单提交 返回false
+                // 防止触发表单提交 返回false
                 return false;
             }
         });

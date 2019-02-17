@@ -1,0 +1,14 @@
+# ----- 工具类服务外部密钥等的配置 ---- #
+
+# -- 百度文字转语音密钥 start #
+
+#  文字转语音的百度 APP_ID
+tool_speech_token_app_id=
+
+# 文字转语音的百度 API_KE
+tool_speech_token_api_key=
+
+# 文字转语音的百度 SECRET_KEY
+tool_speech_token_secret_key=
+
+# -- 百度文字转语音密钥 end #

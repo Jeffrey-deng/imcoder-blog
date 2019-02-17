@@ -1,9 +1,11 @@
 package site.imcoder.blog.service;
 
 import org.springframework.web.multipart.MultipartFile;
-import site.imcoder.blog.entity.*;
+import site.imcoder.blog.entity.Article;
+import site.imcoder.blog.entity.Collection;
+import site.imcoder.blog.entity.User;
+import site.imcoder.blog.entity.UserSetting;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 
@@ -16,24 +18,6 @@ public interface IUserService {
      * @return flag - 200：成功，500: 失败
      */
     public int register(User user);
-
-    /**
-     * 根据ID或name email 密码 登陆用户
-     *
-     * @param user
-     * @param remember
-     * @return flag - 200：成功，400: 无参数，401：凭证错误，403：账号冻结，404：无此用户
-     * user - 用户对象
-     */
-    public Map<String, Object> login(User user, boolean remember);
-
-    /**
-     * 清除自动登录令牌
-     *
-     * @param loginUser
-     * @return flag - 200：成功，401：需要登录，404：无此用户，500: 失败
-     */
-    public int clearToken(User loginUser);
 
     /**
      * 根据ID或name email查询用户
@@ -49,7 +33,7 @@ public interface IUserService {
      *
      * @param user
      * @param loginUser
-     * @param synchronize 是否从缓存中查找
+     * @param synchronize 是否从缓存中查找，谨慎使用，安全性严重危险
      * @return
      */
     public User findUser(User user, User loginUser, boolean synchronize);
@@ -82,13 +66,24 @@ public interface IUserService {
     public int saveProfile(User user, User loginUser);
 
     /**
-     * 更新账号信息
+     * 返回用户的账户设置
      *
-     * @param user
+     * @param user      为null返回当前登陆用户，设置值时当uid与loginUser相同或loginUser为管理员时才返回
      * @param loginUser
      * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * userSetting - 用户设置
      */
-    public int updateAccount(User user, User loginUser);
+    public Map<String, Object> getUserSetting(User user, User loginUser);
+
+    /**
+     * 返回用户的账户设置
+     *
+     * @param userSetting 不设置uid时默认为当前登陆用户，当uid与loginUser相同或loginUser为管理员时才返回
+     * @param loginUser
+     * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * userSetting - 用户设置
+     */
+    public Map<String, Object> updateUserSetting(UserSetting userSetting, User loginUser);
 
     /**
      * 检查是否fansUser关注了hostUser
@@ -144,33 +139,6 @@ public interface IUserService {
     public List<User> findFriendList(User loginUser);
 
     /**
-     * 发送私信
-     *
-     * @param letter
-     * @param loginUser
-     * @return flag - 200：发送成功，401：需要登录，500: 失败
-     */
-    public int sendLetter(Letter letter, User loginUser);
-
-    /**
-     * 查询私信列表
-     *
-     * @param user
-     * @param read_status 0 未读 1全部
-     * @return
-     */
-    public List<Letter> findLetterList(User user, int read_status);
-
-    /**
-     * 查询系统消息列表
-     *
-     * @param user
-     * @param read_status 0 未读 1全部
-     * @return
-     */
-    public List<SysMsg> findSysMsgList(User user, int read_status);
-
-    /**
      * 点击了文章
      *
      * @param user
@@ -217,13 +185,13 @@ public interface IUserService {
     /**
      * 更新头像
      *
-     * @param file
-     * @param user
-     * @param fileName
-     * @param request
-     * @param map
-     * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * @param imageFile       与headPhotoPath二选一
+     * @param imageRawFile    头像的原图
+     * @param head_photo_path 设置默认头像时传入链接，不需要传file了
+     * @param loginUser
+     * @return flag - 200：成功，400: 图片为空，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * head_photo - 头像地址
      */
-    public int saveHeadPhoto(MultipartFile file, User user, String fileName, HttpServletRequest request, Map map);
+    public Map<String, Object> saveHeadPhoto(MultipartFile imageFile, MultipartFile imageRawFile, String head_photo_path, User loginUser);
 
 }

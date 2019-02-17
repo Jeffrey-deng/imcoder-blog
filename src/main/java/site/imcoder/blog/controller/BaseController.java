@@ -2,9 +2,9 @@ package site.imcoder.blog.controller;
 
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
+import site.imcoder.blog.controller.propertyeditors.EscapeEmojiEditor;
 import site.imcoder.blog.controller.propertyeditors.IntEditor;
-import site.imcoder.blog.entity.Article;
-import site.imcoder.blog.entity.User;
+import site.imcoder.blog.entity.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
@@ -60,7 +60,7 @@ public abstract class BaseController {
         User user = (User) session.getAttribute(KEY_LOGIN_USER);
         if (user == null) {
             return 401;
-        } else if (user.getUserGroup().getGid() != 1) {
+        } else if (user.getUserGroup().isGeneralUser()) {
             return 403;
         } else {
             return 200;
@@ -185,6 +185,13 @@ public abstract class BaseController {
     protected void initBinder(WebDataBinder binder) {
         //binder.registerCustomEditor(Date.class, new CustomDateEditor(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"), true));
         binder.registerCustomEditor(int.class, new IntEditor());
+        EscapeEmojiEditor escapeEmojiEditor = new EscapeEmojiEditor(); // emoji转换
+        binder.registerCustomEditor(Comment.class, escapeEmojiEditor);
+        binder.registerCustomEditor(Letter.class, escapeEmojiEditor);
+        binder.registerCustomEditor(Album.class, escapeEmojiEditor);
+        binder.registerCustomEditor(Article.class, escapeEmojiEditor);
+        binder.registerCustomEditor(Photo.class, escapeEmojiEditor);
+        binder.registerCustomEditor(Video.class, escapeEmojiEditor);
     }
 
 }

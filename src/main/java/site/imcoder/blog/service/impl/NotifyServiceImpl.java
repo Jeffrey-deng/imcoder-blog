@@ -10,12 +10,13 @@ import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.common.Callable;
 import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.common.mail.EmailUtil;
-import site.imcoder.blog.dao.ISiteDao;
+import site.imcoder.blog.common.type.CommentType;
 import site.imcoder.blog.entity.*;
+import site.imcoder.blog.service.IMessageService;
 import site.imcoder.blog.service.INotifyService;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
-import site.imcoder.blog.setting.Constants;
+import site.imcoder.blog.setting.GlobalConstants;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -44,13 +45,13 @@ public class NotifyServiceImpl implements INotifyService, WebSocketHandler {
 
     private static final String GLOBAL_WS_CALLBACK = "global_ws_callback";  // 全局事件（所有消息都响应）的KEY
 
-    private static final boolean RUN_OFFLINE_NOTIFY_WHEN_ONLINE = false; // 用户在线时是否运行离线通知，true: 同时运行，false: 当用户在线时，不执行其他方式通知
+    private static boolean RUN_OFFLINE_NOTIFY_WHEN_ONLINE = false; // 用户在线时是否运行离线通知，true: 同时运行，false: 当用户在线时，不执行其他方式通知
 
     @Resource
     private Cache cache;
 
     @Resource
-    private ISiteDao siteDao;
+    private IMessageService messageService;
 
     /**
      * 类实例化配置参数
@@ -58,41 +59,39 @@ public class NotifyServiceImpl implements INotifyService, WebSocketHandler {
     @PostConstruct
     public void init() {
         executorPool = Executors.newFixedThreadPool(Config.getInt(ConfigConstants.NOTIFYSERVICE_THREAD_NUM));
+        RUN_OFFLINE_NOTIFY_WHEN_ONLINE = Config.getBoolean(ConfigConstants.RUN_OFFLINE_NOTIFY_WHEN_ONLINE);
         if (userSessions == null) {
             userSessions = new HashSet<>();
         }
         if (onMessageCalls == null) {
             onMessageCalls = new HashMap<>();
         }
+        final WsMessage pongWs = new WsMessage("pong");
         // 注册心跳连接事件
         onmessage("ping", new Callable<WsMessage, WsMessage>() {
             @Override
             public WsMessage call(WsMessage wsMessage) throws Exception {
-                return new WsMessage("ping");
+                return pongWs;
             }
         });
-        // 注册返回WebSocket状态事件
-        onmessage("status", new Callable<WsMessage, WsMessage>() {
+        // 注册用户打开页面的信息
+        onmessage("page_info", new Callable<WsMessage, WsMessage>() {
             @Override
             public WsMessage call(WsMessage wsMessage) throws Exception {
-                User loginUser = wsMessage.getUser();
-                if (loginUser != null && loginUser.getUserGroup().getGid() == 1) {  // 仅管理员响应
-                    Map<Integer, User> users = new HashMap<>();  // 返回WebSocket状态
-                    for (WebSocketSession wss : userSessions) {
-                        User u = getLoginUser(wss);
-                        if (u != null && !users.containsKey(u.getUid())) {
-                            users.put(u.getUid(), cache.cloneUser(u));
-                        }
+                WebSocketSession webSocketSession = wsMessage.getWebSocketSession();
+                Map<String, Object> attributes = webSocketSession.getAttributes();
+                if (attributes != null) {
+                    Map page = new HashMap();
+                    page.put("title", wsMessage.getMetadata("title"));
+                    page.put("href", wsMessage.getMetadata("href"));
+                    page.put("openTime", wsMessage.getMetadata("openTime"));
+                    User loginUser = wsMessage.getUser();
+                    if (loginUser != null) {
+                        page.put("user", new User(loginUser.getUid(), loginUser.getNickname()));
                     }
-                    users.remove(null);
-                    WsMessage statusMessage = new WsMessage("status");
-                    statusMessage.setMetadata("users", users.values());
-                    statusMessage.setMetadata("uv", users.size());
-                    statusMessage.setMetadata("pv", userSessions.size());
-                    return statusMessage;
-                } else {
-                    return null;
+                    attributes.put("page_info", page);
                 }
+                return null;
             }
         });
         logger.info("NotifyService 线程池初始化");
@@ -152,8 +151,8 @@ public class NotifyServiceImpl implements INotifyService, WebSocketHandler {
                 if (managers != null && managers.size() > 0) {
                     managerUrl += ("&chatuid=" + managers.get(0).getUid());
                 }
-                String emailContent = formatContent(user.getNickname(), "博客注册成功！此邮箱可以在忘记密码后，用于找回密码、重置密码！还会用来做未读消息提醒！", "<a href='" + siteHost + "/user.do?method=home&uid=" + user.getUid() + "' target='_blank' style='text-decoration:none;' >Welcome</a>", "如果不想再接收此类消息可以在个人中心设置页设置。<br>联系我：<a href='" + managerUrl + "' style='text-decoration:none;color:#259;border:none;outline:none;'>站内信</a>");
-                sendEmail(user.getEmail(), user.getUsername() + " ，博客注册成功！ - ", emailContent);
+                String emailContent = formatContent(user.getNickname(), "博客注册成功！此邮箱可以在忘记密码后，用于找回密码、重置密码！还会用来做未读消息提醒！", "<a href='" + siteHost + "/user.do?method=home&uid=" + user.getUid() + "' target='_blank' style='text-decoration:none;' >Welcome</a>", "如果不想再接收此类消息可以在<a target=\"_blank\" href=\"" + Config.get(ConfigConstants.SITE_ADDR) + "user.do?method=profilecenter&action=settings\" style=\"text-decoration:none;\">个人中心设置页</a>设置。<br>联系我：<a href='" + managerUrl + "' style='text-decoration:none;color:#259;border:none;outline:none;'>站内信</a>");
+                sendEmail(user.getEmail(), user.getNickname() + " ，博客注册成功！ - ", emailContent);
             }
         });
     }
@@ -175,7 +174,7 @@ public class NotifyServiceImpl implements INotifyService, WebSocketHandler {
                 pushWsMessage(managers, wsMessage);
                 for (User manager : managers) {
                     // 邮件
-                    String emailContent = formatContent(manager.getNickname(), "有新的用户注册博客", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/user.do?method=home&uid=" + newUser.getUid() + "' target='_blank' style='text-decoration:none;' >" + newUser.getNickname() + "</a>", "如果不想再接收此类消息可以在个人中心设置页设置。");
+                    String emailContent = formatContent(manager.getNickname(), "有新的用户注册博客", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/user.do?method=home&uid=" + newUser.getUid() + "' target='_blank' style='text-decoration:none;' >" + newUser.getNickname() + "</a>", "如果不想再接收此类消息可以在<a target=\"_blank\" href=\"" + Config.get(ConfigConstants.SITE_ADDR) + "user.do?method=profilecenter&action=settings\" style=\"text-decoration:none;\">个人中心设置页</a>设置。");
                     sendEmail(manager.getEmail(), "新的用户注册：" + newUser.getNickname(), emailContent);
                 }
             }
@@ -200,63 +199,156 @@ public class NotifyServiceImpl implements INotifyService, WebSocketHandler {
                 wsMessage.setMetadata("letter", letter);
                 wsMessage.setMetadata("user", sendUser);
                 if (!pushWsMessage(user, wsMessage) || RUN_OFFLINE_NOTIFY_WHEN_ONLINE) { // when not login
-                    // mail
-                    String emailContent = formatContent(user.getNickname(), "你有一条新私信！ 来自 <b>\"" + sendUser.getNickname() + "\"</b>", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/user.do?method=profilecenter&action=sendLetter&chatuid=" + sendUser.getUid() + "' target='_blank' style='text-decoration:none;' >点击此处查看</a>", "如果不想再接收此类消息可以在个人中心设置页设置。");
-                    sendEmail(user.getEmail(), "你有一条新私信！来自" + sendUser.getNickname(), emailContent);
+                    if (user.getUserSetting().isEnableReceiveNotifyEmail()) {
+                        // mail
+                        String emailContent = formatContent(user.getNickname(), "你有一条新私信！ 来自 <b>\"" + sendUser.getNickname() + "\"</b>", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/user.do?method=profilecenter&action=sendLetter&chatuid=" + sendUser.getUid() + "' target='_blank' style='text-decoration:none;' >点击此处查看</a>", "如果不想再接收此类消息可以在<a target=\"_blank\" href=\"" + Config.get(ConfigConstants.SITE_ADDR) + "user.do?method=profilecenter&action=settings\" style=\"text-decoration:none;\">个人中心设置页</a>设置。");
+                        sendEmail(user.getEmail(), "你有一条新私信！来自" + sendUser.getNickname(), emailContent);
+                    }
                 }
             }
         });
     }
 
+
     /**
      * 收到评论提醒通知
      *
      * @param comment
+     * @param replyUid 父类评论的用户id(parentId为0时设置主体对象的作者id)
+     * @param object   评论主体的对象（article?photo?video?）
      */
-    public void receivedComment(final Comment comment) {
+    public void receivedComment(Comment comment, int replyUid, Object object) {
         executorPool.execute(new Runnable() {
             @Override
             public void run() {
                 Thread.currentThread().setName("Thread-NotifyServicePool-receivedComment");
-                Article article = cache.getArticle(comment.getAid(), Cache.READ);
-                User author = cache.getUser(article.getAuthor().getUid(), Cache.READ);
-                User sendUser = comment.getUser();
-                //自己给自己回复则不发信
+                User sendUser = null;
+                if (!comment.typeOfAnonymous()) {
+                    sendUser = cache.cloneSafetyUser(comment.getUser());
+                    comment.setUser(sendUser);
+                } else {
+                    sendUser = comment.getUser();
+                }
+                //自己给自己回复则不发信，发的匿名信则都发送
                 //由于Parentid=0时，replyuid会被设置为作者id 所以只需要此判断足以
-                if (sendUser.getUid() != comment.getReplyuid()) {
-                    // 如果评论是直接回复文章 且 给文章作者发送一封信
-                    if (comment.getParentid() == 0) {
-                        // WebSocket
-                        WsMessage wsMessage = new WsMessage("receive_comment", "你的文章 \"" + article.getTitle() + "\" " + sendUser.getNickname() + " 发表了评论~");
-                        comment.setUser(cache.cloneSafetyUser(comment.getUser()));
-                        wsMessage.setMetadata("comment", comment);
-                        wsMessage.setMetadata("article", article);
-                        if (!pushWsMessage(author, wsMessage) || RUN_OFFLINE_NOTIFY_WHEN_ONLINE) { // when not login
-                            // 发送系统通知
-                            String message = author.getNickname() + "你好，你收到了一条来自 " + sendUser.getNickname() + " 评论! ：<a style=\"color:#18a689;\" href=\"article.do?method=detail&aid=" + comment.getAid() + "#comments\" target=\"_blank\" >点击查看</a>";
-                            SysMsg sysMsg = new SysMsg(author.getUid(), message, new Date().getTime(), 0);
-                            sendSystemMessage(sysMsg);
-                            // mail
-                            String emailContent = formatContent(author.getNickname(), "<b>\"" + sendUser.getNickname() + "\"</b> 对你的文章 <b>\"" + article.getTitle() + "\"</b> 发表了一条评论！", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/article.do?method=detail&aid=" + comment.getAid() + "#comments' target='_blank' style='text-decoration:none;' >点击此处查看</a>", "如果不想再接收此类消息可以在个人中心设置页设置。");
-                            sendEmail(author.getEmail(), "你的文章 \"" + article.getTitle() + "\" " + sendUser.getNickname() + " 发表了评论~", emailContent);
-                        }
-                    } else if (comment.getParentid() > 0) {
-                        // 如果是回复的评论，则给replyUser发送一封邮件
-                        User replyUser = cache.getUser(comment.getReplyuid(), Cache.READ);
-                        // WebSocket
-                        WsMessage wsMessage = new WsMessage("receive_comment", "\"" + sendUser.getNickname() + "\" 回复了你的评论！");
-                        comment.setUser(cache.cloneSafetyUser(sendUser));
-                        wsMessage.setMetadata("comment", comment);
-                        wsMessage.setMetadata("article", article);
-                        if (!pushWsMessage(replyUser, wsMessage) || RUN_OFFLINE_NOTIFY_WHEN_ONLINE) { // when not login
-                            // 发送系统通知
-                            String message = replyUser.getNickname() + "你好，<b>\"" + sendUser.getNickname() + "\"</b> 回复了你的评论! ：<a style=\"color:#18a689;\" href=\"article.do?method=detail&aid=" + comment.getAid() + "#comments\" target=\"_blank\" >点击查看</a>";
-                            SysMsg sysMsg = new SysMsg(replyUser.getUid(), message, new Date().getTime(), 0);
-                            sendSystemMessage(sysMsg);
-                            // 邮件
-                            String emailContent = formatContent(replyUser.getNickname(), "<b>\"" + sendUser.getNickname() + "\"</b> 回复了你在 <b>\"" + article.getTitle() + "\"</b> 的评论！", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/article.do?method=detail&aid=" + comment.getAid() + "#comments' target='_blank' style='text-decoration:none;' >点击此处查看</a>", "如果不想再接收此类消息可以在个人中心设置页设置。");
-                            sendEmail(replyUser.getEmail(), "\"" + sendUser.getNickname() + "\" 回复了你的评论！", emailContent);
-                        }
+                if (comment.typeOfAnonymous() || (sendUser.getUid() != replyUid)) {
+                    // 接收通知的对象
+                    User replyUser = cache.getUser(replyUid, Cache.READ);
+                    // 根据评论主体类型mainType进行分别操作
+                    CommentType commentType = CommentType.valueOfName(comment.getMainType());
+                    switch (commentType) {
+                        case ARTICLE:   // 文章
+                            Article article = (Article) object;
+                            // 如果评论是直接回复文章 且 给文章作者发送一封信
+                            if (comment.getParentId() == 0) {
+                                // WebSocket
+                                WsMessage wsMessage = new WsMessage("receive_comment", "你的文章 \"" + article.getTitle() + "\" " + sendUser.getNickname() + " 发表了评论~");
+                                wsMessage.setMetadata("comment", comment);
+                                wsMessage.setMetadata("article", article);
+                                if (!pushWsMessage(replyUser, wsMessage) || RUN_OFFLINE_NOTIFY_WHEN_ONLINE) { // when not login
+                                    // 发送系统通知
+                                    String message = replyUser.getNickname() + "你好，你收到了一条来自 " + sendUser.getNickname() + " 评论! ：<a style=\"color:#18a689;\" href=\"article.do?method=detail&aid=" + comment.getMainId() + "#comment_" + comment.getCid() + "\" target=\"_blank\" >点击查看</a>";
+                                    SysMsg sysMsg = new SysMsg(replyUser.getUid(), message, new Date().getTime(), 0);
+                                    sendSystemMessage(sysMsg);
+                                    // mail
+                                    if (replyUser.getUserSetting().isEnableReceiveNotifyEmail()) {
+                                        String emailContent = formatContent(replyUser.getNickname(), "<b>\"" + sendUser.getNickname() + "\"</b> 对你的文章 <b>\"" + article.getTitle() + "\"</b> 发表了一条评论！", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/article.do?method=detail&aid=" + comment.getMainId() + "#comment_" + comment.getCid() + "' target='_blank' style='text-decoration:none;' >点击此处查看</a>", "如果不想再接收此类消息可以在<a target=\"_blank\" href=\"" + Config.get(ConfigConstants.SITE_ADDR) + "user.do?method=profilecenter&action=settings\" style=\"text-decoration:none;\">个人中心设置页</a>设置。");
+                                        sendEmail(replyUser.getEmail(), "你的文章 \"" + article.getTitle() + "\" " + sendUser.getNickname() + " 发表了评论~", emailContent);
+                                    }
+                                }
+                            } else if (comment.getParentId() > 0) {
+                                // 如果是回复的评论，则给replyUser发送一封邮件
+                                // WebSocket
+                                WsMessage wsMessage = new WsMessage("receive_comment", "\"" + sendUser.getNickname() + "\" 回复了你的评论！");
+                                wsMessage.setMetadata("comment", comment);
+                                wsMessage.setMetadata("article", article);
+                                if (!pushWsMessage(replyUser, wsMessage) || RUN_OFFLINE_NOTIFY_WHEN_ONLINE) { // when not login
+                                    // 发送系统通知
+                                    String message = replyUser.getNickname() + "你好，<b>\"" + sendUser.getNickname() + "\"</b> 回复了你的评论! ：<a style=\"color:#18a689;\" href=\"article.do?method=detail&aid=" + comment.getMainId() + "#comment_" + comment.getCid() + "\" target=\"_blank\" >点击查看</a>";
+                                    SysMsg sysMsg = new SysMsg(replyUser.getUid(), message, new Date().getTime(), 0);
+                                    sendSystemMessage(sysMsg);
+                                    // 邮件
+                                    if (replyUser.getUserSetting().isEnableReceiveNotifyEmail()) {
+                                        String emailContent = formatContent(replyUser.getNickname(), "<b>\"" + sendUser.getNickname() + "\"</b> 回复了你在 <b>\"" + article.getTitle() + "\"</b> 的评论！", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/article.do?method=detail&aid=" + comment.getMainId() + "#comment" + comment.getCid() + "' target='_blank' style='text-decoration:none;' >点击此处查看</a>", "如果不想再接收此类消息可以在<a target=\"_blank\" href=\"" + Config.get(ConfigConstants.SITE_ADDR) + "user.do?method=profilecenter&action=settings\" style=\"text-decoration:none;\">个人中心设置页</a>设置。");
+                                        sendEmail(replyUser.getEmail(), "\"" + sendUser.getNickname() + "\" 回复了你的评论！", emailContent);
+                                    }
+                                }
+                            }
+                            break;
+                        case PHOTO: // 照片
+                            Photo photo = (Photo) object;
+                            if (comment.getParentId() == 0) {
+                                // WebSocket
+                                WsMessage wsMessage = new WsMessage("receive_comment", "你的照片 \"" + photo.getPhoto_id() + "\" " + sendUser.getNickname() + " 发表了评论~");
+                                wsMessage.setMetadata("comment", comment);
+                                wsMessage.setMetadata("photo", photo);
+                                if (!pushWsMessage(replyUser, wsMessage) || RUN_OFFLINE_NOTIFY_WHEN_ONLINE) { // when not login
+                                    // 发送系统通知
+                                    String message = replyUser.getNickname() + "你好，你收到了一条来自 " + sendUser.getNickname() + " 评论! ：<a style=\"color:#18a689;\" href=\"photo.do?method=detail&id=" + comment.getMainId() + "#comment_" + comment.getCid() + "\" target=\"_blank\" >点击查看</a>";
+                                    SysMsg sysMsg = new SysMsg(replyUser.getUid(), message, new Date().getTime(), 0);
+                                    sendSystemMessage(sysMsg);
+                                    // mail
+                                    if (replyUser.getUserSetting().isEnableReceiveNotifyEmail()) {
+                                        String emailContent = formatContent(replyUser.getNickname(), "<b>\"" + sendUser.getNickname() + "\"</b> 对你的照片 <b>\"" + photo.getPhoto_id() + "\"</b> 发表了一条评论！", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/photo.do?method=detail&id=" + comment.getMainId() + "#comment_" + comment.getCid() + "' target='_blank' style='text-decoration:none;' >点击此处查看</a>", "如果不想再接收此类消息可以在<a target=\"_blank\" href=\"" + Config.get(ConfigConstants.SITE_ADDR) + "user.do?method=profilecenter&action=settings\" style=\"text-decoration:none;\">个人中心设置页</a>设置。");
+                                        sendEmail(replyUser.getEmail(), "你的照片 \"" + photo.getPhoto_id() + "\" " + sendUser.getNickname() + " 发表了评论~", emailContent);
+                                    }
+                                }
+                            } else {
+                                // WebSocket
+                                WsMessage wsMessage = new WsMessage("receive_comment", "\"" + sendUser.getNickname() + "\" 回复了你的评论！");
+                                wsMessage.setMetadata("comment", comment);
+                                wsMessage.setMetadata("photo", photo);
+                                if (!pushWsMessage(replyUser, wsMessage) || RUN_OFFLINE_NOTIFY_WHEN_ONLINE) { // when not login
+                                    // 发送系统通知
+                                    String message = replyUser.getNickname() + "你好，<b>\"" + sendUser.getNickname() + "\"</b> 回复了你的评论! ：<a style=\"color:#18a689;\" href=\"photo.do?method=detail&id=" + comment.getMainId() + "#comment_" + comment.getCid() + "\" target=\"_blank\" >点击查看</a>";
+                                    SysMsg sysMsg = new SysMsg(replyUser.getUid(), message, new Date().getTime(), 0);
+                                    sendSystemMessage(sysMsg);
+                                    // 邮件
+                                    if (replyUser.getUserSetting().isEnableReceiveNotifyEmail()) {
+                                        String emailContent = formatContent(replyUser.getNickname(), "<b>\"" + sendUser.getNickname() + "\"</b> 回复了你的评论！", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/photo.do?method=detail&id=" + comment.getMainId() + "#comment" + comment.getCid() + "' target='_blank' style='text-decoration:none;' >点击此处查看</a>", "如果不想再接收此类消息可以在<a target=\"_blank\" href=\"" + Config.get(ConfigConstants.SITE_ADDR) + "user.do?method=profilecenter&action=settings\" style=\"text-decoration:none;\">个人中心设置页</a>设置。");
+                                        sendEmail(replyUser.getEmail(), "\"" + sendUser.getNickname() + "\" 回复了你的评论！", emailContent);
+                                    }
+                                }
+                            }
+                            break;
+                        case VIDEO: // 视频
+                            Video video = (Video) object;
+                            if (comment.getParentId() == 0) {
+                                // WebSocket
+                                WsMessage wsMessage = new WsMessage("receive_comment", "你的视频 \"" + video.getVideo_id() + "\" " + sendUser.getNickname() + " 发表了评论~");
+                                wsMessage.setMetadata("comment", comment);
+                                wsMessage.setMetadata("video", video);
+                                if (!pushWsMessage(replyUser, wsMessage) || RUN_OFFLINE_NOTIFY_WHEN_ONLINE) { // when not login
+                                    // 发送系统通知
+                                    String message = replyUser.getNickname() + "你好，你收到了一条来自 " + sendUser.getNickname() + " 评论! ：<a style=\"color:#18a689;\" href=\"video.do?method=detail&id=" + comment.getMainId() + "#comment_" + comment.getCid() + "\" target=\"_blank\" >点击查看</a>";
+                                    SysMsg sysMsg = new SysMsg(replyUser.getUid(), message, new Date().getTime(), 0);
+                                    sendSystemMessage(sysMsg);
+                                    // mail
+                                    if (replyUser.getUserSetting().isEnableReceiveNotifyEmail()) {
+                                        String emailContent = formatContent(replyUser.getNickname(), "<b>\"" + sendUser.getNickname() + "\"</b> 对你的视频 <b>\"" + video.getVideo_id() + "\"</b> 发表了一条评论！", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/video.do?method=detail&id=" + comment.getMainId() + "#comment_" + comment.getCid() + "' target='_blank' style='text-decoration:none;' >点击此处查看</a>", "如果不想再接收此类消息可以在<a target=\"_blank\" href=\"" + Config.get(ConfigConstants.SITE_ADDR) + "user.do?method=profilecenter&action=settings\" style=\"text-decoration:none;\">个人中心设置页</a>设置。");
+                                        sendEmail(replyUser.getEmail(), "你的视频 \"" + video.getVideo_id() + "\" " + sendUser.getNickname() + " 发表了评论~", emailContent);
+                                    }
+                                }
+                            } else {
+                                // WebSocket
+                                WsMessage wsMessage = new WsMessage("receive_comment", "\"" + sendUser.getNickname() + "\" 回复了你的评论！");
+                                wsMessage.setMetadata("comment", comment);
+                                wsMessage.setMetadata("video", video);
+                                if (!pushWsMessage(replyUser, wsMessage) || RUN_OFFLINE_NOTIFY_WHEN_ONLINE) { // when not login
+                                    // 发送系统通知
+                                    String message = replyUser.getNickname() + "你好，<b>\"" + sendUser.getNickname() + "\"</b> 回复了你的评论! ：<a style=\"color:#18a689;\" href=\"video.do?method=detail&id=" + comment.getMainId() + "#comment_" + comment.getCid() + "\" target=\"_blank\" >点击查看</a>";
+                                    SysMsg sysMsg = new SysMsg(replyUser.getUid(), message, new Date().getTime(), 0);
+                                    sendSystemMessage(sysMsg);
+                                    // 邮件
+                                    if (replyUser.getUserSetting().isEnableReceiveNotifyEmail()) {
+                                        String emailContent = formatContent(replyUser.getNickname(), "<b>\"" + sendUser.getNickname() + "\"</b> 回复了你的评论！", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/video.do?method=detail&id=" + comment.getMainId() + "#comment" + comment.getCid() + "' target='_blank' style='text-decoration:none;' >点击此处查看</a>", "如果不想再接收此类消息可以在<a target=\"_blank\" href=\"" + Config.get(ConfigConstants.SITE_ADDR) + "user.do?method=profilecenter&action=settings\" style=\"text-decoration:none;\">个人中心设置页</a>设置。");
+                                        sendEmail(replyUser.getEmail(), "\"" + sendUser.getNickname() + "\" 回复了你的评论！", emailContent);
+                                    }
+                                }
+                            }
+                            break;
+                        default:
+                            break;
                     }
                 }
             }
@@ -266,14 +358,15 @@ public class NotifyServiceImpl implements INotifyService, WebSocketHandler {
     /**
      * 新的关注者提醒通知
      *
-     * @param user
+     * @param hostUser
      * @param fan
      */
-    public void theNewFollower(final User user, final User fan, final boolean isFriend) {
+    public void theNewFollower(final User hostUser, final User fan, final boolean isFriend) {
         executorPool.execute(new Runnable() {
             @Override
             public void run() {
                 Thread.currentThread().setName("Thread-NotifyServicePool-theNewFollower");
+                User user = cache.getUser(hostUser.getUid(), Cache.READ);
                 // WebSocket
                 WsMessage wsMessage = new WsMessage("new_follower", "用户 " + fan.getNickname() + " 关注了你~");
                 wsMessage.setMetadata("user", cache.cloneSafetyUser(fan));
@@ -284,8 +377,10 @@ public class NotifyServiceImpl implements INotifyService, WebSocketHandler {
                     SysMsg sysMsg = new SysMsg(user.getUid(), message, new Date().getTime(), 0);
                     sendSystemMessage(sysMsg);
                     // 邮件
-                    String emailContent = formatContent(user.getNickname(), "以下用户刚刚关注了你", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/user.do?method=home&uid=" + fan.getUid() + "' target='_blank' style='text-decoration:none;' >" + fan.getNickname() + "</a>" + (isFriend ? "，由于相互关注你们成为了好友。" : ""), "如果不想再接收此类消息可以在个人中心设置页设置。");
-                    sendEmail(user.getEmail(), "有新的用户 " + fan.getNickname() + " 关注了你！", emailContent);
+                    if (user.getUserSetting().isEnableReceiveNotifyEmail()) {
+                        String emailContent = formatContent(user.getNickname(), "以下用户刚刚关注了你", "<a href='" + Config.get(ConfigConstants.SITE_ADDR) + "/user.do?method=home&uid=" + fan.getUid() + "' target='_blank' style='text-decoration:none;' >" + fan.getNickname() + "</a>" + (isFriend ? "，由于相互关注你们成为了好友。" : ""), "如果不想再接收此类消息可以在<a target=\"_blank\" href=\"" + Config.get(ConfigConstants.SITE_ADDR) + "user.do?method=profilecenter&action=settings\" style=\"text-decoration:none;\">个人中心设置页</a>设置。");
+                        sendEmail(user.getEmail(), "有新的用户 " + fan.getNickname() + " 关注了你！", emailContent);
+                    }
                 }
             }
         });
@@ -354,19 +449,8 @@ public class NotifyServiceImpl implements INotifyService, WebSocketHandler {
      * @param sysMsg
      * @return flag - 200：成功，500: 失败
      */
-    public int sendSystemMessage(SysMsg sysMsg) {
-        return siteDao.saveSystemMessage(sysMsg) > 0 ? 200 : 500;
-    }
-
-    /**
-     * 清除系统消息未读状态
-     *
-     * @param smIdList
-     * @return flag - 200：成功，404：未影响到行，500: 失败
-     */
-    public int updateSystemMessageStatus(List<Integer> smIdList) {
-        return convertRowToHttpCode(siteDao.updateSystemMessageStatus(smIdList));
-
+    private int sendSystemMessage(SysMsg sysMsg) {
+        return messageService.sendSystemMessage(sysMsg);
     }
 
     private String formatContent(String username, String startMsg, String code, String endMsg) {
@@ -415,9 +499,10 @@ public class NotifyServiceImpl implements INotifyService, WebSocketHandler {
                 return;
             }
             ObjectMapper mapper = new ObjectMapper();
-            // objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            // mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
             WsMessage wsMessage = mapper.readValue(jsonText, WsMessage.class);
             wsMessage.setUser(loginUser);   // 该请求的用户
+            wsMessage.setWebSocketSession(webSocketSession);   // 该请求的WebSocketSession
             if (loginUser != null) {
                 if (Utils.isBlank(wsMessage.getMapping())) {
                     return;
@@ -454,7 +539,14 @@ public class NotifyServiceImpl implements INotifyService, WebSocketHandler {
 
     @Override
     public void handleTransportError(WebSocketSession webSocketSession, Throwable throwable) throws Exception {
-        logger.error("ws: find exception: " + throwable);
+        String info = throwable.toString();
+        if (info != null && info.startsWith("java.io.EOFException")) {
+            if (logger.isDebugEnabled()) {
+                logger.warn("ws: find exception: " + info);
+            }
+        } else {
+            logger.error("ws: find exception: " + info);
+        }
     }
 
     @Override
@@ -475,7 +567,7 @@ public class NotifyServiceImpl implements INotifyService, WebSocketHandler {
 
     private User getLoginUser(WebSocketSession webSocketSession) {
         if (webSocketSession != null && webSocketSession.getAttributes() != null) {
-            return (User) (webSocketSession.getAttributes().get(Constants.LOGIN_USER_KEY));
+            return (User) (webSocketSession.getAttributes().get(GlobalConstants.LOGIN_USER_KEY));
         } else {
             return null;
         }
@@ -571,6 +663,16 @@ public class NotifyServiceImpl implements INotifyService, WebSocketHandler {
             onMessageCalls.put(mapping, new ArrayList<>());
         }
         onMessageCalls.get(mapping).add(callback);
+    }
+
+    /**
+     * 得到用户所有实时通信session
+     *
+     * @return
+     */
+    @Override
+    public <T> Set<T> getAllPushSessions() {
+        return (Set<T>) userSessions;
     }
 
 }

@@ -30,7 +30,6 @@ public class EventTriggerImpl implements IEventTrigger {
     public void clickArticle(User user, Article article) {
         if (article != null) {
             cache.updateArticleClick(article, 1);
-
             cache.siteBuffer.put("articleViewCount", (Integer) cache.siteBuffer.get("articleViewCount") + 1);
         }
     }
@@ -64,7 +63,7 @@ public class EventTriggerImpl implements IEventTrigger {
     public void addComment(Comment comment) {
         if (comment != null) {
             Article article = new Article();
-            article.setAid(comment.getAid());
+            article.setAid(comment.getMainId());
             cache.updateArticleComment(article, 1);
         }
     }
@@ -78,7 +77,7 @@ public class EventTriggerImpl implements IEventTrigger {
     public void deleteComment(Comment comment) {
         if (comment != null) {
             Article article = new Article();
-            article.setAid(comment.getAid());
+            article.setAid(comment.getMainId());
             cache.updateArticleComment(article, -1);
         }
     }
@@ -193,7 +192,7 @@ public class EventTriggerImpl implements IEventTrigger {
 
             article.setDetail("");
             User author = article.getAuthor();
-            User simpleAuthor = new User(author.getUid(), author.getUsername(), author.getNickname());
+            User simpleAuthor = new User(author.getUid(), author.getNickname());
             article.setAuthor(simpleAuthor);
             cache.updateArticle(article, user);
 

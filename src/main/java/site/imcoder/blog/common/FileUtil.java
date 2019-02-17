@@ -229,4 +229,37 @@ public class FileUtil {
         return compareMD5Value(other, getMD5Value(one));
     }
 
+    public static void copy(InputStream inputStream, String outputFilePath) throws IOException {
+        FileOutputStream outputStream = new FileOutputStream(outputFilePath);
+        copy(inputStream, outputStream);
+    }
+
+    public static void copy(InputStream inputStream, File outputFile) throws IOException {
+        FileOutputStream outputStream = new FileOutputStream(outputFile);
+        copy(inputStream, outputStream);
+    }
+
+    public static void copy(InputStream inputStream, OutputStream outputStream) throws IOException {
+        byte[] buff = new byte[16384];
+        int len = 0;
+        try {
+            while ((len = inputStream.read(buff)) != -1) {
+                outputStream.write(buff, 0, len);
+            }
+        } catch (IOException e) {
+            throw e;
+        } finally {
+            try {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 }

@@ -14,7 +14,6 @@ import site.imcoder.blog.Interceptor.LoginRequired;
 import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.Category;
-import site.imcoder.blog.entity.Comment;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.service.IArticleService;
 import site.imcoder.blog.service.IUserService;
@@ -62,6 +61,19 @@ public class ArticleController extends BaseController {
             mv.setViewName(PAGE_NOT_FOUND_ERROR);
         }
         return mv;
+    }
+
+    /**
+     * 得到文章上传的配置信息
+     *
+     * @param session
+     * @return
+     */
+    @RequestMapping(params = "method=getCreateConfigInfo")
+    @ResponseBody
+    public Map<String, Object> getCreateConfigInfo(HttpSession session) {
+        User loginUser = getLoginUser(session);
+        return articleService.getCreateConfigInfo(loginUser);
     }
 
     /**
@@ -254,44 +266,6 @@ public class ArticleController extends BaseController {
     public List<Article> list(Article condition, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
         return articleService.list(condition, loginUser);
-    }
-
-    //添加评论
-    @LoginRequired
-    @RequestMapping(params = "method=addComment")
-    @ResponseBody
-    public Map<String, Object> addComment(Comment comment, HttpSession session) {
-        User loginUser = (User) session.getAttribute("loginUser");
-        Map<String, Object> map = articleService.addComment(comment, loginUser);
-        int flag = (int) map.get(KEY_STATUS);
-        if (flag != 200) {
-            map.put("comment", null);
-        }
-        convertStatusCodeToWord(map);
-        return map;
-    }
-
-    /**
-     * 请求评论列表
-     */
-    @RequestMapping(params = "method=listComment")
-    @ResponseBody
-    public List<Comment> listComment(int aid) {
-        List<Comment> commentList = articleService.findCommentList(aid);
-        return commentList;
-    }
-
-    //删除评论
-    @LoginRequired
-    @RequestMapping(params = "method=deleteComment")
-    @ResponseBody
-    public Map<String, Object> deleteComment(Comment comment, HttpSession session) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        User loginUser = (User) session.getAttribute("loginUser");
-        int flag = articleService.deleteComment(comment, loginUser);
-        map.put(KEY_STATUS, flag);
-        convertStatusCodeToWord(map);
-        return map;
     }
 
     /**

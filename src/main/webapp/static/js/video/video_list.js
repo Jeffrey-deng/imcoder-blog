@@ -118,7 +118,7 @@
                     return false;
                 },
                 "actionForEditPhoto": function (photo) {
-                    video_handle.openUpdateVideoModal(photo.photo_id);
+                    video_handle.openUpdateVideoModal({"cover_id": photo.photo_id});
                 }
             }
         });
@@ -138,14 +138,79 @@
                     album_photo_page_handle.utils.appendPhotoToPage(video.cover);
                     album_photo_page_handle.jumpPage(album_photo_page_handle.utils.calcPageCount());
                 },
+                "updateCompleted": function (context, video) {  // 更新完成后回调
+                    var object = $.extend(true, {}, album_photo_page_handle.config.load_condition);
+                    delete object.method;
+                    object.query_size = album_photo_page_handle.config.query_size;
+                    object.query_start = album_photo_page_handle.config.query_start;
+                    $.get("photo.do?method=photoListByAjax", object, function (data) {
+                        common_utils.removeNotify("notify_photos_loading");
+                        if (data.flag == 200) {
+                            var album = {};
+                            album.photos = data.photos || [];
+                            album.size = data.photos ? data.photos.length : 0;
+                            album.show_col = 0;
+                            album_photo_page_handle.pointer.album = album;
+                            album_photo_page_handle.jumpPage(album_photo_page_handle.config.page_params.pageNum);
+                        }
+                    });
+                },
+                "beforeUploadModalOpen": function (context, uploadModal, openUploadModal_callback) {  // 上传窗口打开前回调
+                    // 加载上传参数及配置，判断该用户是否允许上传
+                    $.get("video.do?method=getUploadConfigInfo", function (data) {
+                        if (data && data.flag == 200) {
+                            delete data.flag;
+                            video_handle.config.uploadConfigInfo = data;
+                            video_handle.config.maxUploadSize = data.uploadArgs.maxVideoUploadSize;
+                            if (!video_handle.config.uploadConfigInfo || video_handle.config.uploadConfigInfo.isAllowUpload) {
+                                // 允许上传才打开上传按钮
+                                video_handle.pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
+                                common_utils.removeNotify("notify-no-allow-upload");
+                            } else {
+                                var users = null;
+                                var lowestLevel = video_handle.config.uploadConfigInfo.allowUploadLowestLevel;
+                                if (lowestLevel == 1) {
+                                    users = "高级会员与管理员";
+                                } else if (lowestLevel == -1) {
+                                    users = "管理员";
+                                }
+                                common_utils.notify({timeOut: 0}).info("系统当前配置为只允许 <b>" + users + "</b> 上传视频", "您暂时不能上传", "notify-no-allow-upload");
+                                // 禁用上传按钮
+                                video_handle.pointer.uploadModal.find('button[name="uploadVideo_trigger"]').attr("disabled", "disabled");
+                            }
+                        } else {
+                            toastr.error("加载上传配置失败", "错误");
+                        }
+                    });
+                    // 加载相册列表
+                    var hostUser = context.config.hostUser;
+                    context.loadAlbums(hostUser, function (data) {
+                        openUploadModal_callback(data.albums);
+                    });
+                },
                 "beforeUpdateModalOpen": function (context, updateModal, formatVideoToModal_callback, video) {  // 更新窗口打开前回调
-                    // 从相册视频插件打开时
-                    if (typeof video == "object") {
-                        formatVideoToModal_callback(video);
+                    // 如果openUpdateVideoModal传入的参数为video对象，直接使用
+                    if (typeof video == "object" && video.video_id) {
+                        if (login_handle.equalsLoginUser(video.user.uid)) {
+                            context.loadAlbums(video.user.uid, function (data) {
+                                formatVideoToModal_callback(video, data.albums);
+                            });
+                        } else {
+                            formatVideoToModal_callback(video);
+                        }
+                        // 如果传入的参数为video_id，异步获取video对象
                     } else {
-                        // 拖拽打开时
-                        this.loadVideo({"cover_id": video}, function (data) {
-                            formatVideoToModal_callback(data.video);
+                        context.loadVideo(video, function (data) {
+                            if (data.flag == 200) {
+                                var video = data.video;
+                                if (login_handle.equalsLoginUser(video.user.uid)) {
+                                    context.loadAlbums(video.user.uid, function (data) {
+                                        formatVideoToModal_callback(video, data.albums);
+                                    });
+                                } else {
+                                    formatVideoToModal_callback(video);
+                                }
+                            }
                         });
                     }
                 }

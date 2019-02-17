@@ -1,8 +1,8 @@
 package site.imcoder.blog.service.impl;
 
 import org.apache.log4j.Logger;
-import org.json.JSONObject;
 import org.springframework.stereotype.Service;
+import org.springframework.web.socket.WebSocketSession;
 import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.common.Callable;
 import site.imcoder.blog.dao.IAlbumDao;
@@ -17,6 +17,7 @@ import site.imcoder.blog.service.INotifyService;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
 import site.imcoder.blog.setting.ConfigManager;
+import site.imcoder.blog.setting.GlobalConstants;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
@@ -50,7 +51,7 @@ public class ManagerServiceImpl implements IManagerService {
     @Resource
     private IVideoDao videoDao;
 
-    @Resource(name = "localFileService")
+    @Resource(name = "fileService")
     private IFileService fileService;
 
     @Resource
@@ -64,12 +65,46 @@ public class ManagerServiceImpl implements IManagerService {
 
     @PostConstruct
     public void init() {
+        // 注册返回WebSocket状态事件
+        notifyService.onmessage("status", new Callable<WsMessage, WsMessage>() {
+            @Override
+            public WsMessage call(WsMessage wsMessage) throws Exception {
+                User loginUser = wsMessage.getUser();
+                if (loginUser != null && loginUser.getUserGroup().isManager()) {  // 仅管理员响应
+                    Set<WebSocketSession> allPushSessions = notifyService.getAllPushSessions();
+                    Map<Integer, User> users = new HashMap<>();  // 返回WebSocket状态
+                    List pages = new ArrayList();
+                    for (WebSocketSession wss : allPushSessions) {
+                        User u = null;
+                        if (wss != null && wss.getAttributes() != null) {
+                            u = (User) (wss.getAttributes().get(GlobalConstants.LOGIN_USER_KEY));
+                        }
+                        if (u != null && !users.containsKey(u.getUid())) {
+                            users.put(u.getUid(), cache.cloneUser(u));
+                        }
+                        pages.add(wss.getAttributes().get("page_info"));
+                    }
+                    users.remove(null);
+                    WsMessage statusMessage = new WsMessage("status");
+                    statusMessage.setMetadata("users", users.values());
+                    statusMessage.setMetadata("pages", pages);
+                    statusMessage.setMetadata("uv", users.size());
+                    statusMessage.setMetadata("pv", allPushSessions.size());
+                    return statusMessage;
+                } else {
+                    return null;
+                }
+            }
+        });
         // 注册“管理推送消息”事件
         notifyService.onmessage("push_manager_notify", new Callable<WsMessage, WsMessage>() {
             @Override
             public WsMessage call(WsMessage wsMessage) throws Exception {
                 if (isAdmin(wsMessage.getUser()) == 200) {
                     WsMessage pushMessage = new WsMessage();
+                    if (wsMessage.getId() != 0) {
+                        pushMessage.setId(wsMessage.getId());
+                    }
                     pushMessage.setMapping("push_manager_notify");
                     pushMessage.setContent(wsMessage.getContent());
                     pushMessage.setMetadata(wsMessage.getMetadata());
@@ -167,6 +202,73 @@ public class ManagerServiceImpl implements IManagerService {
         map.put("flag", auth);
         if (auth == 200) {
             map.put("configMap", Config.getAll());
+        }
+        return map;
+    }
+
+    /**
+     * 更换用户组
+     * 管理员不能将别人提升为管理员
+     * 管理员不能将其他管理员降级为会员
+     *
+     * @param user      需要参数：user.uid, user.userGroup.gid
+     * @param loginUser
+     * @return flag: 400: 参数错误，401：未登录， 403：无权修改， 404：用户不存在或提交的gid不存在， 500：服务器错误
+     */
+    @Override
+    public int updateUserGroup(User user, User loginUser) {
+        if (user == null || user.getUid() == 0 || user.getUserGroup() == null) {
+            return 400;
+        }
+        int auth = isAdmin(loginUser);
+        if (auth == 200) {
+            User cacheUser = cache.getUser(user.getUid(), Cache.WRITE);
+            if (cacheUser == null) {
+                return 404;
+            } else if (user.getUserGroup().isGeneralUser()) {
+                if (cacheUser.getUserGroup().isManager()) { // 管理员不能将其他管理员降级为会员
+                    return 403;
+                } else {
+                    List<UserGroup> userGroupList = siteDao.findUserGroupList();
+                    UserGroup newGroup = null;
+                    for (UserGroup group : userGroupList) {
+                        if (group.getGid() == user.getUserGroup().getGid()) {
+                            newGroup = group;
+                        }
+                    }
+                    if (newGroup != null) {
+                        int row = siteDao.updateUserGroup(user);
+                        if (row > 0) {
+                            cacheUser.getUserGroup().setGid(newGroup.getGid());
+                            cacheUser.getUserGroup().setGroup_name(newGroup.getGroup_name());
+                        }
+                        return row > 0 ? 200 : 500;
+                    } else {
+                        // 输入的gid不存在
+                        return 404;
+                    }
+                }
+            } else {  // 管理员不能将别人提升为管理员
+                return 403;
+            }
+        } else {
+            return auth;
+        }
+    }
+
+    /**
+     * 查询所有的用户组信息
+     *
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public Map<String, Object> findUserGroupList(User loginUser) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        int auth = isAdmin(loginUser);
+        map.put("flag", auth);
+        if (auth == 200) {
+            map.put("userGroups", siteDao.findUserGroupList());
         }
         return map;
     }
@@ -282,7 +384,7 @@ public class ManagerServiceImpl implements IManagerService {
                     continue;
                 }
                 String photoFolder = fileService.generatePhotoFolderPath(album);
-                String newPath = photoFolder + fileService.generateNextPhotoFilename(photo, basePath + photoFolder);
+                String newPath = photoFolder + fileService.generateNextPhotoFilename(photo, photoFolder);
                 if (fileService.move(basePath + oldPath, basePath + newPath, true)) {
                     photo.setPath(newPath);
                     if (albumDao.updatePhoto(photo) == -1) {
@@ -303,23 +405,24 @@ public class ManagerServiceImpl implements IManagerService {
                     fileService.recycleTrash(basePath, rp, false);
                 }
             }
-            int cover_id = 0;
-            try {
-                JSONObject cover = new JSONObject(album.getCover());
-                cover_id = (int) cover.get("photo_id");
-            } catch (Exception e) {
-
-            } finally {
-                String json = Config.get(ConfigConstants.ALBUM_DEFAULT_COVER);
-                if (cover_id > 0) {
-                    Photo p = new Photo();
-                    p.setPhoto_id(cover_id);
-                    Photo photoInfo = albumDao.findPhotoInfo(p);
-                    json = "{\"path\": \"" + photoInfo.getPath() + "\", \"photo_id\": " + photoInfo.getPhoto_id() + ", \"width\": " + photoInfo.getWidth() + ", \"height\": " + photoInfo.getHeight() + "}";
-                }
-                album.setCover(json);
-                albumDao.updateCoverForAlbum(album);
-            }
+            // 相册封面信息存储模式已修改，故不需要下列代码了
+//            int cover_id = 0;
+//            try {
+//                JSONObject cover = new JSONObject(album.getCover());
+//                cover_id = (int) cover.get("photo_id");
+//            } catch (Exception e) {
+//
+//            } finally {
+//                String json = Config.get(ConfigConstants.ALBUM_DEFAULT_COVER);
+//                if (cover_id > 0) {
+//                    Photo p = new Photo();
+//                    p.setPhoto_id(cover_id);
+//                    Photo photoInfo = albumDao.findPhotoInfo(p);
+//                    json = "{\"path\": \"" + photoInfo.getPath() + "\", \"photo_id\": " + photoInfo.getPhoto_id() + ", \"width\": " + photoInfo.getWidth() + ", \"height\": " + photoInfo.getHeight() + "}";
+//                }
+//                album.setCover(json);
+//                albumDao.updateCoverForAlbum(album);
+//            }
         }
         return 200;
     }
@@ -340,7 +443,7 @@ public class ManagerServiceImpl implements IManagerService {
                     continue;
                 }
                 String videoFolder = fileService.generateVideoFolderPath(video);
-                String newPath = videoFolder + fileService.generateNextVideoName(video, basePath + videoFolder);
+                String newPath = videoFolder + fileService.generateNextVideoName(video, videoFolder);
                 if (fileService.move(basePath + oldPath, basePath + newPath, true)) {
                     video.setPath(newPath);
                     if (videoDao.updateVideo(video) == -1) {
@@ -385,7 +488,7 @@ public class ManagerServiceImpl implements IManagerService {
     private int isAdmin(User loginUser) {
         if (loginUser == null) {
             return 401;
-        } else if (loginUser.getUserGroup().getGid() == 1) {
+        } else if (loginUser.getUserGroup().isManager()) {
             return 200;
         } else {
             return 403;

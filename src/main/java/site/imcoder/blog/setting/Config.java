@@ -1,5 +1,10 @@
 package site.imcoder.blog.setting;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
 import java.util.*;
 
 
@@ -109,6 +114,28 @@ public class Config {
             e.printStackTrace();
         }
         return 0L;
+    }
+
+    /**
+     * 返回一个list，类型为clazz决定
+     *
+     * @param key
+     * @param clazz
+     * @param <T>
+     * @return
+     */
+    public static <T> List<T> getList(String key, Class<T> clazz) {
+        String value = get(key);
+        try {
+            value = value.trim();
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            return mapper.readValue(value, new TypeReference<List<T>>() {
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<>();
     }
 
     /**

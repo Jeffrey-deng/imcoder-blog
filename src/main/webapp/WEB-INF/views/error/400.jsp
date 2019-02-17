@@ -14,7 +14,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>400 - ImCODER's 博客</title>
+    <title>400 - ImCoder's 博客</title>
     <meta name="keywords" content="400 -博客">
     <meta name="description" content="400 -博客">
 

@@ -9,6 +9,7 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
 import site.imcoder.blog.Interceptor.LoginRequired;
 import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.common.type.UserGroupType;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.entity.UserGroup;
@@ -23,7 +24,6 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -80,9 +80,8 @@ public class SiteController extends BaseController {
             condition = new Article();
         }
         condition.setTags("公告|notice");
-        UserGroup group = new UserGroup();
-        group.setGid(1);
         User author = new User();
+        UserGroup group = new UserGroup(UserGroupType.MANAGER.value);
         author.setUserGroup(group);
         condition.setAuthor(author);
         Map<String, Object> map = articleService.list(pageSize, jumpPage, condition, loginUser);
@@ -94,6 +93,7 @@ public class SiteController extends BaseController {
         return "/site/notices";
     }
 
+    // 公告页
     @RequestMapping(params = "method=notice")
     public String notice(@RequestParam(defaultValue = "0") int id, HttpServletRequest request, HttpServletResponse response, HttpSession session) {
         User loginUser = getLoginUser(session);
@@ -108,7 +108,7 @@ public class SiteController extends BaseController {
             page = setNotFoundInfo(request, "该公告不存在~");
         } else if (flag == 403) {
             page = PAGE_FORBIDDEN_ERROR;
-        } else if (article.getAuthor().getUserGroup().getGid() == 1 && article.getTags() != null && article.getTags().matches(".*(公告|notice).*")) {
+        } else if (article.getAuthor().getUserGroup().isManager() && article.getTags() != null && article.getTags().matches(".*(公告|notice).*")) {
             if (clickNewArticle(session, article)) {
                 userService.hasClickArticle(loginUser, article);
             }
@@ -119,6 +119,7 @@ public class SiteController extends BaseController {
         return page;
     }
 
+    // 关于页
     @RequestMapping(params = "method=about")
     public String about(HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
@@ -143,6 +144,7 @@ public class SiteController extends BaseController {
         return page;
     }
 
+    // 帮助页
     @RequestMapping(params = "method=help")
     public String help(String module, HttpServletRequest request, HttpSession session) {
         User loginUser = (User) session.getAttribute("loginUser");
@@ -234,28 +236,6 @@ public class SiteController extends BaseController {
         } else {
             map.put(KEY_STATUS, 401);
             map.put(KEY_STATUS_FRIENDLY, "验证码错误");
-        }
-        return map;
-    }
-
-    /**
-     * 清除系统消息未读状态
-     *
-     * @param session
-     */
-    @LoginRequired
-    @RequestMapping(params = "method=clearSysMsgStatus")
-    @ResponseBody
-    public Map<String, Object> clearSystemMessageStatus(@RequestParam("smids") ArrayList<Integer> smids, HttpSession session) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        if (smids != null) {
-            User loginUser = (User) session.getAttribute("loginUser");
-            int flag = notifyService.updateSystemMessageStatus(smids);
-            map.put(KEY_STATUS, flag);
-            convertStatusCodeToWord(map);
-        } else {
-            map.put(KEY_STATUS, 400);
-            map.put(KEY_STATUS_FRIENDLY, "参数错误");
         }
         return map;
     }

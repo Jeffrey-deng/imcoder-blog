@@ -13,6 +13,7 @@ import site.imcoder.blog.Interceptor.LoginRequired;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.Category;
 import site.imcoder.blog.entity.User;
+import site.imcoder.blog.entity.UserGroup;
 import site.imcoder.blog.service.IArticleService;
 import site.imcoder.blog.service.IManagerService;
 import site.imcoder.blog.service.ISiteService;
@@ -268,6 +269,51 @@ public class ManagerController extends BaseController {
         return map;
     }
 
+    /**
+     * 更换用户组
+     * 管理员不能将别人提升为管理员
+     * 管理员不能将其他管理员降级为会员
+     * flag: 400: 参数错误，401：未登录， 403：无权修改， 404：用户不存在或提交的gid不存在， 500：服务器错误
+     */
+    @LoginRequired
+    @RequestMapping(params = "method=updateUserGroup")
+    @ResponseBody
+    public Map<String, Object> updateUserGroup(User user, UserGroup userGroup, HttpSession session) {
+        Map<String, Object> map = new HashMap<>();
+        User loginUser = (User) session.getAttribute("loginUser");
+        if (user == null) {
+            user = new User();
+        }
+        user.setUserGroup(userGroup);
+        int flag = managerService.updateUserGroup(user, loginUser);
+        map.put(KEY_STATUS, flag);
+        convertStatusCodeToWord(map);
+        if (flag == 200) {
+            map.put(KEY_STATUS_FRIENDLY, "已为用户" + user.getUid() + "更换用户组");
+        } else if (flag == 403) {
+            map.put(KEY_STATUS_FRIENDLY, "1: 需要管理员才能操作\n2: 管理员不能将别人提升为管理员\n3: 管理员不能将其他管理员降级为会员");
+        } else if (flag == 404) {
+            map.put(KEY_STATUS_FRIENDLY, "用户不存在或提交的gid不存在");
+        }
+        return map;
+    }
+
+    /**
+     * 查询所有的用户组信息
+     *
+     * @param session
+     * @return {flag, userGroups}
+     */
+    @LoginRequired
+    @RequestMapping(params = "method=findUserGroupList")
+    @ResponseBody
+    public Map<String, Object> findUserGroupList(HttpSession session) {
+        User loginUser = (User) session.getAttribute("loginUser");
+        Map<String, Object> map = managerService.findUserGroupList(loginUser);
+        convertStatusCodeToWord(map);
+        return map;
+    }
+
     @LoginRequired
     @RequestMapping(params = "method=log_view")
     public String checkLog(HttpSession session) {
@@ -303,7 +349,7 @@ public class ManagerController extends BaseController {
                 if (logFile.exists() && logFile.isFile()) {
                     response.setHeader("Content-Type", "text/plain;charset=UTF-8");
                     try {
-                        response.setHeader("Content-disposition", "attachment; filename=" + new String(logFile.getName().getBytes("utf-8"), "ISO8859-1"));
+                        response.setHeader("Content-disposition", "attachment; filename=" + new String(logFile.getName().getBytes(), "ISO8859-1"));
                     } catch (UnsupportedEncodingException e) {
                         e.printStackTrace();
                     }

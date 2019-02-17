@@ -114,7 +114,7 @@ public class Utils {
     }
 
     //截取str的倒数第num个“/”之后的字符串
-    private static String getSubStr(String str, int num) {
+    public static String getSubStr(String str, int num) {
         String result = "";
         int i = 0;
         while (i < num) {
@@ -335,6 +335,15 @@ public class Utils {
         } catch (ParseException e) {
             return null;
         }
+    }
+
+    /**
+     * 生成uuid
+     *
+     * @return
+     */
+    public static String generateUUID() {
+        return UUID.randomUUID().toString().replace("-", "").toLowerCase();
     }
 
 }

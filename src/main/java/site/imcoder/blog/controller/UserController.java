@@ -3,14 +3,15 @@ package site.imcoder.blog.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
 import site.imcoder.blog.Interceptor.GZIP;
 import site.imcoder.blog.Interceptor.LoginRequired;
 import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.common.type.UserAuthType;
 import site.imcoder.blog.entity.*;
 import site.imcoder.blog.service.IArticleService;
 import site.imcoder.blog.service.IUserService;
@@ -18,6 +19,7 @@ import site.imcoder.blog.service.IUserService;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +37,7 @@ public class UserController extends BaseController {
     //依赖注入[service]
     @Resource
     private IUserService userService;
+
     @Resource
     private IArticleService articleService;
 
@@ -61,8 +64,23 @@ public class UserController extends BaseController {
      */
     @RequestMapping(params = "method=register")
     @ResponseBody
-    public Map<String, Object> register(User user) {
+    public Map<String, Object> register(User user, String username, String email, String password, HttpServletRequest request) {
         Map<String, Object> map = new HashMap<String, Object>();
+        if (email == null) {
+            email = user.getEmail();
+        }
+        UserStatus userStatus = new UserStatus();
+        userStatus.setRegister_ip(Utils.getRemoteAddr(request));
+        if (user == null) {
+            user = new User();
+        }
+        user.setUserStatus(userStatus);
+        List<UserAuth> userAuthList = new ArrayList<>();
+        UserAuth usernameUserAuth = new UserAuth(null, UserAuthType.USERNAME, username, password);
+        UserAuth emailUserAuth = new UserAuth(null, UserAuthType.EMAIL, email, password);
+        userAuthList.add(usernameUserAuth);
+        userAuthList.add(emailUserAuth);
+        user.setUserAuths(userAuthList);
         map.put(KEY_STATUS, userService.register(user));
         convertStatusCodeToWord(map);
         return map;
@@ -75,81 +93,6 @@ public class UserController extends BaseController {
     public String toregister() {
         return "/site/register";
     }
-
-    /**
-     * 登陆
-     *
-     * @param user
-     * @param remember
-     * @param session
-     * @param request
-     * @return flag - 200：成功，400: 参数错误，401：凭证错误，403：账号冻结，404：无此用户
-     * loginUser - 用户对象
-     */
-    @RequestMapping(params = "method=login", method = RequestMethod.POST)
-    @ResponseBody
-    public Map<String, Object> login(User user, @RequestParam(defaultValue = "false") boolean remember, HttpSession session, HttpServletRequest request) {
-        /* 登陆验证 */
-        user.setEmail(user.getUsername());
-        user.setLoginIP(Utils.getRemoteAddr(request));
-        if (user.getPassword() != null && remember && user.getToken() == null) {
-            user.setToken(session.getId());
-        }
-        Map<String, Object> map = userService.login(user, remember);
-        int flag = (int) map.get(KEY_STATUS);
-        if (flag == 200) {
-            //登陆成功
-            User loginUser = (User) map.get("user");
-            loginUser.setPassword("");
-            session.setAttribute("loginUser", loginUser);
-            map.put("loginUser", loginUser);
-            map.remove("user");
-            if (remember) {
-                map.put("token", map.get("token"));
-            }
-            map.put("continue", "article.do?method=list");
-        } else if (flag == 400) {
-            map.put(KEY_STATUS_FRIENDLY, "参数错误");
-        } else if (flag == 401) {
-            map.put(KEY_STATUS_FRIENDLY, "凭证错误");
-        } else if (flag == 403) {
-            map.put(KEY_STATUS_FRIENDLY, "账号为锁定状态");
-        } else {
-            map.put(KEY_STATUS_FRIENDLY, "该用户不存在");
-        }
-        return map;
-    }
-
-    /**
-     * 跳转到 登陆
-     *
-     * @param user
-     * @param mv
-     * @param request
-     * @return
-     */
-    @RequestMapping(params = "method=jumpLogin")
-    public ModelAndView jumpLogin(User user, ModelAndView mv, HttpServletRequest request) {
-        if (request.getAttribute("http_code") == null) {
-            request.setAttribute("http_code", 200);
-        }
-        //传入了参数则跳转到重新登录页面，没有则普通登陆
-        if (user != null && (user.getUsername() != null || user.getEmail() != null || user.getUid() > 0)) {
-            user.setEmail(user.getUsername());
-            User userInfo = userService.findUser(user, null);
-            if (userInfo != null) {
-                User cacheUser = userService.findUser(userInfo, null, true);
-                userInfo.setUsername(cacheUser.getUsername());
-                userInfo.setHead_photo(cacheUser.getHead_photo());
-                mv.addObject("user", userInfo);
-                mv.setViewName(PAGE_LOGIN_EXPIRED);
-                return mv;
-            }
-        }
-        mv.setViewName(PAGE_LOGIN);
-        return mv;
-    }
-
 
     /**
      * 查询文章列表(访问主人的主页)
@@ -276,79 +219,62 @@ public class UserController extends BaseController {
     }
 
     /**
-     * 检查该邮箱是否存在
+     * 更新头像
      *
-     * @param user username
-     * @return flag - 200：已存在，404：未使用
-     */
-    @RequestMapping(params = "method=checkEmail")
-    @ResponseBody
-    public Map<String, Object> checkEmail(User user) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        User rs = userService.findUser(user, null);
-        int flag = (rs == null ? 404 : 200);
-        map.put(KEY_STATUS, flag);
-        if (flag == 200) {
-            map.put(KEY_STATUS_FRIENDLY, "已存在");
-        } else {
-            map.put(KEY_STATUS_FRIENDLY, "未使用");
-        }
-        return map;
-    }
-
-    /**
-     * 检查改用户名是否存在
-     *
-     * @param user 用户名
-     * @return flag - 200：已存在，404：未使用
-     */
-    @RequestMapping(params = "method=checkUsername")
-    @ResponseBody
-    public Map<String, Object> checkUsername(User user) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        User rs = userService.findUser(user, null);
-        int flag = (rs == null ? 404 : 200);
-        map.put(KEY_STATUS, flag);
-        if (flag == 200) {
-            map.put(KEY_STATUS_FRIENDLY, "已存在");
-        } else {
-            map.put(KEY_STATUS_FRIENDLY, "未使用");
-        }
-        return map;
-    }
-
-    /**
-     * 更新账号信息
-     *
-     * @param user
-     * @param validateCode
+     * @param imageFile       与headPhotoPath二选一
+     * @param imageRawFile    头像的原图
+     * @param head_photo_path 设置默认头像时传入链接，不需要传file了
      * @param session
-     * @return flag - 200：成功，401：需要登录或验证码错误，403：无权限，404：无此用户，500: 失败
+     * @return flag - 200：成功，400: 图片为空，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * head_photo - 头像地址
      */
     @LoginRequired
-    @RequestMapping(params = "method=updateAccount")
+    @RequestMapping(params = "method=updateHeadPhoto")
     @ResponseBody
-    public Map<String, Object> updateAccount(User user, String validateCode, HttpSession session) {
-        User loginUser = (User) session.getAttribute("loginUser");
-        String memValidateCode = (String) session.getAttribute("validateCode");
-        Map<String, Object> map = new HashMap<String, Object>();
-        if (loginUser == null) {
-            map.put(KEY_STATUS, 401);
-            map.put(KEY_STATUS_FRIENDLY, "未登录");
-            //服务端再与Session中的验证码验证，防止修改html破解
-        } else if (memValidateCode.equalsIgnoreCase(validateCode)) {
-            user.setUid(loginUser.getUid());
-            int flag = userService.updateAccount(user, loginUser);
-            map.put(KEY_STATUS, flag);
-            convertStatusCodeToWord(map);
-            if (flag == 200) {
-                //销毁session让其重新登录
-                session.invalidate(); //由于前面清除了token，使所有终端自动登录失效，重新登录是为了让其获取新的token
-            }
-        } else {
-            map.put(KEY_STATUS, 401);
-            map.put(KEY_STATUS_FRIENDLY, "验证码错误");
+    public Map<String, Object> updateUserHeadPhoto(MultipartFile imageFile, MultipartFile imageRawFile, String head_photo_path, HttpSession session) {
+        User loginUser = getLoginUser(session);
+        Map<String, Object> map = userService.saveHeadPhoto(imageFile, imageRawFile, head_photo_path, loginUser);
+        int flag = (int) map.get(KEY_STATUS);
+        if (flag == 200) {
+            loginUser.setHead_photo((String) map.get("head_photo"));
         }
+        convertStatusCodeToWord(map);
+        return map;
+    }
+
+    /**
+     * 取得用户设置
+     *
+     * @param user    不设置uid时默认为当前登陆用户，当uid与loginUser相同或loginUser为管理员时才返回
+     * @param session
+     * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * userSetting - 用户设置
+     */
+    @LoginRequired
+    @RequestMapping(params = "method=getUserSetting")
+    @ResponseBody
+    public Map<String, Object> getUserSetting(User user, HttpSession session) {
+        User loginUser = getLoginUser(session);
+        Map<String, Object> map = userService.getUserSetting(user, loginUser);
+        convertStatusCodeToWord(map);
+        return map;
+    }
+
+    /**
+     * 更新用户设置
+     *
+     * @param userSetting 要包含uid
+     * @param session
+     * @return flag - 200：成功，401：需要登录，403：无权限，404：无此用户，500: 失败
+     * userSetting - 用户设置
+     */
+    @LoginRequired
+    @RequestMapping(params = "method=updateUserSetting")
+    @ResponseBody
+    public Map<String, Object> updateUserSetting(UserSetting userSetting, HttpSession session) {
+        User loginUser = getLoginUser(session);
+        Map<String, Object> map = userService.updateUserSetting(userSetting, loginUser);
+        convertStatusCodeToWord(map);
         return map;
     }
 
@@ -487,85 +413,6 @@ public class UserController extends BaseController {
     }
 
     /**
-     * 查询私信列表
-     *
-     * @param read_status 0 未读 ，1全部
-     * @param session
-     * @return
-     */
-    @LoginRequired(content = "")
-    @RequestMapping(params = "method=listLetters")
-    @ResponseBody
-    public List<Letter> listLetters(int read_status, HttpSession session) {
-        User loginUser = (User) session.getAttribute("loginUser");
-        if (loginUser != null) {
-            return userService.findLetterList(loginUser, read_status);
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * 查询系统消息列表
-     *
-     * @param read_status 0 未读 ，1全部
-     * @param session
-     * @return
-     */
-    @LoginRequired(content = "")
-    @RequestMapping(params = "method=listSysMsgs")
-    @ResponseBody
-    @GZIP
-    public List<SysMsg> listSysMsgs(int read_status, HttpSession session) {
-        User loginUser = (User) session.getAttribute("loginUser");
-        if (loginUser != null) {
-            return userService.findSysMsgList(loginUser, read_status);
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * 查询所有未读消息
-     *
-     * @param session
-     * @return
-     */
-    @LoginRequired(content = "")
-    @RequestMapping(params = "method=listUnreadMsg")
-    @ResponseBody
-    public Map<String, Object> listUnreadMsg(HttpSession session) {
-        User loginUser = (User) session.getAttribute("loginUser");
-        Map<String, Object> map = new HashMap<String, Object>();
-        if (loginUser != null) {
-            map.put("letters", userService.findLetterList(loginUser, 0));
-            map.put("sysMsgs", userService.findSysMsgList(loginUser, 0));
-            return map;
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * 发送私信
-     *
-     * @param letter
-     * @param session
-     * @return flag - 200：发送成功，401：需要登录，500: 失败
-     */
-    @LoginRequired
-    @RequestMapping(params = "method=sendLetter")
-    @ResponseBody
-    public Map<String, Object> sendLetter(Letter letter, HttpSession session) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        User loginUser = (User) session.getAttribute("loginUser");
-        int flag = userService.sendLetter(letter, loginUser);
-        map.put(KEY_STATUS, flag);
-        convertStatusCodeToWord(map);
-        return map;
-    }
-
-    /**
      * 检查是否loginUser收藏了此文章
      *
      * @param article
@@ -652,25 +499,6 @@ public class UserController extends BaseController {
             list = userService.findCollectList(loginUser);
         }
         return list;
-    }
-
-    /**
-     * 安全退出
-     *
-     * @param session
-     * @return flag - 200：成功，401：需要登录，404：无此用户，500: 失败
-     */
-    @LoginRequired
-    @RequestMapping(params = "method=logout")
-    @ResponseBody
-    public Map<String, Object> logout(HttpSession session) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        User loginUser = (User) session.getAttribute("loginUser");
-        int flag = userService.clearToken(loginUser); //清除token，让所有终端自动登录失效
-        map.put(KEY_STATUS, flag);
-        convertStatusCodeToWord(map);
-        session.invalidate();
-        return map;
     }
 
 }

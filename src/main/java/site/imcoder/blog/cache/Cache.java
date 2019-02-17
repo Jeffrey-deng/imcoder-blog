@@ -244,11 +244,17 @@ public class Cache {
         if (user != null) {
             User _user = userBuffer.get(user.getUid());
             if (_user != null) {
-                user.setArticleCount(_user.getArticleCount());
-                user.setFollowCount(_user.getFollowCount());
-                user.setFansCount(_user.getFansCount());
-                if (security == false) {
-                    user.setLoginIP(_user.getLoginIP());
+                UserStatus userStatus = user.getUserStatus();
+                UserStatus _userStatus = _user.getUserStatus();
+                if (userStatus == null) {
+                    userStatus = new UserStatus();
+                    user.setUserStatus(userStatus);
+                }
+                userStatus.setArticleCount(_userStatus.getArticleCount());
+                userStatus.setFollowCount(_userStatus.getFollowCount());
+                userStatus.setFansCount(_userStatus.getFansCount());
+                if (security == false && userStatus.getLast_login_ip() == null) {
+                    userStatus.setLast_login_ip(_userStatus.getLast_login_ip());
                 }
             } else {
                 logger.warn("fillUserStats error：用户 " + user.getUid() + " 未从缓存中找到数据！");
@@ -337,11 +343,14 @@ public class Cache {
                 User newUser = new User();
                 try {
                     PropertyUtils.copyProperties(newUser, fullUser);
-                    newUser.setPassword(null);
-                    newUser.setToken(null);
-                    newUser.setLoginIP(null);
-                    newUser.setUsername(null);
+                    newUser.setUserAuths(null);
                     newUser.setEmail(null);
+                    newUser.setUserSetting(null);
+                    UserStatus userStatus = newUser.getUserStatus();
+                    userStatus.setLast_login_ip(null);
+                    userStatus.setLast_login_time(null);
+                    userStatus.setRegister_ip(null);
+                    userStatus.setRegister_time(null);
                     return newUser;
                 } catch (Exception e) {
                 }
@@ -363,11 +372,26 @@ public class Cache {
                 User newUser = new User();
                 try {
                     PropertyUtils.copyProperties(newUser, fullUser);
-                    newUser.setPassword(null);
-                    newUser.setToken(null);
+                    newUser.setUserAuths(null);
                     return newUser;
                 } catch (Exception e) {
                 }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 返回用户配置
+     *
+     * @param user
+     * @return
+     */
+    public UserSetting getUserSetting(User user) {
+        if (user != null) {
+            User cacheUser = getUser(user.getUid(), READ);
+            if (cacheUser != null) {
+                return cacheUser.getUserSetting();
             }
         }
         return null;
@@ -381,7 +405,7 @@ public class Cache {
     public List<User> getManagers() {
         List<User> managers = new ArrayList<User>();
         for (User user : userBuffer.values()) {
-            if (user.getUserGroup().getGid() == 1) {
+            if (user.getUserGroup().isManager()) {
                 managers.add(user);
             }
         }
@@ -799,6 +823,10 @@ public class Cache {
      * @param user
      */
     public void putUser(User user) {
+        User cacheUser = getUser(user.getUid(), READ);
+        if (cacheUser != null && user.getUserSetting() == null) {
+            user.setUserSetting(cacheUser.getUserSetting());
+        }
         userBuffer.put(user.getUid(), user);
     }
 
@@ -910,6 +938,10 @@ public class Cache {
      */
     public void updateUser(User user) {
         this.fillUserStats(user, false);
+        User cacheUser = getUser(user.getUid(), READ);
+        if (cacheUser != null && user.getUserSetting() == null) {
+            user.setUserSetting(cacheUser.getUserSetting());
+        }
         userBuffer.put(user.getUid(), user);
     }
 
@@ -967,6 +999,9 @@ public class Cache {
         Article _article = getArticle(article.getAid(), Cache.WRITE);
         if (_article != null) {
             _article.setComment(_article.getComment() + step);
+            if (_article.getComment() < 0) {
+                _article.setComment(0);
+            }
         }
     }
 
@@ -1017,7 +1052,7 @@ public class Cache {
     public void updateUserArticleCount(User user, int step) {
         User _user = getUser(user.getUid(), Cache.WRITE);
         if (_user != null) {
-            _user.setArticleCount(_user.getArticleCount() + step);
+            _user.getUserStatus().setArticleCount(_user.getUserStatus().getArticleCount() + step);
         }
     }
 
@@ -1030,7 +1065,7 @@ public class Cache {
     public void updateUserFollowCount(User user, int step) {
         User _user = getUser(user.getUid(), Cache.WRITE);
         if (_user != null) {
-            _user.setFollowCount(_user.getFollowCount() + step);
+            _user.getUserStatus().setFollowCount(_user.getUserStatus().getFollowCount() + step);
         }
     }
 
@@ -1043,7 +1078,7 @@ public class Cache {
     public void updateUserFansCount(User user, int step) {
         User _user = getUser(user.getUid(), Cache.WRITE);
         if (_user != null) {
-            _user.setFansCount(_user.getFansCount() + step);
+            _user.getUserStatus().setFansCount(_user.getUserStatus().getFansCount() + step);
         }
     }
 

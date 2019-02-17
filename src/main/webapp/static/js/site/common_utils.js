@@ -1,5 +1,7 @@
 /**
- * Created by Jeffrey.Deng on 2018/3/31.
+ * 公共工具类
+ * @author Jeffrey.deng
+ * @date 2018/3/31.
  */
 (function (view) {
     "use strict";
@@ -707,6 +709,62 @@
     };
 
     /**
+     * 压缩base64Url
+     * @param base64Url
+     * @param args {width: , height: , quality: } 可为空
+     * @param callback 回调，压缩后的新base64Url传入回调方法
+     */
+    function canvasDataURL(base64Url, args, callback) {
+        args = args || {};
+        var img = new Image();
+        img.onload = function () {
+            var that = this;
+            // 默认按比例压缩
+            var w = that.width,
+                h = that.height,
+                scale = w / h;
+            w = args.width || w;
+            h = args.height || (w / scale);
+            var quality = 0.7;  // 默认图片质量为0.7
+            //生成canvas
+            var canvas = document.createElement('canvas');
+            var ctx = canvas.getContext('2d');
+            // 创建属性节点
+            var anw = document.createAttribute("width");
+            anw.nodeValue = w;
+            var anh = document.createAttribute("height");
+            anh.nodeValue = h;
+            canvas.setAttributeNode(anw);
+            canvas.setAttributeNode(anh);
+            ctx.drawImage(that, 0, 0, w, h);
+            // 图像质量
+            if (args.quality && args.quality <= 1 && args.quality > 0) {
+                quality = args.quality;
+            }
+            // quality值越小，所绘制出的图像越模糊
+            var base64 = canvas.toDataURL('image/jpeg', quality);
+            // 回调函数返回base64的值
+            callback(base64);
+        }
+        img.src = base64Url;
+    }
+
+    /**
+     * 将以base64的图片url数据转换为Blob
+     * @param urlData
+     * 用url方式表示的base64图片数据
+     */
+    function convertBase64UrlToBlob(urlData) {
+        var arr = urlData.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        var b = new Blob([u8arr], {type: mime});
+        return b;
+    }
+
+    /**
      * 格式化JSON源码(对象转换为JSON文本)
      * @param txt
      * @param {Boolean} compress - 是否为压缩模式
@@ -785,19 +843,19 @@
             "lastNotifyName": null,
             "success": function (content, title, notifyName) {
                 context.lastNotifyName = notifyName = notifyName || "default";
-                var toastElement = toastr.success(content, title, notify_options);
+                var toastElement = toastr.success(content, title, notify_options).attr("data-name", notifyName);
                 notifyPool[notifyName] = toastElement;
                 return toastElement;
             },
             "error": function (content, title, notifyName) {
                 context.lastNotifyName = notifyName = notifyName || "default";
-                var toastElement = toastr.error(content, title, notify_options);
+                var toastElement = toastr.error(content, title, notify_options).attr("data-name", notifyName);
                 notifyPool[notifyName] = toastElement;
                 return toastElement;
             },
             "info": function (content, title, notifyName) {
                 context.lastNotifyName = notifyName = notifyName || "default";
-                var toastElement = toastr.info(content, title, notify_options);
+                var toastElement = toastr.info(content, title, notify_options).attr("data-name", notifyName);
                 notifyPool[notifyName] = toastElement;
                 return toastElement;
             }
@@ -822,6 +880,10 @@
         return notifyObject;
     };
 
+    /**
+     * 移除通知
+     * @param notifyName 为空则删除所有通知
+     */
     var removeNotify = function (notifyName) {
         if (!notifyName) {
             notifyPool = {};
@@ -832,15 +894,40 @@
             }
             delete notifyPool[notifyName];
         }
+        $('#toast-container .toast[data-name="' + notifyName + '"]').each(function (i, toastElement) {
+            toastr.remove($(toastElement), true);
+        });
     };
 
+    /**
+     * 得到通知jquery对象
+     * @param notifyName
+     * @param force {Boolean}
+     *  - 为true利用jquery选择器查找，100%查到所有的，可能返回多个（notifyName名称相同）
+     *  - 为false从记录中查找，只会返回一个
+     *  - 两个都会删除隐藏的通知对象
+     * @returns {*}
+     */
     var getNotify = function (notifyName, force) {
-        var notify = notifyPool[notifyName];
-        if (notify && !force && !notify.is(':visible')) {
-            notify = null;
-            delete notifyPool[notifyName];
+        if (force) {
+            var toastElements = $('#toast-container .toast[data-name="' + notifyName + '"]').filter(function (toastElement, i) {
+                if ($(toastElement).is(':visible')) {
+                    return true;
+                } else {
+                    toastr.remove($(toastElement), true);
+                    return false;
+                }
+            });
+            return toastElements.length != 0 ? toastElements : null;
+        } else {
+            var notify = notifyPool[notifyName];
+            if (notify && !force && !notify.is(':visible')) {
+                notify = null;
+                delete notifyPool[notifyName];
+                toastr.remove(notify, true);
+            }
+            return notify;
         }
-        return notify;
     };
 
     /**
@@ -910,6 +997,8 @@
         "fileNameFromHeader": fileNameFromHeader,
         "downloadBlobFile": downloadBlobFile,
         "downloadUrlFile": downloadUrlFile,
+        "canvasDataURL": canvasDataURL,
+        "convertBase64UrlToBlob": convertBase64UrlToBlob,
         "parseURL": parseURL,
         "cookieUtil": cookieUtil,
         "formatDate": formatDate,

@@ -1,6 +1,9 @@
 package site.imcoder.blog.entity;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import site.imcoder.blog.controller.json.EscapeEmojiJsonDeserializer;
+import site.imcoder.blog.controller.propertyeditors.EmojiConvert;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -23,6 +26,8 @@ public class Article implements Serializable {
     /**
      * 文章标题
      */
+    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
+    @EmojiConvert
     private String title;
 
     /**
@@ -43,6 +48,8 @@ public class Article implements Serializable {
     /**
      * 摘要
      */
+    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
+    @EmojiConvert
     private String summary;
 
     /**
@@ -90,6 +97,8 @@ public class Article implements Serializable {
     /**
      * 文章详情
      */
+    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
+    @EmojiConvert
     private String detail;
 
     public int getAid() {

@@ -42,14 +42,19 @@ public class ConfigConstants {
     public static final String REMOTE_OSS_CONFIG_LOCATION = "remote_oss_config_location";
 
     /**
+     * 上传文件存储基础路径 相对于context父文件夹
+     */
+    public static final String ARTICLE_UPLOAD_BASEPATH = "article_upload_basepath";
+
+    /**
      * 上传文件存储相对路径 相对于其基础路径
      */
     public static final String ARTICLE_UPLOAD_RELATIVEPATH = "article_upload_relativepath";
 
     /**
-     * 上传文件存储基础路径 相对于context父文件夹
+     * 云盘文件存储基础路径 相对于context父文件夹
      */
-    public static final String ARTICLE_UPLOAD_BASEPATH = "article_upload_basepath";
+    public static final String CLOUD_FILE_BASEPATH = "cloud_file_basepath";
 
     /**
      * 云盘文件存储相对路径 相对于其基础路径
@@ -57,9 +62,46 @@ public class ConfigConstants {
     public static final String CLOUD_FILE_RELATIVEPATH = "cloud_file_relativepath";
 
     /**
-     * 云盘文件存储基础路径 相对于context父文件夹
+     * 垃圾回收路径
      */
-    public static final String CLOUD_FILE_BASEPATH = "cloud_file_basepath";
+    public static final String TRASH_RECYCLE_BASEPATH = "trash_recycle_basepath";
+
+    /**
+     * 允许发表文章的用户组最低等级，值为对应用户组的Gid
+     */
+    public static final String ARTICLE_ALLOW_CREATE_LOWEST_LEVEL = "article_allow_create_lowest_level";
+
+    /**
+     * 云盘允许上传文件的用户组最低等级，值为对应用户组的Gid
+     */
+    public static final String CLOUD_ALLOW_UPLOAD_LOWEST_LEVEL = "cloud_allow_upload_lowest_level";
+
+    /**
+     * 照片最大上传大小，单位字节，-1代表无限制
+     */
+    public static final String CLOUD_PHOTO_MAX_UPLOADSIZE = "cloud_photo_max_uploadsize";
+
+    /**
+     * 视频最大上传大小，单位字节，-1代表无限制
+     */
+    public static final String CLOUD_VIDEO_MAX_UPLOADSIZE = "cloud_video_max_uploadsize";
+
+    /**
+     * 文件最大上传大小，单位字节，-1代表无限制
+     */
+    public static final String CLOUD_FILE_MAX_UPLOADSIZE = "cloud_file_max_uploadsize";
+
+    /**
+     * 浏览器端的配置
+     * <pre>
+     *  JSON格式： {"version": 1.0, "force": true, ...}
+     *  version: 为改配置的版本号，必填，修改配置后，设置 <b>新的版本号</b> 才会生效
+     *  force：强力升级，该方式为先删除客户端配置，再写入，可不填，不填为false
+     *  </pre>
+     * <p>
+     * 修改完成后，修改 {@link #SITE_CDN_ADDR_ARGS } 为新值，客户端才会加载
+     */
+    public static final String SITE_CLIENT_CONFIG = "site_client_config";
 
     /**
      * 静态文件地址后缀(仅限js、css)
@@ -72,11 +114,6 @@ public class ConfigConstants {
      * 图片文件预览参数，支持子集：@user_{uid}:{args} ，{col}可取到运行时显示的列数
      */
     public static final String CLOUD_PHOTO_PREVIEW_ARGS = "cloud_photo_preview_args";
-
-    /**
-     * 垃圾回收路径
-     */
-    public static final String TRASH_RECYCLE_BASEPATH = "trash_recycle_basepath";
 
     /**
      * 项目context目录
@@ -119,9 +156,14 @@ public class ConfigConstants {
     public static final String CACHEFLUSH_TIMER_DELAY = "cacheflush_timer_delay";
 
     /**
-     * 邮件推送线程池的线程数
+     * 消息推送线程池的线程数
      */
     public static final String NOTIFYSERVICE_THREAD_NUM = "notifyservice_thread_num";
+
+    /**
+     * 邮件推送服务配置文件地址
+     */
+    public static final String EMAILPUSH_CONFIG_LOCATION = "emailpush_config_location";
 
     /**
      * 邮件服务器地址
@@ -184,6 +226,21 @@ public class ConfigConstants {
     public static final String ALBUM_DEFAULT_COVER = "album_default_cover";
 
     /**
+     * 默认的男生用户头像，列表，至少一个，设置时为json数组字符串，数组类型为头像地址字符串
+     */
+    public static final String USER_DEFAULT_MAN_HEADPHOTOS = "user_default_man_headphotos";
+
+    /**
+     * 默认的女生用户头像，列表，至少一个，设置时为json数组字符串，数组类型为头像地址字符串
+     */
+    public static final String USER_DEFAULT_MISS_HEADPHOTOS = "user_default_miss_headphotos";
+
+    /**
+     * 工具服务配置文件地址
+     */
+    public static final String TOOLSERVICE_CONFIG_LOCATION = "toolservice_config_location";
+
+    /**
      * 文字转语音的百度 APP_ID
      */
     public static final String TOOL_SPEECH_TOKEN_APP_ID = "tool_speech_token_app_id";
@@ -199,20 +256,12 @@ public class ConfigConstants {
     public static final String TOOL_SPEECH_TOKEN_SECRET_KEY = "tool_speech_token_secret_key";
 
     /**
-     * 浏览器端的配置
-     * <pre>
-     *  JSON格式： {"version": 1.0, "force": true, ...}
-     *  version: 为改配置的版本号，必填，修改配置后，设置 <b>新的版本号</b> 才会生效
-     *  force：强力升级，该方式为先删除客户端配置，再写入，可不填，不填为false
-     *  </pre>
-     * <p>
-     * 修改完成后，修改 {@link #SITE_CDN_ADDR_ARGS } 为新值，客户端才会加载
-     */
-    public static final String SITE_CLIENT_CONFIG = "site_client_config";
-
-    /**
      * 是否允许运行系统升级，true or false
      */
     public static final String SITE_ALLOW_RUN_UPGRADE = "site_allow_run_upgrade";
 
+    /**
+     * 用户在线时是否运行离线通知，true: 同时运行，false: 当用户在线时，不执行其他方式通知，true or false
+     */
+    public static final String RUN_OFFLINE_NOTIFY_WHEN_ONLINE = "run_offline_notify_when_online";
 }

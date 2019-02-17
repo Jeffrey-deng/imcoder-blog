@@ -1,6 +1,9 @@
 package site.imcoder.blog.entity;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import site.imcoder.blog.controller.json.EscapeEmojiJsonDeserializer;
+import site.imcoder.blog.controller.propertyeditors.EmojiConvert;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -29,17 +32,21 @@ public class Album implements Serializable {
     /**
      * 相册名称
      */
+    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
+    @EmojiConvert
     private String name;
 
     /**
      * 相册说明
      */
+    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
+    @EmojiConvert
     private String description;
 
     /**
-     * 封面图片路径
+     * 封面图片, photo对象
      */
-    private String cover;
+    private Photo cover;
 
     /**
      * 创建时间
@@ -67,6 +74,18 @@ public class Album implements Serializable {
      */
     private List<Photo> photos;
 
+    public Album() {
+    }
+
+    public Album(int album_id) {
+        this.album_id = album_id;
+    }
+
+    public Album(int album_id, String name) {
+        this.album_id = album_id;
+        this.name = name;
+    }
+
     /**
      * 添加照片
      *
@@ -88,7 +107,6 @@ public class Album implements Serializable {
         if (photos == null) {
             return;
         }
-
         Iterator<Photo> iterator = photos.iterator();
         while (iterator.hasNext()) {
             Photo p = iterator.next();
@@ -138,11 +156,11 @@ public class Album implements Serializable {
         this.description = description;
     }
 
-    public String getCover() {
+    public Photo getCover() {
         return cover;
     }
 
-    public void setCover(String cover) {
+    public void setCover(Photo cover) {
         this.cover = cover;
     }
 

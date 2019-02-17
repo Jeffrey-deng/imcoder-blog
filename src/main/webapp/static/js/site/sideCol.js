@@ -72,14 +72,15 @@
                     },
                     "parse": function (cacheCtx, groupName, key, old_object_value, data) {
                         if (data.albums && data.albums.length > 0) {
+                            var preview_args = null;
+                            if (data.cloud_photo_preview_args) {
+                                preview_args = data.cloud_photo_preview_args.replace("{col}", 4)
+                            }
                             $.each(data.albums, function (i, album) {
                                 album.name = encodeURIComponent(encodeURIComponent(album.name));
                                 album.description = encodeURIComponent(encodeURIComponent(album.description));
-                                try {
-                                    var coverJson = JSON.parse(album.cover);
-                                    album.cover = coverJson;
-                                } catch (e) {
-                                    album.cover = {"path": album.cover};
+                                if (preview_args) {
+                                    album.cover.path = album.cover.path + preview_args;
                                 }
                             });
                         }
@@ -139,7 +140,7 @@
                     var first = albums[0];
                     html = '<a class="openAlbumByCover" data-index="0" href="photo.do?method=album_detail&id=' + first.album_id + '" target="_blank" title="左键切换、右键打开"><img src="' + cloudPath + first.cover.path + '" style="width: 100%"></a>'
                 } else {
-                    var userAlbumHref = "photo.do?method=user_albums" + (loadUid == 0 ? "" : ("&uid=" + loadUid));
+                    var userAlbumHref = "photo.do?method=user_albums" + (uid == 0 ? "" : ("&uid=" + uid));
                     html = '<a href="' + userAlbumHref + '" target="_blank" title="打开用户相册"><img src="' + cloudPath + 'res/img/album_default.jpg" style="width: 100%"></a>'
                 }
                 photoShowArea.find(".photos").html(html);

@@ -45,16 +45,19 @@
         };
         this.onmessage = function (event) {
         };
-        this.onreconnect = function () {
+        this.onreconnect = function (textStatus) {
         };
 
         this.createWebSocket();
+
+        WebsocketHeartbeatJs.instance = this;
     }
 
     // 创建WebSocket对象，并绑定事件
     WebsocketHeartbeatJs.prototype.createWebSocket = function () {
         var _self = this;
         try {
+            _self.isAvailable = false;
             // 判断当前浏览器是否支持WebSocket
             if ('WebSocket' in window) {
                 _self.ws = new WebSocket(_self.opts.url);
@@ -67,7 +70,7 @@
                 _self.initEventHandle();
             }
         } catch (e) {
-            _self.reconnect();
+            _self.reconnect("exception");
             throw e;
         }
     };
@@ -75,14 +78,17 @@
     WebsocketHeartbeatJs.prototype.initEventHandle = function () {
         var _self = this;
         _self.ws.onclose = function (event) {
+            _self.isAvailable = false;
             _self.onclose(event);
-            _self.reconnect();
+            _self.reconnect("close");
         };
         _self.ws.onerror = function (e) {
+            _self.isAvailable = false;
             _self.onerror(e);
-            _self.reconnect();
+            _self.reconnect("error");
         };
         _self.ws.onopen = function (event) {
+            _self.isAvailable = true;
             _self.onopen(event);
             // 心跳检测重置
             _self.heartCheck();
@@ -93,14 +99,40 @@
             // 拿到任何消息都说明当前连接是正常的
             _self.heartCheck();
         };
+
+        // 注册事件监控当设备从睡眠中唤醒时执行，启动重连
+        // 各种浏览器兼容
+        var hidden, state, visibilityChange;
+        if (typeof document.hidden !== "undefined") {
+            hidden = "hidden";
+            visibilityChange = "visibilitychange";
+            state = "visibilityState";
+        } else if (typeof document.webkitHidden !== "undefined") {
+            hidden = "webkitHidden";
+            visibilityChange = "webkitvisibilitychange";
+            state = "webkitVisibilityState";
+        } else if (typeof document.mozHidden !== "undefined") {
+            hidden = "mozHidden";
+            visibilityChange = "mozvisibilitychange";
+            state = "mozVisibilityState";
+        } else if (typeof document.msHidden !== "undefined") {
+            hidden = "msHidden";
+            visibilityChange = "msvisibilitychange";
+            state = "msVisibilityState";
+        }
+        _self.visibilityStateKey = state;
+        _self.visibilityChangeKey = visibilityChange;
+        // 添加标签激活状态改变监听器
+        document.removeEventListener(visibilityChange, wakeUp);
+        document.addEventListener(visibilityChange, wakeUp, false);
     };
     // 重新连接
-    WebsocketHeartbeatJs.prototype.reconnect = function () {
+    WebsocketHeartbeatJs.prototype.reconnect = function (textStatus) {
         var _self = this;
         if (_self.lockReconnect || _self.forbidReconnect) return;
         _self.lockReconnect = true;
         _self.close();
-        _self.onreconnect();
+        _self.onreconnect(textStatus);
         // 一般在断网后，浏览器会触发onclose或onerror方法，从而触发reconnect，没连接上会循环重连，
         // 为避免请求过多，设置延迟
         setTimeout(function () {
@@ -141,19 +173,28 @@
         clearTimeout(this.pingTimeoutId);
         clearTimeout(this.pongTimeoutId);
     };
+    // 当设备从睡眠中唤醒时执行
+    var wakeUp = function () {
+        var _self = WebsocketHeartbeatJs.instance;
+        // 当连接不可用，且标签被激活时
+        if (_self != null && !_self.isAvailable && document[_self.visibilityStateKey] == "visible") {
+            // 重新连接
+            _self.reconnect("wakeUp");
+        }
+    };
     // 关闭连接
     WebsocketHeartbeatJs.prototype.close = function () {
         // 如果设置关闭重连，不再重连
         this.forbidReconnect = true;
         this.heartReset();
         this.ws.close();
+        document.removeEventListener(this.visibilityChangeKey, wakeUp);
     };
 
     /* -------------------------------------------------------------------------- */
 
     var pointer = {
-        webSocket: null,
-        isReady: false
+        webSocket: null
     };
 
     var config = {
@@ -203,7 +244,6 @@
 
         //连接成功建立的回调方法
         pointer.webSocket.onopen = function (event) {
-            pointer.isReady = true;
             utils.triggerEvent(config.event.connectionOpen, event);
         };
 
@@ -218,8 +258,10 @@
                     return;
                 }
                 if (message.mapping == "forbidden") {   // 如果拒绝连接
+                    var time = common_utils.formatDate(new Date(), "hh:mm:ss");
                     pointer.webSocket.close();
-                } else if (message.mapping && message.mapping != "ping") { // 过滤掉ping消息
+                    console.log("websocket connection 强制下线 at " + time);
+                } else if (message.mapping && message.mapping != "pong") { // 过滤掉ping消息的返回消息pong
                     // 调用绑定该mapping的事件
                     utils.triggerEvent(config.event.messageReceive + "." + message.mapping, message, wsEvent);
                 }
@@ -230,20 +272,26 @@
 
         //连接发生错误的回调方法
         pointer.webSocket.onerror = function (e) {
-            console.log("websocket an error occurred");
+            var time = common_utils.formatDate(new Date(), "hh:mm:ss");
+            console.log("websocket an error occurred at " + time);
             utils.triggerEvent(config.event.connectionError, e);
         };
 
         //连接关闭的回调方法
         pointer.webSocket.onclose = function (event) {
-            pointer.isReady = false;
-            console.log("websocket connection disconnect from server");
+            var time = common_utils.formatDate(new Date(), "hh:mm:ss");
+            console.log("websocket connection disconnect from server at " + time);
             utils.triggerEvent(config.event.connectionClose, event);
         };
 
         //连接重连的回调方法
-        pointer.webSocket.onreconnect = function () {
-            console.log("websocket reconnection server...");
+        pointer.webSocket.onreconnect = function (textStatus) {
+            var time = common_utils.formatDate(new Date(), "hh:mm:ss");
+            if (textStatus == "wakeUp") {
+                console.log("websocket wake up and reconnection server at " + time);
+            } else {
+                console.log("websocket reconnection server at " + time);
+            }
         };
 
         //监听窗口关闭事件，当窗口关闭时，主动去关闭websocket连接，防止连接还没断开就关闭窗口，server端会抛异常。
@@ -293,7 +341,7 @@
 
     // 当连接ready之后才可以使用post方法
     var ready = function (func) {
-        if (pointer.isReady) {
+        if (utils.isWsAvailable()) {
             func();
         } else {
             var call = function () {
@@ -313,10 +361,13 @@
             $(context).bind(eventName, func);
         },
         "triggerEvent": function (eventName) {
-            $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
+            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
         },
         "unbindEvent": function (eventName, func) {
             $(context).unbind(eventName, func);
+        },
+        "isWsAvailable": function () {
+            return pointer.webSocket && pointer.webSocket.isAvailable;
         }
     };
 

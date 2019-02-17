@@ -4,8 +4,10 @@ import org.apache.commons.httpclient.HttpStatus;
 import org.apache.log4j.Logger;
 import org.springframework.web.method.HandlerMethod;
 import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.common.type.UserAuthType;
 import site.imcoder.blog.entity.User;
-import site.imcoder.blog.service.IUserService;
+import site.imcoder.blog.entity.UserAuth;
+import site.imcoder.blog.service.IAuthService;
 
 import javax.annotation.Resource;
 import javax.servlet.ServletException;
@@ -27,7 +29,7 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
     private static Logger logger = Logger.getLogger(LoginRequiredInterceptor.class);
 
     @Resource
-    private IUserService userService;
+    private IAuthService authService;
 
     @Override
     public Annotation findMethodAnnotation(Object handler) {
@@ -71,11 +73,9 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
                 }
             }
             if (uid != null && token != null) {
-                User postUser = new User();
-                postUser.setLoginIP(Utils.getRemoteAddr(request));
-                postUser.setUid(Integer.valueOf(uid));
-                postUser.setToken(token);
-                Map<String, Object> map = userService.login(postUser, false);
+                UserAuth userAuth = new UserAuth(Integer.valueOf(uid), UserAuthType.TOKEN, uid, token);
+                userAuth.setLogin_ip(Utils.getRemoteAddr(request));
+                Map<String, Object> map = authService.login(userAuth, false);
                 int flag = (int) map.get("flag");
                 if (flag == 200) {
                     session.setAttribute("loginUser", map.get("user"));
@@ -83,7 +83,7 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
                     response.addCookie(responseCookie);
                     isLogin = true;
                 } else {
-                    logger.warn(String.format("用户 %s 自动登录失败，CODE：%d，IP：%s", postUser.getUid(), flag, postUser.getLoginIP()));
+                    logger.warn(String.format("用户 %s 自动登录失败，CODE：%d，IP：%s", userAuth.getUid(), flag, userAuth.getLogin_ip()));
                 }
             }
             if (!isLogin) {

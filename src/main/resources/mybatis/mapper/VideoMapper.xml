@@ -6,11 +6,11 @@
 
     <!-- 插入视频 -->
     <insert id="saveVideo" parameterType="video" useGeneratedKeys="true" keyProperty="video_id">
-        insert into video (uid, cover_id, name, description, tags, source_type, path, code, width, height, size, video_type, upload_time, originName, permission)
+        insert into video (uid, cover_id, name, description, tags, source_type, path, code, width, height, size, video_type, upload_time, originName, refer, permission, click)
         values
         (#{user.uid},#{cover.photo_id},#{name},#{description},#{tags},#{source_type},#{path},#{code},#{width},#{height},#{size},#{video_type},
         #{upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
-        ,#{originName}, #{permission})
+        ,#{originName}, #{refer}, #{permission}, 0)
     </insert>
 
     <resultMap id="videoResultMap" type="video">
@@ -28,23 +28,27 @@
         <result column="upload_time" property="upload_time" javaType="java.util.Date" jdbcType="BIGINT"
                 typeHandler="site.imcoder.blog.dao.typehandler.DateTypeHandler"/>
         <result column="originName" property="originName"/>
+        <result column="refer" property="refer"/>
         <result column="permission" property="permission"/>
+        <result column="click" property="click"/>
         <association column="uid" property="user" javaType="user">
             <result column="uid" property="uid"/>
             <result column="nickname" property="nickname"/>
         </association>
         <association column="cover_id" property="cover" javaType="photo">
             <result column="cover_id" property="photo_id"/>
+            <result column="album_id" property="album_id"/>
             <result column="p_path" property="path"/>
             <result column="p_width" property="width"/>
             <result column="p_height" property="height"/>
+            <result column="image_type" property="image_type"/>
         </association>
     </resultMap>
 
     <select id="findVideoById" parameterType="video" resultMap="videoResultMap">
-        select v.video_id, v.uid , u.nickname, v.cover_id, p.path as p_path, p.width as p_width, p.height as p_height,
+        select v.video_id, v.uid , u.nickname, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
-        v.upload_time, v.originName, v.permission
+        v.upload_time, v.originName, v.refer, v.permission, v.click
         from ( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id
         <where>
             <choose>
@@ -63,9 +67,9 @@
     </select>
 
     <select id="findVideoListByCoverIdArray" parameterType="hashMap" resultMap="videoResultMap">
-        select v.video_id, v.uid , u.nickname, v.cover_id, p.path as p_path, p.width as p_width, p.height as p_height,
+        select v.video_id, v.uid , u.nickname, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
-        v.upload_time, v.originName, v.permission
+        v.upload_time, v.originName, v.refer, v.permission, v.click
         from ( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id
         <where>
             <choose>
@@ -99,8 +103,18 @@
 
     <update id="updateVideo" parameterType="video">
         update video set cover_id = #{cover.photo_id}, name = #{name}, description = #{description}, tags = #{tags}, source_type = #{source_type}, path = #{path},
-         code = #{code}, width = #{width}, height = #{height}, size = #{size}, video_type = #{video_type}, originName = #{originName}, permission = #{permission}
+         code = #{code}, width = #{width}, height = #{height}, size = #{size}, video_type = #{video_type}, originName = #{originName}, refer = #{refer}, permission = #{permission}
         where video_id = #{video_id}
+    </update>
+
+    <!-- 点击量加1 -->
+    <update id="raiseVideoClickCount" parameterType="video">
+        update video set click = click + 1 where video_id = #{video_id}
+    </update>
+
+    <!-- 更新封面图片的image_type -->
+    <update id="updateCoverImageType" parameterType="photo">
+        update photo set image_type = #{image_type} where photo_id = #{photo_id}
     </update>
 
 </mapper>
