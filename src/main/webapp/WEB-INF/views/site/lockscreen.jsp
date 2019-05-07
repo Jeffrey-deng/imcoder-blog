@@ -1,3 +1,4 @@
+<%@ taglib prefix="s" uri="http://www.springframework.org/tags" %>
 <%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%
@@ -6,6 +7,9 @@
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
+    request.setAttribute("site_icp_record_code", Config.get(ConfigConstants.SITE_ICP_RECORD_CODE));
+    request.setAttribute("site_police_record_code", Config.get(ConfigConstants.SITE_POLICE_RECORD_CODE));
+    request.setAttribute("site_police_record_number", Config.get(ConfigConstants.SITE_POLICE_RECORD_NUMBER));
 %>
 <%
     Object http_code = request.getAttribute("http_code");
@@ -18,7 +22,9 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="<%=basePath%>" target="_self">
     <title>重新登录 - ImCoder's 博客</title>
     <meta name="keywords" content="imcoder.site,重新验证密码">
     <meta name="description" content="重新验证密码登录到imcoder.site">
@@ -26,7 +32,7 @@
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
-    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
     <style>
@@ -116,11 +122,11 @@
 <div class="middle-box text-center lockscreen animated fadeInDown">
     <div>
         <div class="m-b-md">
-            <img alt="image" class="img-circle circle-border" src="<%=staticPath%>${user.head_photo}"/>
+            <img alt="image" class="img-circle circle-border" src="<s:eval expression="user.head_photo"/>"/>
         </div>
         <h3>${userAuth.identifier}</h3>
         <p>您需要再次输入密码</p>
-        <form id="login_form" method="post" action="user.do?method=login" onsubmit="return false;">
+        <form id="login_form" method="post" onsubmit="return false;">
             <div class="form-group">
                 <input type="hidden" name="identifier" value="${userAuth.identifier}"/>
                 <input type="checkbox" name="remember" checked="checked" style="display: none;">

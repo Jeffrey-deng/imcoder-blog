@@ -4,7 +4,7 @@
 
 <mapper namespace="user">
 
-    <delete id="deleteUser" parameterType="int">
+    <delete id="deleteUser" parameterType="Long">
         delete from user where uid=#{uid}
     </delete>
 
@@ -37,9 +37,9 @@
     </select>
 
     <!-- 保存 -->
-    <insert id="saveUser" parameterType="user" useGeneratedKeys="true" keyProperty="uid">
-        insert into user(gid,nickname,phone,sex,email,description,head_photo,qq)
-        values(#{userGroup.gid},#{nickname},#{phone},#{sex},#{email},#{description},#{head_photo},#{qq})
+    <insert id="saveUser" parameterType="user">
+        insert into user(uid, gid,nickname,phone,sex,email,description,head_photo,qq)
+        values(#{uid}, #{userGroup.gid},#{nickname},#{phone},#{sex},#{email},#{description},#{head_photo},#{qq})
     </insert>
 
     <!-- 保存 个人资料-->
@@ -50,7 +50,7 @@
     </update>
 
     <resultMap id="userMap" type="user">
-        <result column="uid" property="uid"/>
+        <id column="uid" property="uid"/>
         <result column="nickname" property="nickname"/>
         <result column="phone" property="phone"/>
         <result column="sex" property="sex"/>
@@ -121,10 +121,14 @@
     <update id="updateUserStatus" parameterType="userStatus">
         update user_status
         <set>
-            <if test="register_ip != null">register_ip = #{register_ip}, </if>
-            <if test="register_time != null">register_time = #{register_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}, </if>
-            <if test="last_login_ip != null">last_login_ip = #{last_login_ip}, </if>
-            <if test="last_login_time != null">last_login_time = #{last_login_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}, </if>
+            <if test="register_ip != null">register_ip = #{register_ip},</if>
+            <if test="register_time != null">register_time =
+                #{register_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler},
+            </if>
+            <if test="last_login_ip != null">last_login_ip = #{last_login_ip},</if>
+            <if test="last_login_time != null">last_login_time =
+                #{last_login_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler},
+            </if>
         </set>
         <where>
             uid = #{uid}
@@ -132,26 +136,27 @@
     </update>
 
     <!-- *************************关注 start********************* -->
+
     <!-- 检查是否fansUser关注了hostUser -->
     <select id="checkFollow" parameterType="follow" resultType="int">
-        select count(*) from user_follow where ( uid=#{uid} and fuid=#{fuid} )
+        select count(*) from user_follow where ( uid=#{followerUid} and fuid=#{followingUid} )
     </select>
 
     <!-- 保存关注 如果已关注则不插入 由count判断 -->
     <insert id="saveFollow" parameterType="hashMap">
         <selectKey keyProperty="count" resultType="int" order="BEFORE">
-            select count(*) from user_follow where ( uid=#{follow.uid} and fuid=#{follow.fuid} )
+            select count(*) from user_follow where ( uid=#{follow.followerUid} and fuid=#{follow.followingUid} )
         </selectKey>
-        <if test="count==0">
-            insert into user_follow(UID,FUID) values (#{follow.uid},#{follow.fuid})
+        <if test="count == 0">
+            insert into user_follow(UID,FUID) values (#{follow.followerUid},#{follow.followingUid})
         </if>
-        <if test="count>0">
-            select count(*) from user_follow where ( uid=#{follow.uid} and fuid=#{follow.fuid} )
+        <if test="count > 0">
+            select count(*) from user_follow where ( uid=#{follow.followerUid} and fuid=#{follow.followingUid} )
         </if>
     </insert>
 
     <!-- 查询用户关注列表 -->
-    <select id="findFollowList" parameterType="user" resultMap="userMap_contact">
+    <select id="findFollowingList" parameterType="user" resultMap="userMap_contact">
         select uf.fuid as userid,nickname,sex,email,address,birthday,description,head_photo,qq,weibo,says,site,
         ug.gid,ug.group_name
         from user_follow uf left join
@@ -162,7 +167,7 @@
     </select>
 
     <!-- 查询粉丝关注列表 -->
-    <select id="findFansList" parameterType="user" resultMap="userMap_contact">
+    <select id="findFollowerList" parameterType="user" resultMap="userMap_contact">
         select uf.uid as userid,nickname,sex,email,address,birthday,description,head_photo,qq,weibo,says,site,
         ug.gid,ug.group_name
         from user_follow uf left join
@@ -193,16 +198,17 @@
 
     <!-- 删除关注关系 -->
     <delete id="deleteFollow" parameterType="follow">
-        delete from user_follow where ( uid=#{uid} and fuid=#{fuid} )
+        delete from user_follow where ( uid=#{followerUid} and fuid=#{followingUid} )
     </delete>
 
     <!-- *************************关注 end********************* -->
 
     <!-- *************************好友 start********************* -->
+
     <!-- 检查是否相互关注 -->
     <select id="checkMutualFollow" parameterType="follow" resultType="int">
         select count(*) as cnt from user_follow where
-        ( uid=#{uid} and fuid=#{fuid} ) or ( uid=#{fuid} and fuid=#{uid} )
+        ( uid=#{followerUid} and fuid=#{followingUid} ) or ( uid=#{followingUid} and fuid=#{followerUid} )
     </select>
 
     <!-- 检查是否为好友 -->
@@ -239,17 +245,17 @@
     <!-- *************************收藏 start********************* -->
     <!-- 检查收藏是否重复 -->
     <select id="checkCollection" parameterType="collect" resultType="int">
-        select count(*) from collection where ( uid=#{uid} and aid=#{article_aid} );
+        select count(*) from collection where ( uid=#{uid} and aid=#{article.aid} );
     </select>
 
     <!-- 插入用户收藏表行 -->
     <insert id="saveCollection" parameterType="collect">
-        insert into collection(uid,aid,clet_time) values(#{uid},#{article_aid},#{clet_time})
+        insert into collection(uid,aid,clet_time) values (#{uid},#{article.aid},#{clet_time})
     </insert>
 
     <!-- 删除用户收藏表行  -->
     <insert id="deleteCollection" parameterType="collect">
-        delete from collection where ( uid=#{uid} and aid=#{article_aid} )
+        delete from collection where ( uid=#{uid} and aid=#{article.aid} )
     </insert>
 
     <!-- 查找收藏文章列表 -->
@@ -263,14 +269,847 @@
     </select>
 
     <resultMap id="collectListMap" type="collect">
-        <result column="coid" property="coid"/>
+        <id column="coid" property="coid"/>
         <result column="uid" property="uid"/>
-        <result column="auid" property="author_uid"/>
-        <result column="nickname" property="author_nickname"/>
-        <result column="aid" property="article_aid"/>
-        <result column="title" property="article_title"/>
         <result column="clet_time" property="clet_time"/>
+        <association property="article" javaType="article">
+            <result column="aid" property="aid"/>
+            <result column="title" property="title"/>
+            <association property="author" javaType="user">
+                <result column="auid" property="uid"/>
+                <result column="nickname" property="nickname"/>
+            </association>
+        </association>
     </resultMap>
 
     <!-- *************************收藏 end********************* -->
+
+    <!-- 文章访问记录 start -->
+    <select id="findArticleAccessRecord" parameterType="accessRecord" resultMap="articleAccessRecordMap">
+        select aah.aah_id, aah.UID, (case when u.uid is NULL then aah.last_access_ip else u.nickname end) as nickname, u.sex, u.head_photo,
+        a.aid, a.title, a.tags, a.summary, a.create_time, a.update_time, a.click_count, a.collect_count, a.comment_count,
+        a.permission, a.top, a.recommend,
+        at.atid, at.atname,
+        a.uid as author_uid, au.nickname as author_nickname, au.sex as author_sex, au.head_photo as author_head_photo,
+        au.gid, aug.group_name,
+        (case when (aah.aah_id is not null) then true else false end) as accessed,
+        (case when (aah.is_like is not null and aah.is_like > 0) then true else false end) as liked,
+        (case when (c.main_id is not null) then true else false end) as commented,
+        aah.first_access_path, aah.first_access_referer, aah.first_access_time,
+        aah.last_access_time, aah.last_access_ip, aah.last_access_user_agent, aah.access_times, aah.deep, aah.is_like
+        from ((article_access_history aah
+        left join ((article a left join article_type at on a.atid = at.atid) left join
+        (user au left join user_group aug on au.gid = aug.gid) on a.uid = au.uid)
+        on aah.aid = a.aid)
+        left join user u on aah.uid = u.uid)
+        left join (select all_c.main_id, all_c.uid from comment all_c where all_c.main_type = 0 group by all_c.main_id, all_c.uid) c
+        on (aah.aid = c.main_id and aah.uid = c.uid)
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (bean != null and bean.aid != null and ((user != null and user.uid != null) or (last_access_ip != null and last_access_ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and aah.aah_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and aah.UID = #{user.uid} and aah.AID = #{bean.aid}
+                                </when>
+                                <otherwise>
+                                    and aah.UID = 0 and aah.AID = #{bean.aid} and aah.last_access_ip = #{last_access_ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+        limit 1
+    </select>
+
+    <select id="findSimpleArticleAccessRecord" parameterType="accessRecord" resultType="accessRecord">
+        select aah_id, UID, AID, first_access_path, first_access_referer, first_access_time,
+        last_access_time, last_access_ip, last_access_user_agent, access_times, deep, is_like
+        from article_access_history
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (bean != null and bean.aid != null and ((user != null and user.uid != null) or (last_access_ip != null and last_access_ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and aah.aah_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and UID = #{user.uid} and AID = #{bean.aid}
+                                </when>
+                                <otherwise>
+                                    and UID = 0 and AID = #{bean.aid} and last_access_ip = #{last_access_ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+        limit 1
+    </select>
+
+    <select id="findArticleAccessRecordList" parameterType="hashMap" resultMap="articleAccessRecordMap">
+        select aah.aah_id, aah.UID, (case when u.uid is NULL then aah.last_access_ip else u.nickname end) as nickname, u.sex, u.head_photo,
+        a.aid, a.title, a.tags, a.summary, a.create_time, a.update_time, a.click_count, a.collect_count, a.comment_count,
+        a.permission, a.top, a.recommend,
+        at.atid, at.atname,
+        a.uid as author_uid, au.nickname as author_nickname, au.sex as author_sex, au.head_photo as author_head_photo,
+        au.gid, aug.group_name,
+        (case when (aah.aah_id is not null) then true else false end) as accessed,
+        (case when (aah.is_like is not null and aah.is_like > 0) then true else false end) as liked,
+        (case when (c.main_id is not null) then true else false end) as commented,
+        aah.first_access_path, aah.first_access_referer, aah.first_access_time,
+        aah.last_access_time, aah.last_access_ip, aah.last_access_user_agent, aah.access_times, aah.deep, aah.is_like
+        from ((article_access_history aah
+        left join (
+        ((select all_a.* from article all_a
+        <where>
+            <choose>
+                <when test="loginUser != null and loginUser.uid > 0 and loginUser.userGroup.gid == '-1'">
+                    and (1 = 1)
+                </when>
+                <when test="loginUser != null and loginUser.uid > 0">
+                    and (
+                    all_a.uid = #{loginUser.uid}
+                    or
+                    (
+                    (all_a.permission = 0 or all_a.permission = 1)
+                    or
+                    (all_a.permission = 2 or all_a.permission = 2)
+                    or
+                    ((all_a.permission = 4 or all_a.permission = 3) and all_a.uid in (select following.fuid from
+                    user_follow following where following.uid = #{loginUser.uid}))
+                    or
+                    ((all_a.permission = 6 or all_a.permission = 4) and all_a.uid in (select follower.uid from
+                    user_follow follower where follower.fuid = #{loginUser.uid}))
+                    or
+                    ((all_a.permission = 8 or all_a.permission = 5) and all_a.uid in (select friend.uid from friends
+                    friend where friend.fid = #{loginUser.uid}))
+                    )
+                    )
+                </when>
+                <otherwise>
+                    and (all_a.permission = 0 or all_a.permission = 1)
+                </otherwise>
+            </choose>
+        </where>
+        ) a left join article_type at on a.atid = at.atid) left join (user au left join user_group aug on au.gid = aug.gid) on a.uid = au.uid)
+        on aah.aid = a.aid)
+        left join user u on aah.uid = u.uid)
+        left join (select all_c.main_id, all_c.uid from comment all_c where all_c.main_type = 0 group by all_c.main_id, all_c.uid) c
+        on (aah.aid = c.main_id and aah.uid = c.uid)
+        <where>
+            <if test="condition.user != null and condition.user.uid != null">
+                and aah.UID = #{condition.user.uid}
+            </if>
+            <if test="condition.bean != null">
+                <if test="condition.bean.aid != null and condition.bean.aid > 0">
+                    and aah.AID = #{condition.bean.aid}
+                </if>
+                <if test="condition.bean.collected">
+                    and (aah.is_like is not null and aah.is_like > 0)
+                </if>
+                <if test="condition.bean.commented">
+                    and (c.main_id is not null)
+                </if>
+            </if>
+            <if test="condition.last_access_ip != null and condition.last_access_ip != ''">
+                and aah.last_access_ip = #{condition.last_access_ip}
+            </if>
+            <if test="condition.deep != null and condition.deep > 0">
+                and aah.deep = #{condition.deep}
+            </if>
+            <if test="condition.is_like != null and condition.is_like > 0">
+                and aah.is_like = #{condition.is_like}
+            </if>
+        </where>
+        order by aah.last_access_time desc
+    </select>
+
+    <insert id="saveArticleAccessRecord" parameterType="accessRecord">
+        insert into article_access_history (UID, AID, first_access_path, first_access_referer, first_access_time,
+        last_access_time, last_access_ip, last_access_user_agent, access_times, deep, is_like)
+        values (#{user.uid}, #{bean.aid}, #{first_access_path}, #{first_access_referer}, #{first_access_time},
+        #{last_access_time}, #{last_access_ip}, #{last_access_user_agent}, #{access_times}, #{deep}, #{is_like})
+    </insert>
+
+    <update id="updateArticleAccessRecord" parameterType="accessRecord">
+        update article_access_history set last_access_time = #{last_access_time}, last_access_ip = #{last_access_ip},
+        last_access_user_agent = #{last_access_user_agent}, access_times = #{access_times}, deep = #{deep}, is_like = #{is_like}
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (bean != null and bean.aid != null and ((user != null and user.uid != null) or (last_access_ip != null and last_access_ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and aah_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and uid = #{user.uid} and aid = #{bean.aid}
+                                </when>
+                                <otherwise>
+                                    and uid = 0 and aid = #{bean.aid} and last_access_ip = #{last_access_ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+    </update>
+
+    <delete id="deleteArticleAccessRecord" parameterType="accessRecord">
+        delete from article_access_history
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (bean != null and bean.aid != null and ((user != null and user.uid != null) or (last_access_ip != null and last_access_ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and aah_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and uid = #{user.uid} and aid = #{bean.aid}
+                                </when>
+                                <otherwise>
+                                    and uid = 0 and aid = #{bean.aid} and last_access_ip = #{last_access_ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+    </delete>
+
+    <resultMap id="articleAccessRecordMap" type="accessRecord">
+        <id column="aah_id" property="ar_id"/>
+        <result column="first_access_path" property="first_access_path"/>
+        <result column="first_access_referer" property="first_access_referer"/>
+        <result column="first_access_time" property="first_access_time"/>
+        <result column="last_access_time" property="last_access_time"/>
+        <result column="last_access_ip" property="last_access_ip"/>
+        <result column="last_access_user_agent" property="last_access_user_agent"/>
+        <result column="access_times" property="access_times"/>
+        <result column="deep" property="deep"/>
+        <result column="is_like" property="is_like"/>
+        <association property="user" column="uid" javaType="user">
+            <result column="uid" property="uid"/>
+            <result column="nickname" property="nickname"/>
+            <result column="sex" property="sex"/>
+            <result column="head_photo" property="head_photo"/>
+        </association>
+        <association property="bean" column="aid" javaType="article">
+            <result column="aid" property="aid"/>
+            <result column="title" property="title"/>
+            <result column="tags" property="tags"/>
+            <result column="summary" property="summary"/>
+            <result column="create_time" property="create_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+            <result column="update_time" property="update_time" javaType="java.util.Date" jdbcType="BIGINT"/>
+            <result column="click_count" property="click_count"/>
+            <result column="collect_count" property="collect_count"/>
+            <result column="comment_count" property="comment_count"/>
+            <result column="permission" property="permission"/>
+            <result column="top" property="top"/>
+            <result column="recommend" property="recommend"/>
+            <result column="accessed" property="accessed"/>
+            <result column="liked" property="collected"/>
+            <result column="commented" property="commented"/>
+            <association property="category" column="atid" javaType="category">
+                <result column="atid" property="atid"/>
+                <result column="atname" property="atname"/>
+            </association>
+            <association property="author" column="author_uid" javaType="user">
+                <result column="author_uid" property="uid"/>
+                <result column="author_nickname" property="nickname"/>
+                <result column="author_sex" property="sex"/>
+                <result column="author_head_photo" property="head_photo"/>
+                <association property="userGroup" column="gid" javaType="userGroup">
+                    <result column="gid" property="gid"/>
+                    <result column="group_name" property="group_name"/>
+                </association>
+            </association>
+        </association>
+    </resultMap>
+    <!-- 文章访问记录 end -->
+
+    <!-- 视频访问记录 start -->
+    <select id="findVideoAccessRecord" parameterType="accessRecord" resultMap="videoAccessRecordMap">
+        select vah.vah_id, vah.UID, (case when u.uid is NULL then vah.last_access_ip else u.nickname end) as nickname, u.sex, u.head_photo,
+        v.video_id, v.uid as author_uid , vu.nickname as author_nickname, vu.sex as author_sex, vu.head_photo as author_head_photo,
+        v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
+        v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
+        v.upload_time, v.originName, v.refer, v.permission, v.rotate, v.click_count, v.like_count, v.comment_count,
+        (case when (vah.vah_id is not null) then true else false end) as accessed,
+        (case when (vah.is_like is not null and vah.is_like > 0) then true else false end) as liked,
+        (case when (c.main_id is not null) then true else false end) as commented,
+        vah.first_access_path, vah.first_access_referer, vah.first_access_time,
+        vah.last_access_time, vah.last_access_ip, vah.last_access_user_agent, vah.access_times, vah.deep, vah.is_like
+        from ((video_access_history vah
+        left join ((video v left join user vu on v.uid = vu.uid) left join photo p on v.cover_id = p.photo_id) on
+        vah.video_id = v.video_id)
+        left join user u on vah.uid = u.uid)
+        left join (select all_c.main_id, all_c.uid from comment all_c where all_c.main_type = 2 group by all_c.main_id, all_c.uid) c
+        on (vah.video_id = c.main_id and vah.uid = c.uid)
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (bean != null and bean.video_id != null and ((user != null and user.uid != null) or (last_access_ip != null and last_access_ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and vah.vah_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and vah.UID = #{user.uid} and vah.video_id = #{bean.video_id}
+                                </when>
+                                <otherwise>
+                                    and vah.uid = 0 and vah.video_id = #{bean.video_id} and vah.last_access_ip = #{last_access_ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+        limit 1
+    </select>
+
+    <select id="findSimpleVideoAccessRecord" parameterType="accessRecord" resultType="accessRecord">
+        select vah_id, UID, VIDEO_ID, first_access_path, first_access_referer, first_access_time,
+        last_access_time, last_access_ip, last_access_user_agent, access_times, deep, is_like
+        from video_access_history
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (bean != null and bean.video_id != null and ((user != null and user.uid != null) or (last_access_ip != null and last_access_ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and vah_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and UID = #{user.uid} and VIDEO_ID = #{bean.video_id}
+                                </when>
+                                <otherwise>
+                                    and UID = 0 and VIDEO_ID = #{bean.video_id} and last_access_ip = #{last_access_ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+        limit 1
+    </select>
+
+    <select id="findVideoAccessRecordList" parameterType="hashMap" resultMap="videoAccessRecordMap">
+        <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
+        select vah.vah_id, vah.UID, (case when u.uid is NULL then vah.last_access_ip else u.nickname end) as nickname, u.sex, u.head_photo,
+        v.video_id, v.uid as author_uid , vu.nickname as author_nickname, vu.sex as author_sex, vu.head_photo as author_head_photo,
+        v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
+        v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
+        v.upload_time, v.refer, v.permission, v.rotate, v.click_count, v.like_count, v.comment_count,
+        <if test="is_login">
+            (case when v.uid = #{loginUser.uid} then v.originName else null end) as originName,
+        </if>
+        st.st_id, st.uid as st_uid, st.video_id as st_video_id, st.name as st_name, st.lang as st_lang, st.mime_type as st_mime_type, st.path as st_path, st.upload_time as st_upload_time,
+        (case when (vah.vah_id is not null) then true else false end) as accessed,
+        (case when (vah.is_like is not null and vah.is_like > 0) then true else false end) as liked,
+        (case when (c.main_id is not null) then true else false end) as commented,
+        vah.first_access_path, vah.first_access_referer, vah.first_access_time,
+        vah.last_access_time, vah.last_access_ip, vah.last_access_user_agent, vah.access_times, vah.deep, vah.is_like
+        from ((video_access_history vah
+        left join ((
+        ((select all_v.* from video all_v
+        <where>
+            <choose>
+                <when test="is_login and loginUser.userGroup.gid == '-1'">
+                    and (1 = 1)
+                </when>
+                <when test="is_login">
+                    and (
+                    all_v.uid = #{loginUser.uid}
+                    or
+                    (
+                    (all_v.permission = 0 or all_v.permission = 1)
+                    or
+                    (all_v.permission = 2 or all_v.permission = 3)
+                    or
+                    ((all_v.permission = 4 or all_v.permission = 5) and all_v.uid in (select following.fuid from
+                    user_follow following where following.uid = #{loginUser.uid}))
+                    or
+                    ((all_v.permission = 6 or all_v.permission = 7) and all_v.uid in (select follower.uid from
+                    user_follow follower where follower.fuid = #{loginUser.uid}))
+                    or
+                    ((all_v.permission = 8 or all_v.permission = 9) and all_v.uid in (select friend.uid from friends
+                    friend where friend.fid = #{loginUser.uid}))
+                    )
+                    )
+                </when>
+                <otherwise>
+                    and (all_v.permission = 0 or all_v.permission = 1)
+                </otherwise>
+            </choose>
+        </where>
+        ) v left join user vu on v.uid = vu.uid) left join photo p on v.cover_id = p.photo_id) left join video_subtitle st on v.video_id = st.video_id)
+        on vah.video_id = v.video_id)
+        left join user u on vah.uid = u.uid)
+        left join (select all_c.main_id, all_c.uid from comment all_c where all_c.main_type = 2 group by all_c.main_id, all_c.uid) c
+        on (vah.video_id = c.main_id and vah.uid = c.uid)
+        <where>
+            <if test="condition.user != null and condition.user.uid != null">
+                and vah.UID = #{condition.user.uid}
+            </if>
+            <if test="condition.bean != null">
+                <if test="condition.bean.video_id != null and condition.bean.video_id > 0">
+                    and vah.VIDEO_ID = #{condition.bean.video_id}
+                </if>
+                <if test="condition.bean.liked">
+                    and (vah.is_like is not null and vah.is_like > 0)
+                </if>
+                <if test="condition.bean.commented">
+                    and (c.main_id is not null)
+                </if>
+            </if>
+            <if test="condition.last_access_ip != null and condition.last_access_ip != ''">
+                and vah.last_access_ip = #{condition.last_access_ip}
+            </if>
+            <if test="condition.deep != null and condition.deep > 0">
+                and vah.deep = #{condition.deep}
+            </if>
+            <if test="condition.is_like != null and condition.is_like > 0">
+                and vah.is_like = #{condition.is_like}
+            </if>
+        </where>
+        order by vah.last_access_time desc
+    </select>
+
+    <insert id="saveVideoAccessRecord" parameterType="accessRecord">
+        insert into video_access_history (UID, VIDEO_ID, first_access_path, first_access_referer, first_access_time,
+        last_access_time, last_access_ip, last_access_user_agent, access_times, deep, is_like)
+        values (#{user.uid}, #{bean.video_id}, #{first_access_path}, #{first_access_referer}, #{first_access_time},
+        #{last_access_time}, #{last_access_ip}, #{last_access_user_agent}, #{access_times}, #{deep}, #{is_like})
+    </insert>
+
+    <update id="updateVideoAccessRecord" parameterType="accessRecord">
+        update video_access_history set last_access_time = #{last_access_time}, last_access_ip = #{last_access_ip},
+        last_access_user_agent = #{last_access_user_agent}, access_times = #{access_times}, deep = #{deep}, is_like = #{is_like}
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (bean != null and bean.video_id != null and ((user != null and user.uid != null) or (last_access_ip != null and last_access_ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and vah_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and uid = #{user.uid} and video_id = #{bean.video_id}
+                                </when>
+                                <otherwise>
+                                    and uid = 0 and video_id = #{bean.video_id} and last_access_ip = #{last_access_ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+    </update>
+
+    <delete id="deleteVideoAccessRecord" parameterType="accessRecord">
+        delete from video_access_history
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (bean != null and bean.video_id != null and ((user != null and user.uid != null) or (last_access_ip != null and last_access_ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and vah_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and uid = #{user.uid} and video_id = #{bean.video_id}
+                                </when>
+                                <otherwise>
+                                    and uid = 0 and video_id = #{bean.video_id} and last_access_ip = #{last_access_ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+    </delete>
+
+    <resultMap id="videoAccessRecordMap" type="accessRecord">
+        <id column="vah_id" property="ar_id"/>
+        <result column="first_access_path" property="first_access_path"/>
+        <result column="first_access_referer" property="first_access_referer"/>
+        <result column="first_access_time" property="first_access_time"/>
+        <result column="last_access_time" property="last_access_time"/>
+        <result column="last_access_user_agent" property="last_access_user_agent"/>
+        <result column="last_access_ip" property="last_access_ip"/>
+        <result column="access_times" property="access_times"/>
+        <result column="deep" property="deep"/>
+        <result column="is_like" property="is_like"/>
+        <association property="user" column="uid" javaType="user">
+            <result column="uid" property="uid"/>
+            <result column="nickname" property="nickname"/>
+            <result column="sex" property="sex"/>
+            <result column="head_photo" property="head_photo"/>
+        </association>
+        <association property="bean" column="video_id" javaType="video">
+            <result column="video_id" property="video_id"/>
+            <result column="name" property="name"/>
+            <result column="description" property="description"/>
+            <result column="tags" property="tags"/>
+            <result column="source_type" property="source_type"/>
+            <result column="path" property="path"/>
+            <result column="code" property="code"/>
+            <result column="width" property="width"/>
+            <result column="height" property="height"/>
+            <result column="size" property="size"/>
+            <result column="video_type" property="video_type"/>
+            <result column="upload_time" property="upload_time" javaType="java.util.Date" jdbcType="BIGINT"
+                    typeHandler="site.imcoder.blog.dao.typehandler.DateTypeHandler"/>
+            <result column="originName" property="originName"/>
+            <result column="refer" property="refer"/>
+            <result column="permission" property="permission"/>
+            <result column="rotate" property="rotate"/>
+            <result column="click_count" property="click_count"/>
+            <result column="like_count" property="like_count"/>
+            <result column="accessed" property="accessed"/>
+            <result column="liked" property="liked"/>
+            <result column="commented" property="commented"/>
+            <association property="user" column="author_uid" javaType="user">
+                <result column="author_uid" property="uid"/>
+                <result column="author_nickname" property="nickname"/>
+                <result column="author_sex" property="sex"/>
+                <result column="author_head_photo" property="head_photo"/>
+            </association>
+            <association column="cover_id" property="cover" javaType="photo">
+                <result column="cover_id" property="photo_id"/>
+                <result column="album_id" property="album_id"/>
+                <result column="p_path" property="path"/>
+                <result column="p_width" property="width"/>
+                <result column="p_height" property="height"/>
+                <result column="image_type" property="image_type"/>
+            </association>
+            <collection property="subtitles" javaType="ArrayList" column="st_id" ofType="subtitle">
+                <id column="st_id" property="st_id"/>
+                <result column="st_name" property="name"/>
+                <result column="st_lang" property="lang"/>
+                <result column="st_mime_type" property="mime_type"/>
+                <result column="st_path" property="path"/>
+                <result column="st_upload_time" property="upload_time"/>
+                <result column="st_video_id" property="video_id"/>
+                <result column="st_uid" property="uid"/>
+            </collection>
+        </association>
+    </resultMap>
+    <!-- 视频访问记录 end -->
+
+    <!-- 照片访问记录 start -->
+    <select id="findPhotoAccessRecord" parameterType="accessRecord" resultMap="photoAccessRecordMap">
+        select pah.pah_id, pah.UID, (case when u.uid is NULL then pah.last_access_ip else u.nickname end) as nickname, u.sex, u.head_photo,
+        p.photo_id, p.uid as author_uid, p.album_id, p.name, p.path, p.description, p.tags, p.upload_time, p.width,
+        p.height, p.size, p.image_type, p.originName, p.refer, p.click_count, p.like_count, p.comment_count,
+        t.ptwid, t.name as tname, t.permission as tpermission, t.scope,
+        (case when (pah.pah_id is not null) then true else false end) as accessed,
+        (case when (pah.is_like is not null and pah.is_like > 0) then true else false end) as liked,
+        (case when (c.main_id is not null) then true else false end) as commented,
+        pah.first_access_path, pah.first_access_referer, pah.first_access_time,
+        pah.last_access_time, pah.last_access_ip, pah.last_access_user_agent, pah.access_times, pah.deep, pah.is_like
+        from ((photo_access_history pah
+        left join ((photo p left join album a on p.album_id = a.album_id) left join photo_tag_wrapper t on p.topic =
+        t.ptwid) on pah.photo_id = p.photo_id)
+        left join user u on pah.uid = u.uid)
+        left join (select all_c.main_id, all_c.uid from comment all_c where all_c.main_type = 1 group by all_c.main_id, all_c.uid) c
+        on (pah.photo_id = c.main_id and pah.uid = c.uid)
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (bean != null and bean.photo_id != null and ((user != null and user.uid != null) or (last_access_ip != null and last_access_ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and pah.pah_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and pah.UID = #{user.uid} and pah.PHOTO_ID = #{bean.photo_id}
+                                </when>
+                                <otherwise>
+                                    and pah.UID = 0 and pah.PHOTO_ID = #{bean.photo_id} and pah.last_access_ip = #{last_access_ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+        limit 1
+    </select>
+
+    <select id="findSimplePhotoAccessRecord" parameterType="accessRecord" resultType="accessRecord">
+        select pah_id, UID, PHOTO_ID, first_access_path, first_access_referer, first_access_time,
+        last_access_time, last_access_ip, last_access_user_agent, access_times, deep, is_like
+        from photo_access_history
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (bean != null and bean.photo_id != null and ((user != null and user.uid != null) or (last_access_ip != null and last_access_ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and pah_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and UID = #{user.uid} and PHOTO_ID = #{bean.photo_id}
+                                </when>
+                                <otherwise>
+                                    and UID = 0 and PHOTO_ID = #{bean.photo_id} and last_access_ip = #{last_access_ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+        limit 1
+    </select>
+
+    <select id="findPhotoAccessRecordList" parameterType="hashMap" resultMap="photoAccessRecordMap">
+        <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
+        select pah.pah_id, pah.UID, (case when u.uid is NULL then pah.last_access_ip else u.nickname end) as nickname, u.sex, u.head_photo,
+        p.photo_id, p.uid as author_uid, p.album_id, p.name, p.path, p.description, p.tags, p.upload_time, p.width,
+        p.height, p.size, p.image_type, p.refer, p.click_count, p.like_count, p.comment_count,
+        <if test="is_login">
+            (case when p.uid = #{loginUser.uid} then p.originName else null end) as originName,
+        </if>
+        t.ptwid, t.name as tname, t.permission as tpermission, t.scope, t.description as tdescription,
+        (case when (pah.pah_id is not null) then true else false end) as accessed,
+        (case when (pah.is_like is not null and pah.is_like > 0) then true else false end) as liked,
+        (case when (c.main_id is not null) then true else false end) as commented,
+        pah.first_access_path, pah.first_access_referer, pah.first_access_time,
+        pah.last_access_time, pah.last_access_ip, pah.last_access_user_agent, pah.access_times, pah.deep, pah.is_like
+        from ((photo_access_history pah
+        left join (
+        (select all_p.* from (photo all_p left join album a on all_p.album_id = a.album_id)
+        <where>
+            <choose>
+                <when test="is_login and loginUser.userGroup.gid == '-1'">
+                    and (1 = 1)
+                </when>
+                <when test="is_login">
+                    and (
+                    a.uid = #{loginUser.uid}
+                    or
+                    (
+                    (a.permission = 0 or a.permission = 1)
+                    or
+                    (a.permission = 2 or a.permission = 3)
+                    or
+                    ((a.permission = 4 or a.permission = 5) and a.uid in (select following.fuid from user_follow
+                    following where following.uid = #{loginUser.uid}))
+                    or
+                    ((a.permission = 6 or a.permission = 7) and a.uid in (select follower.uid from user_follow follower
+                    where follower.fuid = #{loginUser.uid}))
+                    or
+                    ((a.permission = 8 or a.permission = 9) and a.uid in (select friend.uid from friends friend where
+                    friend.fid = #{loginUser.uid}))
+                    )
+                    )
+                </when>
+                <otherwise>
+                    and (a.permission = 0 or a.permission = 1)
+                </otherwise>
+            </choose>
+        </where>
+        ) p left join photo_tag_wrapper t on p.topic = t.ptwid) on pah.photo_id = p.photo_id)
+        left join user u on pah.uid = u.uid)
+        left join (select all_c.main_id, all_c.uid from comment all_c where all_c.main_type = 1 group by all_c.main_id, all_c.uid) c
+        on (pah.photo_id = c.main_id and pah.uid = c.uid)
+        <where>
+            <if test="condition.user != null and condition.user.uid != null">
+                and pah.UID = #{condition.user.uid}
+            </if>
+            <if test="condition.bean != null">
+                <if test="condition.bean.photo_id != null and condition.bean.photo_id > 0">
+                    and pah.PHOTO_ID = #{condition.bean.photo_id}
+                </if>
+                <if test="condition.bean.liked">
+                    and (pah.is_like is not null and pah.is_like > 0)
+                </if>
+                <if test="condition.bean.commented">
+                    and (c.main_id is not null)
+                </if>
+            </if>
+            <if test="condition.last_access_ip != null and condition.last_access_ip != ''">
+                and pah.last_access_ip = #{condition.last_access_ip}
+            </if>
+            <if test="condition.deep != null and condition.deep > 0">
+                and pah.deep = #{condition.deep}
+            </if>
+            <if test="condition.is_like != null and condition.is_like > 0">
+                and pah.is_like = #{condition.is_like}
+            </if>
+        </where>
+        order by pah.last_access_time desc
+    </select>
+
+    <insert id="savePhotoAccessRecord" parameterType="accessRecord">
+        insert into photo_access_history (UID, PHOTO_ID, first_access_path, first_access_referer, first_access_time,
+        last_access_time, last_access_ip, last_access_user_agent, access_times, deep, is_like)
+        values (#{user.uid}, #{bean.photo_id}, #{first_access_path}, #{first_access_referer}, #{first_access_time},
+        #{last_access_time}, #{last_access_ip}, #{last_access_user_agent}, #{access_times}, #{deep}, #{is_like})
+    </insert>
+
+    <update id="updatePhotoAccessRecord" parameterType="accessRecord">
+        update photo_access_history set last_access_time = #{last_access_time}, last_access_ip = #{last_access_ip},
+        last_access_user_agent = #{last_access_user_agent}, access_times = #{access_times}, deep = #{deep}, is_like = #{is_like}
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (bean != null and bean.photo_id != null and ((user != null and user.uid != null) or (last_access_ip != null and last_access_ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and pah_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and uid = #{user.uid} and PHOTO_ID = #{bean.photo_id}
+                                </when>
+                                <otherwise>
+                                    and uid = 0 and PHOTO_ID = #{bean.photo_id} and last_access_ip = #{last_access_ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+    </update>
+
+    <delete id="deletePhotoAccessRecord" parameterType="accessRecord">
+        delete from photo_access_history
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (bean != null and bean.photo_id != null and ((user != null and user.uid != null) or (last_access_ip != null and last_access_ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and pah_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and uid = #{user.uid} and PHOTO_ID = #{bean.photo_id}
+                                </when>
+                                <otherwise>
+                                    and uid = 0 and PHOTO_ID = #{bean.photo_id} and last_access_ip = #{last_access_ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+    </delete>
+
+    <resultMap id="photoAccessRecordMap" type="accessRecord">
+        <id column="pah_id" property="ar_id"/>
+        <result column="first_access_path" property="first_access_path"/>
+        <result column="first_access_referer" property="first_access_referer"/>
+        <result column="first_access_time" property="first_access_time"/>
+        <result column="last_access_time" property="last_access_time"/>
+        <result column="last_access_user_agent" property="last_access_user_agent"/>
+        <result column="last_access_ip" property="last_access_ip"/>
+        <result column="access_times" property="access_times"/>
+        <result column="deep" property="deep"/>
+        <result column="is_like" property="is_like"/>
+        <association property="user" column="uid" javaType="user">
+            <result column="uid" property="uid"/>
+            <result column="nickname" property="nickname"/>
+            <result column="sex" property="sex"/>
+            <result column="head_photo" property="head_photo"/>
+        </association>
+        <association property="bean" column="photo_id" javaType="photo">
+            <result column="photo_id" property="photo_id"/>
+            <result column="author_uid" property="uid"/>
+            <result column="album_id" property="album_id"/>
+            <result column="name" property="name"/>
+            <result column="path" property="path"/>
+            <result column="description" property="description"/>
+            <result column="tags" property="tags"/>
+            <result column="upload_time" property="upload_time" javaType="java.util.Date" jdbcType="BIGINT"
+                    typeHandler="site.imcoder.blog.dao.typehandler.DateTypeHandler"/>
+            <result column="width" property="width"/>
+            <result column="height" property="height"/>
+            <result column="size" property="size"/>
+            <result column="image_type" property="image_type"/>
+            <result column="originName" property="originName"/>
+            <result column="refer" property="refer"/>
+            <result column="click_count" property="click_count"/>
+            <result column="like_count" property="like_count"/>
+            <result column="accessed" property="accessed"/>
+            <result column="liked" property="liked"/>
+            <result column="commented" property="commented"/>
+            <association column="ptwid" property="topic" javaType="photoTagWrapper">
+                <result column="ptwid" property="ptwid"/>
+                <result column="tname" property="name"/>
+                <result column="tpermission" property="permission"/>
+                <result column="scope" property="scope"/>
+                <result column="tdescription" property="description"/>
+            </association>
+        </association>
+    </resultMap>
+    <!-- 照片访问记录 end -->
+
 </mapper>

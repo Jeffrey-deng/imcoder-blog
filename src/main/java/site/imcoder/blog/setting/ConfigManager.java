@@ -7,13 +7,17 @@ import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.common.AudioUtil;
 import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.common.type.UserGroupType;
 
+import javax.annotation.Resource;
 import javax.servlet.ServletContext;
 import java.io.*;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 配置管理类
@@ -22,6 +26,9 @@ import java.util.*;
  */
 @Component("configManager")
 public class ConfigManager {
+
+    @Resource
+    Cache cache;
 
     private static Logger logger = Logger.getLogger(ConfigManager.class);
 
@@ -36,6 +43,11 @@ public class ConfigManager {
      * 文字转语音服务标识前缀
      */
     private String toolSpeechPrefix = ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID.substring(0, ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID.indexOf('_', ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID.indexOf('_') + 1));
+
+    /**
+     * 信息feed流标识前缀
+     */
+    private String feedFlowPrefix = ConfigConstants.FEED_FLOW_ALLOW_FOLLOWING_SHOW.substring(0, ConfigConstants.FEED_FLOW_ALLOW_FOLLOWING_SHOW.indexOf('_', ConfigConstants.FEED_FLOW_ALLOW_FOLLOWING_SHOW.indexOf('_') + 1));
 
     @Autowired
     public ConfigManager(ServletContext servletContext) {
@@ -69,11 +81,9 @@ public class ConfigManager {
             bufferedReader = new BufferedReader(new FileReader(filePath));
             properties.load(bufferedReader);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
             logger.error(alias + "文件流读取出错, 文件未找到: " + filePath, e);
             return null;
         } catch (IOException e) {
-            e.printStackTrace();
             logger.error(alias + "文件流读取出错", e);
             return null;
         } finally {
@@ -81,7 +91,6 @@ public class ConfigManager {
                 try {
                     bufferedReader.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
                     logger.error(alias + "文件流关闭出错", e);
                 }
             }
@@ -117,16 +126,7 @@ public class ConfigManager {
      * @param value
      */
     public boolean updateConfig(String key, String value) {
-        if (key != null && value != null && !key.equals("") && !value.equals("")) {
-            if (!key.equals(ConfigConstants.EMPTY) && value.equals(Config.get(ConfigConstants.EMPTY))) {
-                updateAssignment(key, "");
-            } else {
-                updateAssignment(key, value);
-            }
-            return true;
-        } else {
-            return false;
-        }
+        return updateAssignment(key, value);
     }
 
     /**
@@ -150,22 +150,17 @@ public class ConfigManager {
         try {
             doc = reader.read(f);
         } catch (DocumentException e) {
-            e.printStackTrace();
+            logger.error("  Error : Server XML Config file read fail", e);
         }
         List<Element> kvList = (List<Element>) doc.selectNodes("/Server/property");
         for (int i = 0; i < kvList.size(); i++) {
             Element kv = kvList.get(i);
             String key = kv.elementTextTrim("param");
             String value = kv.elementTextTrim("value");
-            if (key != null && value != null && !key.equals("") && !value.equals("")) {
-                if (!key.equals(ConfigConstants.EMPTY) && value.equals(Config.get(ConfigConstants.EMPTY))) {
-                    value = "";
-                }
-                if ("init".equalsIgnoreCase(type)) {
-                    initAssignment(key.toLowerCase(), value);
-                } else if ("update".equalsIgnoreCase(type)) {
-                    updateAssignment(key.toLowerCase(), value);
-                }
+            if ("init".equalsIgnoreCase(type)) {
+                initAssignment(key, value);
+            } else if ("update".equalsIgnoreCase(type)) {
+                updateAssignment(key, value);
             }
         }
         loadEmailPushConfig(type);
@@ -184,15 +179,10 @@ public class ConfigManager {
                 while (enumeration.hasMoreElements()) {
                     String key = enumeration.nextElement();
                     String value = properties.getProperty(key).trim();
-                    if (key != null && value != null && !key.equals("") && !value.equals("")) {
-                        if (!key.equals(ConfigConstants.EMPTY) && value.equals(Config.get(ConfigConstants.EMPTY))) {
-                            value = "";
-                        }
-                        if ("init".equalsIgnoreCase(type)) {
-                            initAssignment(key.toLowerCase(), value);
-                        } else if ("update".equalsIgnoreCase(type)) {
-                            updateAssignment(key.toLowerCase(), value);
-                        }
+                    if ("init".equalsIgnoreCase(type)) {
+                        initAssignment(key, value);
+                    } else if ("update".equalsIgnoreCase(type)) {
+                        updateAssignment(key, value);
                     }
                 }
             }
@@ -211,15 +201,10 @@ public class ConfigManager {
                 while (enumeration.hasMoreElements()) {
                     String key = enumeration.nextElement();
                     String value = properties.getProperty(key).trim();
-                    if (key != null && value != null && !key.equals("") && !value.equals("")) {
-                        if (!key.equals(ConfigConstants.EMPTY) && value.equals(Config.get(ConfigConstants.EMPTY))) {
-                            value = "";
-                        }
-                        if ("init".equalsIgnoreCase(type)) {
-                            initAssignment(key.toLowerCase(), value);
-                        } else if ("update".equalsIgnoreCase(type)) {
-                            updateAssignment(key.toLowerCase(), value);
-                        }
+                    if ("init".equalsIgnoreCase(type)) {
+                        initAssignment(key, value);
+                    } else if ("update".equalsIgnoreCase(type)) {
+                        updateAssignment(key, value);
                     }
                 }
             }
@@ -252,54 +237,105 @@ public class ConfigManager {
         }
     }
 
-    private void initAssignment(String key, String value) {
-        if (key.equals(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) || key.equals(ConfigConstants.CLOUD_FILE_BASEPATH) || key.equals(ConfigConstants.TRASH_RECYCLE_BASEPATH)) {
-            value = getRealFromConfigBasePath(value);
-        }
-        if (key.equals(ConfigConstants.REMOTE_OSS_CONFIG_LOCATION)) {
-            value = convertClassPathAndGetRealPath(value);
-        }
-        if (key.equals(ConfigConstants.SITE_CDN_ADDR_ARGS)) {
-            Date date = new Date();
-            value = value.replace("{time}", date.getTime() + "").replace("{date}", Utils.formatDate(date, "yyMMdd"));
-        }
-        Config.set(key, value);
-    }
-
-    private void updateAssignment(String key, String value) {
-        if (key.equals(ConfigConstants.CLOUD_FILE_SYSTEM_MODE)) {
-            logger.warn("更改文件系统模式 \"" + key + "\" , 只能通过重启，不能热更新~");
-            return;
-        }
-//        if (key.equals(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) || key.equals(ConfigConstants.CLOUD_FILE_BASEPATH) || key.equals(ConfigConstants.TRASH_RECYCLE_BASEPATH)) {
-//            if (!IFileService.Mode.REMOTE.value.equals(Config.get(ConfigConstants.CLOUD_FILE_SYSTEM_MODE))) {
-//                value = getRealFromConfigBasePath(value);
-//            }
-//        }
-        if (key.equals(ConfigConstants.REMOTE_OSS_CONFIG_LOCATION)) {
-            value = convertClassPathAndGetRealPath(value);
-        }
-        if (key.equals(ConfigConstants.SITE_CDN_ADDR_ARGS)) {
-            Date date = new Date();
-            value = value.replace("{time}", date.getTime() + "").replace("{date}", Utils.formatDate(date, "yyMMdd"));
-        }
-        String preValue = Config.get(key);
-        if (value.equals(preValue)) {
-            logger.info("更新配置 \"" + key + "\" : " + getPublicValue(key, value) + ", 但是因为值与原始值相同，所以未操作！");
-        } else {
-            if (preValue == null) {
-                logger.warn("更新配置 \"" + key + "\" : " + getPublicValue(key, value) + ", 但该key不属于默认配置项！");
-            } else {
-                logger.info("更新配置 \"" + key + "\" : " + getPublicValue(key, value));
+    private boolean initAssignment(String key, String value) {
+        if (key != null && value != null && !key.equals("") && !value.equals("")) {
+            key = key.toLowerCase();
+            if (!key.equals(ConfigConstants.EMPTY) && value.equals(Config.get(ConfigConstants.EMPTY))) {
+                value = "";
+            }
+            if (key.equals(ConfigConstants.SITE_ADDR) || key.equals(ConfigConstants.SITE_CDN_ADDR) || key.equals(ConfigConstants.SITE_CLOUD_ADDR)) {
+                if (!value.endsWith("/")) {
+                    value = value + "/";
+                }
+            } else if (key.equals(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) || key.equals(ConfigConstants.CLOUD_FILE_BASEPATH) || key.equals(ConfigConstants.TRASH_RECYCLE_BASEPATH)) {
+                if (value.length() > 0 && !value.endsWith("/")) {
+                    value = value + "/";
+                }
+                value = getRealFromConfigBasePath(value);
+            } else if (key.equals(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) || key.equals(ConfigConstants.CLOUD_FILE_RELATIVEPATH)) {
+                if (value.length() > 0 && !value.endsWith("/")) {
+                    value = value + "/";
+                }
+            } else if (key.equals(ConfigConstants.REMOTE_OSS_CONFIG_LOCATION)) {
+                value = convertClassPathAndGetRealPath(value);
+            } else if (key.equals(ConfigConstants.SITE_CDN_ADDR_ARGS)) {
+                Date date = new Date();
+                value = value.replace("{time}", date.getTime() + "").replace("{date}", Utils.formatDate(date, "yyMMdd"));
             }
             Config.set(key, value);
-            if (key.equals(ConfigConstants.NOTIFYSERVICE_THREAD_NUM)) {
-
-            } else if (key.indexOf("_") != -1 && key.startsWith(emailPushPrefix)) {
-
-            } else if (key.indexOf("_") != -1 && key.startsWith(toolSpeechPrefix)) {
-                AudioUtil.updateTokenInfo();
+            if (key.equals(ConfigConstants.SITE_POLICE_RECORD_CODE)) {
+                String site_police_record_number = "";
+                Matcher numberMatcher = Pattern.compile("([0-9]+)").matcher(value);
+                if (numberMatcher.find()) {
+                    site_police_record_number = numberMatcher.group(1);
+                }
+                Config.set(ConfigConstants.SITE_POLICE_RECORD_NUMBER, site_police_record_number);
             }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private boolean updateAssignment(String key, String value) {
+        if (key != null && value != null && !key.equals("") && !value.equals("")) {
+            key = key.toLowerCase();
+            if (!key.equals(ConfigConstants.EMPTY) && value.equals(Config.get(ConfigConstants.EMPTY))) {
+                value = "";
+            }
+            if (key.equals(ConfigConstants.SITE_ADDR) || key.equals(ConfigConstants.SITE_CDN_ADDR) || key.equals(ConfigConstants.SITE_CLOUD_ADDR)) {
+                if (!value.endsWith("/")) {
+                    value = value + "/";
+                }
+            } else if (key.equals(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) || key.equals(ConfigConstants.CLOUD_FILE_RELATIVEPATH)) {
+                if (value.length() > 0 && !value.endsWith("/")) {
+                    value = value + "/";
+                }
+            } else if (key.equals(ConfigConstants.CLOUD_FILE_SYSTEM_MODE)) {
+                logger.warn("更改文件系统模式 \"" + key + "\" , 只能通过重启，不能热更新~");
+                return false;
+            }
+            //        if (key.equals(ConfigConstants.ARTICLE_UPLOAD_BASEPATH) || key.equals(ConfigConstants.CLOUD_FILE_BASEPATH) || key.equals(ConfigConstants.TRASH_RECYCLE_BASEPATH)) {
+            //            if (!IFileService.Mode.REMOTE.value.equals(Config.get(ConfigConstants.CLOUD_FILE_SYSTEM_MODE))) {
+            //                value = getRealFromConfigBasePath(value);
+            //            }
+            //        }
+            else if (key.equals(ConfigConstants.REMOTE_OSS_CONFIG_LOCATION)) {
+                value = convertClassPathAndGetRealPath(value);
+            } else if (key.equals(ConfigConstants.SITE_CDN_ADDR_ARGS)) {
+                Date date = new Date();
+                value = value.replace("{time}", date.getTime() + "").replace("{date}", Utils.formatDate(date, "yyMMdd"));
+            }
+            String preValue = Config.get(key);
+            if (value.equals(preValue)) {
+                logger.info("更新配置 \"" + key + "\" : " + getPublicValue(key, value) + ", 但是因为值与原始值相同，所以未操作！");
+            } else {
+                if (preValue == null) {
+                    logger.warn("更新配置 \"" + key + "\" : " + getPublicValue(key, value) + ", 但该key不属于默认配置项！");
+                } else {
+                    logger.info("更新配置 \"" + key + "\" : " + getPublicValue(key, value));
+                }
+                Config.set(key, value);
+                if (key.equals(ConfigConstants.NOTIFYSERVICE_THREAD_NUM)) {
+
+                } else if (key.indexOf("_") != -1 && key.startsWith(emailPushPrefix)) {
+
+                } else if (key.indexOf("_") != -1 && key.startsWith(toolSpeechPrefix)) {
+                    AudioUtil.updateTokenInfo();
+                } else if (key.indexOf("_") != -1 && key.startsWith(feedFlowPrefix)) {
+                    cache.feedFlowConfigChange();
+                } else if (key.equals(ConfigConstants.SITE_POLICE_RECORD_CODE)) {
+                    String site_police_record_number = "";
+                    Matcher numberMatcher = Pattern.compile("([0-9]+)").matcher(value);
+                    if (numberMatcher.find()) {
+                        site_police_record_number = numberMatcher.group(1);
+                    }
+                    Config.set(ConfigConstants.SITE_POLICE_RECORD_NUMBER, site_police_record_number);
+                }
+            }
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -394,14 +430,20 @@ public class ConfigManager {
         //云盘允许上传文件的用户组最低等级，值为对应用户组的Gid
         Config.set(ConfigConstants.CLOUD_ALLOW_UPLOAD_LOWEST_LEVEL, String.valueOf(UserGroupType.NOVICE_USER.value));
 
-        //照片最大上传大小，单位字节，-1代表无限制
+        //照片最大上传大小，单位字节，-1代表无限制，支持子集：@user_{uid}:{size}
         Config.set(ConfigConstants.CLOUD_PHOTO_MAX_UPLOADSIZE, String.valueOf(10 * 1024 * 1024));
 
-        //视频最大上传大小，单位字节，-1代表无限制
+        //视频最大上传大小，单位字节，-1代表无限制，支持子集：@user_{uid}:{size}
         Config.set(ConfigConstants.CLOUD_VIDEO_MAX_UPLOADSIZE, "-1");
 
-        //文件最大上传大小，单位字节，-1代表无限制
+        //文件最大上传大小，单位字节，-1代表无限制，支持子集：@user_{uid}:{size}
         Config.set(ConfigConstants.CLOUD_FILE_MAX_UPLOADSIZE, "-1");
+
+        //信息feed流允许显示订阅的用户
+        Config.set(ConfigConstants.FEED_FLOW_ALLOW_FOLLOWING_SHOW, "true");
+
+        //信息feed流（广场）允许显示的用户组最低等级（无需订阅），值为对应用户组的Gid
+        Config.set(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL, String.valueOf(UserGroupType.MANAGER.value));
 
         //浏览器端的配置
         Config.set(ConfigConstants.SITE_CLIENT_CONFIG, "");
@@ -427,6 +469,9 @@ public class ConfigManager {
         //登录严格模式将校验IP
         Config.set(ConfigConstants.USER_LOGIN_STRICT, "false");
 
+        //记住登录的保持时间，单位天
+        Config.set(ConfigConstants.USER_LOGIN_REMEMBER_MAX_AGE, String.valueOf(3600 * 24 * 365));
+
         //将Cache的缓存持久化的最大推迟次数（由于无人访问而设计的推迟持久化）
         Config.set(ConfigConstants.CACHEFLUSH_TIMER_DELAYTIMES, "20");
 
@@ -438,6 +483,9 @@ public class ConfigManager {
 
         //消息推送线程池的线程数
         Config.set(ConfigConstants.NOTIFYSERVICE_THREAD_NUM, "4");
+
+        //邮件推送是否启用
+        Config.set(ConfigConstants.EMAILPUSH_ENABLE, "true");
 
         //邮件服务器地址
         Config.set(ConfigConstants.EMAILPUSH_SMTP_ADDR, "smtpdm.aliyun.com");
@@ -464,10 +512,10 @@ public class ConfigManager {
         Config.set(ConfigConstants.ALBUM_DEFAULT_COVER, "{\"path\":\"res/img/album_default.jpg\",\"width\": 800,\"height\": 800}");
 
         //默认的男生用户头像，列表
-        Config.set(ConfigConstants.USER_DEFAULT_MAN_HEADPHOTOS, "[\"img/default_man.jpg\"]");
+        Config.set(ConfigConstants.USER_DEFAULT_HEADPHOTOS_MAN, "[\"img/default_man.jpg\"]");
 
         //默认的女生用户头像，列表
-        Config.set(ConfigConstants.USER_DEFAULT_MISS_HEADPHOTOS, "[\"img/default_miss.jpg\"]");
+        Config.set(ConfigConstants.USER_DEFAULT_HEADPHOTOS_MISS, "[\"img/default_miss.jpg\"]");
 
         //文字转语音的百度 token
         Config.set(ConfigConstants.TOOL_SPEECH_TOKEN_APP_ID, "");
@@ -479,6 +527,21 @@ public class ConfigManager {
         Config.set(ConfigConstants.SITE_ALLOW_RUN_UPGRADE, "false");
 
         Config.set(ConfigConstants.RUN_OFFLINE_NOTIFY_WHEN_ONLINE, "false");
+
+        // 旧页面重定向到新页面时的http code，默认302
+        Config.set(ConfigConstants.SITE_OLD_PAGE_REDIRECT_CODE, "302");
+
+        // 访问记录器忽略的爬虫名称, json数组
+        Config.set(ConfigConstants.ACCESS_RECORD_IGNORE_SPIDERS, "[\"spider\", \"bot\", \"crawler\"]");
+
+        // 网站ICP备案号，例：湘ICP备XXXXXXX号
+        Config.set(ConfigConstants.SITE_ICP_RECORD_CODE, "");
+
+        // 网站公安备案号，例：湘公网安备 XXXXXXXXXXXXXXX号
+        Config.set(ConfigConstants.SITE_POLICE_RECORD_CODE, "");
+
+        // 网站公安备案号查询id（网站公安备案号的数字部分），例： XXXXXXXXXXXXXXX
+        Config.set(ConfigConstants.SITE_POLICE_RECORD_NUMBER, "");
 
         AudioUtil.updateTokenInfo();
     }

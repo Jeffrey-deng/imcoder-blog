@@ -1,5 +1,7 @@
 package site.imcoder.blog.entity;
 
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+
 import java.io.Serializable;
 
 /**
@@ -12,53 +14,55 @@ public class AlbumPhotoRelation implements Serializable {
 
     private static final long serialVersionUID = -6007975894089096962L;
 
-    private int aprid;
+    private Long aprid;
 
-    private int album_id;
+    @PrimaryKeyConvert
+    private Long album_id;
 
-    private int photo_id;
+    @PrimaryKeyConvert
+    private Long photo_id;
 
     // 排序权重
-    private int sort;
+    private Long sort;
 
     public AlbumPhotoRelation() {
     }
 
-    public AlbumPhotoRelation(int album_id, int photo_id, int sort) {
+    public AlbumPhotoRelation(Long album_id, Long photo_id, Long sort) {
         this.album_id = album_id;
         this.photo_id = photo_id;
         this.sort = sort;
     }
 
-    public int getAprid() {
+    public Long getAprid() {
         return aprid;
     }
 
-    public void setAprid(int aprid) {
+    public void setAprid(Long aprid) {
         this.aprid = aprid;
     }
 
-    public int getAlbum_id() {
+    public Long getAlbum_id() {
         return album_id;
     }
 
-    public void setAlbum_id(int album_id) {
+    public void setAlbum_id(Long album_id) {
         this.album_id = album_id;
     }
 
-    public int getPhoto_id() {
+    public Long getPhoto_id() {
         return photo_id;
     }
 
-    public void setPhoto_id(int photo_id) {
+    public void setPhoto_id(Long photo_id) {
         this.photo_id = photo_id;
     }
 
-    public int getSort() {
+    public Long getSort() {
         return sort;
     }
 
-    public void setSort(int sort) {
+    public void setSort(Long sort) {
         this.sort = sort;
     }
 }

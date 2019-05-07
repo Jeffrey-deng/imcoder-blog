@@ -1,6 +1,9 @@
 # ----- 邮件推送服务 ---- #
 
-#  邮件推送的smtp地址
+# 邮件推送服务是否启用
+emailpush_enable=true
+
+# 邮件推送的smtp地址
 emailpush_smtp_addr=
 
 # 邮件推送的ssl端口

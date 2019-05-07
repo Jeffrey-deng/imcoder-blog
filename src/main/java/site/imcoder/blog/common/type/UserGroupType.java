@@ -4,7 +4,7 @@ package site.imcoder.blog.common.type;
  * 用户组枚举类
  *
  * @author Jeffrey.Deng
- * @date 2019-04-22
+ * @date 2017-04-22
  */
 public enum UserGroupType {
 

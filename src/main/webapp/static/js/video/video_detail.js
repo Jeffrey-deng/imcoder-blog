@@ -23,11 +23,13 @@
             "staticPath": $('#staticPath').attr('href'),
             "cloudPath": $('#cloudPath').attr('href')
         },
-        pageVideoId: parseInt($(".video-detail-info").attr("data-video-id")) || 0,
-        hostUserId: parseInt($("#first .video-name").attr("hostUid")) || 0,
-        hostUserNickname: $(".video-detail-info .video-detail-user-nickname a").text(),
-        pageAlbumId: parseInt($(".video-detail-info .video-detail-album-name a").attr("data-album-id")) || 0,
-        pageAlbumName: $(".video-detail-info .video-detail-album-name a").text()
+        pageVideoId: $(".video-detail-info").attr("data-video-id") || "0",
+        hostUserId: $("#first .video-name").attr("hostUid") || 0,
+        hostUserNickname: $(".video-detail-info .video-detail-user-nickname .video-detail-user-nickname-value").text(),
+        pageAlbumId: $(".video-detail-info .video-detail-album-name a.photo-source-album").attr("data-album-id") || "0",
+        pageAlbumName: $(".video-detail-info .video-detail-album-name a.photo-source-album").text(),
+        pageCoverId: $(".video-detail-info .video-detail-album-name a.photo-source-album").attr("data-cover-id") || "0",
+        initTopic: null
     };
 
     var init = function () {
@@ -35,20 +37,71 @@
             config.videoWidth = parseInt(RegExp.$1);
             config.videoHeight = parseInt(RegExp.$2);
         }
-        switchVideoShowSize();
+        initSwitchVideoShowSize();
         initVideoHandleEvent();
         applyAlbumInfoToPageIfHas();
+        bindVideoTopicEvent();
     };
 
-    var switchVideoShowSize = function () {
+    var utils = {};
+
+    var request = {
+        "loadAlbumInfo": function (album_id, success) {
+            return $.get("photo.api?method=getAlbum", {"id": album_id, "photos": false}, function (response) {
+                if (response.status == 200) {
+                    success(response.data.album, response);
+                }
+            });
+        },
+        "loadVideoByCover": function (cover_id, callback) {
+            return $.get("video.api?method=getVideo", {"cover_id": cover_id}, function (response) {
+                if (response && response.status == 200) {
+                    callback(response.data.video, response);
+                }
+            });
+        },
+        "loadPhotoTagWrappers": function (photo_id, callback) {
+            return $.get("photo.api?method=getTagWrappersByPhoto", {"photo_id": photo_id}, function (response) {
+                if (response.status == 200) {
+                    callback(response.data);
+                }
+            });
+        },
+        "loadPhotoList": function (condition, call) {
+            return $.get("photo.api?method=getPhotoList", condition, function (response) {
+                if (response.status == 200) {
+                    call(response.data.photos);
+                }
+            });
+        },
+        "likePhoto": function (video_id, undo, call) {
+            var post_param = {};
+            post_param.video_id = video_id;
+            post_param.undo = undo;
+            post_param.first_access_referer = document.referrer;
+            post_param.first_access_path = document.location.href;
+            return $.post("video.api?method=likeVideo", post_param, function (response) {
+                if (response.status == 200) {
+                    call && call(response.data.video, response.data.type, response);
+                } else if (call) {
+                    toastr.error(response.message, "点赞失败");
+                    console.warn("Error Code: " + response.status);
+                }
+            });
+        }
+    };
+
+    var initSwitchVideoShowSize = function () {
         var switchElem = $(config.selector.videoDetailInfo).find(".video-detail-show-size a");
         var videoElem = $(config.selector.videoNode);
+        config.eyeRawWidth = config.videoWidth;
+        config.eyeRawHeight = config.videoHeight;
         var switchFunc = function () {
             var currValue = switchElem.attr("data-show-size") || "default";
             if (currValue == "default") {
                 var scala = 9 / 16;
-                if (config.videoWidth && config.videoHeight) {
-                    scala = config.videoHeight / config.videoWidth;
+                if (config.eyeRawWidth && config.eyeRawHeight) {
+                    scala = config.eyeRawHeight / config.eyeRawWidth;
                 }
                 videoElem.css("max-height", "");
                 videoElem.height(videoElem.width() * scala);
@@ -61,33 +114,67 @@
             }
         };
         switchElem.click(switchFunc);
-    };
-
-    var formatDescArea = function (desc, needWrap) {
-        (needWrap === undefined || needWrap === null) && (needWrap = true);
-        if (!desc) {
-            return desc;
-        }
-        // 补全标签
-        desc = $("<div/>").html(desc).html();
-        // 将图片链接转化为img标签
-        var reMap = {};
-        var replacementIndex = 0;
-        desc = desc.replace(/<(a|img|iframe|embed|video).*?>/, function (match) {
-            var key = "【$RE_(*&$_MATCH_^_REPACEMENT_%$_" + (replacementIndex++) + "】"; // 首尾中文符号，避开[\x21-\x7e]更合适
-            reMap[key] = match;
-            return key;
+        $(window).resize(function () {
+            var currValue = switchElem.attr("data-show-size") || "default";
+            if (currValue == "max") {
+                switchElem.attr("data-show-size", "default");
+                switchFunc();
+            }
         });
-        desc = desc.replace(/(https?:\/\/[a-z0-9\.]+\/[\x21-\x7e]*(\?[\x21-\x7e]*)?)/gi, function (match, url) {
-            return '<a target="_blank" href="' + url + '">' + url + '</a>';
-        });
-        for (var reKey in reMap) {
-            desc = desc.replace(reKey, reMap[reKey]);
+        if (videoElem.width() / config.videoWidth * config.videoHeight < videoElem.height()) {
+            switchElem.click();
         }
-        if (needWrap) {
-            desc = "<p>" + desc.replace(/\n/g, "</p><p>") + "</p>"
+        var insertFrameEvent = function (childWindow) {
+            var searchFuncInter = window.setInterval(function () {
+                if (childWindow.onRatioChange) {
+                    searchFuncInter && window.clearInterval(searchFuncInter);
+                    childWindow.onRatioChange(function (eyeRawWidth, eyeRawHeight, currentVideo, angle) {
+                        if (currentVideo.source_type != 2) {
+                            config.eyeRawWidth = eyeRawWidth;
+                            config.eyeRawHeight = eyeRawHeight;
+                            var currValue = switchElem.attr("data-show-size") || "default";
+                            if (currValue == "max") {
+                                switchElem.attr("data-show-size", "default");
+                                switchFunc();
+                            }
+                        }
+                    });
+                    childWindow.onVideoPlayStatusChange(function (playStatus) {
+                        switch (playStatus) {
+                            case "playing":
+                                if (config.setPageActiveTimer) {
+                                    window.clearInterval(config.setPageActiveTimer);
+                                }
+                                websocket_util.utils.setPageActive(true);
+                                config.setPageActiveTimer = window.setInterval(function () {
+                                    websocket_util.utils.setPageActive(true);
+                                }, 5000);
+                                break;
+                            case "pause":
+                                if (config.setPageActiveTimer) {
+                                    window.clearInterval(config.setPageActiveTimer);
+                                }
+                                break;
+                            case "ended":
+                                if (config.setPageActiveTimer) {
+                                    window.clearInterval(config.setPageActiveTimer);
+                                }
+                                break;
+                        }
+                    });
+                }
+            }, 50);
+            setTimeout(function () {
+                searchFuncInter && window.clearInterval(searchFuncInter);
+            }, 30000);
+        };
+        if (videoElem.prop("contentDocument") && videoElem.prop("contentDocument").readyState == "complete") {
+            insertFrameEvent(videoElem.prop("contentWindow"));
+        } else {
+            videoElem.load(function () { // 等子iframe加载完毕
+                insertFrameEvent(this.contentWindow);
+            });
         }
-        return desc;
     };
 
     var initVideoHandleEvent = function () {
@@ -107,25 +194,8 @@
                 },
                 "callback": {
                     "updateCompleted": function (context, video) {  // 更新完成后回调
-                        $(videoDetailConfig.selector.videoNode).prop("src", "video.do?method=embed&video_id=" + video.video_id);
-                        var videoDetailInfoNode = $(videoDetailConfig.selector.videoDetailInfo);
-                        videoDetailInfoNode.find(".video-detail-name a").text(video.name || "在相册内查看");
-                        videoDetailInfoNode.find(".video-detail-desc").html(formatDescArea(video.description));
-                        videoDetailInfoNode.find(".video-detail-size").text(video.size + "MB（" + video.width + "×" + video.height + "）");
-                        videoDetailInfoNode.find(".video-detail-refer a").text(video.refer);
-                        videoDetailInfoNode.find(".video-detail-video-type").text(video.video_type);
-                        if (video.tags != null && video.tags.length > 0) {
-                            var tagHtml = "";
-                            $.each(video.tags.split("#"), function (i, tag) {
-                                if (tag) {
-                                    tagHtml += '<a target="_blank" href="photo.do?method=dashboard&model=photo&tags=${tag}" data-video-tag="' + tag + '">#' + tag + '</a>&nbsp;&nbsp';
-                                }
-                            });
-                            videoDetailInfoNode.find(".video-detail-tags").html(tagHtml);
-                        }
-                        if (videoDetailConfig.pageAlbumId != video.cover.album_id) {
-                            applyAlbumInfoToPageIfHas();
-                        }
+                        comment_plugin.config.currentTopic = null;
+                        applyVideoInfoToPage(video);
                     }
                 },
                 "hostUser": videoDetailConfig.hostUserId
@@ -136,27 +206,240 @@
         }
         // 点赞的小玩意
         $(videoDetailConfig.selector.videoLikeArea).click(function () {
-            var valueNode = $(this).find(".video-detail-like-count");
-            valueNode.text((parseInt(valueNode.text()) || 0) + 1)
+            var $valueNode = $(this).find(".video-detail-like-count");
+            var undo = $valueNode.parent().hasClass("video-has-liked");
+            request.likePhoto(config.pageVideoId, undo, function (video, type, response) {
+                var newValue = (parseInt($valueNode.text()) || 0);
+                if (type == 1) {
+                    if (undo) {
+                        (newValue - 1 >= 0) && newValue--;
+                        toastr.success("已移除赞~");
+                    } else {
+                        newValue++;
+                        if (login_handle.validateLogin()) {
+                            toastr.success("点击查看赞过的列表", "已添加到赞", {
+                                "timeOut": 12000,
+                                "onclick": function () {
+                                    window.open("u/likes/videos");
+                                }
+                            });
+                        }
+                    }
+                } else {
+                    toastr.success(response.message);
+                }
+                $valueNode.text(newValue).parent().toggleClass('video-has-liked', !undo).toggleClass('like-wrapper-has-liked', !undo);
+            });
+        });
+
+        // 修改tag链接
+        $(videoDetailConfig.selector.videoDetailInfo).on("click", ".video-detail-tags a", function (e) {
+            e.preventDefault();
+            window.open(e.currentTarget.href + "&uid=" + videoDetailConfig.hostUserId);
         });
     };
 
-    var loadAlbum = function (album_id, success) {
-        $.get("photo.do?method=albumByAjax", {"id": album_id, "photos": false}, function (data) {
-            if (data.flag == 200) {
-                success(data.album);
+    // 应用相册信息到当前页面
+    var applyAlbumInfoToPageIfHas = function () {
+        var pageDetailInfoNode = $(config.selector.videoDetailInfo);
+        request.loadAlbumInfo(config.pageAlbumId, function (album) {
+            var $albumInfoNode = pageDetailInfoNode.find(".video-detail-album-name a.photo-source-album");
+            config.pageAlbumName = album.name || ("album_" + album.album_id);
+            $albumInfoNode
+                .text(config.pageAlbumName)
+                .attr("title", album.description || config.pageAlbumName)
+                .text(config.pageAlbumName)
+                .attr("href", "p/album/" + album.album_id + "?check=" + config.pageCoverId);
+        });
+    };
+
+    // 应用视频信息到当前页面
+    var applyVideoInfoToPage = function (video) {
+        $(config.selector.videoNode).prop("src", "video/embed/" + video.video_id);
+        var videoDetailInfoNode = $(config.selector.videoDetailInfo);
+        videoDetailInfoNode.find(".video-detail-name a").text(video.name || "在用户空间内查看");
+        videoDetailInfoNode.find(".video-detail-desc").html(common_utils.convertLinkToHtmlTag(video.description));
+        videoDetailInfoNode.find(".video-detail-size").text(video.size + "MB（" + video.width + "×" + video.height + "）");
+        videoDetailInfoNode.find(".video-detail-refer a").text(video.refer).attr("href", video.refer);
+        videoDetailInfoNode.find(".video-detail-video-type").text(video.video_type).attr("data-source-type", video.source_type);
+        videoDetailInfoNode.find(".video-detail-click-count-value").text(video.click_count);
+        videoDetailInfoNode.find(".video-detail-like-count").text(video.like_count)
+            .parent().toggleClass('video-has-liked', video.liked).toggleClass('like-wrapper-has-liked', video.liked);
+        if (video.tags != null && video.tags.length > 0) {
+            var tagHtml = "";
+            $.each(video.tags.split("#"), function (i, tag) {
+                if (tag) {
+                    tagHtml += '<a target="_blank" href="p/dashboard?model=photo&tags=<' + tag + '>" data-video-tag="' + tag + '">#' + tag + '#</a>&nbsp;&nbsp';
+                }
+            });
+            videoDetailInfoNode.find(".video-detail-tags").html(tagHtml);
+        } else {
+            videoDetailInfoNode.find(".video-detail-tags").html("");
+        }
+        config.eyeRawWidth = config.videoWidth = video.width;
+        config.eyeRawHeight = config.videoHeight = video.height;
+        config.pageCoverId = video.cover.photo_id;
+        if (config.pageAlbumId != video.cover.album_id) {
+            config.pageAlbumId = video.cover.album_id;
+            config.pageAlbumName = "album_" + video.cover.album_id;
+            videoDetailInfoNode.find(".video-detail-album-name a.photo-source-album")
+                .attr("data-album-id", config.pageAlbumId)
+                .attr("data-cover-id", config.pageCoverId)
+                .text(config.pageAlbumName)
+                .text("title", config.pageAlbumName)
+                .attr("href", "p/album/" + config.pageAlbumId + "?check=" + config.pageCoverId)
+                .text(config.pageAlbumName);
+            applyAlbumInfoToPageIfHas();
+        }
+        // 评论
+        comment_plugin.config.mainId = config.pageVideoId;
+        config.tagWrappers = null;
+        comment_plugin.pointer.topicTagWrappers = null;
+        var commentLabelId = comment_plugin.config.currentTopic || config.pageVideoId;
+        if ($(comment_plugin.config.selector.commentListArea).find('.photo-comment-bar').length == 0) {
+            comment_plugin.buildCommentAreaHtml();
+        } else {
+            $(comment_plugin.config.selector.commentListArea).find('.single-comment-label').attr("title", config.pageVideoId).find("a").attr("data-topic", config.pageVideoId);
+            $(comment_plugin.config.selector.commentListArea).find('.photo-comment-bar a[data-topic="' + commentLabelId + '"]').parent().trigger("click");
+        }
+        // 页面meta
+        document.title = (video.name || ("video_" + video.video_id)) + " - " + config.hostUserNickname + " | ImCoder博客's 视频";
+        var headNode = $("head");
+        headNode.find('meta[name="description"]').attr("content", video.description);
+        headNode.find('meta[name="keywords"]').attr("content", video.tags);
+        $(config.selector.firstHeaderArea).find(".video-name").text(video.name || ("video_" + video.video_id));
+    };
+
+    // 显示封面照片相关标签
+    var buildVideoRelationTagHtml = function (tagWrappers) {
+        var groupNode = $(config.selector.videoDetailInfo).find(".form-group-relation-tags");
+        if (groupNode.length == 0) {
+            groupNode = $($.parseHTML('<div class="form-group form-group-relation-tags" style="display: none">' +
+                '    <label class="col-sm-2 control-label">相关标签</label>' +
+                '    <div class="col-sm-10">' +
+                '        <span class="help-block photo-detail-relation-tags video-detail-relation-tags"></span>' +
+                '    </div>' +
+                '</div>'));
+            $(config.selector.videoDetailInfo).find(".video-detail-info-main .area-set-left").append(groupNode);
+        }
+        var isHas = false;
+        if (tagWrappers && tagWrappers.length > 0) {
+            var tagsHtml = "";
+            tagWrappers.forEach(function (wrapper) {
+                if (wrapper.type == 1) {
+                    isHas = true;
+                    var tag = wrapper.name;
+                    var title = wrapper.description || wrapper.name;
+                    var link = "p/tags_square?tags=<" + tag + ">&extend=true&uid=" + config.hostUserId + "&filter=" + tag;
+                    tagsHtml += '<a target="_blank" href="' + link + '" data-photo-tag="' + tag + '" title="' + title + '">#' + tag + '#</a>&nbsp;&nbsp;';
+                }
+            });
+            groupNode.find(".video-detail-relation-tags").html(tagsHtml);
+        }
+        if (isHas) {
+            groupNode.show();
+        } else {
+            groupNode.hide().find(".video-detail-relation-tags").html("");
+        }
+    };
+
+    // 构建合集名称显示栏
+    var buildVideoTopicCommentBarHtml = function (topicTagWrappers, topic, isTopic) {
+        var video_id = config.pageVideoId;
+        var $commentListArea = $(comment_plugin.config.selector.commentListArea);
+        var html = '<ul class="post-meta photo-comment-bar-wrapper video-comment-bar-wrapper"><ol class="page-navigator photo-comment-bar video-comment-bar">';
+        var singleCommentLabelHtml = '视频评论：<li class="' + ( isTopic ? "" : "current " ) + 'single-comment-label comment-label" ' +
+            'title="' + video_id + '"><a data-topic="' + video_id + '" href="video/detail/' + video_id + '" target="_blank">' + video_id + '</a></li>';
+        var topicCommentLabelHtml = '合集评论：';
+        $.each(topicTagWrappers, function (i, tagWrapper) {
+            topicCommentLabelHtml += '<li class="' + ((isTopic && topic == tagWrapper.ptwid) ? "current " : "") +
+                'topic-comment-label comment-label" title="右键打开' + tagWrapper.name + '">' +
+                '<a data-topic="' + tagWrapper.ptwid + '" data-topic-name="' + tagWrapper.name + '" href="p/topic/' + tagWrapper.ptwid + '" target="_blank">' +
+                tagWrapper.name + '</a></li>';
+        });
+        html = html + singleCommentLabelHtml + topicCommentLabelHtml;
+        $commentListArea.prepend(html);
+        // 修改地址栏
+        if (!isTopic && config.initTopic) {
+            $commentListArea.find('.video-comment-bar a[data-topic="' + config.initTopic + '"]').parent().trigger("click");
+            config.initTopic = null;
+        } else {
+            var link = document.location.href;
+            if (isTopic) {
+                link = common_utils.setParamForURL("from", "photo_topic", common_utils.setParamForURL("topic.ptwid", topic, link));
+            } else {
+                link = common_utils.removeParamForURL("from", common_utils.removeParamForURL("topic.ptwid", link));
+            }
+            history.replaceState(
+                null,
+                document.title,
+                link
+            );
+            var notHashLink = link.replace(/#.*$/, "");
+            $commentListArea.find('a[data-action-type^="comment_"]').each(function (i, node) { // hash锚点设置前缀
+                node.href = notHashLink + '#' + node.getAttribute("data-action-type");
+            });
+        }
+    };
+
+    // 合集相关的事件
+    var bindVideoTopicEvent = function () {
+        $(comment_plugin.config.selector.commentListArea).on("click", ".photo-comment-bar .comment-label", function (e) {
+            e.preventDefault();
+            var cache = comment_plugin.pointer;
+            var commentLabel = $(this);
+            var isTopic = commentLabel.hasClass("topic-comment-label");
+            commentLabel.parent().children().removeClass("current");
+            commentLabel.addClass("current");
+            if (isTopic) {
+                if (!comment_plugin.config.currentTopic) { // 备份好当前视频的评论数据
+                    if (!cache.videoComments) {
+                        cache.videoComments = {};
+                    }
+                    cache.videoComments[config.pageVideoId] = cache.comments;
+                }
+                comment_plugin.config.currentTopic = commentLabel.find("a").attr("data-topic");
+                comment_plugin.config.mainType = 3;
+                comment_plugin.config.mainId = comment_plugin.config.currentTopic;
+            } else {
+                comment_plugin.config.currentTopic = null;
+                comment_plugin.config.mainType = 2;
+                comment_plugin.config.mainId = config.pageVideoId;
+            }
+            var mainId = comment_plugin.config.mainId;
+            if (isTopic) { // 合集
+                // 加载合集评论
+                if (!cache.topicComments) {
+                    cache.topicComments = {};
+                }
+                if (cache.topicComments[mainId]) {
+                    cache.comments = cache.topicComments[mainId];
+                    comment_plugin.buildCommentAreaHtml();
+                } else {
+                    comment_plugin.loadCommentList(function (comments) {
+                        cache.comments = comments;
+                        cache.topicComments[mainId] = comments;
+                        comment_plugin.buildCommentAreaHtml();
+                    });
+                }
+            } else { // 单个视频
+                // 加载视频评论
+                if (!cache.videoComments) {
+                    cache.videoComments = {};
+                }
+                if (cache.videoComments[mainId]) {
+                    cache.comments = cache.videoComments[mainId];
+                    comment_plugin.buildCommentAreaHtml();
+                } else {
+                    comment_plugin.loadCommentList(function (comments) {
+                        cache.comments = comments;
+                        cache.videoComments[mainId] = comments;
+                        comment_plugin.buildCommentAreaHtml();
+                    });
+                }
             }
         });
     };
-
-    var applyAlbumInfoToPageIfHas = function () {
-        var pageDetailInfoNode = $(config.selector.videoDetailInfo);
-        loadAlbum(config.pageAlbumId, function (album) {
-            pageDetailInfoNode.find(".video-detail-album-name a").text(album.name).attr("title", album.name);
-        });
-    };
-
-    /* ********** main ************* */
 
     // 注册监控服务器的未读评论消息推送
     function initWsReceiveServerPush() {
@@ -167,55 +450,43 @@
                 "positionClass": "toast-top-right",
                 "iconClass": "toast-success-no-icon",
                 "timeOut": 0,
-                "onclick": function () {
-
+                "onclick": function (e) {
+                    if ($(e.target).closest('a').length > 0) {
+                        e.preventDefault();
+                        window.open(e.target.href);
+                        return false;
+                    }
                 },
                 "onShown": function () {
                     $(this).css("opacity", "1");
+                },
+                "onHidden": function (toastElement, closeType) {
+                    if (closeType != 0 && toastElement.hasClass("wsMessage") && !toastElement.hasClass("not-sync-ws-message")) {
+                        websocket_util.post({
+                            "mapping": "transfer_data_in_tabs",
+                            "metadata": {
+                                "handle": "remove_ws_message",
+                                "ws_message_id": parseInt(toastElement.attr("data-wsid"))
+                            }
+                        });
+                    }
                 }
             };
-            // 收到新评论，unbind取消login.js中的默认处理
-            websocket_util.unbind(eventPrefix + "receive_comment").bind(eventPrefix + "receive_comment", function (e, wsMessage, wsEvent) {
+            // 收到新评论，取消login.js中的默认处理
+            websocket_util.onPush("receive_comment", function (e, wsMessage, wsEvent) {
                 var comment = wsMessage.metadata.comment;
                 var notify_opts = null;
                 var msg = null;
                 switch (comment.mainType) {
-                    case 0:
-                        var article = wsMessage.metadata.article;
-                        notify_opts = $.extend({}, notify_ws_opts, {
-                            "onclick": function () {
-                                window.open("article.do?method=detail&aid=" + article.aid + "#comment_" + comment.cid);
-                            }
-                        });
-                        msg = null;
-                        if (comment.parentId == 0) {
-                            msg = comment.user.nickname + " 在你的文章<br><b>“" + article.title + "”</b><br>发表了评论~";
-                        } else {
-                            msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
-                        }
-                        break;
-                    case 1:
-                        var photo = wsMessage.metadata.photo;
-                        notify_opts = $.extend({}, notify_ws_opts, {
-                            "onclick": function () {
-                                window.open("photo.do?method=detail&id=" + photo.photo_id + "#comment_" + comment.cid);
-                            }
-                        });
-                        msg = null;
-                        if (comment.parentId == 0) {
-                            msg = comment.user.nickname + " 对你的照片<br><b>“" + photo.photo_id + "”</b><br>发表了评论~";
-                        } else {
-                            msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
-                        }
-                        break;
                     case 2:
                         var video = wsMessage.metadata.video;
                         notify_opts = $.extend({}, notify_ws_opts, {
-                            "onclick": function () {
+                            "onclick": function (e) {
+                                ($(e.target).closest('a').length > 0) && e.preventDefault();
                                 if (video.video_id == config.pageVideoId) {   // 当前视频页就是这个视频的详情页
                                     comment_plugin.utils.scrollToSpecialComment(comment);
                                 } else {
-                                    window.open("video.do?method=detail&id=" + video.video_id + "#comment_" + comment.cid);
+                                    window.open("video/detail/" + video.video_id + "#comment_" + comment.cid);
                                 }
                             }
                         });
@@ -229,6 +500,7 @@
                         } else {
                             msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
                         }
+                        e.stopImmediatePropagation(); // 阻止login中绑定的事件, stopImmediatePropagation能阻止委托事件
                         break;
                 }
                 if (msg) {
@@ -236,14 +508,31 @@
                         .success(msg, "", "receive_comment" + "_" + comment.cid)
                         .addClass("wsMessage receive_comment").attr("data-wsid", wsMessage.id).attr("data-cid", comment.cid);
                 }
-            });
+            }, true); // 插入到事件队列第一个
         }
     }
 
-    $(config.selector.videoDetailInfo).find(".video-detail-desc p").each(function (e) {
-        this.innerHTML = formatDescArea(this.innerHTML, false);
-    });
+    /* ********** main ************* */
 
+    var descNode = $(config.selector.videoDetailInfo).find(".video-detail-desc");
+    descNode.html(common_utils.convertLinkToHtmlTag(descNode.html(), false));
+
+    // 评论列表构建完成后再构建合集名称显示栏
+    comment_plugin.utils.bindEvent(comment_plugin.config.event.commentHtmlBuildCompleted, function (list, pageIndex) {
+        if (!comment_plugin.pointer.topicTagWrappers) {
+            request.loadPhotoTagWrappers(config.pageCoverId, function (data) {
+                config.tagWrappers = data.tagWrappers;
+                comment_plugin.pointer.topicTagWrappers = data.topicTagWrappers;
+                if (data.topicTagWrappers && data.topicTagWrappers.length > 0) {
+                    buildVideoTopicCommentBarHtml(comment_plugin.pointer.topicTagWrappers, comment_plugin.config.mainId, comment_plugin.config.currentTopic ? true : false);
+                }
+                buildVideoRelationTagHtml(config.tagWrappers);
+            });
+        } else {
+            buildVideoTopicCommentBarHtml(comment_plugin.pointer.topicTagWrappers, comment_plugin.config.mainId, comment_plugin.config.currentTopic ? true : false);
+            buildVideoRelationTagHtml(config.tagWrappers);
+        }
+    });
     // 评论模块初始化
     comment_plugin.init({
         mainType: 2, // 2代表视频评论
@@ -259,8 +548,25 @@
     });
 
     domReady(function () {
-        //
+        // init
         init();
+        // mark
+        if (/[&?]mark=([^&#]+)/.test(document.location.href)) {
+            switch (RegExp.$1) {
+                case "edit":
+                    $(config.selector.openEditBtn).click();
+                    break;
+                case "meta":
+                    var sh = $(config.selector.videoDetailInfo).offset().top - 100;
+                    $('html,body').animate({scrollTop: sh}, 500);
+                    break;
+            }
+            history.replaceState({"mark": "page"}, document.title, common_utils.removeParamForURL("mark"));
+        }
+        var params = common_utils.parseURL(document.location.href).params;
+        if (params["from"] == "photo_topic" && params["topic.ptwid"]) {
+            config.initTopic = params["topic.ptwid"];
+        }
         // 注册监控服务器的未读评论消息推送
         initWsReceiveServerPush();
     });

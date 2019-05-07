@@ -2,12 +2,16 @@
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
+<%@ taglib prefix="s" uri="http://www.springframework.org/tags" %>
 <%
     String path = request.getContextPath();
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
+    request.setAttribute("site_icp_record_code", Config.get(ConfigConstants.SITE_ICP_RECORD_CODE));
+    request.setAttribute("site_police_record_code", Config.get(ConfigConstants.SITE_POLICE_RECORD_CODE));
+    request.setAttribute("site_police_record_number", Config.get(ConfigConstants.SITE_POLICE_RECORD_NUMBER));
 %>
 <!DOCTYPE html>
 <html class="no-js">
@@ -15,6 +19,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
+    <base href="<%=basePath%>" target="_self">
     <title>公告 - ImCoder's 博客</title>
     <meta name="keywords" content="imcoder.site,公告,ImCoder's 博客公告">
     <meta name="description" content="共有${page.rowCount}个公告，<c:forEach items="${articleList}" var="article">${article.title}，</c:forEach>...">
@@ -22,11 +27,11 @@
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
-    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
+    <%--<link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.min.css<%=urlArgs%>">--%>
     <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
 </head>
-<body background="<%=staticPath%>img/bg-site.png" uid="${loginUser.uid}">
+<body background="<%=staticPath%>img/bg-site.png" uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>">
 
 <div id="first" class="" style="z-index:1000;">
     <div class="carousel-inner">
@@ -69,28 +74,28 @@
                                 <div class="coldesc">分类</div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=0" target="_blank">默认</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=0" target="_blank">默认</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=3" target="_blank">资源</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=4" target="_blank">科技</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=4" target="_blank">科技</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=5" target="_blank">游戏</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=5" target="_blank">游戏</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=6" target="_blank">段子</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=6" target="_blank">段子</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=7" target="_blank">杂谈</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=7" target="_blank">杂谈</a></div>
                             </div>
                         </div>
                         <div class="row">
@@ -104,20 +109,23 @@
                                 <div class="coldesc"><a class="toolbar_jump_paste_code" href="http://paste.ubuntu.com" target="_blank">贴代码</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_albums" href="<%=basePath%>photo.do?method=user_albums" target="_blank">相册</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_albums" href="<%=basePath%>p/dashboard" target="_blank">相册</a></div>
                             </div>
                             <div class="col-sm-1" style="padding-left: 5px">
                                 <div class="coldesc"><a class="toolbar_jump_cloud" href="<%=cloudPath%>" target="_blank">cloud</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_archives" href="<%=basePath%>article.do?method=archives" target="_blank">归档</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_archives" href="<%=basePath%>a/archives" target="_blank">归档</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>a/tags" target="_blank">标签</a></div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_user_history" href="<%=basePath%>u/history" target="_blank">历史</a></div>
                             </div>
                             <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
                                 <div class="col-sm-1">
-                                    <div class="coldesc"><a class="toolbar_jump_manager" href="manager.do?method=backstage" target="_blank">管理</a></div>
+                                    <div class="coldesc"><a class="toolbar_jump_manager" href="manager/backstage" target="_blank">管理</a></div>
                                 </div>
                             </c:if>
                         </div>
@@ -129,16 +137,16 @@
                                 <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_register" href="auth/register" target="_blank">注册</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_notice" target="_blank" href="site.do?method=list">公告</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_notice" target="_blank" href="notices">公告</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_help" target="_blank" href="#">帮助</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_help" target="_blank" href="help">帮助</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_about" target="_blank" href="<%=basePath%>site.do?method=about">关于</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_about" target="_blank" href="<%=basePath%>about">关于</a></div>
                             </div>
                         </div>
                     </ul>
@@ -156,14 +164,14 @@
                 <c:if test="${ !empty loginUser }">
                     <li class="dropdown user">
                         <a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                            <img src="<%=staticPath%>${loginUser.head_photo}"/><span class="caret"></span>
+                            <img src="<s:eval expression="loginUser.head_photo"/>"/><span class="caret"></span>
                         </a>
                         <ul class="dropdown-menu">
-                            <h4><a class="anav-menu_user toolbar_user_profilecenter" href="<%=basePath%>user.do?method=profilecenter" target="_blank">个人中心</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_userhome" href="<%=basePath%>user.do?method=home&uid=${loginUser.uid}" target="_blank">我的博客</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_albums" href="<%=basePath%>photo.do?method=user_albums&uid=${loginUser.uid}" target="_blank">我的相册</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_messages" href="<%=basePath%>user.do?method=profilecenter&action=messages" target="_blank">我的消息</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_setting" href="<%=basePath%>user.do?method=profilecenter&action=settings" target="_blank">修改设置</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_profilecenter" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center" target="_blank">个人中心</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_userhome" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/home" target="_blank">我的博客</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_albums" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/albums" target="_blank">我的相册</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_messages" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center/messages" target="_blank">我的消息</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_setting" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center/settings" target="_blank">修改设置</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_logout" title="点击退出登录">安全退出</a></h4>
                         </ul>
                     </li>
@@ -201,31 +209,27 @@
                         <header class="post-container">
                             <!-- 文章标题 -->
                             <h2 class="post-title" itemprop="name headline">
-                                <a itemtype="url" href="site.do?method=notice&id=${article.aid}" target="_blank">
-                                        ${article.title}</a>
+                                <a itemtype="url" href="notice/<s:eval expression="article.aid"/>" target="_blank">${article.title}</a>
                             </h2>
                             <!-- 文章头 -->
                             <ul class="post-meta">
                                 <li>
-                                    作者: <a href="user.do?method=home&uid=${article.author.uid}" target="_blank">${article.author.nickname}</a>
+                                    作者: <a href="u/<s:eval expression="article.author.uid"/>/home" target="_blank">${article.author.nickname}</a>
                                 </li>
                                 <li>
-                                    分类: <a href="article.do?method=list&category.atid=${article.category.atid}" target="_blank">${article.category.atname}</a>
+                                    分类: <a href="a/list?category.atid=${article.category.atid}" target="_blank">${article.category.atname}</a>
                                 </li>
                                 <li>
-                                    <time datetime="2016-01-02T04:33:00-07:00"
-                                          itemprop="datePublished">
-                                        <fmt:formatDate value="${article.create_time}" pattern="yyyy-MM-dd	HH:mm"/>
+                                    <time datetime="${article.create_time}" itemprop="datePublished">
+                                        <s:eval expression="article.create_time"/>
                                     </time>
                                 </li>
                             </ul>
                             <!-- 文章摘要 -->
                             <section class="post-content" itemprop="articleBody">
-                                    ${article.summary}
+                                <s:eval expression="article.summary"/>
                                 <p class="more">
-                                    <br>
-                                    <a href="site.do?method=notice&id=${article.aid}"
-                                       title="${article.title}" target="_blank">- 阅读剩余部分 -</a>
+                                    <br><a href="notice/<s:eval expression="article.aid"/>" title="${article.title}" target="_blank">- 阅读剩余部分 -</a>
                                 </p>
                             </section>
                         </header>
@@ -234,15 +238,15 @@
                             <p>
                                 <span itemprop="keywords" class="tags">标签:
                                     <c:forTokens items="${article.tags}" delims="#" var="tag">
-                                        &nbsp;&nbsp;&nbsp;<a href="article.do?method=list&tags=${tag}" target="_blank">#${tag}</a>
+                                        &nbsp;&nbsp;&nbsp;<a href="a/list?tags=${tag}" target="_blank">#${tag}</a>
                                     </c:forTokens>
                                 </span>
                                 <c:choose>
-                                    <c:when test="${article.comment == 0 }">
-                                        <a class="post-comments" itemprop="discussionUrl" href="site.do?method=notice&id=${article.aid}#addComment" target="_blank">抢占沙发</a>
+                                    <c:when test="${article.comment_count == 0 }">
+                                        <a class="post-comments" itemprop="discussionUrl" href="notice/<s:eval expression="article.aid"/>#addComment" target="_blank">抢占沙发</a>
                                     </c:when>
                                     <c:otherwise>
-                                        <a class="post-comments" itemprop="discussionUrl" href="site.do?method=notice&id=${article.aid}#comments" target="_blank">${article.comment} 条评论</a>
+                                        <a class="post-comments" itemprop="discussionUrl" href="notice/<s:eval expression="article.aid"/>#comments" target="_blank">${article.comment_count} 条评论</a>
                                     </c:otherwise>
                                 </c:choose>
                             </p>
@@ -297,7 +301,7 @@
         <div class="modal-content animated flipInY">
             <div class="modal-header text-center">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h2 class="modal-title" id="loginModalLabel">登录/<a href="user.do?method=toregister" target="_blank">注册</a></h2>
+                <h2 class="modal-title" id="loginModalLabel">登录 / <a href="auth/register" target="_blank">注册</a></h2>
             </div>
             <form role="form" id="login_form">
                 <div class="modal-body">
@@ -325,19 +329,27 @@
 </div>
 <!-- login modal end -->
 
-<footer id="footer" role="contentinfo" class="card">
-    <span>© 2016 </span><a href="https://imcoder.site" target="_blank">ImCoder</a>
-    <span>博客 ，基于 </span><a>Java</a><span> 语言开发</span>
-    <span>，ICP备案：</span><a href="http://www.miibeian.gov.cn" target="__blank">湘ICP备17002133号</a>
+<footer id="footer" role="contentinfo" class="card site-footer">
+    <span>© 2016 </span><a href="https://imcoder.site" target="_blank">ImCoder</a><span> 博客 ，基于 </span><a>Java</a><span> 语言开发</span>
+    <c:if test="${not empty site_icp_record_code}">
+        <span>，ICP备案：</span><a href="http://beian.miit.gov.cn/" target="_blank">${site_icp_record_code}</a>
+    </c:if>
+    <c:if test="${not empty site_police_record_code}">
+        <span>，公安备案：</span><img class="police-record-icon" src="<%=staticPath%>img/police_record_icon.png"><a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=${site_police_record_number}" target="_blank">${site_police_record_code}</a>
+    </c:if>
 </footer>
+
 <script src="<%=staticPath%>lib/highlight/highlight.min.js"></script>
 <script>hljs.initHighlightingOnLoad();</script>
+<a id="basePath" class="site-path-prefix" href="<%=basePath%>" style="display:none;"></a>
+<a id="staticPath" class="site-path-prefix" href="<%=staticPath%>" style="display:none;"></a>
+<a id="cloudPath" class="site-path-prefix" href="<%=cloudPath%>" style="display:none;"></a>
 
 <!-- Bootstrap & Plugins core JavaScript -->
 <!-- ######################################### -->
 <!-- Placed at the end of the document so the pages load faster -->
 
-<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="notice"></script>
+<script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="notices"></script>
 
 </body>
 </html>

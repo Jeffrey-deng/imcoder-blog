@@ -1,11 +1,13 @@
 package site.imcoder.blog.entity;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import site.imcoder.blog.common.type.CommentType;
-import site.imcoder.blog.controller.json.EscapeEmojiJsonDeserializer;
-import site.imcoder.blog.controller.json.LongToDateStrJsonSerializer;
-import site.imcoder.blog.controller.propertyeditors.EmojiConvert;
+import site.imcoder.blog.controller.formatter.general.GeneralConvert;
+import site.imcoder.blog.controller.formatter.general.impl.EscapeEmojiConverter;
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+import site.imcoder.blog.controller.formatter.timeformat.TimeFormat;
+import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFill;
+import site.imcoder.blog.controller.formatter.urlprefix.impl.ImgTagURLPrefixFiller;
+import site.imcoder.blog.controller.propertyeditors.annotation.EmojiConvert;
 
 import java.io.Serializable;
 
@@ -22,7 +24,7 @@ public class Comment implements Serializable {
     /**
      * 评论ID
      */
-    private int cid;
+    private Long cid;
 
     /**
      * 评论对象主体类型（文章?照片?视频?）
@@ -33,7 +35,8 @@ public class Comment implements Serializable {
     /**
      * 评论对象主体ID（文章id?照片id?视频id?）
      */
-    private int mainId;
+    @PrimaryKeyConvert
+    private Long mainId;
 
     /**
      * 该评论所有者
@@ -44,25 +47,27 @@ public class Comment implements Serializable {
      * 该评论回复的评论id
      * 如果为0，则是回复文章
      */
-    private int parentId;
+    private Long parentId;
+
+    /**
+     * 评论内容
+     */
+    @EmojiConvert //转义emoji表情
+    @URLPrefixFill(using = ImgTagURLPrefixFiller.class, prefixConfigKey = URLPrefixFill.DEFAULT_CLOUD_PREFIX)
+    private String content;
 
     /**
      * 该评论回复的评论的用户id
      * 无须从数据查出，仅用来保存在客户端上传评论时携带uid
      * 直接回复主体为作者id,回复评论为用户id
      */
-    private int replyUid;
-
-    /**
-     * 评论内容
-     */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
-    private String content;
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long replyUid;
 
     /**
      * 发送时间
      */
+    @TimeFormat(pattern = "yyyy-MM-dd | HH:mm:ss")
     private Long send_time;
 
     /**
@@ -70,24 +75,34 @@ public class Comment implements Serializable {
      */
     private int anonymous;
 
+    /**
+     * 点赞的次数
+     */
+    private int like_count;
+
+    /**
+     * 登录用户是否赞过该评论
+     */
+    private Boolean liked;
+
     public Comment() {
     }
 
-    public Comment(int cid, int mainType) {
+    public Comment(Long cid, int mainType) {
         this.cid = cid;
         this.mainType = mainType;
     }
 
-    public Comment(int cid) {
+    public Comment(Long cid) {
         this.cid = cid;
         this.mainType = CommentType.ARTICLE.value;
     }
 
-    public int getCid() {
+    public Long getCid() {
         return cid;
     }
 
-    public void setCid(int cid) {
+    public void setCid(Long cid) {
         this.cid = cid;
     }
 
@@ -99,11 +114,11 @@ public class Comment implements Serializable {
         this.mainType = mainType;
     }
 
-    public int getMainId() {
+    public Long getMainId() {
         return mainId;
     }
 
-    public void setMainId(int mainId) {
+    public void setMainId(Long mainId) {
         this.mainId = mainId;
     }
 
@@ -115,6 +130,22 @@ public class Comment implements Serializable {
         this.user = user;
     }
 
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
+    }
+
+    public Long getReplyUid() {
+        return replyUid;
+    }
+
+    public void setReplyUid(Long replyUid) {
+        this.replyUid = replyUid;
+    }
+
     public String getContent() {
         return content;
     }
@@ -123,34 +154,12 @@ public class Comment implements Serializable {
         this.content = content;
     }
 
-    //格式化时间
-    @JsonSerialize(using = LongToDateStrJsonSerializer.class)
     public Long getSend_time() {
         return send_time;
     }
 
     public void setSend_time(Long send_time) {
         this.send_time = send_time;
-    }
-
-    public static long getSerialversionuid() {
-        return serialVersionUID;
-    }
-
-    public int getParentId() {
-        return parentId;
-    }
-
-    public void setParentId(int parentId) {
-        this.parentId = parentId;
-    }
-
-    public int getReplyUid() {
-        return replyUid;
-    }
-
-    public void setReplyUid(int replyUid) {
-        this.replyUid = replyUid;
     }
 
     public int getAnonymous() {
@@ -170,18 +179,19 @@ public class Comment implements Serializable {
         return this.anonymous != 0;
     }
 
-    @Override
-    public String toString() {
-        return "Comment{" +
-                "cid=" + cid +
-                ", mainType=" + mainType +
-                ", mainId=" + mainId +
-                ", user=" + user +
-                ", parentId=" + parentId +
-                ", replyUid=" + replyUid +
-                ", content='" + content + '\'' +
-                ", send_time=" + send_time +
-                ", anonymous=" + anonymous +
-                '}';
+    public int getLike_count() {
+        return like_count;
+    }
+
+    public void setLike_count(int like_count) {
+        this.like_count = like_count;
+    }
+
+    public Boolean getLiked() {
+        return liked;
+    }
+
+    public void setLiked(Boolean liked) {
+        this.liked = liked;
     }
 }

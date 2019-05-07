@@ -1,6 +1,7 @@
 /**
  * 相册照片处理模块
- * Created by Jeffrey.Deng on 2018/1/11.
+ * @author Jeffery.deng
+ * @date 2018/1/11
  */
 (function (factory) {
     /* global define */
@@ -31,7 +32,7 @@
             "copyPhotoUrlTrigger": ".copyPhotoUrl_btn"
         },
         callback: {
-            "beforeEachUpload": function (context, photo, file, formData) {  // 每一个图片上传之前回调
+            "beforeEachUpload": function (context, photo, file, formData) {  // 每一个图片上传之前回调，返回一个Deferred对象可以异步执行
                 return;
             },
             "eachUploadCompleted": function (context, photo) {  // 每一个图片上传完成后回调
@@ -40,13 +41,16 @@
             "allUploadCompleted": function (context, photos) {  // 所有图片上传完成后回调
                 return;
             },
-            "beforeUpdate": function (context, photo) {  // 更新之前回调
+            "beforeUpdate": function (context, photo, file, formData) {  // 更新之前回调，返回一个Deferred对象可以异步执行
                 return;
             },
             "updateCompleted": function (context, photo) {  // 更新完成后回调
                 return;
             },
-            "deleteCompleted": function (context, photo_id) {  // 删除完成后回调
+            "beforeDelete": function (context, params) {  // 删除之前回调，返回一个Deferred对象可以异步执行
+                return;
+            },
+            "deleteCompleted": function (context, params) {  // 删除完成后回调
                 return;
             },
             "beforeUploadModalOpen": function (context, uploadModal, openUploadModal_callback) {  // 上传窗口打开前回调
@@ -60,8 +64,7 @@
                     formatPhotoToModal_callback(photo);
                     // 如果传入的参数为photo_id，异步获取photo对象
                 } else {
-                    context.loadPhoto(photo, function (data) {
-                        var photo = data.photo;
+                    context.loadPhoto(photo, function (photo) {
                         formatPhotoToModal_callback(photo);
                     });
                 }
@@ -71,10 +74,12 @@
             "beforeEachUpload": "photo.upload.before",
             "eachUploadCompleted": "photo.upload.completed",
             "allUploadCompleted": "photo.upload.all.completed",
-            "updateCompleted": "photo.update.completed",
             "beforeUpdate": "photo.update.before",
+            "updateCompleted": "photo.update.completed",
+            "beforeDelete": "photo.delete.before",
             "deleteCompleted": "photo.delete.completed",
-            "beforeDelete": "photo.delete.before"
+            "tagClick": "photo.tag.click", // 标签被点击
+            "tagExtendClick": "photo.tag.extendclick", // 标签按住alt被点击
         },
         albumId: 0,
         downloadType: "url",
@@ -82,7 +87,7 @@
     };
     var init = function (options) {
 
-        $.extend(true, config, options);
+        common_utils.extendNonNull(true, config, options);
 
         pointer.uploadModal = $(config.selector.uploadModal);
         pointer.updateModal = $(config.selector.updateModal);
@@ -100,18 +105,38 @@
             photoInfo.name = pointer.uploadModal.find('input[name="photo_name"]').val();
             photoInfo.refer = pointer.uploadModal.find('input[name="photo_refer"]').val();
             photoInfo.description = pointer.uploadModal.find('textarea[name="photo_desc"]').val();
-            photoInfo.iscover = pointer.uploadModal.find('input[name="photo_cover"]:checked').val();
-            (files.length > 1) && (photoInfo.iscover = 0);
+            var topic = {};
+            var needCheckTopic = true;
+            var selectTopicNode = pointer.uploadModal.find('.topic-select option:selected');
+            topic.name = selectTopicNode.attr("value");
+            topic.description = photoInfo.name;
+            if (selectTopicNode.hasClass("empty-topic")) {
+                topic.ptwid = 0;
+                needCheckTopic = false;
+            }
+            var selectTopicPermissionNode = pointer.uploadModal.find('.topic-permission-select option:selected');
+            if (selectTopicPermissionNode.hasClass("default-permission")) {
+                topic.scope = config.albumId;
+            } else if (selectTopicPermissionNode.hasClass("permission-follow-album")) {
+                topic.scope = selectTopicPermissionNode.attr("value");
+            } else {
+                topic.scope = 0;
+                topic.permission = parseInt(selectTopicPermissionNode.attr("value"));
+            }
+            photoInfo.topic = topic;
             var tags = "";
             pointer.uploadModal.find(".tags-modify").find(".tag-content").each(function (i, tag) {
                 var tags_value = tag.innerText;
-                if (/^mount@\d+$/.test(tags_value)) {
-                    tags = "#" + tags_value + tags;
+                if (/^mount@\d+$/.test(tags_value) || tags_value == topic.name) {
+                    tags = "#" + tags_value + "#" + tags;
                 } else {
-                    tags += "#" + tags_value;
+                    tags += "#" + tags_value + "#";
                 }
             });
-            photoInfo.tags = (tags == "#" ? "" : tags);
+            if (topic.ptwid && tags.indexOf(topic.name) == -1) {
+                tags = "#" + topic.name + "#" + tags;
+            }
+            photoInfo.tags = (tags == "##" ? "" : tags);
             if (photoInfo.description.length >= 2000) {
                 toastr.error("描述字数" + photoInfo.description.length + "过长, 应在2000字内", "错误", {"progressBar": false});
                 this.removeAttribute("disabled");
@@ -119,7 +144,14 @@
             }
             login_handle.runOnLogin(function (isLogin) {
                 if (isLogin) {
-                    uploadPhoto(files, photoInfo);
+                    if (needCheckTopic) {
+                        loadOrCreateTopic(topic, function (tagWrapper) {
+                            photoInfo.topic = tagWrapper;
+                            uploadPhoto(files, photoInfo);
+                        });
+                    } else {
+                        uploadPhoto(files, photoInfo);
+                    }
                 } else {
                     toastr.error("登陆状态失效，请重新登录！");
                     this.removeAttribute("disabled");
@@ -139,17 +171,44 @@
             photo.name = pointer.updateModal.find('input[name="photo_name"]').val();
             photo.refer = pointer.updateModal.find('input[name="photo_refer"]').val();
             photo.description = pointer.updateModal.find('textarea[name="photo_desc"]').val();
-            photo.iscover = pointer.updateModal.find('input[name="photo_cover"]:checked').val();
+            var topic = {};
+            var needCheckTopic = true;
+            var selectTopicNode = pointer.updateModal.find('.topic-select option:selected');
+            topic.name = selectTopicNode.attr("value");
+            topic.description = photo.name;
+            if (selectTopicNode.hasClass("empty-topic")) {
+                topic.ptwid = 0;
+                needCheckTopic = false;
+            } else {
+                if (selectTopicNode.hasClass("before-topic")) {
+                    topic.ptwid = selectTopicNode.attr("data-ptwid");
+                    needCheckTopic = false;
+                }
+            }
+            var selectTopicPermissionNode = pointer.updateModal.find('.topic-permission-select option:selected');
+            if (selectTopicPermissionNode.hasClass("permission-follow-album")) {
+                topic.scope = selectTopicPermissionNode.attr("value");
+            } else {
+                topic.scope = 0;
+                topic.permission = parseInt(selectTopicPermissionNode.attr("value"));
+            }
+            if (!needCheckTopic && topic.ptwid != 0 && !selectTopicPermissionNode.hasClass("before-topic-permission")) {
+                needCheckTopic = true;
+            }
+            photo.topic = topic;
             var tags = "";
             tags_modify_dom.find(".tag-content").each(function (i, tag) {
                 var tags_value = tag.innerText;
-                if (/^mount@\d+$/.test(tags_value)) {
-                    tags = "#" + tags_value + tags;
+                if (/^mount@\d+$/.test(tags_value) || tags_value == topic.name) {
+                    tags = "#" + tags_value + "#" + tags;
                 } else {
-                    tags += "#" + tags_value;
+                    tags += "#" + tags_value + "#";
                 }
             });
-            photo.tags = (tags == "#" ? "" : tags);
+            if (topic.ptwid != 0 && tags.indexOf(topic.name) == -1) {
+                tags = "#" + topic.name + "#" + tags;
+            }
+            photo.tags = (tags == "##" ? "" : tags);
             if (photo.description.length >= 2000) {
                 toastr.error("描述字数" + photo.description.length + "过长, 应在2000字内", "错误", {"progressBar": false});
                 return;
@@ -157,7 +216,14 @@
             var file = pointer.updateModal.find('input[name="photo_file"]')[0].files[0];
             login_handle.runOnLogin(function (isLogin) {
                 if (isLogin) {
-                    updatePhoto(photo, file);
+                    if (needCheckTopic) {
+                        loadOrCreateTopic(topic, function (tagWrapper) {
+                            photo.topic = tagWrapper;
+                            updatePhoto(photo, file);
+                        });
+                    } else {
+                        updatePhoto(photo, file);
+                    }
                 } else {
                     toastr.error("登陆状态失效，请重新登录！");
                 }
@@ -176,14 +242,67 @@
         pointer.updateModal.find(".update-convert-photo-url").click(function (e) {
             var _self = $(this);
             _self.css("font-weight", "bold").parent().find(".update-convert-photo-refer").css("font-weight", "normal");
-            _self.parent().parent().find('.update-photo-url').css("display", "block");
-            _self.parent().parent().find('.update-photo-refer').css("display", "none");
+            _self.closest(".form-group").find('.update-photo-url').css("display", "block");
+            _self.closest(".form-group").find('.update-photo-refer').css("display", "none");
         });
         pointer.updateModal.find(".update-convert-photo-refer").click(function (e) {
             var _self = $(this);
             _self.css("font-weight", "bold").parent().find(".update-convert-photo-url").css("font-weight", "normal");
-            _self.parent().parent().find('.update-photo-url').css("display", "none");
-            _self.parent().parent().find('.update-photo-refer').css("display", "block");
+            _self.closest(".form-group").find('.update-photo-url').css("display", "none");
+            _self.closest(".form-group").find('.update-photo-refer').css("display", "block");
+        });
+
+        // topic选择
+        utils.applyTopicToSelect(pointer.uploadModal.find('.topic-select'), null, null);
+        utils.applyTopicPermissionToSelect(pointer.uploadModal.find('.topic-permission-select'), null, config.albumId);
+        pointer.uploadModal.find('.topic-select').change(function () {
+            var selectTopicNode = $(this).find('option:selected');
+            if (!selectTopicNode.hasClass("empty-topic")) {
+                if (selectTopicNode.hasClass("before-topic")) {
+                    pointer.uploadModal.find('.topic-permission-select .before-topic-permission').prop("selected", true);
+                } else {
+                    pointer.uploadModal.find('.topic-permission-select .default-permission').prop("selected", true);
+                }
+                var queryArgs = {
+                    "uid": login_handle.getCurrentUserId(),
+                    "name": selectTopicNode.attr("value"),
+                    "action": -1
+                };
+                loadTagWrapper(queryArgs, function (photoTopic) {
+                    var current_album_id = config.albumId;
+                    utils.applyTopicPermissionToSelect(pointer.uploadModal.find('.topic-permission-select'), photoTopic, current_album_id);
+                });
+            }
+        });
+        pointer.updateModal.find('.topic-select').change(function () {
+            var selectTopicNode = $(this).find('option:selected');
+            if (!selectTopicNode.hasClass("empty-topic")) {
+                if (selectTopicNode.hasClass("before-topic")) {
+                    pointer.updateModal.find('.topic-permission-select .before-topic-permission').prop("selected", true);
+                } else {
+                    pointer.updateModal.find('.topic-permission-select .default-permission').prop("selected", true);
+                }
+                var queryArgs = {
+                    "uid": login_handle.getCurrentUserId(),
+                    "name": selectTopicNode.attr("value"),
+                    "action": -1
+                };
+                loadTagWrapper(queryArgs, function (photoTopic) {
+                    var current_album_id = pointer.updateModal.find('span[name="photo_id"]').attr("data-album-id");
+                    utils.applyTopicPermissionToSelect(pointer.updateModal.find('.topic-permission-select'), photoTopic, current_album_id);
+                });
+            }
+        });
+
+        // 打开topic
+        pointer.updateModal.find(".topic-select").closest(".form-group").find("label").click(function () {
+            var $topic_select = pointer.updateModal.find(".topic-select");
+            if ($topic_select.is(":visible")) {
+                var topicId = $topic_select.find("option:selected").attr("data-ptwid");
+                if (topicId) {
+                    window.open("p/topic/" + topicId);
+                }
+            }
         });
 
         // 新标签打开照片
@@ -192,7 +311,7 @@
             if (url) {
                 window.open(url);
             } else {
-                toastr.error("链接为空呢~");
+                toastr.error("照片链接为空呢~");
             }
         });
 
@@ -219,83 +338,190 @@
         pointer.uploadModal.on('shown.bs.modal', function () {
             utils.calcTagInputWidth(upload_tags_modify_dom);
         });
-        upload_tags_modify_dom.find(".tag-input").keydown(function (e) {
-            e.defaultPrevented;
-            var theEvent = e || window.event;
-            var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
-            if (code == 13) {
-                utils.addTagFromInput(upload_tags_modify_dom, $(e.currentTarget));
-                //防止触发表单提交 返回false
-                return false;
+        upload_tags_modify_dom.on("click", ".tag-close", function (e) { // 删除
+            utils.deleteTag(upload_tags_modify_dom, $(e.currentTarget.parentNode));
+        });
+        upload_tags_modify_dom.on({ // 提交
+            "keydown": function (e) {
+                var theEvent = e || window.event;
+                var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
+                if (code == 13) {
+                    utils.addTagFromInput(upload_tags_modify_dom, $(e.currentTarget));
+                    upload_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").text("编辑");
+                    // 防止触发表单提交 返回false
+                    // e.preventDefault();
+                    return false;
+                }
+            },
+            "blur": function (e) {
+                var input_dom = $(e.currentTarget);
+                // upload_tags_modify_dom.find(".tag-single").length == 0
+                if (input_dom.val() != "") {
+                    utils.addTagFromInput(upload_tags_modify_dom, input_dom);
+                    upload_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").text("编辑");
+                }
             }
-        }).blur(function (e) {
-            var input_dom = $(e.currentTarget);
-            if (upload_tags_modify_dom.find(".tag-single").length == 0 && input_dom.val() != "") {
-                utils.addTagFromInput(upload_tags_modify_dom, input_dom);
+        }, ".tag-input");
+        upload_tags_modify_dom.closest(".form-group").find("label").dblclick(function () { // 双击标签全部编辑
+            upload_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").click();
+        });
+        upload_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").on("click", function (e) {
+            var $btn = $(this);
+            if ($btn.text() == '确定') {
+                upload_tags_modify_dom.find(".tag-input").blur();
+                return;
+            }
+            var tags = "";
+            upload_tags_modify_dom.find(".tag-content").each(function (i, tag) {
+                tags += "#" + tag.innerText;
+            });
+            if (tags) {
+                upload_tags_modify_dom.find(".tag-input").val(tags);
+                upload_tags_modify_dom.find(".tag-single").remove();
+                utils.calcTagInputWidth(upload_tags_modify_dom);
+                upload_tags_modify_dom.autoTextareaHeight({
+                    maxHeight: 150,
+                    minHeight: config.tagsAreaHeight,
+                    runOnce: true
+                });
+                $btn.text("确定");
+                utils.applyTopicToSelect(pointer.uploadModal.find('.topic-select'), null, null);
+                utils.applyTopicPermissionToSelect(pointer.uploadModal.find('.topic-permission-select'), null, config.albumId);
             }
         });
 
-        // div 自适应高度
-        $.fn.autoTextarea = function (options) {
-            var defaults = {
-                maxHeight: null,//文本框是否自动撑高，默认：null，不自动撑高；如果自动撑高必须输入数值，该值作为文本框自动撑高的最大高度
-                minHeight: $(this).height(), //默认最小高度，也就是文本框最初的高度，当内容高度小于这个高度的时候，文本以这个高度显示
-                runOnce: false // false 为绑定事件 true 为 计算一次高度，不绑定事件
-            };
-            var opts = $.extend({}, defaults, options);
-            var updateHeight = function () {
-                var height, style = this.style;
-                this.style.height = opts.minHeight + 'px';
-                if (this.scrollHeight >= opts.minHeight) {
-                    if (opts.maxHeight && this.scrollHeight > opts.maxHeight) {
-                        height = opts.maxHeight;
-                        style.overflowY = 'scroll';
-                    } else {
-                        height = this.scrollHeight;
-                        style.overflowY = 'hidden';
-                    }
-                    style.height = height + 'px';
-                }
-            };
-            if (opts.runOnce) {
-                $(this).each(function () {
-                    updateHeight.call(this);
-                });
-            } else {
-                $(this).each(function () {
-                    $(this).bind("input paste cut keydown keyup focus blur", function () {
-                        updateHeight.call(this);
-                    });
+        // update modal tags 输入框 绑定事件
+        var update_tags_modify_dom = pointer.updateModal.find('.tags-modify');
+        pointer.updateModal.on('shown.bs.modal', function () { // 计算输入框宽度
+            pointer.updateModal.find('textarea[name="photo_desc"]').autoTextareaHeight({
+                maxHeight: 200,
+                minHeight: config.textareaInputHeight,
+                runOnce: true
+            });
+            if (update_tags_modify_dom.find(".tag-input").length > 0) {
+                utils.calcTagInputWidth(update_tags_modify_dom);
+                // console.log(tags_modify_dom.outerHeight(true) + "_ " + tags_modify_dom.prop("scrollHeight"));
+                update_tags_modify_dom.autoTextareaHeight({
+                    maxHeight: 150,
+                    minHeight: config.tagsAreaHeight,
+                    runOnce: true
                 });
             }
-        };
+        });
+        update_tags_modify_dom.on("click", ".tag-close", function (e) {
+            utils.deleteTag(update_tags_modify_dom, $(e.currentTarget.parentNode));
+        });
+        update_tags_modify_dom.on({
+            "keydown": function (e) {
+                var theEvent = e || window.event;
+                var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
+                if (code == 13) {
+                    utils.addTagFromInput(update_tags_modify_dom, $(e.currentTarget));
+                    update_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").text("编辑");
+                    // 防止触发表单提交 返回false
+                    // e.preventDefault();
+                    return false;
+                }
+            },
+            "blur": function (e) {
+                var input_dom = $(e.currentTarget);
+                // update_tags_modify_dom.find(".tag-single").length == 0
+                if (input_dom.val() != "") {
+                    update_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").text("编辑");
+                    utils.addTagFromInput(update_tags_modify_dom, input_dom);
+                }
+            }
+        }, ".tag-input");
+        // 可自定义事件修改标签被点击的事件
+        config.tagExtendClickEvent = null;
+        update_tags_modify_dom.on({
+            "keydown": function (e) {
+                var theEvent = e || window.event;
+                if (theEvent.altKey) {  // 按住alt点击
+                    e.preventDefault();
+                    config.tagExtendClickEvent = e;
+                } else {
+                    config.tagExtendClickEvent = null;
+                }
+            },
+            "keyup": function (e) {
+                config.tagExtendClickEvent = null;
+            },
+            "click": function (clickEvt) {
+                var _self = $(this);
+                var photo_id = pointer.updateModal.find('span[name="photo_id"]').html().trim();
+                var tag = _self.text();
+                if (config.tagExtendClickEvent || clickEvt.altKey) {  // 是否按住alt点击
+                    clickEvt.preventDefault();
+                    utils.triggerEvent(config.event.tagExtendClick, tag, photo_id, clickEvt, config.tagExtendClickEvent);
+                } else {
+                    utils.triggerEvent(config.event.tagClick, tag, photo_id, clickEvt);
+                }
+            }
+        }, ".tag-content");
+        update_tags_modify_dom.closest(".form-group").find("label").dblclick(function () { // 双击标签全部编辑
+            update_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").click();
+        });
+        update_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").on("click", function (e) {
+            var $btn = $(this);
+            if ($btn.text() == '确定') {
+                update_tags_modify_dom.find(".tag-input").blur();
+                return;
+            }
+            var tags = "";
+            update_tags_modify_dom.find(".tag-content").each(function (i, tag) {
+                tags += "#" + tag.innerText;
+            });
+            if (tags) {
+                update_tags_modify_dom.find(".tag-input").val(tags);
+                update_tags_modify_dom.find(".tag-single").remove();
+                utils.calcTagInputWidth(update_tags_modify_dom);
+                update_tags_modify_dom.autoTextareaHeight({
+                    maxHeight: 150,
+                    minHeight: config.tagsAreaHeight,
+                    runOnce: true
+                });
+                $btn.text("确定");
+            }
+        });
 
         //  desc textArea 自适应高度
         config.textareaInputHeight = pointer.updateModal.find('textarea[name="photo_desc"]').outerHeight();
-        pointer.updateModal.find('textarea[name="photo_desc"]').autoTextarea({
+        pointer.updateModal.find('textarea[name="photo_desc"]').autoTextareaHeight({
             maxHeight: 200,
             minHeight: config.textareaInputHeight
         });
-        pointer.uploadModal.find('textarea[name="photo_desc"]').autoTextarea({
+        pointer.uploadModal.find('textarea[name="photo_desc"]').autoTextareaHeight({
             maxHeight: 200,
             minHeight: config.textareaInputHeight
         });
 
         // tags 输入框自适应高度
         config.tagsAreaHeight = pointer.updateModal.find('.tags-modify').eq(0).outerHeight();
-        pointer.updateModal.find('.tags-modify').autoTextarea({
-            maxHeight: 100,
+        pointer.updateModal.find('.tags-modify').autoTextareaHeight({
+            maxHeight: 150,
             minHeight: config.tagsAreaHeight
         });
-        pointer.uploadModal.find('.tags-modify').css("overflow-y", "hidden").autoTextarea({
-            maxHeight: 100,
+        pointer.uploadModal.find('.tags-modify').css("overflow-y", "hidden").autoTextareaHeight({
+            maxHeight: 150,
             minHeight: config.tagsAreaHeight
         });
     };
     var uploadPhoto = function (files, photoInfo, index, photos) {
         index = arguments[2] || 0;
         photos = arguments[3] || [];
-
+        if (index == 0) {
+            if (photoInfo.topic) {
+                $.each(photoInfo.topic, function (k, v) {
+                    if (k == "ptwid" || k == "name" || k == "scope" || k == "permission" || k == "description") {
+                        if (v !== null && v !== undefined) {
+                            photoInfo["topic." + k] = v;
+                        }
+                    }
+                });
+                delete photoInfo.topic;
+            }
+        }
         var file = files[index];
         if (config.maxUploadSize != -1 && file.size > config.maxUploadSize) {
             toastr.error("换个小的，最大" + (config.maxUploadSize / (1024 * 1024)) + "M", file['name'], {timeOut: 0});
@@ -310,7 +536,6 @@
                 }
                 pointer.uploadModal.modal('hide');
                 pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
-                pointer.uploadModal.find('input[name="photo_cover"][value="0"]').prop("checked", true);
                 pointer.uploadModal.find('input[name="photos"]').val("");
                 config.callback.allUploadCompleted.call(context, context, photos); // 回调
                 pointer.uploadPhotos = null;
@@ -322,75 +547,89 @@
         var data = new FormData();
         data.append("file", file);
         data.append("originName", (file.name.lastIndexOf(".") != -1 ? file.name : (file.name + ".jpg")));
-        data.append("album_id", photoInfo.album_id);
-        data.append("name", photoInfo.name);
-        data.append("description", photoInfo.description);
-        data.append("tags", photoInfo.tags);
-        data.append("iscover", photoInfo.iscover);
-        data.append("refer", photoInfo.refer);
-        // 上传之前回调
-        config.callback.beforeEachUpload.call(context, context, photoInfo, file, data);
-        utils.triggerEvent(config.event.beforeEachUpload, photoInfo, file, data);
-        var notify_uploading = common_utils.getNotify("notify_uploading");
-        if (notify_uploading) {
-            notify_uploading.find(".toast-message").text("正在上传第 " + (index + 1) + " 张");
-        } else {
-            common_utils.notify({
-                "progressBar": false,
-                "hideDuration": 0,
-                "timeOut": 0,
-                "closeButton": false
-            }).success("正在上传第 " + (index + 1) + " 张", "", "notify_uploading");
-        }
-        $.ajax({
-            url: "photo.do?method=upload",
-            data: data,
-            type: "POST",
-            contentType: false,
-            cache: false,
-            processData: false,
-            success: function (data) {
-                if (data.flag == 200) {
-                    config.callback.eachUploadCompleted.call(context, context, data.photo); // 回调
-                    utils.triggerEvent(config.event.eachUploadCompleted, data.photo);
-                    photos.push(data.photo);
-                    index++;
-                    if (index > files.length - 1) {
-                        common_utils.removeNotify("notify_uploading");
-                        toastr.success("上传完成！");
-                        if (pointer.failUploadNum !== 0) {
-                            toastr.error("因超过大小，" + pointer.failUploadNum + "张照片未上传！", "", {timeOut: 0});
-                        }
-                        pointer.uploadModal.modal('hide');
-                        pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
-                        pointer.uploadModal.find('input[name="photo_cover"][value="0"]').prop("checked", true);
-                        pointer.uploadModal.find('input[name="photos"]').val("");
-                        config.callback.allUploadCompleted.call(context, context, photos); // 回调
-                        utils.triggerEvent(config.event.allUploadCompleted, photos);
-                        pointer.uploadPhotos = null;
-                    } else {
-                        uploadPhoto(files, photoInfo, index, photos);
-                    }
-                } else {
-                    common_utils.removeNotify("notify_uploading");
-                    toastr.error(data.info, file['name'] + ", 上传失败", {timeOut: 0});
-                    console.warn("Error Code: " + file['name'] + " upload fail - " + data.flag);
-                    pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
-                }
-            },
-            error: function () {
-                common_utils.removeNotify("notify_uploading");
-                toastr.error(file['name'] + " 上传失败", "未知错误", {timeOut: 0});
-                pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
-                pointer.uploadPhotos = null;
-            }
+        $.each(photoInfo, function (key, value) {
+            data.append(key, value);
         });
+        var call = function () {
+            var notify_uploading = common_utils.getNotify("notify_uploading");
+            if (notify_uploading) {
+                notify_uploading.find(".toast-message").text("正在上传第 " + (index + 1) + " 张");
+            } else {
+                common_utils.notify({
+                    "progressBar": false,
+                    "hideDuration": 0,
+                    "showDuration": 0,
+                    "timeOut": 0,
+                    "closeButton": false
+                }).success("正在上传第 " + (index + 1) + " 张", "", "notify_uploading");
+            }
+            $.ajax({
+                url: "photo.api?method=upload",
+                data: data,
+                type: "POST",
+                contentType: false,
+                cache: false,
+                processData: false,
+                success: function (response) {
+                    if (response.status == 200) {
+                        var data = response.data;
+                        config.callback.eachUploadCompleted.call(context, context, data.photo); // 回调
+                        utils.triggerEvent(config.event.eachUploadCompleted, data.photo);
+                        photos.push(data.photo);
+                        index++;
+                        if (index > files.length - 1) {
+                            common_utils.removeNotify("notify_uploading");
+                            toastr.success("上传完成！");
+                            if (pointer.failUploadNum !== 0) {
+                                toastr.error("因超过大小，" + pointer.failUploadNum + "张照片未上传！", "", {timeOut: 0});
+                            }
+                            pointer.uploadModal.modal('hide');
+                            pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
+                            pointer.uploadModal.find('input[name="photos"]').val("");
+                            config.callback.allUploadCompleted.call(context, context, photos); // 回调
+                            utils.triggerEvent(config.event.allUploadCompleted, photos);
+                            pointer.uploadPhotos = null;
+                        } else {
+                            uploadPhoto(files, photoInfo, index, photos);
+                        }
+                    } else {
+                        common_utils.removeNotify("notify_uploading");
+                        toastr.error(response.message, file['name'] + ", 上传失败", {timeOut: 0});
+                        console.warn("Error Code: " + file['name'] + " upload fail - " + response.status);
+                        pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
+                    }
+                },
+                error: function () {
+                    common_utils.removeNotify("notify_uploading");
+                    toastr.error(file['name'] + " 上传失败", "未知错误", {timeOut: 0});
+                    pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
+                    pointer.uploadPhotos = null;
+                }
+            });
+        };
+        // 上传之前回调
+        utils.triggerEvent(config.event.beforeEachUpload, photoInfo, file, data);
+        var deferred = config.callback.beforeEachUpload.call(context, context, photoInfo, file, data);
+        if (deferred && deferred.promise) {
+            deferred.done(call);
+        } else {
+            call();
+        }
     };
     var updatePhoto = function (photo, file) {
-        // 更新之前回调
-        config.callback.beforeUpdate.call(context, context, photo);
-        utils.triggerEvent(config.event.beforeUpdate, photo);
-        if (photo != null && photo.photo_id > 0) {
+        if (photo.topic) {
+            $.each(photo.topic, function (k, v) {
+                if (k == "ptwid" || k == "name" || k == "scope" || k == "permission" || k == "description") {
+                    if (v !== null && v !== undefined) {
+                        photo["topic." + k] = v;
+                    }
+                }
+            });
+            delete photo.topic;
+        }
+        if (photo != null && photo.photo_id) {
+            var call = null;
+            var formData = undefined;
             if (file && /^image.*/.test(file.type)) { // 如果指定了文件，则更新图片文件
                 var formData = new FormData();
                 formData.append("file", file);
@@ -398,72 +637,134 @@
                 $.each(photo, function (key, value) {
                     formData.append(key, value);
                 });
-                $.ajax({
-                    url: "photo.do?method=update",
-                    data: formData,
-                    type: "POST",
-                    contentType: false,
-                    cache: false,
-                    processData: false,
-                    success: function (data) {
-                        if (data.flag == 200) {
-                            toastr.success("更新成功", "", {"progressBar": false});
-                            config.callback.updateCompleted.call(context, context, data.photo);
-                            utils.triggerEvent(config.event.updateCompleted, data.photo);
-                            pointer.updateModal.modal('hide');
-                        } else {
-                            toastr.error(data.info, "错误", {"progressBar": false});
-                            console.warn("Error Code: " + data.flag);
+                call = function () {
+                    $.ajax({
+                        url: "photo.api?method=update",
+                        data: formData,
+                        type: "POST",
+                        contentType: false,
+                        cache: false,
+                        processData: false,
+                        success: function (response) {
+                            pointer.updateModal.find('button[name="updatePhoto_trigger"]').removeAttr("disabled");
+                            common_utils.removeNotify("notify_updating");
+                            if (response.status == 200) {
+                                var data = response.data;
+                                toastr.success("更新成功", "", {"progressBar": false});
+                                config.callback.updateCompleted.call(context, context, data.photo);
+                                utils.triggerEvent(config.event.updateCompleted, data.photo);
+                                pointer.updateModal.modal('hide');
+                            } else {
+                                toastr.error(response.message, "错误", {"progressBar": false});
+                                console.warn("Error Code: " + response.status);
+                            }
+                            pointer.updateModal.find('input[name="photo_file"]').val("");
+                        },
+                        error: function (XHR, TS) {
+                            pointer.updateModal.find('button[name="updatePhoto_trigger"]').removeAttr("disabled");
+                            common_utils.removeNotify("notify_updating");
+                            toastr.error(TS, "错误", {"progressBar": false});
+                            console.warn("Error Code: " + TS);
                         }
-                        pointer.updateModal.find('input[name="photo_file"]').val("");
-                    },
-                    error: function (XHR, TS) {
+                    });
+                };
+            } else { // 如果没有指定了文件
+                call = function () {
+                    $.post("photo.api?method=update", photo, function (response) {
+                        pointer.updateModal.find('button[name="updatePhoto_trigger"]').removeAttr("disabled");
+                        common_utils.removeNotify("notify_updating");
+                        if (response.status == 200) {
+                            var data = response.data;
+                            toastr.success("更新成功", "", {"progressBar": false});
+                            pointer.updateModal.modal('hide');
+                            config.callback.updateCompleted.call(context, context, data.photo); // 回调
+                            utils.triggerEvent(config.event.updateCompleted, data.photo);
+                        } else {
+                            toastr.error(response.message, "错误", {"progressBar": false});
+                            console.warn("Error Code: " + response.status);
+                        }
+                        pointer.updateModal.find('input[name="photo_file"]').val("")
+                    }).fail(function (XHR, TS) {
+                        pointer.updateModal.find('button[name="updatePhoto_trigger"]').removeAttr("disabled");
+                        common_utils.removeNotify("notify_updating");
                         toastr.error(TS, "错误", {"progressBar": false});
                         console.warn("Error Code: " + TS);
-                    }
-                });
-            } else { // 如果没有指定了文件
-                $.post("photo.do?method=update", photo, function (data) {
-                    if (data.flag == 200) {
-                        toastr.success("更新成功", "", {"progressBar": false});
-                        pointer.updateModal.modal('hide');
-                        config.callback.updateCompleted.call(context, context, data.photo); // 回调
-                        utils.triggerEvent(config.event.updateCompleted, data.photo);
-                    } else {
-                        toastr.error(data.info, "错误", {"progressBar": false});
-                        console.warn("Error Code: " + data.flag);
-                    }
-                    pointer.updateModal.find('input[name="photo_file"]').val("")
-                });
+                    });
+                };
             }
+            common_utils.notify({
+                "progressBar": false,
+                "hideDuration": 0,
+                "showDuration": 0,
+                "timeOut": 0,
+                "closeButton": false
+            }).success("正在更新图片~", "", "notify_updating");
+            pointer.updateModal.find('button[name="updatePhoto_trigger"]').attr("disabled", "disabled");
+            // 更新之前回调
+            utils.triggerEvent(config.event.beforeUpdate, photo, file, formData);
+            var deferred = config.callback.beforeUpdate.call(context, context, photo, file, formData);
+            if (!(deferred && deferred.promise)) {
+                deferred = $.when();
+            }
+            deferred.done(call);
         }
     };
     var deletePhoto = function (photo_id) {
-        var allow = utils.triggerEvent(config.event.beforeDelete, photo_id);
-        if (allow === false) {
-            return;
-        }
-        if (photo_id) {
-            $.post("photo.do?method=delete", {"photo_id": photo_id}, function (data) {
-                if (data.flag == 200) {
-                    toastr.success("删除成功", "", {"progressBar": false});
-                    pointer.updateModal.modal('hide');
-                    config.callback.deleteCompleted.call(context, context, photo_id); // 回调
-                    utils.triggerEvent(config.event.deleteCompleted, photo_id);
-                } else {
-                    toastr.error(data.info, "错误", {"progressBar": false});
-                    console.warn("Error Code: " + data.flag);
-                }
-            });
+        if (photo_id && photo_id != "0") {
+            var params = {"photo_id": photo_id};
+            var call = function () {
+                $.post("photo.api?method=delete", params, function (response) {
+                    if (response.status == 200) {
+                        toastr.success("删除成功", "", {"progressBar": false});
+                        pointer.updateModal.modal('hide');
+                        config.callback.deleteCompleted.call(context, context, params); // 回调
+                        utils.triggerEvent(config.event.deleteCompleted, photo_id);
+                    } else {
+                        toastr.error(response.message, "错误", {"progressBar": false});
+                        console.warn("Error Code: " + response.status);
+                    }
+                });
+            };
+            var allow = utils.triggerEvent(config.event.beforeDelete, params);
+            if (allow === false) {
+                return;
+            }
+            var deferred = config.callback.beforeDelete.call(context, context, params);
+            if (!(deferred && deferred.promise)) {
+                deferred = $.when();
+            }
+            deferred.done(call);
         }
     };
     var loadPhoto = function (photo_id, success) {
-        $.get("photo.do?method=detailByAjax", {"id": photo_id}, function (data) {
-            if (data.flag == 200) {
-                success(data);
+        return $.get("photo.api?method=getPhoto", {"id": photo_id}, function (response) {
+            if (response.status == 200) {
+                success(response.data.photo);
             } else {
-                toastr.error(data.info, "加载失败");
-                console.warn("Error Code: " + data.flag);
+                toastr.error(response.message, "加载失败");
+                console.warn("Error Code: " + response.status);
+            }
+        });
+    };
+    var loadOrCreateTopic = function (topic, call) {
+        return $.get("photo.api?method=getOrCreateTopic", topic, function (response) {
+            if (response.status == 200) {
+                call(response.data.tagWrapper);
+            } else {
+                toastr.error(response.message, "加载失败");
+                console.warn("Error Code: " + response.status);
+            }
+        });
+    };
+    var loadTagWrapper = function (tagWrapper, call) {
+        return $.get("photo.api?method=getTagWrapper", tagWrapper, function (response) {
+            if (response.status == 200) {
+                call(response.data.tagWrapper);
+            } else if (response.status != 404) {
+                toastr.error(response.message, "加载失败");
+                console.warn("Error Code: " + response.status);
+            } else if (response.status == 404) {
+                console.warn("Error Code: " + response.status);
             }
         });
     };
@@ -494,23 +795,22 @@
                 }
             });
             if (images.length > 0) {
-                pointer.uploadModal.find('input[name="photos"]').parent().hide();
+                pointer.uploadModal.find('input[name="photos"]').closest(".form-group").hide();
                 pointer.uploadModal.find('.modal-title').text("上传图片（已选择 " + images.length + " 张图片）");
                 pointer.uploadPhotos = images;
             } else {
-                pointer.uploadModal.find('input[name="photos"]').parent().show();
+                pointer.uploadModal.find('input[name="photos"]').closest(".form-group").show();
                 pointer.uploadModal.find('.modal-title').text("上传图片");
                 pointer.uploadPhotos = null;
             }
         } else {
-            pointer.uploadModal.find('input[name="photos"]').parent().show();
+            pointer.uploadModal.find('input[name="photos"]').closest(".form-group").show();
             pointer.uploadModal.find('.modal-title').text("上传图片");
             pointer.uploadPhotos = null;
         }
         var openUploadModal_callback = function (album_id) {
             config.albumId = album_id;
             pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
-            pointer.uploadModal.find('input[name="photo_cover"][value="0"]').prop("checked", true);
             pointer.failUploadNum = 0;
             pointer.uploadModal.modal('show');
         };
@@ -529,22 +829,19 @@
         var formatPhotoToModal_callback = function (photo) {
             var isAuthor = login_handle.equalsLoginUser(photo.uid);
             // load to modal
-            var photo_album_url = "photo.do?method=album_detail&id=" + photo.album_id + "&check=" + photo.photo_id;
-            pointer.updateModal.find('span[name="photo_id"]').text(photo.photo_id).parent().attr("href", photo_album_url);
-            pointer.updateModal.find('.copy-input').val(config.path_params.cloudPath + photo.path);
-            pointer.updateModal.find('a[name="photo_path"]').attr("path", config.path_params.cloudPath + photo.path);
+            var photo_url = "p/detail/" + photo.photo_id;
+            pointer.updateModal.find('span[name="photo_id"]').text(photo.photo_id).attr("data-album-id", photo.album_id).parent().attr("href", photo_url);
+            pointer.updateModal.find('.copy-input').val(photo.path);
+            pointer.updateModal.find('a[name="photo_path"]').attr("path", photo.path);
             pointer.updateModal.find('input[name="photo_refer"]').val(photo.refer);
             pointer.updateModal.find('input[name="photo_name"]').val(photo.name);
             pointer.updateModal.find('textarea[name="photo_desc"]').val(photo.description);
-            pointer.updateModal.find('input[name="photo_cover"]').each(function () {
-                if ($(this).val() == photo.iscover) {
-                    $(this).prop("checked", true);
-                }
-            });
             pointer.updateModal.find('span[name="photo_size"]').html(photo.size + "KB（" + photo.width + "×" + photo.height + "）");
             pointer.updateModal.find('span[name="photo_upload_time"]').html(photo.upload_time);
             if (isAuthor) {
-                pointer.updateModal.find('.update-convert-photo-url').attr("title", "原始文件名：" + photo.originName)
+                pointer.updateModal.find('.update-convert-photo-url').attr("title", "原始文件名：" + photo.originName).attr("data-origin-name", photo.originName);
+            } else {
+                pointer.updateModal.find('.update-convert-photo-url').attr("title", "").attr("data-origin-name", "");
             }
 
             // css
@@ -554,90 +851,82 @@
             // define btn by user type
             var fileStyle = isAuthor ? "block" : "none";
             var btnStyle = isAuthor ? "inline-block" : "none";
-            pointer.updateModal.find('input[name="photo_file"]').val("").parent().css("display", fileStyle);
+            pointer.updateModal.find('input[name="photo_file"]').val("").closest(".form-group").css("display", fileStyle);
             pointer.updateModal.find('button[name="deletePhoto_trigger"]').css("display", btnStyle);
             pointer.updateModal.find('button[name="updatePhoto_trigger"]').css("display", btnStyle);
 
             // 照片标签
             photo.tags = photo.tags || "";
-            var tags_modify_dom = pointer.updateModal.find('.tags-modify').eq(0);
+            var tags_modify_dom = pointer.updateModal.find('.tags-modify').eq(0).css("height", "");
             if (isAuthor) {
                 // show
-                tags_modify_dom.parent().show();
+                tags_modify_dom.closest(".form-group").show().find(".tags-edit-btn").show();
                 // css
                 tags_modify_dom.addClass("form-control");
-                tags_modify_dom.css("overflow-y", "hidden").parent().css("padding-top", "").next().css("padding-top", "7px");
+                tags_modify_dom.css("overflow-y", "hidden").closest(".form-group").css("padding-top", "").next().css("padding-top", "7px");
                 // html
                 var tags_str = '';
                 $.each(photo.tags.split('#'), function (i, tag) {
                     if (tag) {
-                        tags_str += '<span class="tag-single"><a class="tag-content" target="_blank" href="photo.do?method=dashboard&model=photo&tags=' + tag + '">' + tag + '</a>' +
-                            '<span class="tag-close">X</span></span>';
+                        tags_str += '<span class="tag-single"><a class="tag-content" target="_blank" href="p/tag/' + encodeURIComponent(tag) + '">' + tag + '</a>' +
+                            '<span class="tag-close">&times</span></span>';
                     }
                 });
-                tags_str += '<input type="text" class="tag-input" name="tag_input"/>';
-                //tags_modify_dom.prop("outerHTML", "");
-                //tags_modify_dom.replaceWith(tags_str);
+                tags_str += '<input type="text" class="tag-input" name="tag_input" title="回车完成输入" placeholder="回车完成输入"/>';
+                // tags_modify_dom.prop("outerHTML", "");
+                // tags_modify_dom.replaceWith(tags_str);
                 tags_modify_dom.html(tags_str);
-                // 事件
-                tags_modify_dom.find(".tag-close").click(function (e) {
-                    utils.deleteTag(tags_modify_dom, $(e.currentTarget.parentNode));
-                });
-                tags_modify_dom.find(".tag-input").keydown(function (e) {
-                    e.defaultPrevented;
-                    var theEvent = e || window.event;
-                    var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
-                    if (code == 13) {
-                        utils.addTagFromInput(tags_modify_dom, $(e.currentTarget));
-                        //防止触发表单提交 返回false
-                        return false;
-                    }
-                }).blur(function (e) {
-                    var input_dom = $(e.currentTarget);
-                    if (tags_modify_dom.find(".tag-single").length == 0 && input_dom.val() != "") {
-                        utils.addTagFromInput(tags_modify_dom, input_dom);
-                    }
-                });
+                pointer.updateModal.find('.tags-edit-btn').text("编辑");
             } else if (!isAuthor && photo.tags) {
                 // show
-                tags_modify_dom.parent().show();
+                tags_modify_dom.closest(".form-group").show().find(".tags-edit-btn").hide();
                 // css
                 tags_modify_dom.removeClass("form-control");
-                tags_modify_dom.css("overflow-y", "").parent().css("padding-top", "7px").next().css("padding-top", "");
+                tags_modify_dom.css("overflow-y", "").closest(".form-group").css("padding-top", "7px").next().css("padding-top", "");
                 // html
                 var tags_str = '';
                 $.each(photo.tags.split('#'), function (i, tag) {
                     if (tag) {
-                        tags_str += '<span class="tag-single" style="margin-right: 6px;"><a class="tag-content"  target="_blank" href="photo.do?method=dashboard&model=photo&tags=' + tag + '">' + tag + '</a></span>';
+                        tags_str += '<span class="tag-single" style="margin-right: 6px;"><a class="tag-content"  target="_blank" href="p/tag/' + encodeURIComponent(tag) + '">' + tag + '</a></span>';
                     }
                 });
                 tags_modify_dom.html(tags_str);
             } else {
                 // hide
-                tags_modify_dom.parent().hide();
+                tags_modify_dom.closest(".form-group").hide();
                 // html
                 tags_modify_dom.find(".tag-single").remove();
                 // css
-                tags_modify_dom.css("overflow-y", "").parent().next().css("padding-top", "7px");
+                tags_modify_dom.css("overflow-y", "").closest(".form-group").next().css("padding-top", "7px");
             }
-            // 计算输入框宽度
-            pointer.updateModal.unbind("shown.bs.modal");
-            pointer.updateModal.on('shown.bs.modal', function () {
-                pointer.updateModal.find('textarea[name="photo_desc"]').autoTextarea({
-                    maxHeight: 200,
-                    minHeight: config.textareaInputHeight,
-                    runOnce: true
-                });
-                if (isAuthor) {
-                    utils.calcTagInputWidth(tags_modify_dom);
-                    //console.log(tags_modify_dom.outerHeight(true) + "_ " + tags_modify_dom.prop("scrollHeight"));
-                    tags_modify_dom.autoTextarea({
-                        maxHeight: 100,
-                        minHeight: config.tagsAreaHeight,
-                        runOnce: true
-                    });
-                }
-            });
+            var photoTopic = null;
+            if (photo.topic && photo.topic.ptwid) {
+                photoTopic = photo.topic;
+            }
+            if (isAuthor) {
+                // 合集名称选择
+                var topic_select_dom = pointer.updateModal
+                    .find('.form-group .topic-name').text("").parent().attr("href", "").hide()
+                    .closest(".form-group").show()
+                    .find("label").text("合集名称 / 权限：")
+                    .closest(".form-group")
+                    .find('.topic-select,.topic-permission-select').parent().show(0).find(".topic-select");
+                utils.applyTopicToSelect(topic_select_dom, photo.tags, photoTopic);
+                // 合集权限选择
+                utils.applyTopicPermissionToSelect(pointer.updateModal.find('.topic-permission-select'), photoTopic, photo.album_id);
+            } else if (photoTopic) {
+                pointer.updateModal
+                    .find('.form-group .topic-name').text(photo.topic.name).parent().attr("href", "p/topic/" + photoTopic.ptwid).show()
+                    .closest(".form-group").show()
+                    .find("label").text("合集名称：")
+                    .closest(".form-group")
+                    .find('.topic-select,.topic-permission-select').html("").parent().hide(0);
+            } else {
+                pointer.updateModal
+                    .find('.form-group .topic-name').text("").parent().attr("href", "")
+                    .closest(".form-group").hide()
+                    .find('.topic-select,.topic-permission-select').html("");
+            }
             pointer.updateModal.modal('show');
         };
         config.callback.beforeUpdateModalOpen.call(context, context, pointer.updateModal, formatPhotoToModal_callback, photo); // 回调
@@ -646,16 +935,14 @@
         var clipboard = new Clipboard(bindElementSelector, {
             container: $(containerId).get(0) //html所在模态框ID
         });
-
-        /*if(!clipboard.isSupported()) {
-         console.error('该浏览器不支持Clipboard复制');
-         }*/
+        // if (!clipboard.isSupported()) {
+        //     console.error('该浏览器不支持Clipboard复制');
+        // }
         clipboard.on('success', function (e) {
             toastr.success("图片地址复制成功！", "提示", {"progressBar": false});
             console.info('已复制Text:', e.text);
             e.clearSelection();
         });
-
         clipboard.on('error', function (e) {
             console.error('复制错误', "提示", {"progressBar": false});
             console.error('Action:', e.action);
@@ -663,8 +950,22 @@
         });
     };
     var utils = {
-        "bindEvent": function (eventName, func) {
-            $(context).bind(eventName, func);
+        "once": function (eventName, func, bindFirst) {
+            var funcWrapper = function () {
+                try {
+                    func.apply(context, arguments);
+                } finally {
+                    utils.unbindEvent(eventName, funcWrapper);
+                }
+            };
+            utils.bindEvent(eventName, funcWrapper, bindFirst);
+        },
+        "bindEvent": function (eventName, func, bindFirst) {
+            if (bindFirst == true) {
+                $(context).onfirst(eventName, func);
+            } else {
+                $(context).bind(eventName, func);
+            }
         },
         "triggerEvent": function (eventName) {
             return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
@@ -682,13 +983,18 @@
             });
             var total_width = tags_modify_dom.width();
             var left_width = 0;
+            var tag_other_width = null;
             tag_single_nodes.each(function (i, tag_single) {
+                if (tag_other_width == null) {
+                    var computedStyle = window.getComputedStyle(tag_single);
+                    tag_other_width = parseInt(computedStyle.borderLeftWidth) + parseInt(computedStyle.borderLeftWidth) + parseInt(computedStyle.marginLeft) + parseInt(computedStyle.marginRight);
+                }
                 if (tag_single.offsetTop == maxOffset) {
-                    left_width += $(tag_single).width();
+                    left_width += tag_single.clientWidth + tag_other_width; // 需要加上padding宽度和borderWidth和marginWidth
                 }
             });
-            var width = total_width - left_width - 70;
-            tags_modify_dom.find(".tag-input").width(width > 20 ? width : total_width);
+            var width = total_width - left_width - 1;
+            tags_modify_dom.find(".tag-input").width(width > 50 ? width : total_width);
         },
         "addTagFromInput": function (tags_modify_dom, input_dom) {
             var tag = input_dom.val();
@@ -696,25 +1002,36 @@
                 // 如果要使用分割字符, 用 ""、{}、${} 包裹
                 var elMap = {};
                 tag = common_utils.replaceByEL(tag, function (index, key) {
-                    var replaceFlag = "replaceEL_" + index;
-                    elMap[replaceFlag] = key;
-                    return replaceFlag;
+                    var replaceMark = "replaceEL_" + index;
+                    elMap[replaceMark] = key;
+                    return replaceMark;
                 });
+                var topic_select_dom = tags_modify_dom.closest(".modal-body").find('.topic-select');
                 var insert_text = "";
-                $.each(tag.split(/[#,，;；X]/), function (i, value) {
+                $.each(tag.split(/[#×✖,，;；]/), function (i, value) {
                     if (value) {
                         // 标记处还原原始值
                         var match = value.match(/replaceEL_[\d]{1}/);
                         match && (value = value.replace(match[0], elMap[match[0]]));
-                        insert_text += '<span class="tag-single"><a class="tag-content"  target="_blank" href="photo.do?method=dashboard&model=photo&tags=' + value + '">' + value + '</a><span class="tag-close"">X</span></span>';
+                        if (value.indexOf("#") == -1) {
+                            insert_text += '<span class="tag-single"><a class="tag-content"  target="_blank" href="p/tag/' + encodeURIComponent(value) + '">' + value + '</a><span class="tag-close"">&times</span></span>';
+                            if (topic_select_dom.find('option[value="' + value + '"]').length == 0) {
+                                topic_select_dom.append('<option value="' + value + '">' + value + '</option>');
+                            }
+                        }
                     }
                 });
                 if (insert_text) {
                     input_dom.before(insert_text);
                     utils.calcTagInputWidth(tags_modify_dom);
-                    input_dom.prevAll().find(".tag-close").unbind("click").click(function (e) {
-                        utils.deleteTag(tags_modify_dom, $(e.currentTarget.parentNode));
+                    tags_modify_dom.autoTextareaHeight({
+                        maxHeight: 150,
+                        minHeight: config.tagsAreaHeight,
+                        runOnce: true
                     });
+                    // input_dom.prevAll().find(".tag-close").unbind("click").click(function (e) {
+                    //     utils.deleteTag(tags_modify_dom, $(e.currentTarget.parentNode));
+                    // });
                 }
                 input_dom.val("");
             } else {
@@ -722,13 +1039,70 @@
             }
         },
         "deleteTag": function (tags_modify_dom, tag_single) {
+            var tagName = tag_single.find("a").text();
+            var tagNameCount = 0;
+            tags_modify_dom.find(".tag-content").each(function (i, tag) {
+                if (tagName == tag.innerText) {
+                    tagNameCount++;
+                }
+            });
+            if (tagNameCount == 1) {
+                var topic_select_dom = tags_modify_dom.closest(".modal-body").find('.topic-select');
+                topic_select_dom.find('option[value="' + tagName + '"]').remove();
+            }
             tag_single.remove();
             utils.calcTagInputWidth(tags_modify_dom);
-            tags_modify_dom.autoTextarea({
-                maxHeight: 100,
+            tags_modify_dom.autoTextareaHeight({
+                maxHeight: 150,
                 minHeight: config.tagsAreaHeight,
                 runOnce: true
             });
+        },
+        "applyTopicToSelect": function (topic_select_dom, tags, photoTopic) {
+            var topic_option_str = '<option value="0" class="empty-topic default-topic' + (photoTopic ? '' : ' before-topic') + '" style="color: #d07a01">不设置</option>';
+            if (tags) {
+                $.each(tags.split('#'), function (i, tag) {
+                    if (tag) {
+                        if (photoTopic != null && photoTopic.name == tag) {
+                            topic_option_str += '<option value="' + tag + '" class="tag-topic before-topic" data-ptwid="' + photoTopic.ptwid + '">' + tag + '</option>';
+                        } else {
+                            topic_option_str += '<option value="' + tag + '">' + tag + '</option>';
+                        }
+                    }
+                });
+            }
+            topic_select_dom.html(topic_option_str);
+            topic_select_dom.find(".before-topic").prop("selected", true);
+        },
+        "applyTopicPermissionToSelect": function (topic_permission_select_dom, photoTopic, current_album_id) {
+            !current_album_id && (current_album_id = 0);
+            var topic_permission_option_str = '';
+            if (photoTopic != null && photoTopic.scope > 0 && photoTopic.scope != current_album_id) {
+                topic_permission_option_str +=
+                    '<option value="' + photoTopic.scope + '" class="permission-follow-album" style="color: #d07a01">跟随相册[' + photoTopic.scope + ']</option>' +
+                    '<option value="' + current_album_id + '" class="permission-follow-album default-permission">跟随当前相册</option>'
+            } else {
+                topic_permission_option_str += '<option value="' + current_album_id + '" class="permission-follow-album default-permission">跟随当前相册</option>'
+            }
+            topic_permission_option_str += '<option value="0" class="permission-no-follow">游客可见，不跟随</option>' +
+                '<option value="1" class="permission-no-follow" title="不会在搜索结果、广场、用户主页中出现">游客可见但不公开，不跟随</option>' +
+                '<option value="2" class="permission-no-follow">登陆可见，不跟随</option>' +
+                '<option value="3" class="permission-no-follow">登陆可见但不公开，不跟随</option>' +
+                '<option value="4" class="permission-no-follow" title="关注你的用户可见">粉丝可见，不跟随</option>' +
+                '<option value="5" class="permission-no-follow">粉丝可见但不公开，不跟随</option>' +
+                '<option value="6" class="permission-no-follow" title="你关注的用户可见">关注的用户可见，不跟随</option>' +
+                '<option value="7" class="permission-no-follow">关注的用户可见但不公开，不跟随</option>' +
+                '<option value="8" class="permission-no-follow">好友可见，不跟随</option>' +
+                '<option value="9" class="permission-no-follow">好友可见但不公开，不跟随</option>' +
+                '<option value="10" class="permission-no-follow">私有，不跟随</option>';
+            topic_permission_select_dom.html(topic_permission_option_str);
+            if (photoTopic != null && photoTopic.scope == 0) {
+                topic_permission_select_dom.find('option.permission-no-follow[value="' + photoTopic.permission + '"]')
+                    .addClass("before-topic-permission").prop("selected", true);
+            } else {
+                topic_permission_select_dom.find('option.permission-follow-album[value="' + (photoTopic ? photoTopic.scope : current_album_id) + '"]')
+                    .addClass("before-topic-permission").prop("selected", true);
+            }
         }
     };
     var context = {
@@ -740,6 +1114,8 @@
         "updatePhoto": updatePhoto,
         "deletePhoto": deletePhoto,
         "loadPhoto": loadPhoto,
+        "loadOrCreateTopic": loadOrCreateTopic,
+        "loadTagWrapper": loadTagWrapper,
         "downloadPhoto": downloadPhoto,
         "openUploadPhotoModal": openUploadPhotoModal,
         "openUpdatePhotoModal": openUpdatePhotoModal

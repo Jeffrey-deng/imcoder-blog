@@ -10,6 +10,8 @@ import site.imcoder.blog.dao.IArticleDao;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.Comment;
 import site.imcoder.blog.entity.User;
+import site.imcoder.blog.setting.Config;
+import site.imcoder.blog.setting.ConfigConstants;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,10 +27,6 @@ import java.util.Map;
 public class ArticleDaoImpl extends CommonDao implements IArticleDao {
 
     private static Logger logger = Logger.getLogger(ArticleDaoImpl.class);
-
-    public final static String regex_filed_article_title = "title"; // 支持正则表达式的字段
-
-    public final static String regex_filed_article_tags = "tags";
 
     /** --------article dml start----------------- */
     /**
@@ -47,7 +45,6 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
             int row2 = session.insert("article.saveArticleDetail", article);
             return row1 * row2;
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("save fail", e);
             return -1;
@@ -70,7 +67,6 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
             int row2 = session.update("article.updateArticleDetail", article);
             return row1 * row2;
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("update fail", e);
             return -1;
@@ -83,7 +79,7 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
      * @param aid
      * @return
      */
-    public Article find(int aid) {
+    public Article find(Long aid) {
         return this.getSqlSession().selectOne("article.findArticle", aid);
     }
 
@@ -101,15 +97,17 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
                 title = condition.getTitle();
                 tags = condition.getTags();
                 if (condition.getTitle() != null && condition.getTitle().length() != 0) {
-                    condition.setTitle(encodeRegexField(regex_filed_article_title, title, false));
+                    condition.setTitle(encodeRegexField("a.title", title, false));
                 }
                 if (condition.getTags() != null && condition.getTags().length() != 0) {
-                    condition.setTags(encodeRegexField(regex_filed_article_tags, tags));
+                    condition.setTags(encodeRegexField("a.tags", tags));
                 }
             }
             HashMap<String, Object> map = new HashMap<String, Object>();
             map.put("condition", condition);
             map.put("loginUser", loginUser);
+            map.put("feed_flow_allow_following_show", Config.getBoolean(ConfigConstants.FEED_FLOW_ALLOW_FOLLOWING_SHOW));
+            map.put("feed_flow_allow_show_lowest_level", Config.getInt(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL));
             int count = this.getSqlSession().selectOne("article.findCount", map);
             if (condition != null) {
                 condition.setTitle(title);
@@ -117,7 +115,6 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
             }
             return count;
         } catch (Exception e) {
-            e.printStackTrace();
             logger.warn("findCount fail", e);
             return 0;
         }
@@ -138,10 +135,10 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
                 title = condition.getTitle();
                 tags = condition.getTags();
                 if (condition.getTitle() != null && condition.getTitle().length() != 0) {
-                    condition.setTitle(encodeRegexField(regex_filed_article_title, title, false));
+                    condition.setTitle(encodeRegexField("a.title", title, false));
                 }
                 if (condition.getTags() != null && condition.getTags().length() != 0) {
-                    condition.setTags(encodeRegexField(regex_filed_article_tags, tags));
+                    condition.setTags(encodeRegexField("a.tags", tags));
                 }
             }
             HashMap<String, Object> map = new HashMap<String, Object>();
@@ -149,6 +146,8 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
             map.put("loginUser", loginUser);
             map.put("startRow", page.getStartRow());
             map.put("pageSize", page.getPageSize());
+            map.put("feed_flow_allow_following_show", Config.getBoolean(ConfigConstants.FEED_FLOW_ALLOW_FOLLOWING_SHOW));
+            map.put("feed_flow_allow_show_lowest_level", Config.getInt(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL));
             List<Article> list = this.getSqlSession().selectList("article.findArticleList", map);
             if (condition != null) {
                 condition.setTitle(title);
@@ -156,7 +155,6 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
             }
             return list;
         } catch (Exception e) {
-            e.printStackTrace();
             logger.warn("findList fail", e);
             return new ArrayList<>();
         }
@@ -180,7 +178,6 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
             }
             return 0;
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("delete fail", e);
             return -1;
@@ -198,7 +195,6 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
         try {
             return this.getSqlSession().update("article.raiseCommentCnt", comment);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("raiseCommentCnt fail", e);
             return -1;
@@ -212,7 +208,6 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
         try {
             return this.getSqlSession().update("article.reduceCommentCnt", comment);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("reduceCommentCnt fail", e);
             return -1;
@@ -226,7 +221,6 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
         try {
             return this.getSqlSession().update("article.raiseCollectCnt", article);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("raiseCollectCnt fail", e);
             return -1;
@@ -240,7 +234,6 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
         try {
             return this.getSqlSession().update("article.reduceCollectCnt", article);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("reduceCollectCnt fail", e);
             return -1;
@@ -254,7 +247,6 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
         try {
             return this.getSqlSession().update("article.raiseClickCnt", article);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("raiseClickCnt fail", e);
             return -1;
@@ -267,31 +259,52 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
     /**
      * 获得置顶列表
      *
-     * @param num 列表数量
+     * @param size      列表数量
+     * @param loginUser
      * @return List<Article>
      */
-    public List<Article> findTopsList(int num) {
-        return this.getSqlSession().selectList("article.findTopsList", num);
+    public List<Article> findTopsList(int size, User loginUser) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put("size", size);
+        map.put("loginUser", loginUser);
+        return this.getSqlSession().selectList("article.findTopsList", map);
     }
 
     /**
      * 获得排行榜列表
      *
-     * @param uid 是否查询所有还是单个 uid=0 为查询所有
-     * @param num list长度 默认5
+     * @param uid  是否查询所有还是单个 uid=0 为查询所有
+     * @param size list长度 默认5
      * @return Map<String,Object>
      */
-    public Map<String, Object> findRankList(int uid, int num) {
+    public Map<String, Object> findRankList(int uid, int size) {
         SqlSession session = this.getSqlSession();
         Map<String, Object> map = new HashMap<String, Object>();
         map.put("uid", uid);
-        map.put("num", num);
+        map.put("size", size);
         map.put("clickRankList", session.selectList("article.findClickRankList", map));
-        //map.put("commentRankList",session.selectList("article.findCommentRankList",map));
-        //map.put("CollectRankList",session.selectList("article.findCollectRankList",map));
+        // map.put("commentRankList",session.selectList("article.findCommentRankList",map));
+        // map.put("CollectRankList",session.selectList("article.findCollectRankList",map));
         map.put("newestList", session.selectList("article.findNewestList", map));
         return map;
     }
+
     /*---------------article rank find end------------------*/
+
+    /**
+     * 校正处理结果，可通过继承再调整结果值
+     *
+     * @param field
+     * @param value
+     * @return
+     */
+    @Override
+    protected String reviseEncodeResult(String field, String value) {
+        if (value != null && field != null && field.indexOf("tags") != -1) {
+            return value.replace(regexp_word_boundary_left, "#").replace(regexp_word_boundary_right, "#");
+        } else {
+            return value;
+        }
+    }
 
 }

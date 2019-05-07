@@ -1,12 +1,14 @@
 package site.imcoder.blog.entity;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import site.imcoder.blog.controller.json.EscapeEmojiJsonDeserializer;
-import site.imcoder.blog.controller.propertyeditors.EmojiConvert;
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+import site.imcoder.blog.controller.formatter.timeformat.TimeFormat;
+import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFill;
+import site.imcoder.blog.controller.formatter.urlprefix.impl.VideoURLPrefixFiller;
+import site.imcoder.blog.controller.propertyeditors.annotation.EmojiConvert;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 
 /**
  * @author Jeffrey.Deng
@@ -18,7 +20,8 @@ public class Video implements Serializable {
     /**
      * 视频ID
      */
-    private int video_id;
+    @PrimaryKeyConvert
+    private Long video_id;
 
     /**
      * 上传用户
@@ -33,15 +36,13 @@ public class Video implements Serializable {
     /**
      * 视频名称
      */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
+    @EmojiConvert //转义emoji表情
     private String name;
 
     /**
      * 视频说明
      */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
+    @EmojiConvert //转义emoji表情
     private String description;
 
     /**
@@ -55,11 +56,12 @@ public class Video implements Serializable {
      * 1：引用链接
      * 2：引用代码块（frame等）
      */
-    private int source_type;
+    private Integer source_type;
 
     /**
      * 视频路径
      */
+    @URLPrefixFill(using = VideoURLPrefixFiller.class, prefixConfigKey = URLPrefixFill.DEFAULT_CLOUD_PREFIX)
     private String path;
 
     /**
@@ -90,14 +92,13 @@ public class Video implements Serializable {
     /**
      * 上传时间
      */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    @TimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date upload_time;
 
     /**
      * 上传时的原始文件名
      */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
+    @EmojiConvert //转义emoji表情
     private String originName;
 
     /**
@@ -106,28 +107,63 @@ public class Video implements Serializable {
     private String refer;
 
     /**
+     * 字幕集合
+     */
+    private List<Subtitle> subtitles;
+
+    /**
      * 点击量
      */
-    private int click;
+    private int click_count;
+
+    /**
+     * 点赞量
+     */
+    private int like_count;
+
+    /**
+     * 评论量
+     */
+    private int comment_count;
 
     /**
      * 查看权限 0：公开 ， 1：好友， 2：私有
      */
     private int permission;
 
+    /**
+     * 旋转角度，【0，90，180，270】
+     */
+    private Integer rotate;
+
+    /**
+     * 登录用户是否访问过该视频
+     */
+    private Boolean accessed;
+
+    /**
+     * 登录用户是否赞过该频
+     */
+    private Boolean liked;
+
+    /**
+     * 登录用户是否评论过该频
+     */
+    private Boolean commented;
+
     public Video() {
 
     }
 
-    public Video(int video_id) {
+    public Video(Long video_id) {
         this.video_id = video_id;
     }
 
-    public int getVideo_id() {
+    public Long getVideo_id() {
         return video_id;
     }
 
-    public void setVideo_id(int video_id) {
+    public void setVideo_id(Long video_id) {
         this.video_id = video_id;
     }
 
@@ -171,11 +207,11 @@ public class Video implements Serializable {
         this.tags = tags;
     }
 
-    public int getSource_type() {
+    public Integer getSource_type() {
         return source_type;
     }
 
-    public void setSource_type(int source_type) {
+    public void setSource_type(Integer source_type) {
         this.source_type = source_type;
     }
 
@@ -251,12 +287,36 @@ public class Video implements Serializable {
         this.refer = refer;
     }
 
-    public int getClick() {
-        return click;
+    public List<Subtitle> getSubtitles() {
+        return subtitles;
     }
 
-    public void setClick(int click) {
-        this.click = click;
+    public void setSubtitles(List<Subtitle> subtitles) {
+        this.subtitles = subtitles;
+    }
+
+    public int getClick_count() {
+        return click_count;
+    }
+
+    public void setClick_count(int click_count) {
+        this.click_count = click_count;
+    }
+
+    public int getLike_count() {
+        return like_count;
+    }
+
+    public void setLike_count(int like_count) {
+        this.like_count = like_count;
+    }
+
+    public int getComment_count() {
+        return comment_count;
+    }
+
+    public void setComment_count(int comment_count) {
+        this.comment_count = comment_count;
     }
 
     public int getPermission() {
@@ -266,4 +326,37 @@ public class Video implements Serializable {
     public void setPermission(int permission) {
         this.permission = permission;
     }
+
+    public Integer getRotate() {
+        return rotate;
+    }
+
+    public void setRotate(Integer rotate) {
+        this.rotate = rotate;
+    }
+
+    public Boolean getAccessed() {
+        return accessed;
+    }
+
+    public void setAccessed(Boolean accessed) {
+        this.accessed = accessed;
+    }
+
+    public Boolean getLiked() {
+        return liked;
+    }
+
+    public void setLiked(Boolean liked) {
+        this.liked = liked;
+    }
+
+    public Boolean getCommented() {
+        return commented;
+    }
+
+    public void setCommented(Boolean commented) {
+        this.commented = commented;
+    }
+
 }

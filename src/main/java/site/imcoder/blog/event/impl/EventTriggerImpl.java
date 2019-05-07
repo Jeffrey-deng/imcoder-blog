@@ -1,11 +1,19 @@
 package site.imcoder.blog.event.impl;
 
+import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
+import site.imcoder.blog.Interceptor.annotation.AccessRecorder;
 import site.imcoder.blog.cache.Cache;
+import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.common.id.IdUtil;
+import site.imcoder.blog.dao.IAlbumDao;
+import site.imcoder.blog.dao.IUserDao;
+import site.imcoder.blog.dao.IVideoDao;
 import site.imcoder.blog.entity.*;
 import site.imcoder.blog.event.IEventTrigger;
 
 import javax.annotation.Resource;
+import java.util.Date;
 
 /**
  * 事件触发接口
@@ -17,41 +25,157 @@ import javax.annotation.Resource;
 @Component("trigger")
 public class EventTriggerImpl implements IEventTrigger {
 
+    private static Logger logger = Logger.getLogger(EventTriggerImpl.class);
+
     @Resource
     Cache cache;
+
+    @Resource
+    private IUserDao userDao;
+
+    @Resource
+    private IAlbumDao albumDao;
+
+    @Resource
+    private IVideoDao videoDao;
+
 
     /**
      * 文章被浏览事件
      *
-     * @param user    访客
-     * @param article 文章
+     * @param accessRecord
+     * @param accessRecorder
      */
     @Override
-    public void clickArticle(User user, Article article) {
+    public void accessArticle(AccessRecord<Article> accessRecord, AccessRecorder accessRecorder) {
+        Article article = accessRecord.getBean();
         if (article != null) {
-            cache.updateArticleClick(article, 1);
-            cache.siteBuffer.put("articleViewCount", (Integer) cache.siteBuffer.get("articleViewCount") + 1);
+            switch (accessRecorder.action()) {
+                case SAVE:
+                    cache.updateArticleClickCount(article, 1);
+                case LIKE:
+                    if (accessRecorder.action() == AccessRecorder.Actions.LIKE) {
+
+                    }
+                    userDao.saveArticleAccessRecord(accessRecord);
+                    break;
+                case DELETE:
+                    cache.updateArticleClickCount(article, -1);
+                    break;
+            }
         }
+    }
+
+    /**
+     * 视频被浏览事件
+     *
+     * @param accessRecord
+     * @param accessRecorder
+     */
+    @Override
+    public void accessVideo(AccessRecord<Video> accessRecord, AccessRecorder accessRecorder) {
+        Video video = accessRecord.getBean();
+        if (video != null) {
+            switch (accessRecorder.action()) {
+                case SAVE:
+                    videoDao.updateVideoClickCount(video, 1);
+                case LIKE:
+                    if (accessRecorder.action() == AccessRecorder.Actions.LIKE) {
+                        if (accessRecord.getIs_like() > 0) {
+                            videoDao.updateVideoLikeCount(video, 1);
+                        } else {
+                            videoDao.updateVideoLikeCount(video, -1);
+                        }
+                    }
+                    userDao.saveVideoAccessRecord(accessRecord);
+                    break;
+                case DELETE:
+                    videoDao.updateVideoClickCount(video, -1);
+                    if (accessRecord.getIs_like() != null && accessRecord.getIs_like() > 0) {
+                        videoDao.updateVideoLikeCount(video, -1);
+                    }
+                    break;
+            }
+        }
+    }
+
+    /**
+     * 照片被浏览事件
+     *
+     * @param accessRecord
+     * @param accessRecorder
+     */
+    @Override
+    public void accessPhoto(AccessRecord<Photo> accessRecord, AccessRecorder accessRecorder) {
+        Photo photo = accessRecord.getBean();
+        if (photo != null) {
+            switch (accessRecorder.action()) {
+                case SAVE:
+                    albumDao.updatePhotoClickCount(photo, 1);
+                case LIKE:
+                    if (accessRecorder.action() == AccessRecorder.Actions.LIKE) {
+                        if (accessRecord.getIs_like() > 0) {
+                            albumDao.updatePhotoLikeCount(photo, 1);
+                        } else {
+                            albumDao.updatePhotoLikeCount(photo, -1);
+                        }
+                    }
+                    userDao.savePhotoAccessRecord(accessRecord);
+                    break;
+                case DELETE:
+                    albumDao.updatePhotoClickCount(photo, -1);
+                    if (accessRecord.getIs_like() != null && accessRecord.getIs_like() > 0) {
+                        albumDao.updatePhotoLikeCount(photo, -1);
+                    }
+                    break;
+            }
+        }
+    }
+
+    /**
+     * 相册被浏览事件
+     *
+     * @param accessRecord
+     * @param accessRecorder
+     */
+    @Override
+    public void accessAlbum(AccessRecord<Album> accessRecord, AccessRecorder accessRecorder) {
+
     }
 
     /**
      * 用户个人空间被浏览事件
      *
-     * @param user
+     * @param accessRecord
+     * @param accessRecorder
      */
     @Override
-    public void clickUserHome(User user) {
+    public void accessUserHome(AccessRecord<User> accessRecord, AccessRecorder accessRecorder) {
 
     }
 
     /**
      * 网站被浏览事件
      *
-     * @param user
+     * @param accessRecord
+     * @param accessRecorder - 可能为null
      */
     @Override
-    public void clickSite(User user) {
-
+    public void accessSite(AccessRecord accessRecord, AccessRecorder accessRecorder) {
+        if (accessRecorder != null && accessRecorder.action() != AccessRecorder.Actions.SAVE) {
+            return;
+        }
+        int today_access_count = (int) cache.siteBuffer.get("today_access_count");
+        String today_date_mark = Utils.formatDate(new Date(), "yyyy-MM-dd");
+        String yesterday_date_mark = (String) cache.siteBuffer.get("today_date_mark");
+        if (today_date_mark.equals(yesterday_date_mark)) {
+            cache.siteBuffer.put("today_access_count", today_access_count + 1);
+        } else {
+            logger.info("Site today_access_count in [" + yesterday_date_mark + "] is [" + today_access_count + "]");
+            cache.siteBuffer.put("today_date_mark", today_date_mark);
+            cache.siteBuffer.put("today_access_count", 1);
+        }
+        cache.siteBuffer.put("total_access_count", (int) cache.siteBuffer.get("total_access_count") + 1);
     }
 
     /**
@@ -62,9 +186,8 @@ public class EventTriggerImpl implements IEventTrigger {
     @Override
     public void addComment(Comment comment) {
         if (comment != null) {
-            Article article = new Article();
-            article.setAid(comment.getMainId());
-            cache.updateArticleComment(article, 1);
+            Article article = new Article(comment.getMainId());
+            cache.updateArticleCommentCount(article, 1);
         }
     }
 
@@ -76,9 +199,8 @@ public class EventTriggerImpl implements IEventTrigger {
     @Override
     public void deleteComment(Comment comment) {
         if (comment != null) {
-            Article article = new Article();
-            article.setAid(comment.getMainId());
-            cache.updateArticleComment(article, -1);
+            Article article = new Article(comment.getMainId());
+            cache.updateArticleCommentCount(article, -1);
         }
     }
 
@@ -89,16 +211,8 @@ public class EventTriggerImpl implements IEventTrigger {
      */
     @Override
     public void follow(Follow follow) {
-        if (follow != null && follow.getUid() != 0 && follow.getFuid() != 0) {
+        if (follow != null && IdUtil.containValue(follow.getFollowerUid()) && IdUtil.containValue(follow.getFollowingUid())) {
             cache.putFollow(follow);
-
-            User _fans = new User();
-            _fans.setUid(follow.getUid());
-            cache.updateUserFollowCount(_fans, 1);
-
-            User _hostUser = new User();
-            _hostUser.setUid(follow.getFuid());
-            cache.updateUserFansCount(_hostUser, 1);
         }
     }
 
@@ -108,17 +222,9 @@ public class EventTriggerImpl implements IEventTrigger {
      *
      * @param follow
      */
-    public void unFollow(Follow follow) {
-        if (follow != null && follow.getUid() != 0 && follow.getFuid() != 0) {
+    public void removeFollow(Follow follow) {
+        if (follow != null && IdUtil.containValue(follow.getFollowerUid()) && IdUtil.containValue(follow.getFollowingUid())) {
             cache.removeFollow(follow);
-
-            User _fans = new User();
-            _fans.setUid(follow.getUid());
-            cache.updateUserFollowCount(_fans, -1);
-
-            User _hostUser = new User();
-            _hostUser.setUid(follow.getFuid());
-            cache.updateUserFansCount(_hostUser, -1);
         }
 
     }
@@ -129,7 +235,7 @@ public class EventTriggerImpl implements IEventTrigger {
      * @param friend
      */
     public void friend(Friend friend) {
-        if (friend != null && friend.getUid() != 0 && friend.getFid() != 0) {
+        if (friend != null && IdUtil.containValue(friend.getUid()) && IdUtil.containValue(friend.getFid())) {
             cache.putFriend(friend);
         }
     }
@@ -139,8 +245,8 @@ public class EventTriggerImpl implements IEventTrigger {
      *
      * @param friend
      */
-    public void unFriend(Friend friend) {
-        if (friend != null && friend.getUid() != 0 && friend.getFid() != 0) {
+    public void removeFriend(Friend friend) {
+        if (friend != null && IdUtil.containValue(friend.getUid()) && IdUtil.containValue(friend.getFid())) {
             cache.removeFriend(friend);
         }
     }
@@ -155,10 +261,13 @@ public class EventTriggerImpl implements IEventTrigger {
     public void newArticle(Article article, User user) {
         if (article != null && user != null) {
             article.setDetail("");
+            User author = article.getAuthor();
+            User simpleAuthor = new User(author.getUid(), author.getNickname());
+            simpleAuthor.setHead_photo(author.getHead_photo());
+            simpleAuthor.setSex(author.getSex());
+            simpleAuthor.setUserGroup(author.getUserGroup());
+            article.setAuthor(simpleAuthor);
             cache.putArticle(article, user);
-            cache.updateCategoryCount(article.getCategory(), 1);
-            cache.updateUserArticleCount(user, 1);
-            cache.siteBuffer.put("articleCount", (Integer) cache.siteBuffer.get("articleCount") + 1);
         }
     }
 
@@ -171,11 +280,7 @@ public class EventTriggerImpl implements IEventTrigger {
     @Override
     public void deleteArticle(Article article, User user) {
         if (article != null && user != null) {
-            Article _article = cache.getArticle(article.getAid(), Cache.READ);
-            cache.updateCategoryCount(_article.getCategory(), -1);
-            cache.updateUserArticleCount(user, -1);
             cache.removeArticle(article, user);
-            cache.siteBuffer.put("articleCount", (Integer) cache.siteBuffer.get("articleCount") - 1);
         }
     }
 
@@ -187,16 +292,14 @@ public class EventTriggerImpl implements IEventTrigger {
      */
     public void updateArticle(Article article, User user) {
         if (article != null && article.getAuthor() != null) {
-            Article beforeArticle = cache.getArticle(article.getAid(), Cache.READ);
-            cache.updateCategoryCount(beforeArticle.getCategory(), -1);
-
             article.setDetail("");
             User author = article.getAuthor();
             User simpleAuthor = new User(author.getUid(), author.getNickname());
+            simpleAuthor.setHead_photo(author.getHead_photo());
+            simpleAuthor.setSex(author.getSex());
+            simpleAuthor.setUserGroup(author.getUserGroup());
             article.setAuthor(simpleAuthor);
             cache.updateArticle(article, user);
-
-            cache.updateCategoryCount(article.getCategory(), 1);
         }
     }
 
@@ -209,7 +312,6 @@ public class EventTriggerImpl implements IEventTrigger {
     public void newUser(User user) {
         if (user != null) {
             cache.putUser(user);
-            cache.siteBuffer.put("userCount", (Integer) cache.siteBuffer.get("userCount") + 1);
         }
     }
 
@@ -233,8 +335,6 @@ public class EventTriggerImpl implements IEventTrigger {
     public void deleteUser(User user) {
         if (user != null) {
             cache.removeUser(user);
-
-            cache.siteBuffer.put("userCount", (Integer) cache.siteBuffer.get("userCount") - 1);
         }
     }
 
@@ -247,7 +347,7 @@ public class EventTriggerImpl implements IEventTrigger {
     @Override
     public void addCollection(Article article, User user) {
         if (article != null) {
-            cache.updateArticleCollection(article, 1);
+            cache.updateArticleCollectCount(article, 1);
         }
     }
 
@@ -260,7 +360,7 @@ public class EventTriggerImpl implements IEventTrigger {
     @Override
     public void deleteCollection(Article article, User user) {
         if (article != null) {
-            cache.updateArticleCollection(article, -1);
+            cache.updateArticleCollectCount(article, -1);
         }
     }
 

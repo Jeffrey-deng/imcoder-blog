@@ -33,7 +33,7 @@ public class WsMessage implements Serializable {
     @JsonIgnore
     private WebSocketSession webSocketSession;
 
-    private String content;
+    private String text;
 
     private Map<String, Object> metadata;
 
@@ -45,9 +45,9 @@ public class WsMessage implements Serializable {
         this.mapping = mapping;
     }
 
-    public WsMessage(String mapping, String content) {
+    public WsMessage(String mapping, String text) {
         this.mapping = mapping;
-        this.content = content;
+        this.text = text;
     }
 
     public long getId() {
@@ -82,12 +82,12 @@ public class WsMessage implements Serializable {
         this.webSocketSession = webSocketSession;
     }
 
-    public String getContent() {
-        return content;
+    public String getText() {
+        return text;
     }
 
-    public void setContent(String content) {
-        this.content = content;
+    public void setText(String text) {
+        this.text = text;
     }
 
     public Map<String, Object> getMetadata() {
@@ -114,8 +114,36 @@ public class WsMessage implements Serializable {
         return this;
     }
 
+    public boolean containsMetadata(String key) {
+        if (metadata == null) {
+            return false;
+        } else {
+            return metadata.containsKey(key);
+        }
+    }
+
     public TextMessage makeTextMessage() {
         return new TextMessage(toString());
+    }
+
+    /**
+     * 当前请求的用户是否已登录
+     *
+     * @return
+     */
+    @JsonIgnore
+    public boolean isHasLoggedIn() {
+        return user != null && user.getUid() != null && user.getUid() > 0;
+    }
+
+    /**
+     * 当前是否是管理员
+     *
+     * @return
+     */
+    @JsonIgnore
+    public boolean isManager() {
+        return isHasLoggedIn() && user.getUserGroup() != null && user.getUserGroup().isManager();
     }
 
     @Override

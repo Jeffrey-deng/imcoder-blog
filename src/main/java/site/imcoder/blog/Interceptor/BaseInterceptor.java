@@ -1,5 +1,6 @@
 package site.imcoder.blog.Interceptor;
 
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
@@ -64,7 +65,6 @@ public abstract class BaseInterceptor extends HandlerInterceptorAdapter {
     public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
         // 如果不是映射到方法直接通过
         if (!handler.getClass().isAssignableFrom(HandlerMethod.class)) {
-            postRunHandler(request, response, handler, modelAndView);
             return;
         }
         if (isMyHandler(handler)) {
@@ -79,7 +79,6 @@ public abstract class BaseInterceptor extends HandlerInterceptorAdapter {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
         // 如果不是映射到方法直接通过
         if (!handler.getClass().isAssignableFrom(HandlerMethod.class)) {
-            super.afterCompletion(request, response, handler, ex);
             return;
         }
         if (isMyHandler(handler)) {
@@ -89,6 +88,14 @@ public abstract class BaseInterceptor extends HandlerInterceptorAdapter {
         }
     }
 
+    /**
+     * 请求处理之前执行，返回false，则忽略此请求
+     *
+     * @param request
+     * @param response
+     * @param handler
+     * @return
+     */
     protected boolean preRunHandler(HttpServletRequest request, HttpServletResponse response, Object handler) {
         return true;
     }
@@ -97,20 +104,59 @@ public abstract class BaseInterceptor extends HandlerInterceptorAdapter {
         return true;
     }
 
+    /**
+     * 请求处理之后，返回客户端之前，执行
+     *
+     * @param request
+     * @param response
+     * @param handler
+     * @param modelAndView
+     * @throws Exception
+     */
     protected void postRunHandler(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
-        super.postHandle(request, response, handler, modelAndView);
     }
 
     protected void postOtherHandler(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
-        super.postHandle(request, response, handler, modelAndView);
     }
 
-    public void afterRunHandler(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
-        super.afterCompletion(request, response, handler, ex);
+    /**
+     * 请求返回客户端之后执行
+     *
+     * @param request
+     * @param response
+     * @param handler
+     * @param ex
+     * @throws Exception
+     */
+    protected void afterRunHandler(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
     }
 
-    public void afterOtherHandler(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
-        super.afterCompletion(request, response, handler, ex);
+    protected void afterOtherHandler(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+    }
+
+    /**
+     * 某个请求是否ajax请求
+     *
+     * @param request
+     * @return
+     */
+    protected boolean isAjaxRequest(HttpServletRequest request) {
+        String requestType = request.getHeader("X-Requested-With");
+        if ("XMLHttpRequest".equals(requestType)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * 某个请求是否ajax请求
+     *
+     * @param handler
+     * @return
+     */
+    protected boolean isAjaxRequest(Object handler) {
+        return ((HandlerMethod) handler).getMethodAnnotation(ResponseBody.class) != null;
     }
 
 }

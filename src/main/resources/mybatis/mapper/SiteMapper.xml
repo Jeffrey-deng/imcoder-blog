@@ -6,18 +6,20 @@
 
     <!-- 根据文章条件查询 -->
     <select id="findArticleBaseList" resultMap="articleListMap">
-        select a.aid,title,click,collection,comment,permission,top,recommend,tags,create_time,
-        at.atid,at.atname,u.uid,u.nickname
-        from ( article a left join article_type at on a.atid=at.atid ) left join user u on a.uid = u.uid
+        select a.aid,title,click_count,collect_count,comment_count,permission,top,recommend,tags,create_time,
+        at.atid,at.atname,
+        u.uid as auid, u.nickname, u.sex, u.head_photo,
+        u.gid, ug.group_name
+        from ( article a left join article_type at on a.atid=at.atid ) left join (user u left join user_group ug on u.gid = ug.gid) on a.uid = u.uid
         order by a.aid desc
     </select>
 
     <resultMap id="articleListMap" type="article">
-        <result column="aid" property="aid"/>
+        <id column="aid" property="aid"/>
         <result column="title" property="title"/>
-        <result column="click" property="click"/>
-        <result column="collection" property="collection"/>
-        <result column="comment" property="comment"/>
+        <result column="click_count" property="click_count"/>
+        <result column="collect_count" property="collect_count"/>
+        <result column="comment_count" property="comment_count"/>
         <result column="permission" property="permission"/>
         <result column="top" property="top"/>
         <result column="recommend" property="recommend"/>
@@ -28,28 +30,34 @@
             <result column="atname" property="atname"/>
         </association>
         <association property="author" column="uid" javaType="user">
-            <result column="uid" property="uid"/>
+            <result column="auid" property="uid"/>
             <result column="nickname" property="nickname"/>
+            <result column="sex" property="sex"/>
+            <result column="head_photo" property="head_photo"/>
+            <association property="userGroup" column="gid" javaType="userGroup">
+                <result column="gid" property="gid"/>
+                <result column="group_name" property="group_name"/>
+            </association>
         </association>
     </resultMap>
 
     <update id="updateArticleBaseBatch" parameterType="java.util.List">
         update article set
-        click=
+        click_count=
         <foreach collection="list" item="item" index="index" separator=" " open="case aid" close="end">
-            when #{item.aid,jdbcType=INTEGER} then #{item.click,jdbcType=INTEGER}
+            when #{item.aid,jdbcType=BIGINT} then #{item.click_count,jdbcType=BIGINT}
         </foreach>
-        ,comment=
+        ,comment_count=
         <foreach collection="list" item="item" index="index" separator=" " open="case aid" close="end">
-            when #{item.aid,jdbcType=INTEGER} then #{item.comment,jdbcType=INTEGER}
+            when #{item.aid,jdbcType=BIGINT} then #{item.comment_count,jdbcType=BIGINT}
         </foreach>
-        ,collection=
+        ,collect_count=
         <foreach collection="list" item="item" index="index" separator=" " open="case aid" close="end">
-            when #{item.aid,jdbcType=INTEGER} then #{item.collection,jdbcType=INTEGER}
+            when #{item.aid,jdbcType=BIGINT} then #{item.collect_count,jdbcType=BIGINT}
         </foreach>
         where aid in
         <foreach collection="list" index="index" item="item" separator="," open="(" close=")">
-            #{item.aid,jdbcType=INTEGER}
+            #{item.aid,jdbcType=BIGINT}
         </foreach>
     </update>
 
@@ -59,8 +67,8 @@
     </update>
 
     <select id="selectCategoryCount" resultType="category">
-        select tmp.atid,at.atname,tmp.count from ( select atid,count(*) as count from article group by atid ) as tmp
-        left join article_type at on tmp.atid = at.atid
+        select at.atid, at.atname, case when tmp.count is not null then tmp.count else 0 end as count from ( select atid,count(*) as count from article group by atid ) as tmp
+        right join article_type at on tmp.atid = at.atid
     </select>
 
     <select id="selectCategory" resultType="category">
@@ -72,11 +80,11 @@
     </select>
 
     <select id="selectFollowTable" resultType="follow">
-        select fwid,uid,fuid from user_follow
+        select fwid, uid as followerUid, fuid as followingUid from user_follow
     </select>
 
     <resultMap id="userMap" type="user">
-        <result column="uid" property="uid"/>
+        <id column="uid" property="uid"/>
         <result column="nickname" property="nickname"/>
         <result column="phone" property="phone"/>
         <result column="sex" property="sex"/>
@@ -120,12 +128,13 @@
     </select>
 
     <resultMap id="albumResultMap" type="album">
-        <result column="album_id" property="album_id"/>
+        <id column="album_id" property="album_id"/>
         <result column="name" property="name"/>
         <result column="description" property="description"/>
         <result column="create_time" property="create_time" javaType="java.util.Date" jdbcType="BIGINT"
                 typeHandler="site.imcoder.blog.dao.typehandler.DateTypeHandler"/>
         <result column="permission" property="permission"/>
+        <result column="mount" property="mount"/>
         <result column="size" property="size"/>
         <result column="show_col" property="show_col"/>
         <association column="uid" property="user" javaType="user">
@@ -134,7 +143,7 @@
         </association>
         <association column="cover" property="cover" javaType="photo">
             <result column="uid" property="uid"/>
-            <result column="photo_id" property="photo_id"/>
+            <result column="cover" property="photo_id"/>
             <result column="path" property="path"/>
             <result column="width" property="width"/>
             <result column="height" property="height"/>
@@ -142,7 +151,7 @@
     </resultMap>
 
     <resultMap id="photoResultMap" type="photo">
-        <result column="photo_id" property="photo_id"/>
+        <id column="photo_id" property="photo_id"/>
         <result column="uid" property="uid"/>
         <result column="album_id" property="album_id"/>
         <result column="name" property="name"/>
@@ -155,13 +164,21 @@
         <result column="height" property="height"/>
         <result column="size" property="size"/>
         <result column="image_type" property="image_type"/>
-        <result column="iscover" property="iscover"/>
         <result column="originName" property="originName"/>
         <result column="refer" property="refer"/>
+        <result column="click_count" property="click_count"/>
+        <result column="like_count" property="like_count"/>
+        <association column="ptwid" property="topic" javaType="photoTagWrapper">
+            <result column="ptwid" property="ptwid"/>
+            <result column="tname" property="name"/>
+            <result column="tpermission" property="permission"/>
+            <result column="scope" property="scope"/>
+            <result column="tdescription" property="description"/>
+        </association>
     </resultMap>
 
     <resultMap id="videoResultMap" type="video">
-        <result column="video_id" property="video_id"/>
+        <id column="video_id" property="video_id"/>
         <result column="name" property="name"/>
         <result column="description" property="description"/>
         <result column="tags" property="tags"/>
@@ -176,6 +193,9 @@
                 typeHandler="site.imcoder.blog.dao.typehandler.DateTypeHandler"/>
         <result column="originName" property="originName"/>
         <result column="permission" property="permission"/>
+        <result column="rotate" property="rotate"/>
+        <result column="click_count" property="click_count"/>
+        <result column="like_count" property="like_count"/>
         <association column="uid" property="user" javaType="user">
             <result column="uid" property="uid"/>
             <result column="nickname" property="nickname"/>
@@ -190,8 +210,8 @@
     </resultMap>
 
     <select id="findAlbumList" parameterType="user" resultMap="albumResultMap">
-        select a.album_id, a.name, a.description, a.create_time, a.permission, a.size, a.show_col, a.uid,
-        u.nickname, p.photo_id, p.path, p.width, p.height
+        select a.album_id, a.name, a.description, a.create_time, a.permission, a.mount, a.size, a.show_col, a.uid,
+        u.nickname, a.cover, p.path, p.width, p.height
         from (album a left join user u on a.uid = u.uid) left join photo p on a.cover = p.photo_id
         <where>
             <if test="_parameter != null and uid > 0">
@@ -202,9 +222,10 @@
     </select>
 
     <select id="findPhotoList" parameterType="album" resultMap="photoResultMap">
-        select photo_id, uid, album_id, name, path, description, tags, upload_time, width, height, size, image_type,
-        iscover, originName, refer
-        from photo
+        select p.photo_id, p.uid, p.album_id, p.name, p.path, p.description, p.tags, p.upload_time, p.width, p.height,
+        p.size, p.image_type, p.originName, p.refer, p.click_count, p.like_count,
+        t.ptwid, t.name as tname, t.permission as tpermission, t.scope, t.description as tdescription
+        from photo p left join photo_tag_wrapper t on p.topic = t.ptwid
         <where>
             <if test="_parameter != null and album_id > 0">
                 album_id = #{album_id}
@@ -217,14 +238,14 @@
         select v.video_id, v.uid , u.nickname, v.cover_id, p.path as p_path, p.album_id, p.width as p_width, p.height as
         p_height,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
-        v.upload_time, v.originName, v.permission
+        v.upload_time, v.originName, v.permission, v.rotate, v.click_count, v.like_count
         from ( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id
         <where>
             <if test="_parameter != null and uid > 0">
                 uid = #{uid}
             </if>
         </where>
-        order by video_id asc
+        order by v.video_id asc
     </select>
 
     <update id="updateArticleDetailFilePath" parameterType="hashMap">

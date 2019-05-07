@@ -1,27 +1,28 @@
 package site.imcoder.blog.controller;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
-import site.imcoder.blog.controller.propertyeditors.EscapeEmojiEditor;
+import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.view.RedirectView;
+import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.controller.propertyeditors.EntityPropertyEditor;
 import site.imcoder.blog.controller.propertyeditors.IntEditor;
+import site.imcoder.blog.controller.propertyeditors.annotation.EmojiConvert;
+import site.imcoder.blog.controller.propertyeditors.converter.EscapeEmojiPropertyFieldConverter;
 import site.imcoder.blog.entity.*;
+import site.imcoder.blog.service.message.IResponse;
+import site.imcoder.blog.setting.GlobalConstants;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 /**
  * @author Jeffrey.Deng
  */
-public abstract class BaseController {
-
-    public final static String KEY_LOGIN_USER = "loginUser";
-
-    public final static String KEY_STATUS = "flag";
-
-    public final static String KEY_STATUS_FRIENDLY = "info";
+public abstract class BaseController implements GlobalConstants {
 
     public final static String KEY_ERROR_INFO = "errorInfo";
 
@@ -37,18 +38,6 @@ public abstract class BaseController {
 
     public final static String PAGE_SERVER_ERROR = "/error/500";
 
-    public final static String FRIENDLY_SUCCESS = "成功";
-
-    public final static String FRIENDLY_PARAM_ERROR = "参数错误";
-
-    public final static String FRIENDLY_NOT_LOGIN = "需要登录";
-
-    public final static String FRIENDLY_FORBIDDEN = "没有权限";
-
-    public final static String FRIENDLY_NOT_FOUND = "无此记录";
-
-    public final static String FRIENDLY_SERVER_ERROR = "服务器错误";
-
     /**
      * @param session
      * @return int
@@ -57,13 +46,23 @@ public abstract class BaseController {
      * 200 ： 是管理员
      */
     protected int isAdmin(HttpSession session) {
-        User user = (User) session.getAttribute(KEY_LOGIN_USER);
-        if (user == null) {
-            return 401;
-        } else if (user.getUserGroup().isGeneralUser()) {
-            return 403;
+        return isAdmin((User) session.getAttribute(KEY_LOGIN_USER));
+    }
+
+    /**
+     * @param loginUser
+     * @return int
+     * 403 ： 不是管理员
+     * 401 ： 未登录
+     * 200 ： 是管理员
+     */
+    protected int isAdmin(User loginUser) {
+        if (loginUser == null) {
+            return STATUS_NOT_LOGIN;
+        } else if (loginUser.getUserGroup().isGeneralUser()) {
+            return STATUS_FORBIDDEN;
         } else {
-            return 200;
+            return STATUS_SUCCESS;
         }
     }
 
@@ -78,27 +77,41 @@ public abstract class BaseController {
     }
 
     /**
+     * 复制ResponseEntity中的值到request
+     *
+     * @param response
+     * @param request
+     */
+    protected void copyDataToRequest(IResponse response, HttpServletRequest request) {
+        Map<String, Object> map = response.getAttr();
+        if (map != null) {
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                request.setAttribute(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    /**
      * 设置404详细信息，并返回404页面地址
      *
-     * @param request
+     * @param model
      * @param detail
      * @return
      */
-    protected String setNotFoundInfo(HttpServletRequest request, String detail) {
-        request.setAttribute(KEY_ERROR_INFO, detail);
-        return PAGE_NOT_FOUND_ERROR;
+    protected String setNotFoundInfo(Model model, String detail) {
+        return setErrorInfo(model, PAGE_NOT_FOUND_ERROR, detail);
     }
 
     /**
      * 设置错误详细信息，并返回错误页面地址
      *
-     * @param request
+     * @param model
      * @param errorPage
      * @param errorInfo
      * @return
      */
-    protected String setErrorInfo(HttpServletRequest request, String errorPage, String errorInfo) {
-        request.setAttribute(KEY_ERROR_INFO, errorInfo);
+    protected String setErrorInfo(Model model, String errorPage, String errorInfo) {
+        model.addAttribute(KEY_ERROR_INFO, errorInfo);
         return errorPage;
     }
 
@@ -110,15 +123,15 @@ public abstract class BaseController {
      */
     protected String getErrorPage(int flag) {
         switch (flag) {
-            case 400:
+            case STATUS_PARAM_ERROR:
                 return PAGE_PARAM_ERROR;
-            case 401:
+            case STATUS_NOT_LOGIN:
                 return PAGE_LOGIN;
-            case 403:
+            case STATUS_FORBIDDEN:
                 return PAGE_FORBIDDEN_ERROR;
-            case 404:
+            case STATUS_NOT_FOUND:
                 return PAGE_NOT_FOUND_ERROR;
-            case 500:
+            case STATUS_SERVER_ERROR:
                 return PAGE_SERVER_ERROR;
             default:
                 return PAGE_NOT_FOUND_ERROR;
@@ -126,72 +139,84 @@ public abstract class BaseController {
     }
 
     /**
-     * 得到状态码的提示信息
+     * 得到status对应的页面
      *
-     * @param map
-     * @param codeKey
-     * @param wordKey
-     */
-    protected void convertStatusCodeToWord(Map<String, Object> map, String codeKey, String wordKey) {
-        int flag = (Integer) map.get(codeKey);
-        if (flag == 200) {
-            map.put(wordKey, FRIENDLY_SUCCESS);
-        } else if (flag == 400) {
-            map.put(wordKey, FRIENDLY_PARAM_ERROR);
-        } else if (flag == 401) {
-            map.put(wordKey, FRIENDLY_NOT_LOGIN);
-        } else if (flag == 403) {
-            map.put(wordKey, FRIENDLY_FORBIDDEN);
-        } else if (flag == 404) {
-            map.put(wordKey, FRIENDLY_NOT_FOUND);
-        } else {
-            map.put(wordKey, FRIENDLY_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * 得到状态码的提示信息
-     *
-     * @param map
-     */
-    protected void convertStatusCodeToWord(Map<String, Object> map) {
-        convertStatusCodeToWord(map, KEY_STATUS, KEY_STATUS_FRIENDLY);
-    }
-
-    /**
-     * 如果是这个session第一次访问此文章返回true，否则false
-     *
-     * @param session
-     * @param article
+     * @param status
+     * @param successPage 状态成功返回的页面
      * @return
      */
-    protected boolean clickNewArticle(HttpSession session, Article article) {
-        @SuppressWarnings("unchecked")
-        List<Integer> openedArticle = (List<Integer>) session.getAttribute("openedArticle");
-        if (openedArticle == null) {
-            openedArticle = new ArrayList<Integer>();
-            session.setAttribute("openedArticle", openedArticle);
-        }
-        if (!openedArticle.contains(article.getAid())) {
-            openedArticle.add(article.getAid());
-            return true;
+    protected String getViewPage(int status, String successPage) {
+        if (status == STATUS_SUCCESS) {
+            return successPage;
         } else {
-            return false;
+            return getErrorPage(status);
         }
     }
 
-    //注册类型转换
+    /**
+     * 得到status对应的页面
+     *
+     * @param iResponse
+     * @param successPage 状态成功返回的页面
+     * @return
+     */
+    protected String getViewPage(IResponse iResponse, String successPage) {
+        return getViewPage(iResponse.getStatus(), successPage);
+    }
+
+    protected ModelAndView buildModelAndView(String page) {
+        return new ModelAndView(page);
+    }
+
+    /**
+     * 返回一个重定向ModelAndView，可设置httpCode
+     *
+     * @param mv
+     * @param page
+     * @param httpCode
+     * @return
+     */
+    protected ModelAndView buildRedirectView(ModelAndView mv, String page, int httpCode) {
+        RedirectView redirectView = new RedirectView(page, true);
+        redirectView.setStatusCode(HttpStatus.valueOf(httpCode));
+        mv.setView(redirectView);
+        return mv;
+    }
+
+    /**
+     * 返回一个重定向ModelAndView，可设置httpCode
+     *
+     * @param page
+     * @param httpCode
+     * @return
+     */
+    protected ModelAndView buildRedirectView(String page, int httpCode) {
+        return buildRedirectView(new ModelAndView(), page, httpCode);
+    }
+
+    protected String appendQueryString(String queryString) {
+        return Utils.isNotEmpty(queryString) ? ("?" + queryString.replaceFirst("^&", "")) : "";
+    }
+
+    protected String getQueryNotNull(HttpServletRequest request) {
+        return request.getQueryString() != null ? request.getQueryString() : "";
+    }
+
+    //注册类型转换，每次请求来都会执行，不是启动执行一次！！！
     @InitBinder
     protected void initBinder(WebDataBinder binder) {
-        //binder.registerCustomEditor(Date.class, new CustomDateEditor(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"), true));
+        //  binder.registerCustomEditor(Date.class, new CustomDateEditor(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"), true));
         binder.registerCustomEditor(int.class, new IntEditor());
-        EscapeEmojiEditor escapeEmojiEditor = new EscapeEmojiEditor(); // emoji转换
-        binder.registerCustomEditor(Comment.class, escapeEmojiEditor);
-        binder.registerCustomEditor(Letter.class, escapeEmojiEditor);
-        binder.registerCustomEditor(Album.class, escapeEmojiEditor);
-        binder.registerCustomEditor(Article.class, escapeEmojiEditor);
-        binder.registerCustomEditor(Photo.class, escapeEmojiEditor);
-        binder.registerCustomEditor(Video.class, escapeEmojiEditor);
+        //  自定义的PropertyEditor
+        EntityPropertyEditor entityPropertyEditor = new EntityPropertyEditor(); // emoji转换
+        // 绑定注解
+        entityPropertyEditor.registerAnnotation(EmojiConvert.class, EscapeEmojiPropertyFieldConverter.getInstance());
+        binder.registerCustomEditor(Comment.class, entityPropertyEditor);
+        binder.registerCustomEditor(Letter.class, entityPropertyEditor);
+        binder.registerCustomEditor(Album.class, entityPropertyEditor);
+        binder.registerCustomEditor(Article.class, entityPropertyEditor);
+        binder.registerCustomEditor(Photo.class, entityPropertyEditor);
+        binder.registerCustomEditor(Video.class, entityPropertyEditor);
     }
 
 }

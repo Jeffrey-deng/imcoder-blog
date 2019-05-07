@@ -22,13 +22,13 @@ public class WebSocketInterceptor extends HttpSessionHandshakeInterceptor {
 
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
-//        HttpSession session = this.getSession(request);
-//        if(session != null) {
-//            User loginUser = (User)session.getAttribute(GlobalConstants.LOGIN_USER_KEY);
-//            if (loginUser != null) {
-//                attributes.put(GlobalConstants.LOGIN_USER_KEY, loginUser);
-//            }
-//        }
+        // HttpSession session = this.getSession(request);
+        // if (session != null) {
+        //     User loginUser = (User) session.getAttribute(GlobalConstants.KEY_LOGIN_USER);
+        //     if (loginUser != null) {
+        //         attributes.put(GlobalConstants.KEY_LOGIN_USER, loginUser);
+        //     }
+        // }
         // 父类中实现了复制session中所有元素
         return super.beforeHandshake(request, response, wsHandler, attributes);
     }
@@ -38,7 +38,7 @@ public class WebSocketInterceptor extends HttpSessionHandshakeInterceptor {
         if (logger.isDebugEnabled()) {
             HttpSession session = this.getSession(request);
             if (session != null) {
-                User loginUser = (User) session.getAttribute(GlobalConstants.LOGIN_USER_KEY);
+                User loginUser = (User) session.getAttribute(GlobalConstants.KEY_LOGIN_USER);
                 if (loginUser != null) {
                     logger.debug("user " + loginUser.getUid() + " hand shake with server successfully");
                 }

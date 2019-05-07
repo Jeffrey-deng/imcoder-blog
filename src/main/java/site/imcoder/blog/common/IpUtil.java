@@ -71,7 +71,7 @@ public class IpUtil {
                     inputStream.close();
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("IpUtil's method synthesis find execption: " + e.toString());
             }
         }
     }
@@ -101,7 +101,7 @@ public class IpUtil {
             byte[] bytes = readInputStream(inputStream);
             ipLocationStr = new String(bytes, "utf-8");
         } catch (IOException e) {
-            logger.warn("请求IP地址失败, ip: " + ip + " , exception: " + e.getMessage());
+            logger.warn("请求IP地址失败, ip: " + ip + " , exception: " + e.toString() + ", function: requestIpLocation");
             ipLocationStr = null;
         } finally {
             return ipLocationStr;
@@ -191,20 +191,19 @@ public class IpUtil {
         String locationStr = requestIpLocation(ip);
         try {
             if (IP_CALLBACK_USR_WHO.equals("taobao")) {
-                location = parseTabbaoJson(locationStr);
+                location = parseTaobaoJson(locationStr);
             } else {
                 location = parseIpipNetJson(locationStr);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            logger.warn("转换IP地址失败, ip: " + ip, e);
+            logger.warn("转换IP地址失败, ip: " + ip + ", exception: " + e.toString());
             location = null;
         } finally {
             return location;
         }
     }
 
-    private static String parseTabbaoJson(String str) throws Exception {
+    private static String parseTaobaoJson(String str) throws Exception {
         JSONObject json = new JSONObject(str);
         if (json.getInt("code") == 0) {
             JSONObject data = json.getJSONObject("data");
@@ -222,13 +221,13 @@ public class IpUtil {
                         data.getString(ISP));
             }
         } else {
-            throw new Exception("taobao interface return code == 1");
+            throw new Exception("taobao interface return code == 1, requestHost: ip.taobao.com, function: parseTaobaoJson");
         }
     }
 
     private static String parseIpipNetJson(String str) throws Exception {
         if (str == null || "".equals(str)) {
-            throw new Exception("return data is empty");
+            throw new Exception("IpipNet return data is empty, requestHost: freeapi.ipip.net, function: parseIpipNetJson");
         }
         JSONArray array = new JSONArray(str);
         if (array != null && array.length() > 0) {
@@ -246,7 +245,7 @@ public class IpUtil {
                         array.getString(4));
             }
         } else {
-            throw new Exception("return data is empty");
+            throw new Exception("IpipNet return data is empty, requestHost: freeapi.ipip.net, function: parseIpipNetJson");
         }
     }
 

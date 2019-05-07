@@ -11,23 +11,28 @@ import org.apache.log4j.Logger;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.common.Callable;
 import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.entity.Album;
 import site.imcoder.blog.entity.Photo;
+import site.imcoder.blog.entity.User;
 import site.imcoder.blog.entity.Video;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
 import site.imcoder.blog.setting.ConfigManager;
 import site.imcoder.blog.setting.OSSConfigConstants;
-import sun.misc.BASE64Encoder;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * oss远程文件系统
@@ -45,7 +50,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
 
     private static Logger logger = Logger.getLogger(OSSFileServiceImpl.class);
 
-    private final static String LIST_ENCODEING = "UTF-8";
+    private final static String LIST_ENCODING = "UTF-8";
     private final static int BATCH_SIZE = 499;
 
     private static String endpoint;     // region endpoint
@@ -67,7 +72,8 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
     // 授权用户临时凭证提供器
     private static STSAssumeRoleSessionCredentialsProvider stsAssumeRoleSessionCredentialsProvider = null;
 
-    private BASE64Encoder encoder;
+    @Resource
+    private Cache cache;
 
     public static boolean loadProperties() {
         Properties props = ConfigManager.loadProperties(Config.get(ConfigConstants.REMOTE_OSS_CONFIG_LOCATION));
@@ -109,7 +115,6 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
             } catch (com.aliyuncs.exceptions.ClientException e) {
                 e.printStackTrace();
             }
-            encoder = new BASE64Encoder();
         }
     }
 
@@ -197,7 +202,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
             try {
                 if (objectSummaries != null && objectSummaries.size() > 0) {
                     for (OSSObjectSummary objectSummary : objectSummaries) {
-                        objectSummary.setKey(URLDecoder.decode(objectSummary.getKey(), LIST_ENCODEING));
+                        objectSummary.setKey(URLDecoder.decode(objectSummary.getKey(), LIST_ENCODING));
                         if (objectSummary.getKey().equals(path)) {
                             continue;
                         }
@@ -207,7 +212,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
                     }
                 }
                 if (objectListing.getNextMarker() != null) {
-                    listObjectsRequest.setMarker(URLDecoder.decode(objectListing.getNextMarker(), LIST_ENCODEING));
+                    listObjectsRequest.setMarker(URLDecoder.decode(objectListing.getNextMarker(), LIST_ENCODING));
                 }
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
@@ -249,7 +254,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
                 List<String> commonPrefixes = objectListing.getCommonPrefixes();
                 if (commonPrefixes != null && commonPrefixes.size() > 0) {
                     for (String dir : commonPrefixes) {
-                        dir = URLDecoder.decode(dir, LIST_ENCODEING);
+                        dir = URLDecoder.decode(dir, LIST_ENCODING);
                         if (dir.equals(path)) {
                             continue;
                         }
@@ -257,7 +262,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
                     }
                 }
                 if (objectListing.getNextMarker() != null) {
-                    listObjectsRequest.setMarker(URLDecoder.decode(objectListing.getNextMarker(), LIST_ENCODEING));
+                    listObjectsRequest.setMarker(URLDecoder.decode(objectListing.getNextMarker(), LIST_ENCODING));
                 }
 
             } while (objectListing.isTruncated());
@@ -547,9 +552,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
             client = getClient();
             ObjectMetadata meta = new ObjectMetadata(); // meta
             meta.setContentType("text/plain");
-            Map<String, String> userMetadata = new HashMap<>(); // user-meta
-            userMetadata.put("handle-sdk", "java-server");
-            meta.setUserMetadata(userMetadata);
+            meta.addUserMetadata("handle-sdk", "java-server"); // user-meta
             ByteArrayInputStream byteArrayInputStream = null;
             try {
                 // 统一编码
@@ -580,13 +583,29 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      */
     @Override
     public boolean save(InputStream inputStream, String fileKey) {
+        return save(inputStream, fileKey, null);
+    }
+
+    /**
+     * 文件保存
+     *
+     * @param inputStream 输入流
+     * @param fileKey     文件保存路径
+     * @param metadata    文件头信息
+     * @return
+     */
+    @Override
+    public boolean save(InputStream inputStream, String fileKey, Map<String, Object> metadata) {
         OSSClient client = null;
         try {
             client = getClient();
             ObjectMetadata meta = new ObjectMetadata(); // meta
-            Map<String, String> userMetadata = new HashMap<>(); // user-meta
-            userMetadata.put("handle-sdk", "java-server");
-            meta.setUserMetadata(userMetadata);
+            if (metadata != null && !metadata.isEmpty()) {
+                for (Map.Entry<String, Object> entry : metadata.entrySet()) {
+                    meta.setHeader(entry.getKey(), entry.getValue());
+                }
+            }
+            meta.addUserMetadata("handle-sdk", "java-server"); // user-meta
             save(client, inputStream, fileKey, meta);
             logger.info("save file to remote system: " + fileKey);
             return true;
@@ -708,7 +727,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
             userMetadata.put("handle-sdk", "java-server");
             meta.setUserMetadata(userMetadata);
             // BinaryUtil.toBase64String("".getBytes());
-            // meta.setContentMD5(encoder.encode(FileUtil.getMD5Value(getUploadFileInputSteam(file, relativePath + fileName)).getBytes()));
+            // meta.setContentMD5(Base64.getEncoder().encodeToString(FileUtil.getMD5Value(getUploadFileInputSteam(file, relativePath + fileName)).getBytes()));
             save(client, inputStream, relativePath + fileName, meta);
             logger.info("savePhotoFile: upload file \"" + (relativePath + fileName) + "\" to remote file system successfully");
         } catch (OSSException e) {
@@ -836,12 +855,15 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
         return true;
     }
 
+    /********************* - ****** - OLD GENERATE NAME API - ***** - ****************************/
+
     /**
      * 生成相册相对路径
      *
      * @param album
      * @return
      */
+    @Deprecated
     @Override
     public String generateAlbumPath(Album album) {
         return Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + album.getUser().getUid() + "/album/" + String.format("%05d", album.getAlbum_id()) + "/";
@@ -853,6 +875,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      * @param album
      * @return
      */
+    @Deprecated
     @Override
     public String generatePhotoFolderPath(Album album) {
         OSSClient client = null;
@@ -871,7 +894,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
             if (maxSubDir[0] == null) {
                 currentSubPath = albumPath + String.format("%03d", 1) + "/";
             } else {
-                int index = Integer.parseInt(Utils.getSubStr(maxSubDir[0], 2).replace("/", ""));
+                int index = Integer.parseInt(Utils.getSubStr(maxSubDir[0], 2, "/").replace("/", ""));
                 List<OSSObjectSummary> objectSummaries = listPath(client, maxSubDir[0]);
                 if (objectSummaries.size() >= 499) {
                     index++;
@@ -900,6 +923,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      * @param savePath
      * @return
      */
+    @Deprecated
     @Override
     public String generateNextPhotoFilename(Photo photo, String savePath) {
         OSSClient client = null;
@@ -939,6 +963,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      * @param index 编号，属于这个文件夹第几个文件
      * @return
      */
+    @Deprecated
     @Override
     public String generatePhotoFilename(Photo photo, int index) {
         String path = (photo.getOriginName() == null || photo.getOriginName().equals("")) ? photo.getPath() : photo.getOriginName();
@@ -953,6 +978,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      * @param video
      * @return
      */
+    @Deprecated
     @Override
     public String generateVideoFolderPath(Video video) {
         return Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + video.getUser().getUid() + "/video/" + String.format("%05d", video.getCover().getAlbum_id()) + "/";
@@ -965,6 +991,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      * @param savePath 保存文件夹的绝对路径
      * @return
      */
+    @Deprecated
     @Override
     public String generateNextVideoName(Video video, String savePath) {
         OSSClient client = null;
@@ -1003,6 +1030,7 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
      * @param index 编号，属于这个文件夹第几个文件
      * @return
      */
+    @Deprecated
     @Override
     public String generateVideoFilename(Video video, int index) {
         String path = (video.getOriginName() == null || video.getOriginName().equals("")) ? video.getPath() : video.getOriginName();
@@ -1010,5 +1038,116 @@ public class OSSFileServiceImpl extends RemoteFileServiceWrapper {
         String suffix = (i == -1 ? ".mp4" : path.substring(i));
         return String.format("%05d", video.getCover().getAlbum_id()) + "_" + String.format("%04d", index) + "_" + video.getUpload_time().getTime() + suffix;
     }
+
+    /********************* - ****** - NEW GENERATE NAME API - ***** - ****************************/
+
+    /**
+     * 生成照片的块文件夹地址
+     *
+     * @param photo
+     * @return
+     */
+    @Override
+    public String generatePhotoSaveBlockPath(Photo photo) {
+        String user_photos_path = Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + IdUtil.convertToShortPrimaryKey(photo.getUid()) + "/photos/";
+        Map<String, Object> userHoldCache = cache.getUserHoldCache(new User(photo.getUid()));
+        String max_upload_block_name = (String) userHoldCache.get("USER_PHOTO_MAX_UPLOAD_BLOCK");
+        max_upload_block_name = generateMaxBlockName(user_photos_path, max_upload_block_name, 3600000L, 499);
+        userHoldCache.put("USER_PHOTO_MAX_UPLOAD_BLOCK", max_upload_block_name);
+        return user_photos_path + max_upload_block_name + "/";
+    }
+
+    /**
+     * 生成照片文件名称，需要照片id
+     *
+     * @param photo
+     * @param blockPath 块文件夹地址
+     * @return
+     */
+    @Override
+    public String generatePhotoFilename(Photo photo, String blockPath) {
+        Matcher matcher = Pattern.compile(".*/([0-9A-Za-z]+)/[^/]*$").matcher(blockPath);
+        matcher.find();
+        String block = matcher.group(1);
+        String path = (photo.getOriginName() == null || photo.getOriginName().equals("")) ? photo.getPath() : photo.getOriginName();
+        int i = path.lastIndexOf('.');
+        String suffix = (i == -1 ? ".jpg" : path.substring(i));
+        return IdUtil.convertToShortPrimaryKey(photo.getUid()) + "_" + block + "_" + IdUtil.convertToShortPrimaryKey(photo.getPhoto_id()) + "_" + IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis()) + suffix;
+    }
+
+    /**
+     * 生成视频的块文件夹地址
+     *
+     * @param video
+     * @return
+     */
+    @Override
+    public String generateVideoSaveBlockPath(Video video) {
+        String user_videos_path = Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + IdUtil.convertToShortPrimaryKey(video.getUser().getUid()) + "/videos/";
+        Map<String, Object> userHoldCache = cache.getUserHoldCache(new User(video.getUser().getUid()));
+        String max_upload_block_name = (String) userHoldCache.get("USER_VIDEO_MAX_UPLOAD_BLOCK");
+        max_upload_block_name = generateMaxBlockName(user_videos_path, max_upload_block_name, 3600000L, 29);
+        userHoldCache.put("USER_VIDEO_MAX_UPLOAD_BLOCK", max_upload_block_name);
+        return user_videos_path + max_upload_block_name + "/";
+    }
+
+    /**
+     * 生成视频文件名称，需要视频id
+     *
+     * @param video
+     * @param blockPath 块文件夹地址
+     * @return
+     */
+    @Override
+    public String generateVideoFilename(Video video, String blockPath) {
+        Matcher matcher = Pattern.compile(".*/([0-9A-Za-z]+)/[^/]*$").matcher(blockPath);
+        matcher.find();
+        String block = matcher.group(1);
+        String path = (video.getOriginName() == null || video.getOriginName().equals("")) ? video.getPath() : video.getOriginName();
+        int i = path.lastIndexOf('.');
+        String suffix = (i == -1 ? ".mp4" : path.substring(i));
+        return IdUtil.convertToShortPrimaryKey(video.getUser().getUid()) + "_" + block + "_" + IdUtil.convertToShortPrimaryKey(video.getVideo_id()) + "_" + IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis()) + suffix;
+    }
+
+    private String generateMaxBlockName(String basePath, String lastCacheBlockName, long maxCacheBlockNameTime, int maxSize) {
+        OSSClient client = null;
+        try {
+            client = getClient();
+            String max_upload_block_name = lastCacheBlockName;
+            // 每隔maxSize毫秒，重新获取最大的block
+            if (lastCacheBlockName == null || (System.currentTimeMillis() - IdUtil.convert62radixIdToDecimal(lastCacheBlockName) > maxCacheBlockNameTime)) {
+                String[] maxSubDir = new String[1];
+                listPathSubDirs(client, basePath, new Callable<String, Boolean>() {
+                    @Override
+                    public Boolean call(String subDir) throws Exception {
+                        maxSubDir[0] = subDir;
+                        return true;
+                    }
+                });
+                if (maxSubDir[0] == null) {
+                    max_upload_block_name = IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis());
+                } else {
+                    max_upload_block_name = Utils.getSubStr(maxSubDir[0], 2, "/").replace("/", "");
+                }
+            }
+            // 每次都检查当前block里的文件个数
+            List<OSSObjectSummary> objectSummaries = listPath(client, basePath + max_upload_block_name);
+            if (objectSummaries.size() >= maxSize) {
+                max_upload_block_name = IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis());
+            }
+            objectSummaries.clear();
+            return max_upload_block_name;
+        } catch (OSSException e) {
+            logger.error("method generateMaxBlockName: " + e.getMessage());
+        } catch (ClientException e) {
+            logger.error("method generateMaxBlockName: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            logger.error("method generateMaxBlockName", e);
+        } finally {
+            closeClient(client);
+        }
+        return null;
+    }
+
 
 }

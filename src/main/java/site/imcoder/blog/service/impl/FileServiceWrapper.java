@@ -278,17 +278,30 @@ public class FileServiceWrapper implements IFileService {
      */
     @Override
     public boolean save(InputStream inputStream, String filePath) {
+        return save(inputStream, filePath, null);
+    }
+
+    /**
+     * 文件保存
+     *
+     * @param inputStream 输入流
+     * @param filePath    文件保存绝对路径
+     * @param metadata    文件头信息
+     * @return
+     */
+    @Override
+    public boolean save(InputStream inputStream, String filePath, Map<String, Object> metadata) {
         boolean result = false;
         switch (runMode()) {
             case LOCAL:
-                result = localFileService.save(inputStream, filePath);
+                result = localFileService.save(inputStream, filePath, metadata);
                 break;
             case SYNC:
-                result = localFileService.save(inputStream, filePath);
+                result = localFileService.save(inputStream, filePath, metadata);
                 if (result) {
                     try {
                         inputStream = new FileInputStream(filePath);
-                        result = remoteFileService.save(inputStream, replaceLocalToRemote(filePath));
+                        result = remoteFileService.save(inputStream, replaceLocalToRemote(filePath), metadata);
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                         result = false;
@@ -296,7 +309,7 @@ public class FileServiceWrapper implements IFileService {
                 }
                 break;
             case REMOTE:
-                result = remoteFileService.save(inputStream, filePath);
+                result = remoteFileService.save(inputStream, filePath, metadata);
                 break;
         }
         return result;
@@ -741,6 +754,92 @@ public class FileServiceWrapper implements IFileService {
                 break;
             case REMOTE:
                 fileName = remoteFileService.generateVideoFilename(video, index);
+                break;
+        }
+        return fileName;
+    }
+
+    /**
+     * 生成照片的块文件夹地址
+     *
+     * @param photo
+     * @return
+     */
+    @Override
+    public String generatePhotoSaveBlockPath(Photo photo) {
+        String path = null;
+        switch (runMode()) {
+            case LOCAL:
+            case SYNC:
+                path = localFileService.generatePhotoSaveBlockPath(photo);
+                break;
+            case REMOTE:
+                path = remoteFileService.generatePhotoSaveBlockPath(photo);
+                break;
+        }
+        return path;
+    }
+
+    /**
+     * 生成照片文件名称，需要照片id
+     *
+     * @param photo
+     * @param blockPath 块文件夹地址
+     * @return
+     */
+    @Override
+    public String generatePhotoFilename(Photo photo, String blockPath) {
+        String fileName = null;
+        switch (runMode()) {
+            case LOCAL:
+            case SYNC:
+                fileName = localFileService.generatePhotoFilename(photo, blockPath);
+                break;
+            case REMOTE:
+                fileName = remoteFileService.generatePhotoFilename(photo, blockPath);
+                break;
+        }
+        return fileName;
+    }
+
+    /**
+     * 生成视频的块文件夹地址
+     *
+     * @param video
+     * @return
+     */
+    @Override
+    public String generateVideoSaveBlockPath(Video video) {
+        String path = null;
+        switch (runMode()) {
+            case LOCAL:
+            case SYNC:
+                path = localFileService.generateVideoSaveBlockPath(video);
+                break;
+            case REMOTE:
+                path = remoteFileService.generateVideoSaveBlockPath(video);
+                break;
+        }
+        return path;
+    }
+
+    /**
+     * 生成视频文件名称，需要视频id
+     *
+     * @param video
+     * @param blockPath 块文件夹地址
+     * @return
+     */
+    @Override
+    public String generateVideoFilename(Video video, String blockPath) {
+        String fileName = null;
+        switch (runMode()) {
+            case LOCAL:
+            case SYNC:
+                fileName = localFileService.generateVideoFilename(video, blockPath);
+                break;
+            case REMOTE:
+                fileName = remoteFileService.generateVideoFilename(video, blockPath);
                 break;
         }
         return fileName;

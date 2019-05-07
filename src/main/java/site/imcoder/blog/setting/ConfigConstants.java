@@ -4,7 +4,7 @@ package site.imcoder.blog.setting;
  * @author Jeffrey.Deng
  *         系统配置名称_常量
  */
-public class ConfigConstants {
+public interface ConfigConstants {
 
     /**
      * 空值标志
@@ -14,7 +14,7 @@ public class ConfigConstants {
     /**
      * 配置文件路径，配置在web.xml下 init-param 标签，值为相对应用根目录路径
      */
-    public static final String SERVER_CONFIG_LOCATION = "serverConfigLocation";
+    public static final String SERVER_CONFIG_LOCATION = "server_config_location";
 
     /**
      * 博客网址
@@ -77,19 +77,29 @@ public class ConfigConstants {
     public static final String CLOUD_ALLOW_UPLOAD_LOWEST_LEVEL = "cloud_allow_upload_lowest_level";
 
     /**
-     * 照片最大上传大小，单位字节，-1代表无限制
+     * 照片最大上传大小，单位字节，-1代表无限制，支持子集：@user_{uid}:{size}
      */
     public static final String CLOUD_PHOTO_MAX_UPLOADSIZE = "cloud_photo_max_uploadsize";
 
     /**
-     * 视频最大上传大小，单位字节，-1代表无限制
+     * 视频最大上传大小，单位字节，-1代表无限制，支持子集：@user_{uid}:{size}
      */
     public static final String CLOUD_VIDEO_MAX_UPLOADSIZE = "cloud_video_max_uploadsize";
 
     /**
-     * 文件最大上传大小，单位字节，-1代表无限制
+     * 文件最大上传大小，单位字节，-1代表无限制，支持子集：@user_{uid}:{size}
      */
     public static final String CLOUD_FILE_MAX_UPLOADSIZE = "cloud_file_max_uploadsize";
+
+    /**
+     * 信息feed流允许显示订阅的用户
+     */
+    public static final String FEED_FLOW_ALLOW_FOLLOWING_SHOW = "feed_flow_allow_following_show";
+
+    /**
+     * 信息feed流（广场）允许显示的用户组最低等级（无需订阅），值为对应用户组的Gid
+     */
+    public static final String FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL = "feed_flow_allow_show_lowest_level";
 
     /**
      * 浏览器端的配置
@@ -161,6 +171,11 @@ public class ConfigConstants {
     public static final String NOTIFYSERVICE_THREAD_NUM = "notifyservice_thread_num";
 
     /**
+     * 邮件推送服务是否启用
+     */
+    public static final String EMAILPUSH_ENABLE = "emailpush_enable";
+
+    /**
      * 邮件推送服务配置文件地址
      */
     public static final String EMAILPUSH_CONFIG_LOCATION = "emailpush_config_location";
@@ -228,12 +243,12 @@ public class ConfigConstants {
     /**
      * 默认的男生用户头像，列表，至少一个，设置时为json数组字符串，数组类型为头像地址字符串
      */
-    public static final String USER_DEFAULT_MAN_HEADPHOTOS = "user_default_man_headphotos";
+    public static final String USER_DEFAULT_HEADPHOTOS_MAN = "user_default_headphotos_man";
 
     /**
      * 默认的女生用户头像，列表，至少一个，设置时为json数组字符串，数组类型为头像地址字符串
      */
-    public static final String USER_DEFAULT_MISS_HEADPHOTOS = "user_default_miss_headphotos";
+    public static final String USER_DEFAULT_HEADPHOTOS_MISS = "user_default_headphotos_miss";
 
     /**
      * 工具服务配置文件地址
@@ -261,7 +276,38 @@ public class ConfigConstants {
     public static final String SITE_ALLOW_RUN_UPGRADE = "site_allow_run_upgrade";
 
     /**
+     * 旧页面重定向到新页面时的http code，默认302
+     */
+    public static final String SITE_OLD_PAGE_REDIRECT_CODE = "site_old_page_redirect_code";
+
+    /**
+     * 记住登录的保持时间，单位天，支持子集：@user_{uid}:{maxAge}
+     */
+    public static final String USER_LOGIN_REMEMBER_MAX_AGE = "user_login_remember_max_age";
+
+    /**
      * 用户在线时是否运行离线通知，true: 同时运行，false: 当用户在线时，不执行其他方式通知，true or false
      */
     public static final String RUN_OFFLINE_NOTIFY_WHEN_ONLINE = "run_offline_notify_when_online";
+
+    /**
+     * 访问记录器忽略的爬虫名称, json数组
+     */
+    public static final String ACCESS_RECORD_IGNORE_SPIDERS = "access_record_ignore_spiders";
+
+    /**
+     * 网站ICP备案号，例：湘ICP备XXXXXXX号
+     */
+    public static final String SITE_ICP_RECORD_CODE = "site_icp_record_code";
+
+    /**
+     * 网站公安备案号，例：湘公网安备 XXXXXXXXXXXXXXX号
+     */
+    public static final String SITE_POLICE_RECORD_CODE = "site_police_record_code";
+
+    /**
+     * 网站公安备案号查询id（网站公安备案号的数字部分），例：XXXXXXXXXXXXXXX，会自动从 {@link #SITE_POLICE_RECORD_CODE} 中截取
+     */
+    public static final String SITE_POLICE_RECORD_NUMBER = "site_police_record_number";
+
 }

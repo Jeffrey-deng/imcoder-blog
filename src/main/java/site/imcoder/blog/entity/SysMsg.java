@@ -1,7 +1,7 @@
 package site.imcoder.blog.entity;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import site.imcoder.blog.controller.json.LongToDateStrJsonSerializer;
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+import site.imcoder.blog.controller.formatter.timeformat.TimeFormat;
 
 import java.io.Serializable;
 
@@ -15,12 +15,14 @@ public class SysMsg implements Serializable {
 
     private static final long serialVersionUID = -1479873806746563444L;
 
-    private int smid;
+    private Long smid;
 
-    private int uid;
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long uid;
 
     private String content;
 
+    @TimeFormat(pattern = "yyyy-MM-dd | HH:mm:ss")
     private Long send_time;
 
     private int status;
@@ -29,26 +31,26 @@ public class SysMsg implements Serializable {
 
     }
 
-    public SysMsg(int uid, String content, Long send_time, int status) {
+    public SysMsg(Long uid, String content, Long send_time, int status) {
         this.uid = uid;
         this.content = content;
         this.send_time = send_time;
         this.status = status;
     }
 
-    public int getSmid() {
+    public Long getSmid() {
         return smid;
     }
 
-    public void setSmid(int smid) {
+    public void setSmid(Long smid) {
         this.smid = smid;
     }
 
-    public int getUid() {
+    public Long getUid() {
         return uid;
     }
 
-    public void setUid(int uid) {
+    public void setUid(Long uid) {
         this.uid = uid;
     }
 
@@ -60,7 +62,6 @@ public class SysMsg implements Serializable {
         this.content = content;
     }
 
-    @JsonSerialize(using = LongToDateStrJsonSerializer.class)
     public Long getSend_time() {
         return send_time;
     }

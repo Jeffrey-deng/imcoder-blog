@@ -38,7 +38,7 @@ public interface IArticleDao {
      * @param aid
      * @return
      */
-    public Article find(int aid);
+    public Article find(Long aid);
 
     /**
      * 查找文章数量 根据条件
@@ -95,18 +95,19 @@ public interface IArticleDao {
     /**
      * 获得置顶列表
      *
-     * @param num 列表数量
+     * @param size      列表数量
+     * @param loginUser
      * @return List<Article>
      */
-    public List<Article> findTopsList(int num);
+    public List<Article> findTopsList(int size, User loginUser);
 
     /**
      * 获得排行榜列表
      *
-     * @param uid 是否查询所有还是单个 uid=0 为查询所有
-     * @param num list长度 默认5
+     * @param uid  是否查询所有还是单个 uid=0 为查询所有
+     * @param size list长度 默认5
      * @return Map<String,Object>
      */
-    public Map<String, Object> findRankList(int uid, int num);
+    public Map<String, Object> findRankList(int uid, int size);
 
 }

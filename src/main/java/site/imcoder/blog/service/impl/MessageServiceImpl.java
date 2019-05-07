@@ -1,27 +1,33 @@
 package site.imcoder.blog.service.impl;
 
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import site.imcoder.blog.cache.Cache;
+import site.imcoder.blog.common.Callable;
+import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.common.type.CommentType;
 import site.imcoder.blog.dao.IMessageDao;
 import site.imcoder.blog.entity.*;
 import site.imcoder.blog.event.IEventTrigger;
-import site.imcoder.blog.service.IAlbumService;
-import site.imcoder.blog.service.IMessageService;
-import site.imcoder.blog.service.INotifyService;
-import site.imcoder.blog.service.IVideoService;
+import site.imcoder.blog.service.*;
+import site.imcoder.blog.service.message.IRequest;
+import site.imcoder.blog.service.message.IResponse;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
-import java.util.*;
+import java.util.Date;
+import java.util.List;
+import java.util.Random;
 
 /**
  * @author Jeffrey.Deng
  * @date 2016-10-27
  */
 @Service("messageService")
-public class MessageServiceImpl implements IMessageService {
+@DependsOn({"configManager"})
+public class MessageServiceImpl extends BaseService implements IMessageService {
 
     //依赖注入DAO
     @Resource
@@ -37,11 +43,11 @@ public class MessageServiceImpl implements IMessageService {
     private INotifyService notifyService;
 
     @Resource
+    private IAuthService authService;
+
+    @Resource
     private Cache cache;
 
-    /**
-     * 事件触发器
-     */
     @Resource
     private IEventTrigger trigger;
 
@@ -49,148 +55,192 @@ public class MessageServiceImpl implements IMessageService {
 
     private List<String> userDefaultMissHeadPhotos; // 默认的女生用户头像列表
 
-    public MessageServiceImpl() {
-        userDefaultManHeadPhotos = Config.getList(ConfigConstants.USER_DEFAULT_MAN_HEADPHOTOS, String.class);
-        userDefaultMissHeadPhotos = Config.getList(ConfigConstants.USER_DEFAULT_MISS_HEADPHOTOS, String.class);
+    @PostConstruct
+    public void init() {
+        // 获取设置的默认用户头像
+        userDefaultManHeadPhotos = Config.getList(ConfigConstants.USER_DEFAULT_HEADPHOTOS_MAN, String.class);
+        userDefaultMissHeadPhotos = Config.getList(ConfigConstants.USER_DEFAULT_HEADPHOTOS_MISS, String.class);
+        // 注册用户打开页面的注册信息时间，
+        // 判断：如果这个页面是用户这次访问本站打开的第一个页面，则推送未读消息提醒
+        notifyService.onmessage("register_page_meta", new Callable<WsMessage, WsMessage>() {
+            @Override
+            public WsMessage call(WsMessage wsMessage) throws Exception {
+                if (wsMessage.isHasLoggedIn()) {
+                    User loginUser = wsMessage.getUser();
+                    List<Object> userAllTabSessions = notifyService.getUserAllPushSessions(loginUser);
+                    if (userAllTabSessions.size() == 1) {
+                        WsMessage pushWsMessage = new WsMessage("unread_message_notify");
+                        IRequest iRequest = new IRequest(loginUser);
+                        List<Letter> letterList = findLetterList(0, iRequest).getAttr("letters");
+                        List<SysMsg> sysMsgList = findSysMsgList(0, iRequest).getAttr("sysMsgs");
+                        pushWsMessage.setMetadata("letters", letterList);
+                        pushWsMessage.setMetadata("sysMsgs", sysMsgList);
+                        pushWsMessage.setText("未读消息提醒：未读私信 " + letterList.size() + " 条，未读系统消息 " + sysMsgList.size() + " 条。");
+                        return pushWsMessage;
+                    }
+                }
+                return null;
+            }
+        });
     }
 
     /**
      * 发送私信
      *
      * @param letter
-     * @param loginUser
-     * @return flag - 200：发送成功，401：需要登录，500: 失败
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：发送成功，401：需要登录，500: 失败
      * letter: 私信对象
      */
     @Override
-    public Map<String, Object> sendLetter(Letter letter, User loginUser) {
-        Map<String, Object> map = new HashMap<>();
-        int flag = 200;
-        if (loginUser == null || loginUser.getUid() == 0) {
-            flag = 401;
-        } else if (letter == null || letter.getContent() == null || letter.getR_uid() == 0) {
-            flag = 400;
+    public IResponse sendLetter(Letter letter, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            response.setStatus(STATUS_NOT_LOGIN);
+        } else if (letter == null || letter.getContent() == null || !IdUtil.containValue(letter.getR_uid())) {
+            response.setStatus(STATUS_PARAM_ERROR);
+        } else if (cache.getUser(letter.getR_uid(), Cache.READ) == null) {
+            response.setStatus(STATUS_PARAM_ERROR, "无此用户: " + letter.getR_uid());
         } else {
-            letter.setS_uid(loginUser.getUid());
+            // letter.setLeid(IdUtil.generatePrimaryKey()); // 主键
+            letter.setS_uid(iRequest.getLoginUser().getUid());
+            letter.setSend_time(System.currentTimeMillis());
             int row = messageDao.saveLetter(letter);
             if (row > 0) {
                 User receiveUser = cache.cloneSafetyUser(new User(letter.getR_uid()));
                 letter.setChatUser(receiveUser);
-                map.put("letter", letter);
-                //收到私信通知
+                response.putAttr("letter", letter);
+                // 收到私信通知
                 // 构建一个新对象是因为，notifyService.receivedLetter中会修改chatUser
                 // 而这里返回的chatUser应该是发送者的资料
                 // userDao.findLetter查出的chatUser为发送人的资料
                 notifyService.receivedLetter(messageDao.findLetter(letter));
             }
-            flag = row > 0 ? 200 : 500;
+            response.setStatus(row > 0 ? STATUS_SUCCESS : STATUS_SERVER_ERROR);
         }
-        map.put("flag", flag);
-        return map;
+        return response;
     }
 
     /**
      * 删除私信
      *
      * @param letter
-     * @param loginUser
-     * @return flag - 200：发送成功，401：需要登录，404: 无此私信，500: 失败
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：删除成功，401：需要登录，404: 无此私信，500: 失败
      */
     @Override
-    public int deleteLetter(Letter letter, User loginUser) {
-        if (loginUser == null) {
-            return 401;
-        } else if (letter == null || letter.getLeid() == 0) {
-            return 400;
+    public IResponse deleteLetter(Letter letter, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            return response.setStatus(STATUS_NOT_LOGIN);
+        } else if (letter == null || !IdUtil.containValue(letter.getLeid())) {
+            return response.setStatus(STATUS_PARAM_ERROR, "输入私信id");
         }
+        User loginUser = iRequest.getLoginUser();
         Letter dbLetter = messageDao.findLetter(letter);
         if (dbLetter == null) {
-            return 404;
-        } else if (dbLetter.getS_uid() == loginUser.getUid() || dbLetter.getR_uid() == loginUser.getUid()) {
+            response.setStatus(STATUS_NOT_FOUND, "该私信不存在~");
+        } else if (dbLetter.getS_uid().equals(loginUser.getUid()) || dbLetter.getR_uid().equals(loginUser.getUid())) {
             int row = messageDao.deleteLetter(letter);
-            if (row > 0 && dbLetter.getS_uid() == loginUser.getUid()) { // 发送者删除的消息，则给接收者发送撤回通知，在接收端撤回该消息
-                new Thread(() -> {
-                    dbLetter.setContent(null); // 置空
-                    notifyService.pushWsMessage(
-                            new User(dbLetter.getR_uid()),
-                            new WsMessage("withdraw_letter").setMetadata("letter", dbLetter).setMetadata("user", dbLetter.getChatUser())
-                    );
-                }).start();
+            if (row > 0) {
+                if (dbLetter.getS_uid().equals(loginUser.getUid())) { // 发送者删除的消息，则给接收者发送撤回通知，在接收端撤回该消息
+                    notifyService.executeByAsync(() -> {
+                        dbLetter.setContent(null); // 置空
+                        notifyService.pushWsMessage(
+                                new User(dbLetter.getR_uid()),
+                                new WsMessage("withdraw_letter").setMetadata("letter", dbLetter).setMetadata("user", dbLetter.getChatUser())
+                        );
+                    });
+                    response.setStatus(STATUS_SUCCESS, "已删除并撤回私信~");
+                } else {
+                    response.setStatus(STATUS_SUCCESS, "已删除私信~");
+                }
+            } else {
+                response.setStatus(STATUS_SERVER_ERROR);
             }
-            return row > 0 ? 200 : 500;
         } else {
-            return 403;
+            response.setStatus(STATUS_FORBIDDEN);
         }
+        return response;
     }
 
     /**
      * 清除私信消息未读状态
      *
-     * @param leIdList  私信id列表, 只能清除别人发送的，自己发送的不能清除, 既loginUser.uid为r_uid
-     * @param loginUser
-     * @return flag - 200：成功，404：未影响到行，500: 失败
+     * @param leIdList 私信id列表, 只能清除别人发送的，自己发送的不能清除, 既loginUser.uid为r_uid
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，404：这些私信本来就已读或不存在，500: 失败
      */
     @Override
-    public int updateLetterListStatus(List<Integer> leIdList, User loginUser) {
-        if (leIdList != null && leIdList.size() > 0) {
-            return convertRowToHttpCode(messageDao.updateLetterStatus(leIdList, loginUser));
+    public IResponse updateLetterListStatus(List<Integer> leIdList, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (leIdList == null) {
+            return response.setStatus(STATUS_PARAM_ERROR);
+        } else if (leIdList.size() > 0) {
+            return response.setStatus(convertRowToHttpCode(messageDao.updateLetterStatus(leIdList, iRequest.getLoginUser())));
         } else {
-            return 404;
+            return response.setStatus(STATUS_NOT_FOUND, "这些私信本来就已读或不存在~");
         }
     }
 
     /**
      * 查询私信列表
      *
-     * @param loginUser
      * @param read_status 0 未读 1全部
-     * @return
+     * @param iRequest
+     * @return IResponse:
+     * letters - 私信列表
      */
     @Override
-    public List<Letter> findLetterList(User loginUser, int read_status) {
-        if (loginUser == null || loginUser.getUid() == 0) {
-            return null;
+    public IResponse findLetterList(int read_status, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            return response.setStatus(STATUS_NOT_LOGIN);
         } else {
-            return messageDao.findLetterList(loginUser, read_status);
+            return response.putAttr("letters", messageDao.findLetterList(iRequest.getLoginUser(), read_status)).setStatus(STATUS_SUCCESS);
         }
     }
 
     /**
      * 得到评论列表
      *
-     * @param comment   - 传入mainId和mainType
-     * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，500: 失败
+     * @param comment  - 传入mainId和mainType
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，500: 失败
      * comments - 评论列表
      */
     @Override
-    public Map<String, Object> findCommentList(Comment comment, User loginUser) {
-        Map<String, Object> map = new HashMap<>();
-        int flag = 200;
-        if (comment == null || comment.getMainId() == 0) {
-            flag = 400;
-        }
-        if (!isRight(flag)) {
-            map.put("flag", flag);
-            return map;
+    public IResponse findCommentList(Comment comment, IRequest iRequest) {
+        iRequest.putAttr("loadAccessRecord", false);
+        IResponse response = new IResponse();
+        if (comment == null || !IdUtil.containValue(comment.getMainId())) {
+            return response.setStatus(STATUS_PARAM_ERROR, "需要mainId");
         }
         // 根据评论主体类型mainType进行分别操作
         CommentType commentType = CommentType.valueOfName(comment.getMainType());
         switch (commentType) {
             case ARTICLE:   // 文章
-                flag = checkUserHasPermission(cache.getArticle(comment.getMainId(), Cache.READ), loginUser);
+                Article cacheArticle = cache.getArticle(comment.getMainId(), Cache.READ);
+                response.setStatus(authService.validateUserPermissionUtil(cacheArticle.getAuthor(), cacheArticle.getPermission(), iRequest));
                 break;
             case PHOTO: // 照片
-                flag = (int) albumService.findPhoto(new Photo(comment.getMainId()), loginUser).get("flag");
+                response.setStatus(albumService.findPhoto(new Photo(comment.getMainId()), iRequest));
                 break;
             case VIDEO: // 视频
-                flag = (int) videoService.findVideo(new Video(comment.getMainId()), loginUser).get("flag");
+                response.setStatus(videoService.findVideo(new Video(comment.getMainId()), iRequest));
+                break;
+            case PHOTO_TOPIC: // 照片合集
+                response.setStatus(albumService.findPhotoTagWrapper(new PhotoTagWrapper(comment.getMainId()), iRequest));
                 break;
             default:
-                flag = 400;
+                response.setStatus(STATUS_PARAM_ERROR, "该mainType不支持~");
                 break;
         }
-        if (flag == 200) {
+        if (response.isSuccess()) {
             List<Comment> comments = messageDao.findCommentList(comment);
             if (comments != null) {
                 for (Comment cmt : comments) {
@@ -199,81 +249,88 @@ public class MessageServiceImpl implements IMessageService {
                     }
                 }
             }
-            map.put("comments", comments);
+            response.putAttr("comments", comments);
         }
-        map.put("flag", flag);
-        return map;
+        return response;
     }
 
     /**
      * 添加评论
      *
      * @param comment
-     * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，500: 失败
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，500: 失败
      * comment 对象
      */
     @Override
-    public Map<String, Object> addComment(Comment comment, User loginUser) {
-        Map<String, Object> map = new HashMap<>();
-        int flag = 200;
-        if (loginUser == null) {
-            flag = 401;
-        } else if (comment == null || comment.getMainId() == 0 || comment.getContent() == null) {
-            flag = 400;
-        }
-        if (!isRight(flag)) {
-            map.put("flag", flag);
-            return map;
+    public IResponse addComment(Comment comment, IRequest iRequest) {
+        iRequest.putAttr("loadAccessRecord", false);
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            return response.setStatus(STATUS_NOT_LOGIN);
+        } else if (comment == null || !IdUtil.containValue(comment.getMainId()) || comment.getContent() == null) {
+            return response.setStatus(STATUS_PARAM_ERROR);
         }
         // 根据评论主体类型mainType进行分别操作
         CommentType commentType = CommentType.valueOfName(comment.getMainType());
         Object mainTypeObject = null;
-        int mainObjectHostUserId = 0;
+        Long mainObjectHostUserId = 0L;
         switch (commentType) {
             case ARTICLE:   // 文章
-                Article article = cache.getArticle(comment.getMainId(), Cache.READ);
-                flag = checkUserHasPermission(article, loginUser);
-                if (flag == 200) {
-                    mainTypeObject = article;
-                    mainObjectHostUserId = article.getAuthor().getUid();
+                Article cacheArticle = cache.getArticle(comment.getMainId(), Cache.READ);
+                response.setStatus(authService.validateUserPermissionUtil(cacheArticle.getAuthor(), cacheArticle.getPermission(), iRequest));
+                if (response.isSuccess()) {
+                    mainTypeObject = cacheArticle;
+                    mainObjectHostUserId = cacheArticle.getAuthor().getUid();
                 }
                 break;
             case PHOTO: // 照片
-                Map<String, Object> photoQuery = albumService.findPhoto(new Photo(comment.getMainId()), loginUser);
-                flag = (int) photoQuery.get("flag");
-                if (flag == 200) {
-                    mainTypeObject = photoQuery.get("photo");
-                    mainObjectHostUserId = ((Photo) photoQuery.get("photo")).getUid();
+                IResponse photoResp = albumService.findPhoto(new Photo(comment.getMainId()), iRequest);
+                response.setStatus(photoResp);
+                if (photoResp.isSuccess()) {
+                    mainTypeObject = photoResp.getAttr("photo");
+                    mainObjectHostUserId = ((Photo) mainTypeObject).getUid();
                 }
                 break;
             case VIDEO: // 视频
-                Map<String, Object> videoQuery = videoService.findVideo(new Video(comment.getMainId()), loginUser);
-                flag = (int) videoQuery.get("flag");
-                if (flag == 200) {
-                    mainTypeObject = videoQuery.get("video");
-                    mainObjectHostUserId = ((Video) videoQuery.get("video")).getUser().getUid();
+                IResponse videoResp = videoService.findVideo(new Video(comment.getMainId()), iRequest);
+                response.setStatus(videoResp);
+                if (videoResp.isSuccess()) {
+                    mainTypeObject = videoResp.getAttr("video");
+                    mainObjectHostUserId = ((Video) mainTypeObject).getUser().getUid();
+                }
+                break;
+            case PHOTO_TOPIC: // 照片合集
+                IResponse tagWrapperResp = albumService.findPhotoTagWrapper(new PhotoTagWrapper(comment.getMainId()), iRequest);
+                response.setStatus(tagWrapperResp);
+                if (tagWrapperResp.isSuccess()) {
+                    mainTypeObject = tagWrapperResp.getAttr("tagWrapper");
+                    mainObjectHostUserId = ((PhotoTagWrapper) mainTypeObject).getUid();
                 }
                 break;
             default:
-                flag = 400;
+                response.setStatus(STATUS_PARAM_ERROR, "该mainType不支持~");
                 break;
         }
         Comment parentComment = null;
-        if (isRight(flag)) {
-            int replyUid = 0;
-            if (comment.getParentId() > 0) {    // 插到replyUid，防止父评论为匿名用户发送
+        if (response.isSuccess()) {
+            comment.setCid(IdUtil.generatePrimaryKey()); // 主键
+            Long replyUid = 0L;
+            if (IdUtil.containValue(comment.getParentId())) {    // 查到replyUid，防止父评论为匿名用户发送
                 parentComment = messageDao.findComment(new Comment(comment.getParentId(), comment.getMainType()));
-                if (parentComment == null || parentComment.getMainType() != comment.getMainType()) {
-                    flag = 400;
+                if (parentComment == null) {
+                    response.setStatus(STATUS_NOT_FOUND, "你回复的评论不存在~");
+                } else if (parentComment.getMainType() != comment.getMainType()) {
+                    response.setStatus(STATUS_PARAM_ERROR, "父评论mainType与当前comment不相同~");
                 } else {
                     replyUid = parentComment.getUser().getUid();
                 }
             } else {
                 replyUid = mainObjectHostUserId;
             }
-            if (isRight(flag)) {
-                comment.setUser(loginUser);
+            if (response.isSuccess()) {
+                comment.setUser(iRequest.getLoginUser());
                 comment.setSend_time(new Date().getTime());
                 int index = messageDao.saveComment(comment);
                 if (index > 0) {
@@ -284,67 +341,97 @@ public class MessageServiceImpl implements IMessageService {
                     // 触发发送新评论通知
                     notifyService.receivedComment(comment, replyUid, mainTypeObject);
                 }
-                flag = convertRowToHttpCode(index);
+                response.setStatus(convertRowToHttpCode(index));
             }
         }
-        if (isRight(flag)) {
+        if (response.isSuccess()) {
             switch (commentType) {
                 case ARTICLE:   // 文章
                     // 增加评论数
-                    //articleDao.raiseCommentCnt(comment);
+                    // articleDao.raiseCommentCnt(comment);
                     trigger.addComment(comment);
                     break;
                 case PHOTO: // 照片
-
                     break;
                 case VIDEO: // 视频
-
+                    break;
+                case PHOTO_TOPIC: // 照片合集
                     break;
                 default:
             }
-            map.put("comment", comment);
+            response.putAttr("comment", comment);
         }
-        map.put("flag", flag);
-        return map;
+        return response;
     }
 
     /**
      * 删除评论
      *
      * @param comment
-     * @param loginUser
-     * @return flag - 200：成功，201：填充为‘已删除’，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
+     * type - 1: 因为存在被引用故填充为‘已删除’, 2: 完全删除~
      */
     @Override
-    public int deleteComment(Comment comment, User loginUser) {
-        if (loginUser == null) {
-            return 401;
-        } else if (comment == null || comment.getCid() == 0) {
-            return 400;
+    public IResponse deleteComment(Comment comment, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            return response.setStatus(STATUS_NOT_LOGIN);
+        } else if (comment == null || !IdUtil.containValue(comment.getCid())) {
+            return response.setStatus(STATUS_PARAM_ERROR);
+        }
+        User loginUser = iRequest.getLoginUser();
+        comment.setUser(loginUser);
+        Comment db_comment = messageDao.findComment(comment);
+        if (db_comment == null) {
+            response.setStatus(STATUS_NOT_FOUND, "该评论不存在~");
+        } else if (db_comment.getUser().getUid().equals(loginUser.getUid()) || loginUser.getUserGroup().isManager()) {
+            int index = messageDao.deleteComment(comment);
+            if (index == 2) {
+                if (db_comment.getMainType() == CommentType.ARTICLE.value) {
+                    // articleDao.reduceCommentCnt(comment);
+                    trigger.deleteComment(db_comment); // 减少评论数
+                }
+                response.setStatus(STATUS_SUCCESS, "已删除评论~").putAttr("type", 2);
+            } else if (index == 1) {
+                response.setStatus(STATUS_SUCCESS, "已将评论清空，填充为‘已删除’~").putAttr("type", 1);
+            } else if (index == 0) {
+                response.setStatus(STATUS_NOT_FOUND, "该评论不存在~");
+            } else {
+                response.setStatus(STATUS_SERVER_ERROR);
+            }
         } else {
-            comment.setUser(loginUser);
+            response.setStatus(STATUS_FORBIDDEN);
+        }
+        return response;
+    }
+
+    /**
+     * 点赞评论
+     *
+     * @param comment  - 只需传cid
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
+     */
+    @Override
+    public IResponse likeComment(Comment comment, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (comment == null || !IdUtil.containValue(comment.getCid())) {
+            return response.setStatus(STATUS_PARAM_ERROR);
         }
         Comment db_comment = messageDao.findComment(comment);
         if (db_comment == null) {
-            return 404;
-        }
-        if (db_comment.getUser().getUid() == loginUser.getUid() || loginUser.getUserGroup().isManager()) {
-            int index = messageDao.deleteComment(comment);
-            if (index == 2) {
-                //减少评论数
-                //articleDao.reduceCommentCnt(comment);
-                trigger.deleteComment(db_comment);
-                return 200;
-            } else if (index == 1) {
-                return 201;
-            } else if (index == 0) {
-                return 404;
-            } else {
-                return 500;
-            }
+            response.setStatus(STATUS_NOT_FOUND, "该评论不存在~");
         } else {
-            return 403;
+            db_comment.setLike_count(db_comment.getLike_count() + 1);
+            response.setStatus(convertRowToHttpCode(messageDao.updateCommentLikeCount(db_comment, 1)));
+            comment.setLike_count(db_comment.getLike_count());
+            // 没验证就不能返回内容，防止空手套白狼
+            response.putAttr("comment", comment);
         }
+        return response;
     }
 
     private String getRandomUserHeadPhoto(List<String> headPhotos) {
@@ -362,7 +449,7 @@ public class MessageServiceImpl implements IMessageService {
      * @return
      */
     private User getAnonymousUser(User user) {
-        User anonymousUser = new User(0, "匿名用户");
+        User anonymousUser = new User(0L, "匿名用户");
         if (user != null && user.getSex() != null && user.getSex().equals("男")) {
             anonymousUser.setHead_photo(getRandomUserHeadPhoto(userDefaultManHeadPhotos));
         } else {
@@ -375,30 +462,35 @@ public class MessageServiceImpl implements IMessageService {
      * 手动发送系统消息, 只能由后台服务发，前台不能发
      *
      * @param sysMsg
-     * @return flag - 200：成功，500: 失败
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，500: 失败
      */
     @Override
-    public int sendSystemMessage(SysMsg sysMsg) {
+    public IResponse sendSystemMessage(SysMsg sysMsg) {
+        IResponse response = new IResponse();
         if (sysMsg != null && sysMsg.getContent() != null) {
-            return messageDao.saveSystemMessage(sysMsg) > 0 ? 200 : 500;
+            response.setStatus(messageDao.saveSystemMessage(sysMsg) > 0 ? STATUS_SUCCESS : STATUS_SERVER_ERROR);
         } else {
-            return 400;
+            response.setStatus(STATUS_PARAM_ERROR);
         }
+        return response;
     }
 
     /**
      * 查询系统消息列表
      *
-     * @param loginUser
      * @param read_status 0 未读 1全部
-     * @return
+     * @param iRequest
+     * @return IResponse:
+     * sysMsgs - 统消息列表
      */
     @Override
-    public List<SysMsg> findSysMsgList(User loginUser, int read_status) {
-        if (loginUser == null || loginUser.getUid() == 0) {
-            return null;
+    public IResponse findSysMsgList(int read_status, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            return response.setStatus(STATUS_NOT_LOGIN);
         } else {
-            return messageDao.findSysMsgList(loginUser, read_status);
+            return response.putAttr("sysMsgs", messageDao.findSysMsgList(iRequest.getLoginUser(), read_status)).setStatus(STATUS_SUCCESS);
         }
     }
 
@@ -406,77 +498,48 @@ public class MessageServiceImpl implements IMessageService {
      * 清除系统消息未读状态
      *
      * @param smIdList
-     * @param loginUser
-     * @return flag - 200：成功，404：未影响到行，500: 失败
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，404：这些系统消息本来就已读或不存在，500: 失败
      */
     @Override
-    public int updateSystemMessageListStatus(List<Integer> smIdList, User loginUser) {
-        if (smIdList != null && smIdList.size() > 0) {
-            return convertRowToHttpCode(messageDao.updateSystemMessageStatus(smIdList, loginUser));
-        } else {
-            return 404;
+    public IResponse updateSystemMessageListStatus(List<Long> smIdList, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            response.setStatus(STATUS_NOT_LOGIN);
+        } else if (smIdList != null && smIdList.size() > 0) {
+            int row = messageDao.updateSystemMessageStatus(smIdList, iRequest.getLoginUser());
+            response.setStatus(convertRowToHttpCode(row));
+            if (response.equalsStatus(STATUS_NOT_FOUND)) {
+                response.setMessage("这些系统消息本来就已读或不存在~");
+            }
         }
+        return response;
     }
 
     /**
      * 删除系统消息
      *
      * @param smIdList
-     * @param loginUser
-     * @return flag - 200：成功，404：未影响到行，500: 失败
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，404：这些系统消息不存在~，500: 失败
      */
     @Override
-    public int deleteSystemMessageList(List<Integer> smIdList, User loginUser) {
-        if (smIdList != null && smIdList.size() > 0) {
-            return convertRowToHttpCode(messageDao.deleteSystemMessage(smIdList, loginUser));
-        } else {
-            return 404;
-        }
-    }
-
-    // 检查该用户是否对该文章有查看权限
-    private int checkUserHasPermission(Article article, User loginUser) {
-        int flag = 200;
-        // 文章为空时info返回404
-        if (article != null) {
-            // 需要权限
-            int permission = article.getPermission();
-            if (permission > 0) {
-                // 需要权限却没登录直接返回401
-                if (loginUser != null) {
-                    //权限--仅好友可见时
-                    if (permission == 1 && article.getAuthor().getUid() != loginUser.getUid()) {
-                        // userDao.checkFriendRelationship(new Friend(loginUser.getUid(),article.getAuthor().getUid()));
-                        if (cache.containsFriend(new Friend(loginUser.getUid(), article.getAuthor().getUid())) != 2) {
-                            flag = 403;
-                        }
-                        // 权限--为私有时
-                    } else if (permission == 2) {
-                        if (article.getAuthor().getUid() != loginUser.getUid()) {
-                            flag = 403;
-                        }
-                    }
-                } else {
-                    flag = 401;
-                }
+    public IResponse deleteSystemMessageList(List<Long> smIdList, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            response.setStatus(STATUS_NOT_LOGIN);
+        } else if (smIdList == null) {
+            response.setStatus(STATUS_PARAM_ERROR);
+        } else if (smIdList.size() > 0) {
+            int row = messageDao.deleteSystemMessage(smIdList, iRequest.getLoginUser());
+            response.setStatus(convertRowToHttpCode(row));
+            if (response.equalsStatus(STATUS_NOT_FOUND)) {
+                response.setMessage("这些系统消息不存在~");
             }
-        } else {
-            flag = 404;
         }
-        return flag;
+        return response;
     }
 
-    private boolean isRight(int flag) {
-        return flag == 200;
-    }
-
-    private int convertRowToHttpCode(int row) {
-        int httpCode = 200;
-        if (row == 0) {
-            httpCode = 404;
-        } else if (row == -1) {
-            httpCode = 500;
-        }
-        return httpCode;
-    }
 }

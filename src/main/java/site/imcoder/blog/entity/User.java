@@ -2,6 +2,8 @@ package site.imcoder.blog.entity;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import site.imcoder.blog.common.type.UserAuthType;
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFill;
 
 import java.io.Serializable;
 import java.util.List;
@@ -17,7 +19,8 @@ public class User implements Serializable {
 
     private static final long serialVersionUID = 7859498874005586724L;
 
-    private int uid; //用户id
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long uid; //用户id
 
     private String nickname; //用户昵称
 
@@ -33,6 +36,7 @@ public class User implements Serializable {
 
     private String description; //自我描述
 
+    @URLPrefixFill(prefixConfigKey = URLPrefixFill.DEFAULT_CDN_PREFIX)
     private String head_photo; //'用户头像存储路径
 
     private String qq; //用户QQ号码
@@ -47,6 +51,8 @@ public class User implements Serializable {
 
     private UserStatus userStatus;  // 用户状态信息
 
+    private UserStats userStats;  // 用户统计信息
+
     private List<UserAuth> userAuths;    // 用户权限信息
 
     private UserSetting userSetting;    // 用户的设置
@@ -54,20 +60,20 @@ public class User implements Serializable {
     public User() {
     }
 
-    public User(int uid) {
+    public User(Long uid) {
         this.uid = uid;
     }
 
-    public User(int uid, String nickname) {
+    public User(Long uid, String nickname) {
         this.uid = uid;
         this.nickname = nickname;
     }
 
-    public int getUid() {
+    public Long getUid() {
         return uid;
     }
 
-    public void setUid(int uid) {
+    public void setUid(Long uid) {
         this.uid = uid;
     }
 
@@ -183,6 +189,14 @@ public class User implements Serializable {
         this.userStatus = userStatus;
     }
 
+    public UserStats getUserStats() {
+        return userStats;
+    }
+
+    public void setUserStats(UserStats userStats) {
+        this.userStats = userStats;
+    }
+
     public List<UserAuth> getUserAuths() {
         return userAuths;
     }
@@ -199,6 +213,7 @@ public class User implements Serializable {
         this.userSetting = userSetting;
     }
 
+    // 返回某一种凭证
     public UserAuth getUserAuth(UserAuthType userAuthType) {
         if (userAuths != null && !userAuths.isEmpty()) {
             for (UserAuth userAuth : userAuths) {

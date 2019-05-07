@@ -7,9 +7,9 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-    <base href="<%=basePath%>">
+    <base href="<%=basePath%>" target="_self">
 </head>
 <body>
-<jsp:forward page="/article.do?method=list"></jsp:forward>
+<jsp:forward page="/a/list"></jsp:forward>
 </body>
 </html>

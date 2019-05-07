@@ -2,12 +2,16 @@ package site.imcoder.blog.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import site.imcoder.blog.common.type.UserGroupType;
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
 
 import java.io.Serializable;
 
 public class UserGroup implements Serializable {
 
     private static final long serialVersionUID = 3920289753006374715L;
+
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long uid;
 
     private int gid;
 
@@ -19,6 +23,14 @@ public class UserGroup implements Serializable {
     public UserGroup(int gid) {
         super();
         this.gid = gid;
+    }
+
+    public Long getUid() {
+        return uid;
+    }
+
+    public void setUid(Long uid) {
+        this.uid = uid;
     }
 
     public int getGid() {
@@ -54,7 +66,7 @@ public class UserGroup implements Serializable {
      */
     @JsonIgnore
     public boolean isGeneralUser() {
-        return !(this.gid == UserGroupType.MANAGER.value);
+        return !isManager();
     }
 
 }

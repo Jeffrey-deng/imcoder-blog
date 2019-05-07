@@ -1,6 +1,6 @@
 package site.imcoder.blog.dao.datasource;
 
-import org.apache.commons.dbcp.BasicDataSource;
+import org.apache.commons.dbcp2.BasicDataSource;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -13,7 +13,7 @@ public class FixedBasicDataSource extends BasicDataSource {
 
     @Override
     public synchronized void close() throws SQLException {
-        DriverManager.deregisterDriver(DriverManager.getDriver(url));
+        DriverManager.deregisterDriver(DriverManager.getDriver(getUrl()));
         super.close();
     }
 

@@ -1,9 +1,10 @@
 package site.imcoder.blog.entity;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import site.imcoder.blog.controller.json.EscapeEmojiJsonDeserializer;
-import site.imcoder.blog.controller.propertyeditors.EmojiConvert;
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+import site.imcoder.blog.controller.formatter.timeformat.TimeFormat;
+import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFill;
+import site.imcoder.blog.controller.formatter.urlprefix.impl.ImgTagURLPrefixFiller;
+import site.imcoder.blog.controller.propertyeditors.annotation.EmojiConvert;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -21,13 +22,13 @@ public class Article implements Serializable {
     /**
      * 文章id
      */
-    private int aid;
+    @PrimaryKeyConvert
+    private Long aid;
 
     /**
      * 文章标题
      */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
+    @EmojiConvert //转义emoji表情
     private String title;
 
     /**
@@ -48,39 +49,39 @@ public class Article implements Serializable {
     /**
      * 摘要
      */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
+    @EmojiConvert //转义emoji表情
+    @URLPrefixFill(using = ImgTagURLPrefixFiller.class, prefixConfigKey = URLPrefixFill.DEFAULT_CDN_PREFIX)
     private String summary;
 
     /**
      * 发布时间
      */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    @TimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date create_time;
 
     /**
      * 更新时间
      */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    @TimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date update_time;
 
     /**
-     * 查看人数
+     * 点击量
      */
-    private int click;
+    private int click_count;
 
     /**
      * 收藏数
      */
-    private int collection;
+    private int collect_count;
 
     /**
      * 评论数
      */
-    private int comment;
+    private int comment_count;
 
     /**
-     * 文章的模式:0为公开，1为仅好友查看，2为私有
+     * 文章的查看权限，{@link site.imcoder.blog.common.type.PermissionType}
      */
     private int permission;
 
@@ -97,15 +98,37 @@ public class Article implements Serializable {
     /**
      * 文章详情
      */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
+    @EmojiConvert //转义emoji表情
+    @URLPrefixFill(using = ImgTagURLPrefixFiller.class, prefixConfigKey = URLPrefixFill.DEFAULT_CDN_PREFIX)
     private String detail;
 
-    public int getAid() {
+    /**
+     * 登录用户是否访问过该文章
+     */
+    private Boolean accessed;
+
+    /**
+     * 登录用户是否收藏过该文章
+     */
+    private Boolean collected;
+
+    /**
+     * 登录用户是否评论过该文章
+     */
+    private Boolean commented;
+
+    public Article() {
+    }
+
+    public Article(Long aid) {
+        this.aid = aid;
+    }
+
+    public Long getAid() {
         return aid;
     }
 
-    public void setAid(int aid) {
+    public void setAid(Long aid) {
         this.aid = aid;
     }
 
@@ -165,12 +188,28 @@ public class Article implements Serializable {
         this.update_time = update_time;
     }
 
-    public int getClick() {
-        return click;
+    public int getClick_count() {
+        return click_count;
     }
 
-    public void setClick(int click) {
-        this.click = click;
+    public void setClick_count(int click_count) {
+        this.click_count = click_count;
+    }
+
+    public int getCollect_count() {
+        return collect_count;
+    }
+
+    public void setCollect_count(int collect_count) {
+        this.collect_count = collect_count;
+    }
+
+    public int getComment_count() {
+        return comment_count;
+    }
+
+    public void setComment_count(int comment_count) {
+        this.comment_count = comment_count;
     }
 
     public int getPermission() {
@@ -205,30 +244,27 @@ public class Article implements Serializable {
         this.detail = detail;
     }
 
-    @Override
-    public String toString() {
-        return "Article [aid=" + aid + ", title=" + title + ", author="
-                + author + ", category=" + category + ", tags=" + tags
-                + ", summary=" + summary + ", create_time=" + create_time
-                + ", update_time=" + update_time + ", click=" + click
-                + ", permission=" + permission + ", top=" + top + ", recommend="
-                + recommend + ", detail=" + detail + "]";
+    public Boolean getAccessed() {
+        return accessed;
     }
 
-    public int getCollection() {
-        return collection;
+    public void setAccessed(Boolean accessed) {
+        this.accessed = accessed;
     }
 
-    public void setCollection(int collection) {
-        this.collection = collection;
+    public Boolean getCollected() {
+        return collected;
     }
 
-    public int getComment() {
-        return comment;
+    public void setCollected(Boolean collected) {
+        this.collected = collected;
     }
 
-    public void setComment(int comment) {
-        this.comment = comment;
+    public Boolean getCommented() {
+        return commented;
     }
 
+    public void setCommented(Boolean commented) {
+        this.commented = commented;
+    }
 }

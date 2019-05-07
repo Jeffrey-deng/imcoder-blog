@@ -16,7 +16,7 @@ public class ArticleHotComparator implements Comparator<Article> {
 
     @Override
     public int compare(Article a1, Article a2) {
-        return -Integer.compare(a1.getClick(), a2.getClick());
+        return -Integer.compare(a1.getClick_count(), a2.getClick_count());
     }
 
 }

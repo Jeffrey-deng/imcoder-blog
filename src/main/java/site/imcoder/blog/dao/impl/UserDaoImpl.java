@@ -5,6 +5,7 @@ import org.apache.log4j.Logger;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import site.imcoder.blog.common.PageUtil;
+import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.common.type.UserAuthType;
 import site.imcoder.blog.dao.CommonDao;
 import site.imcoder.blog.dao.IUserDao;
@@ -60,7 +61,6 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
                 return -1;
             }
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("saveUser fail", e);
             return -1;
@@ -77,7 +77,6 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
         try {
             return this.getSqlSession().update("user.updateUserProfile", user);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("saveProfile fail", e);
             return -1;
@@ -95,7 +94,6 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
         try {
             return this.getSqlSession().insert("user.updateUserStatus", userStatus);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("updateUserStatus fail", e);
             return -1;
@@ -149,13 +147,12 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
         try {
             SqlSession sqlSession = this.getSqlSession();
             UserSetting userSetting = sqlSession.selectOne("user.findUserSetting", user);
-            if (userSetting == null && user != null && user.getUid() > 0) {
+            if (userSetting == null && user != null && IdUtil.containValue(user.getUid())) {
                 userSetting = new UserSetting(user.getUid());
                 sqlSession.insert("user.insertUserSetting", userSetting);
             }
             return userSetting;
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("findUserSetting fail", e);
             return null;
@@ -171,7 +168,7 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
     @Override
     public int updateUserSetting(UserSetting userSetting) {
         try {
-            if (userSetting != null && userSetting.getUid() > 0) {
+            if (userSetting != null && IdUtil.containValue(userSetting.getUid())) {
                 SqlSession sqlSession = this.getSqlSession();
                 UserSetting saveUserSetting = sqlSession.selectOne("user.findUserSetting", new User(userSetting.getUid()));
                 if (saveUserSetting == null) {
@@ -182,7 +179,6 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
                 return 0;
             }
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("updateUserSetting fail", e);
             return -1;
@@ -239,13 +235,13 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
                 //检查是否可以成为好友
                 int fw_row = session.selectOne("user.checkMutualFollow", follow);
                 if (fw_row == 2) {
-                    Friend friend1 = new Friend(follow.getUid(), follow.getFuid());
+                    Friend friend1 = new Friend(follow.getFollowerUid(), follow.getFollowingUid());
                     //是否已经是好友
                     int fr_row = session.selectOne("user.checkFriendRelationship", friend1);
                     if (fr_row != 2) {
                         //插入两条记录
                         int f1 = session.insert("user.beFriend", friend1);
-                        Friend friend2 = new Friend(follow.getFuid(), follow.getUid());
+                        Friend friend2 = new Friend(follow.getFollowingUid(), follow.getFollowerUid());
                         int f2 = session.insert("user.beFriend", friend2);
                         if (f1 * f2 > 0) {
                             return 2;
@@ -263,7 +259,6 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
                 return 0;
             }
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("saveFollow fail", e);
             return -1;
@@ -276,8 +271,8 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
      * @param user
      * @return
      */
-    public List<User> findFollowList(User user) {
-        return this.getSqlSession().selectList("user.findFollowList", user);
+    public List<User> findFollowingList(User user) {
+        return this.getSqlSession().selectList("user.findFollowingList", user);
     }
 
     /**
@@ -286,8 +281,8 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
      * @param user
      * @return
      */
-    public List<User> findFansList(User user) {
-        return this.getSqlSession().selectList("user.findFansList", user);
+    public List<User> findFollowerList(User user) {
+        return this.getSqlSession().selectList("user.findFollowerList", user);
     }
 
     /**
@@ -300,7 +295,7 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
         try {
             SqlSession session = this.getSqlSession();
             int a = session.delete("user.deleteFollow", follow);
-            Friend friend = new Friend(follow.getUid(), follow.getFuid());
+            Friend friend = new Friend(follow.getFollowerUid(), follow.getFollowingUid());
             int friendCount = session.selectOne("user.checkFriendRelationship", friend);
             if (friendCount == 2) {
                 int b = session.delete("user.deleteFriend", friend);
@@ -308,7 +303,6 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
             }
             return a;
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("deleteFollow fail", e);
             return -1;
@@ -341,7 +335,6 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
                 return session.insert("user.saveCollection", clet);
             }
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("saveCollection fail", e);
             return -1;
@@ -355,7 +348,6 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
         try {
             return this.getSqlSession().delete("user.deleteCollection", clet);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("deleteCollection fail", e);
             return -1;
@@ -371,4 +363,227 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
     public List<Collection> findCollectList(User user) {
         return this.getSqlSession().selectList("user.findCollectList", user);
     }
+
+    /**
+     * 保存文章的访问记录
+     *
+     * @param accessRecord
+     * @return
+     */
+    @Override
+    public int saveArticleAccessRecord(AccessRecord<Article> accessRecord) {
+        try {
+            return saveAccessRecord(accessRecord,
+                    "user.findSimpleArticleAccessRecord",
+                    "user.updateArticleAccessRecord",
+                    "user.saveArticleAccessRecord");
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("saveArticleAccessRecord fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 查询文章的访问记录
+     *
+     * @param accessRecord
+     * @return
+     */
+    @Override
+    public AccessRecord findArticleAccessRecord(AccessRecord<Article> accessRecord) {
+        return this.getSqlSession().selectOne("user.findArticleAccessRecord", accessRecord);
+    }
+
+
+    /**
+     * 查询文章的访问记录列表
+     *
+     * @param accessRecord
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public List<AccessRecord<Article>> findArticleAccessRecordList(AccessRecord<Article> accessRecord, User loginUser) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("condition", accessRecord);
+        map.put("loginUser", loginUser);
+        return this.getSqlSession().selectList("user.findArticleAccessRecordList", map);
+    }
+
+    /**
+     * 删除文章的访问记录
+     *
+     * @param accessRecord
+     * @return
+     */
+    @Override
+    public int deleteArticleAccessRecord(AccessRecord<Article> accessRecord) {
+        try {
+            return this.getSqlSession().delete("user.deleteArticleAccessRecord", accessRecord);
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("deleteArticleAccessRecord fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 保存视频的访问记录
+     *
+     * @param accessRecord
+     * @return
+     */
+    @Override
+    public int saveVideoAccessRecord(AccessRecord<Video> accessRecord) {
+        try {
+            return saveAccessRecord(accessRecord,
+                    "user.findSimpleVideoAccessRecord",
+                    "user.updateVideoAccessRecord",
+                    "user.saveVideoAccessRecord");
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("saveVideoAccessRecord fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 查询视频的的访问记录
+     *
+     * @param accessRecord
+     * @return
+     */
+    @Override
+    public AccessRecord findVideoAccessRecord(AccessRecord<Video> accessRecord) {
+        return this.getSqlSession().selectOne("user.findVideoAccessRecord", accessRecord);
+    }
+
+    /**
+     * 查询视频的访问记录列表
+     *
+     * @param accessRecord
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public List<AccessRecord<Video>> findVideoAccessRecordList(AccessRecord<Video> accessRecord, User loginUser) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("condition", accessRecord);
+        map.put("loginUser", loginUser);
+        return this.getSqlSession().selectList("user.findVideoAccessRecordList", map);
+    }
+
+    /**
+     * 删除视频的访问记录
+     *
+     * @param accessRecord
+     * @return
+     */
+    @Override
+    public int deleteVideoAccessRecord(AccessRecord<Video> accessRecord) {
+        try {
+            return this.getSqlSession().delete("user.deleteVideoAccessRecord", accessRecord);
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("deleteVideoAccessRecord fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 保存照片的访问记录
+     *
+     * @param accessRecord
+     * @return
+     */
+    @Override
+    public int savePhotoAccessRecord(AccessRecord<Photo> accessRecord) {
+        try {
+            return saveAccessRecord(accessRecord,
+                    "user.findSimplePhotoAccessRecord",
+                    "user.updatePhotoAccessRecord",
+                    "user.savePhotoAccessRecord");
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("savePhotoAccessRecord fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 查询照片的访问记录
+     *
+     * @param accessRecord
+     * @return
+     */
+    @Override
+    public AccessRecord<Photo> findPhotoAccessRecord(AccessRecord<Photo> accessRecord) {
+        return this.getSqlSession().selectOne("user.findPhotoAccessRecord", accessRecord);
+    }
+
+    /**
+     * 查询照片的访问记录列表
+     *
+     * @param accessRecord
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public List<AccessRecord<Photo>> findPhotoAccessRecordList(AccessRecord<Photo> accessRecord, User loginUser) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("condition", accessRecord);
+        map.put("loginUser", loginUser);
+        return this.getSqlSession().selectList("user.findPhotoAccessRecordList", map);
+    }
+
+    /**
+     * 删除照片的访问记录
+     *
+     * @param accessRecord
+     * @return
+     */
+    @Override
+    public int deletePhotoAccessRecord(AccessRecord<Photo> accessRecord) {
+        try {
+            return this.getSqlSession().delete("user.deletePhotoAccessRecord", accessRecord);
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("deletePhotoAccessRecord fail", e);
+            return -1;
+        }
+    }
+
+    private int saveAccessRecord(AccessRecord accessRecord, String findSimpleArAccessRecordKey, String updateAccessRecordKey, String saveAccessRecordKey) {
+        SqlSession session = this.getSqlSession();
+        AccessRecord lastAccessRecord = session.selectOne(findSimpleArAccessRecordKey, accessRecord);
+        int row;
+        if (lastAccessRecord != null) {
+            accessRecord.setAr_id(lastAccessRecord.getAr_id());
+            accessRecord.setFirst_access_path(lastAccessRecord.getFirst_access_path());
+            accessRecord.setFirst_access_referer(lastAccessRecord.getFirst_access_referer());
+            accessRecord.setFirst_access_time(lastAccessRecord.getFirst_access_time());
+            boolean isUpgradeDeep = accessRecord.getDeep() != null && accessRecord.getDeep() > lastAccessRecord.getDeep();
+            // 如果两次访问发生升级，但间隔过短，则不重复计数
+            if (accessRecord.getIs_like() != null || (isUpgradeDeep && accessRecord.getLast_access_time() - lastAccessRecord.getLast_access_time() < 300000)) {
+                accessRecord.setAccess_times(lastAccessRecord.getAccess_times());
+            } else {
+                accessRecord.setAccess_times(lastAccessRecord.getAccess_times() + 1);
+            }
+            accessRecord.setDeep(isUpgradeDeep ? accessRecord.getDeep() : lastAccessRecord.getDeep());
+            if (accessRecord.getIs_like() == null) {
+                accessRecord.setIs_like(lastAccessRecord.getIs_like());
+            }
+            row = session.update(updateAccessRecordKey, accessRecord);
+        } else {
+            accessRecord.setFirst_access_time(accessRecord.getLast_access_time());
+            accessRecord.setAccess_times(1);
+            if (accessRecord.getIs_like() == null) {
+                accessRecord.setIs_like(0);
+            }
+            row = session.insert(saveAccessRecordKey, accessRecord);
+        }
+        return row;
+    }
+
 }

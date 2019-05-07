@@ -12,10 +12,10 @@ import java.util.TimerTask;
 /**
  * 定时器任务
  * 定时将Cache的缓存数据持久化
- * ------------------------------------------------------------
+ * ----------------------------------------------------------------
  * 每隔一段时间检查是否有数据更新，如果有就持久化，如果没有就推迟
- * 且最多推迟 CACHEFLUSH_TIMER_DELAYTIMES 次
- * ------------------------------------------------------------
+ * 且最多推迟 {@link ConfigConstants#CACHEFLUSH_TIMER_DELAYTIMES} 次
+ * ----------------------------------------------------------------
  *
  * @author dengchao
  * @date 2017-3-22
@@ -58,7 +58,7 @@ public class FlushCacheTimer extends Timer {
         };
 
         super.schedule(timerTask, Config.getLong(ConfigConstants.CACHEFLUSH_TIMER_DELAY), Config.getLong(ConfigConstants.CACHEFLUSH_TIMER_PERIOD));
-        //30*1000 ,30*1000
+        // 30*1000 ,30*1000
     }
 
     /**

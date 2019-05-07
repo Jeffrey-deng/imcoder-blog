@@ -40,7 +40,6 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
         try {
             return this.getSqlSession().selectOne("message.findLetter", letter);
         } catch (Exception e) {
-            e.printStackTrace();
             logger.error("findLetter fail", e);
             return null;
         }
@@ -72,7 +71,6 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
         try {
             return this.getSqlSession().insert("message.saveLetter", letter);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("saveLetter fail", e);
             return -1;
@@ -90,7 +88,6 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
         try {
             return this.getSqlSession().insert("message.deleteLetter", letter);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("deleteLetter fail", e);
             return -1;
@@ -102,7 +99,7 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
      *
      * @param leIdList  私信id列表, 只能清除别人发送的，自己发送的不能清除, 既loginUser.uid为r_uid
      * @param loginUser
-     * @return flag - 200：成功，404：未影响到行，500: 失败
+     * @return
      */
     @Override
     public int updateLetterStatus(List<Integer> leIdList, User loginUser) {
@@ -112,7 +109,6 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
             map.put("loginUser", loginUser);
             return this.getSqlSession().update("message.updateLetterListStatus", map);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("updateLetterListStatus fail", e);
             return -1;
@@ -134,7 +130,6 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
         try {
             return this.getSqlSession().insert("message.saveComment", comment);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("saveComment fail", e);
             return -1;
@@ -152,7 +147,6 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
         try {
             return this.getSqlSession().selectList("message.findCommentList", comment);
         } catch (Exception e) {
-            e.printStackTrace();
             logger.error("findCommentList fail", e);
             return null;
         }
@@ -169,7 +163,6 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
         try {
             return this.getSqlSession().selectOne("message.findComment", comment);
         } catch (Exception e) {
-            e.printStackTrace();
             logger.error("findComment fail", e);
             return null;
         }
@@ -191,9 +184,30 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
             else
                 return session.delete("message.deleteComment_2", comment) == 1 ? 2 : 0;
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("deleteComment fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 点赞评论
+     *
+     * @param comment
+     * @param step - 步长，可为负数
+     * @return
+     */
+    @Override
+    public int updateCommentLikeCount(Comment comment, int step) {
+        try {
+            Map<String, Object> map = new HashMap<>();
+            map.put("comment", comment);
+            map.put("step", step);
+            SqlSession session = this.getSqlSession();
+            return session.update("message.updateCommentLikeCount", map);
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("updateCommentLikeCount fail", e);
             return -1;
         }
     }
@@ -213,7 +227,6 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
         try {
             return this.getSqlSession().update("message.insertSystemMessage", sysMsg);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("saveSystemMessage fail", e);
             return -1;
@@ -243,14 +256,13 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
      * @return
      */
     @Override
-    public int updateSystemMessageStatus(List<Integer> smIdList, User loginUser) {
+    public int updateSystemMessageStatus(List<Long> smIdList, User loginUser) {
         try {
             Map<String, Object> map = new HashMap<>();
             map.put("smIdList", smIdList);
             map.put("loginUser", loginUser);
             return this.getSqlSession().update("message.updateSystemMessageListStatus", map);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("updateSystemMessageListStatus fail", e);
             return -1;
@@ -262,17 +274,16 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
      *
      * @param smIdList
      * @param loginUser
-     * @return flag - 200：成功，404：未影响到行，500: 失败
+     * @return
      */
     @Override
-    public int deleteSystemMessage(List<Integer> smIdList, User loginUser) {
+    public int deleteSystemMessage(List<Long> smIdList, User loginUser) {
         try {
             Map<String, Object> map = new HashMap<>();
             map.put("smIdList", smIdList);
             map.put("loginUser", loginUser);
             return this.getSqlSession().update("message.deleteSystemMessageList", map);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("deleteSystemMessageList fail", e);
             return -1;

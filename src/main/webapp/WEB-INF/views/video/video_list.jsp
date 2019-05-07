@@ -2,12 +2,16 @@
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
+<%@ taglib prefix="s" uri="http://www.springframework.org/tags" %>
 <%
     String path = request.getContextPath();
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
+    request.setAttribute("site_icp_record_code", Config.get(ConfigConstants.SITE_ICP_RECORD_CODE));
+    request.setAttribute("site_police_record_code", Config.get(ConfigConstants.SITE_POLICE_RECORD_CODE));
+    request.setAttribute("site_police_record_number", Config.get(ConfigConstants.SITE_POLICE_RECORD_NUMBER));
 %>
 <!DOCTYPE html>
 <html class="no-js">
@@ -15,9 +19,29 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
-    <title>${hostUser.nickname}的视频 - ImCoder's 博客</title>
-    <meta name="description" content="${hostUser.nickname}的视频列表">
-    <meta name="keywords" content="${hostUser.nickname},ImCoder's 博客,视频,视频列表,">
+    <base href="<%=basePath%>" target="_self">
+    <c:choose>
+        <c:when test="${not empty clear_model and clear_model eq 'likes'}">
+            <title>${hostUser.nickname}喜欢的视频 - ImCoder博客's 相册</title>
+            <meta name="description" content="${hostUser.nickname}喜欢的视频列表">
+            <meta name="keywords" content="${hostUser.nickname},喜欢,ImCoder's 博客,视频,视频列表,">
+        </c:when>
+        <c:when test="${not empty clear_model and clear_model eq 'history'}">
+            <title>${hostUser.nickname}访问过的视频 - ImCoder博客's 相册</title>
+            <meta name="description" content="${hostUser.nickname}访问过的视频列表">
+            <meta name="keywords" content="${hostUser.nickname},访问历史,ImCoder's 博客,视频,视频列表,">
+        </c:when>
+        <c:when test="${not empty dashboard_model and dashboard_model eq 'video'}">
+            <title>video dashboard - ImCoder博客's 相册</title>
+            <meta name="description" content="视频看板dashboard">
+            <meta name="keywords" content="视频,相册,dashboard,ImCoder's 博客">
+        </c:when>
+        <c:otherwise>
+            <title>${hostUser.nickname}的视频 - ImCoder's 博客</title>
+            <meta name="description" content="${hostUser.nickname}的视频列表">
+            <meta name="keywords" content="${hostUser.nickname},ImCoder's 博客,视频,视频列表,">
+        </c:otherwise>
+    </c:choose>
     <!-- 使用url函数转换相关路径 -->
     <!-- <script async="" src="http://www.google-analytics.com/analytics.js"></script> -->
 
@@ -25,14 +49,13 @@
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
-    <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/magnific-popup/magnific-popup.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <style>
     </style>
 </head>
-<body uid="${loginUser.uid}">
+<body uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>">
 <!-- <body background="../../img/bg-site.png"> -->
 <!-- START THE COVER  background-image: url(img/bg-site.png);" -->
 <div id="first" class="" style="z-index:1000;background-image: url(<%=staticPath%>img/bg-site.png);">
@@ -40,9 +63,25 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center;">
-                    <h1 hostUser="${hostUser.uid}">${hostUser.nickname}</h1>
-                    <h3>${hostUser.description}</h3>
-                    <h3>${hostUser.says}</h3>
+                    <c:choose>
+                        <c:when test="${not empty clear_model and clear_model eq 'likes'}">
+                            <h1 class="slogan_name" data-dashboard-model="video" data-clear-model="likes">${hostUser.nickname}</h1>
+                            <h3 class="slogan_desc">赞过的视频</h3>
+                        </c:when>
+                        <c:when test="${not empty clear_model and clear_model eq 'history'}">
+                            <h1 class="slogan_name" data-dashboard-model="video" data-clear-model="history">${hostUser.nickname}</h1>
+                            <h3 class="slogan_desc">访问过的视频</h3>
+                        </c:when>
+                        <c:when test="${not empty dashboard_model and dashboard_model eq 'video'}">
+                            <h1 class="slogan_name" data-dashboard-model="video">video dashboard</h1>
+                            <h3 class="slogan_desc"></h3>
+                        </c:when>
+                        <c:otherwise>
+                            <h1 class="slogan_name" hostUser="<s:eval expression="hostUser.uid"/>">${hostUser.nickname}</h1>
+                            <h3 class="slogan_desc">${hostUser.description}</h3>
+                            <h3>${hostUser.says}</h3>
+                        </c:otherwise>
+                    </c:choose>
                 </div>
             </div>
         </div>
@@ -73,28 +112,28 @@
                                 <div class="coldesc">分类</div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=0" target="_blank">默认</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=0" target="_blank">默认</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=3" target="_blank">资源</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=4" target="_blank">科技</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=4" target="_blank">科技</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=5" target="_blank">游戏</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=5" target="_blank">游戏</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=6" target="_blank">段子</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=6" target="_blank">段子</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=7" target="_blank">杂谈</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=7" target="_blank">杂谈</a></div>
                             </div>
                         </div>
                         <div class="row">
@@ -108,20 +147,23 @@
                                 <div class="coldesc"><a class="toolbar_jump_paste_code" href="http://paste.ubuntu.com" target="_blank">贴代码</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_albums" href="<%=basePath%>photo.do?method=user_albums" target="_blank">相册</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_albums" href="<%=basePath%>p/dashboard" target="_blank">相册</a></div>
                             </div>
                             <div class="col-sm-1" style="padding-left: 5px">
                                 <div class="coldesc"><a class="toolbar_jump_cloud" href="<%=cloudPath%>" target="_blank">cloud</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_archives" href="<%=basePath%>article.do?method=archives" target="_blank">归档</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_archives" href="<%=basePath%>a/archives" target="_blank">归档</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>a/tags" target="_blank">标签</a></div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_user_history" href="<%=basePath%>u/history" target="_blank">历史</a></div>
                             </div>
                             <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
                                 <div class="col-sm-1">
-                                    <div class="coldesc"><a class="toolbar_jump_manager" href="manager.do?method=backstage" target="_blank">管理</a></div>
+                                    <div class="coldesc"><a class="toolbar_jump_manager" href="manager/backstage" target="_blank">管理</a></div>
                                 </div>
                             </c:if>
                         </div>
@@ -133,23 +175,36 @@
                                 <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_register" href="auth/register" target="_blank">注册</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_notice" target="_blank" href="site.do?method=list">公告</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_notice" target="_blank" href="notices">公告</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_help" target="_blank" href="#">帮助</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_help" target="_blank" href="help">帮助</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_about" target="_blank" href="<%=basePath%>site.do?method=about">关于</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_about" target="_blank" href="<%=basePath%>about">关于</a></div>
                             </div>
                         </div>
                     </ul>
                 </li>
                 <li><a href="<%=basePath%>">首页</a></li>
-                <li><a href="video.do?method=user_videos&uid=${hostUser.uid}">${hostUser.nickname}</a></li>
-                <li class="active"><a>视频列表</a></li>
+                <c:choose>
+                    <c:when test="${not empty dashboard_model and dashboard_model eq 'video'}">
+                        <li class="active"><a href="video/dashboard">dashboard</a></li>
+                    </c:when>
+                    <c:when test="${not empty clear_model and clear_model eq 'likes'}">
+                        <li class="active"><a href="u/<s:eval expression="hostUser.uid"/>/videos">/likes/videos">喜欢</a></li>
+                    </c:when>
+                    <c:when test="${not empty clear_model and clear_model eq 'history'}">
+                        <li class="active"><a href="u/<s:eval expression="hostUser.uid"/>/videos">/history/videos">历史</a></li>
+                    </c:when>
+                    <c:otherwise>
+                        <li><a href="u/<s:eval expression="hostUser.uid"/>/videos">${hostUser.nickname}</a></li>
+                        <li class="active"><a>视频列表</a></li>
+                    </c:otherwise>
+                </c:choose>
             </ul>
             <ul class="nav navbar-nav navbar-right">
                 <form class="navbar-form navbar-left" role="search">
@@ -161,15 +216,16 @@
                 <c:if test="${ !empty loginUser }">
                     <li class="dropdown user">
                         <a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                            <img src="<%=staticPath%>${loginUser.head_photo}"/><span class="caret"></span>
+                            <img src="<s:eval expression="loginUser.head_photo"/>"/><span class="caret"></span>
                         </a>
                         <ul class="dropdown-menu">
-                            <h4><a class="anav-menu_user toolbar_user_profilecenter" href="<%=basePath%>user.do?method=profilecenter" target="_blank">个人中心</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_userhome" href="<%=basePath%>user.do?method=home&uid=${loginUser.uid}" target="_blank">我的博客</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_albums" href="<%=basePath%>photo.do?method=user_albums&uid=${loginUser.uid}" target="_blank">我的相册</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_videos" href="<%=basePath%>video.do?method=user_videos&uid=${loginUser.uid}" target="_blank">我的视频</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_messages" href="<%=basePath%>user.do?method=profilecenter&action=messages" target="_blank">我的消息</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_setting" href="<%=basePath%>user.do?method=profilecenter&action=settings" target="_blank">修改设置</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_profilecenter" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center" target="_blank">个人中心</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_userhome" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/home" target="_blank">我的博客</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_albums" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/albums" target="_blank">我的相册</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_videos" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/videos" target="_blank">我的视频</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_history" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/history" target="_blank">我的历史</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_messages" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center/messages" target="_blank">我的消息</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_setting" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center/settings" target="_blank">修改设置</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_logout" title="点击退出登录">安全退出</a></h4>
                         </ul>
                     </li>
@@ -201,18 +257,48 @@
                             }
                         </style>
                         <c:choose>
-                            <c:when test="${ not empty loginUser and loginUser.uid == hostUser.uid }">
-                                <a class="option_upload" itemtype="url" id="uploadVideo" author="${hostUser.uid}">上传新视频</a>
+                            <c:when test="${not empty dashboard_model and dashboard_model eq 'video'}">
+                                <c:if test="${not empty loginUser}">
+                                    <a class="option_user_videos" itemtype="url" target="_blank" href="u/<s:eval expression="loginUser.uid"/>/videos">我的视频</a>
+                                    <a class="option_user_albums" itemtype="url" target="_blank" href="u/<s:eval expression="loginUser.uid"/>/albums">我的相册</a>
+                                    <a class="option_run_tags_classification" itemtype="url" href="p/tags_square?image_type=video" target="_blank">标签索引</a>
+                                </c:if>
+                                <c:if test="${not empty clear_model && clear_model == 'likes'}">
+                                    <a class="option_user_like_photos" itemtype="url" href="u/<s:eval expression="loginUser.uid"/>/likes/photos" target="_blank" title="赞过的图片">喜爱图片</a>
+                                </c:if>
+                                <c:if test="${not empty clear_model && clear_model == 'history'}">
+                                    <a class="option_user_history_photos" itemtype="url" href="u/<s:eval expression="loginUser.uid"/>/history/photos" target="_blank" title="访问过的图片">历史图片</a>
+                                </c:if>
+                                <div style="float: right" class="options_right">
+                                    <c:if test="${not empty loginUser}">
+                                        <a class="option_user_history" itemtype="url" target="_blank" href="u/history">浏览历史</a>
+                                    </c:if>
+                                    <a class="option_video_square" itemtype="url" href="video/dashboard" target="_blank">视频广场</a>
+                                    <a class="option_photo_square" itemtype="url" href="p/dashboard?model=photo" target="_blank">照片广场</a>
+                                    <a class="option_album_square" itemtype="url" href="p/dashboard?model=album" target="_blank">相册广场</a>
+                                </div>
                             </c:when>
                             <c:otherwise>
-                                <a>&nbsp;</a>
+                                <c:choose>
+                                    <c:when test="${ not empty loginUser and loginUser.uid == hostUser.uid }">
+                                        <a class="option_upload" itemtype="url" id="uploadVideo" author="<s:eval expression="hostUser.uid"/>">上传新视频</a>
+                                        <a class="option_user_albums" itemtype="url" target="_blank" href="u/<s:eval expression="hostUser.uid"/>/albums">我的相册</a>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <a class="option_user_albums" itemtype="url" target="_blank" href="u/<s:eval expression="hostUser.uid"/>/albums">Ta的相册</a>
+                                    </c:otherwise>
+                                </c:choose>
+                                <div style="float: right" class="options_right">
+                                    <c:if test="${not empty loginUser}">
+                                        <a class="option_user_history" itemtype="url" target="_blank" href="u/history">浏览历史</a>
+                                    </c:if>
+                                    <a class="option_time_sort" itemtype="url" href="u/<s:eval expression="hostUser.uid"/>/videos?query_start=0" target="_blank">时间序</a>
+                                    <a class="option_tags_index" itemtype="url" href="p/tags_square?uid=<s:eval expression="hostUser.uid"/>&image_type=video" target="_blank">标签索引</a>
+                                    <a class="option_video_square" itemtype="url" href="video/dashboard" target="_blank">视频广场</a>
+                                    <a class="option_photo_square" itemtype="url" href="p/dashboard?model=photo" target="_blank">照片广场</a>
+                                </div>
                             </c:otherwise>
                         </c:choose>
-                        <div style="float: right" class="options_right">
-                            <a class="option_time_sort" itemtype="url" href="photo.do?method=dashboard&model=photo&uid=${hostUser.uid}" target="_blank">时间序</a>
-                            <a class="option_tags_index" itemtype="url" href="photo.do?method=tags_square&uid=${hostUser.uid}" target="_blank">标签索引</a>
-                            <a class="option_photo_square" itemtype="url" href="photo.do?method=dashboard&model=photo" target="_blank">照片广场</a>
-                        </div>
                     </h1>
                 </header>
                 <!-- 视频管理  end -->
@@ -231,7 +317,7 @@
                 <!-- 评论区 start -->
                 <header class="post post-container row album-footer">
                     <ul class="post-meta footer-left">
-                        <li>数量: <a id="video_count" hostUser="${hostUser.uid}">0</a></li>
+                        <li>数量: <a id="video_count">0</a></li>
                     </ul>
                     <ul class="post-meta footer-right">
                         <ol class="page-navigator"></ol>
@@ -259,190 +345,244 @@
     <div class="stick"></div>
 </div>
 
-<div class="note-editor">
-    <div class="modal fade in" id="uploadVideoModal" aria-hidden="false" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
-                            aria-hidden="true">×</span></button>
-                    <h4 class="modal-title">上传视频</h4></div>
-                <div class="modal-body" style="padding-bottom: 5px;">
-                    <div class="form-group">
-                        <label>选择视频类型</label>
-                        <select class="form-control" name="video_source_type">
-                            <option value="0">上传本地文件</option>
-                            <option value="1">引用视频链接</option>
-                            <option value="2">引用代码块（IFrame）</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>选择视频</label>
-                        <input class="note-image-input form-control" type="file" name="video_file" accept="video/mp4,video/webm">
-                    </div>
-                    <div class="form-group" style="overflow:auto;display: none">
-                        <label>代码块/链接：</label>
-                        <textarea class="form-control" type="text" name="video_code"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>选择相册</label>
-                        <select class="form-control" name="cover_album_id">
+<div class="modal fade in" id="uploadVideoModal" aria-hidden="false" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true">×</span></button>
+                <h4 class="modal-title">上传视频</h4></div>
+            <div class="modal-body" style="padding-bottom: 5px;">
+                <div class="form-group">
+                    <label>选择视频类型</label>
+                    <select class="form-control" name="video_source_type">
+                        <option value="0">上传本地文件</option>
+                        <option value="1">引用视频链接</option>
+                        <option value="2">引用代码块（IFrame）</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>选择视频</label>
+                    <input class="note-image-input form-control" type="file" name="video_file" accept="video/mp4,video/webm,audio/mp3">
+                </div>
+                <div class="form-group" style="overflow:auto;display: none">
+                    <label>代码块/链接：</label>
+                    <textarea class="form-control" type="text" name="video_code"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>选择相册</label>
+                    <select class="form-control" name="cover_album_id">
 
-                        </select>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <div class="convert-upload-cover" style="font-weight: bold;display: inline;">上传封面</div>
+                        /
+                        <div class="convert-select-cover" style="font-weight: normal;display: inline;" title="选取已上传的照片ID">选择封面</div>
+                    </label>
+                    <input class="note-image-input form-control" type="file" name="cover_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
+                    <div class="input-group" style="margin-top: 5px;display: none;">
+                        <input class="note-image-input form-control" name="cover_photo_id" value="0">
+                        <span class="input-group-addon btn btn-sm open-upload-video-cover">访问</span>
                     </div>
-                    <div class="form-group">
-                        <label>
-                            <div class="convert-upload-cover" style="font-weight: bold;display: inline;">上传封面</div>
-                            /
-                            <div class="convert-select-cover" style="font-weight: normal;display: inline;" title="选取已上传的照片ID">选择封面</div>
-                        </label>
-                        <input class="note-image-input form-control" type="file" name="cover_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
-                        <input class="note-image-input form-control" name="cover_photo_id" value="0" style="margin-top: 5px;display: none;">
-                    </div>
-                    <div class="form-group" style="overflow:auto;">
-                        <label>名称：</label>
-                        <input class="form-control" type="text" name="video_name">
-                    </div>
-                    <div class="form-group" style="overflow:auto;">
-                        <label>描述：</label>
-                        <textarea class="form-control" type="text" name="video_desc"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <a href="photo.do?method=dashboard&model=photo&tags=_&logic_conn=or" target="_blank" style="color: #666; cursor: pointer" title="点击查看所有带标签的照片">
-                            <label>标签：</label>
-                        </a>
+                </div>
+                <div class="form-group" style="overflow:auto;">
+                    <label>名称：</label>
+                    <input class="form-control" type="text" name="video_name">
+                </div>
+                <div class="form-group" style="overflow:auto;">
+                    <label>描述：</label>
+                    <textarea class="form-control" type="text" name="video_desc"></textarea>
+                </div>
+                <div class="form-group">
+                    <label title="双击编辑所有标签" style="cursor: pointer">标签：</label>
+                    <div class="input-group">
                         <span class="form-control tags-modify" name="tags">
                             <input type="text" class="tag-input" name="tag_input"/>
                         </span>
-                    </div>
-                    <div class="form-group">
-                        <label>相关：</label>
-                        <input class="form-control" type="text" name="video_refer">
-                    </div>
-                    <div class="form-group " style="padding-top: 7px;">
-                        <label class="control-label">可见性</label>
-                        <label class="radio-inline" style="margin-left:10px;">
-                            <input type="radio" name="video_permission" value="0" checked="checked"> 公开
-                        </label>
-                        <label class="radio-inline">
-                            <input type="radio" name="video_permission" value="1"> 好友可见
-                        </label>
-                        <label class="radio-inline">
-                            <input type="radio" name="video_permission" value="2"> 私有
-                        </label>
+                        <span class="input-group-addon btn btn-sm tags-edit-btn">编辑</span>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-primary" name="uploadVideo_trigger">插入视频</button>
+                <div class="form-group">
+                    <label>相关：</label>
+                    <input class="form-control" type="text" name="video_refer">
                 </div>
+                <div class="form-group " style="padding-top: 7px;">
+                    <label title="不公开意思是 不会在搜索结果、广场、用户主页中出现">视频可见性：</label>
+                    <select class="form-control" name="video_permission">
+                        <option value="0">游客可见</option>
+                        <option value="1" title="不会在搜索结果、广场、用户主页中出现">游客可见，但不公开</option>
+                        <option value="2">登陆可见</option>
+                        <option value="3">登陆可见，但不公开</option>
+                        <option value="4" title="关注你的用户可见">粉丝可见</option>
+                        <option value="5">粉丝可见，但不公开</option>
+                        <option value="6" title="你关注的用户可见">关注的用户可见</option>
+                        <option value="7">关注的用户可见，但不公开</option>
+                        <option value="8">好友可见</option>
+                        <option value="9">好友可见，但不公开</option>
+                        <option value="10">私有</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" name="uploadVideo_trigger">插入视频</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="note-editor">
-    <div class="modal fade in" id="updateVideoModal" aria-hidden="false" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
-                            aria-hidden="true">×</span></button>
-                    <h4 class="modal-title">更新视频信息</h4></div>
-                <div class="modal-body" style="padding-bottom: 0px;">
-                    <div class="form-group">
-                        <label class="control-label">视频ID：&nbsp;&nbsp;&nbsp;&nbsp;</label>
-                        <a target="_blank" style="color: #666; cursor: pointer" title="在相册中打开">
-                            <span name="video_id" class="control-label"></span>
-                        </a>
+<div class="modal fade in" id="updateVideoModal" aria-hidden="false" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true">×</span></button>
+                <h4 class="modal-title">更新视频信息</h4></div>
+            <div class="modal-body" style="padding-bottom: 0px;">
+                <div class="form-group">
+                    <label class="control-label">视频ID：&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                    <a target="_blank" style="color: #666; cursor: pointer" title="在详情页打开">
+                        <span name="video_id" class="control-label"></span>
+                    </a>
+                </div>
+                <div class="form-group">
+                    <label class="control-label">所有者：&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                    <a target="_blank" style="color: #666; cursor: pointer" title="点击查看用户主页" href="">
+                        <span name="user_id" class="control-label"></span>
+                    </a>
+                </div>
+                <div class="form-group">
+                    <label>选择视频类型</label>
+                    <select class="form-control" name="video_source_type">
+                        <option value="0">上传本地文件</option>
+                        <option value="1">引用视频链接</option>
+                        <option value="2">引用代码块（IFrame）</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>视频地址&nbsp;&nbsp;</label>
+                    <input class="form-control copy-input" type="text" value="http://imcoder.site/"/>
+                    <span class="control-label">
+                        <a class="copyVideoUrl_btn" data-clipboard-target=".copy-input" style="cursor: pointer">点击复制</a>
+                        <a name="video_path" style="cursor: pointer">点击下载</a>
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label>选择视频</label>
+                    <input class="note-image-input form-control" type="file" name="video_file" accept="video/mp4,video/webm,audio/mp3">
+                </div>
+                <div class="form-group" style="overflow:auto;display: none">
+                    <label>代码块/链接：</label>
+                    <textarea class="form-control" type="text" name="video_code"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>选择相册</label>
+                    <select class="form-control" name="cover_album_id">
+                        <option value="0">无相册</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <div class="convert-select-cover" style="font-weight: bold;display: inline;" title="选取已上传的照片ID">选择封面</div>
+                        /
+                        <div class="convert-upload-cover" style="font-weight: normal;display: inline;">上传封面</div>
+                    </label>
+                    <input class="note-image-input form-control" type="file" name="cover_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
+                    <div class="input-group" style="margin-top: 5px;display: none;">
+                        <input class="note-image-input form-control" name="cover_photo_id" value="0">
+                        <span class="input-group-addon btn btn-sm open-update-video-cover">访问</span>
                     </div>
-                    <div class="form-group">
-                        <label>选择视频类型</label>
-                        <select class="form-control" name="video_source_type">
-                            <option value="0">上传本地文件</option>
-                            <option value="1">引用视频链接</option>
-                            <option value="2">引用代码块（IFrame）</option>
-                        </select>
+                </div>
+                <div class="form-group">
+                    <label>相关：</label>
+                    <div class="input-group">
+                        <input class="form-control" type="text" name="video_refer">
+                        <span class="input-group-addon btn btn-sm open-update-video-refer">访问</span>
                     </div>
-                    <div class="form-group">
-                        <label>视频地址&nbsp;&nbsp;</label>
-                        <input class="form-control copy-input" type="text" value="http://imcoder.site/"/>
-                        <span class="control-label">
-                            <a class="copyVideoUrl_btn" data-clipboard-target=".copy-input" style="cursor: pointer">点击复制</a>
-                            <a name="video_path" style="cursor: pointer">点击下载</a>
-                        </span>
-                    </div>
-                    <div class="form-group">
-                        <label>选择视频</label>
-                        <input class="note-image-input form-control" type="file" name="video_file" accept="video/mp4,video/webm">
-                    </div>
-                    <div class="form-group" style="overflow:auto;display: none">
-                        <label>代码块/链接：</label>
-                        <textarea class="form-control" type="text" name="video_code"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>选择相册</label>
-                        <select class="form-control" name="cover_album_id">
-                            <option value="0">无相册</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <div class="convert-select-cover" style="font-weight: bold;display: inline;" title="选取已上传的照片ID">选择封面</div>
-                            /
-                            <div class="convert-upload-cover" style="font-weight: normal;display: inline;">上传封面</div>
-                        </label>
-                        <input class="note-image-input form-control" type="file" name="cover_file" accept="image/jpg,image/jpeg,image/webp,image/bmp,image/png,image/gif">
-                        <input class="note-image-input form-control" name="cover_photo_id" value="0" style="margin-top: 5px;display: none;">
-                    </div>
-                    <div class="form-group">
-                        <label>相关：</label>
-                        <div class="input-group">
-                            <input class="form-control" type="text" name="video_refer">
-                            <span class="input-group-addon btn btn-sm open-update-video-refer">访问</span>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>名称：</label>
-                        <input class="form-control" type="text" name="video_name">
-                    </div>
-                    <div class="form-group">
-                        <label>描述：</label>
-                        <textarea class="form-control" type="text" name="video_desc"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <a href="photo.do?method=tags_square" target="_blank" style="color: #666; cursor: pointer" title="标签广场">
-                            <label>标签：</label>
-                        </a>
+                </div>
+                <div class="form-group">
+                    <label>名称：</label>
+                    <input class="form-control" type="text" name="video_name">
+                </div>
+                <div class="form-group">
+                    <label>描述：</label>
+                    <textarea class="form-control" type="text" name="video_desc"></textarea>
+                </div>
+                <div class="form-group">
+                    <label title="双击编辑所有标签" style="cursor: pointer">标签：</label>
+                    <div class="input-group">
                         <span class="form-control tags-modify" name="tags">
                             <input type="text" class="tag-input" name="tag_input"/>
                         </span>
-                    </div>
-                    <div class="form-group " style="padding-top: 7px;">
-                        <label class="control-label">视频可见性：</label>
-                        <label class="radio-inline" style="margin-left:10px;">
-                            <input type="radio" name="video_permission" value="0" checked="checked"> 公开
-                        </label>
-                        <label class="radio-inline">
-                            <input type="radio" name="video_permission" value="1"> 好友可见
-                        </label>
-                        <label class="radio-inline">
-                            <input type="radio" name="video_permission" value="2"> 私有
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label">视频大小：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
-                        <span name="video_size" class="control-label"></span>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label">上传时间：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
-                        <span name="video_upload_time" class="control-label"></span>
+                        <span class="input-group-addon btn btn-sm tags-edit-btn">编辑</span>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-danger" name="deleteVideo_trigger">删除视频</button>
-                    <button class="btn btn-primary" name="updateVideo_trigger">更新信息</button>
-                    <button class="btn btn-default" name="cancelBtn" data-dismiss="modal">关闭</button>
+                <div class="form-group " style="padding-top: 7px;">
+                    <label title="不公开意思是 不会在搜索结果、广场、用户主页中出现">视频可见性：</label>
+                    <select class="form-control" name="video_permission">
+                        <option value="0">游客可见</option>
+                        <option value="1" title="不会在搜索结果、广场、用户主页中出现">游客可见，但不公开</option>
+                        <option value="2">登陆可见</option>
+                        <option value="3">登陆可见，但不公开</option>
+                        <option value="4" title="关注你的用户可见">粉丝可见</option>
+                        <option value="5">粉丝可见，但不公开</option>
+                        <option value="6" title="你关注的用户可见">关注的用户可见</option>
+                        <option value="7">关注的用户可见，但不公开</option>
+                        <option value="8">好友可见</option>
+                        <option value="9">好友可见，但不公开</option>
+                        <option value="10">私有</option>
+                    </select>
                 </div>
+                <div class="form-group">
+                    <label class="control-label">视频大小：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                    <span name="video_size" class="control-label"></span>
+                </div>
+                <div class="form-group">
+                    <label class="control-label">上传时间：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                    <span name="video_upload_time" class="control-label"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" name="deleteVideo_trigger">删除视频</button>
+                <button class="btn btn-info form-btn-upload-subtitle-modal-open">上传字幕</button>
+                <button class="btn btn-primary" name="updateVideo_trigger">更新信息</button>
+                <button class="btn btn-default" name="cancelBtn" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade in" id="uploadSubtitleModal" aria-hidden="false" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true">×</span></button>
+                <h4 class="modal-title">上传视频字幕</h4></div>
+            <div class="modal-body" style="padding-bottom: 0px;">
+                <div class="form-group form-group-subtitle-video-id">
+                    <label class="control-label">视频ID：&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                    <a target="_blank" style="color: #666; cursor: pointer" title="在详情页打开">
+                        <span class="form-subtitle-video-id" data-video-id="" class="control-label"></span>
+                    </a>
+                </div>
+                <div class="form-group form-group-subtitle-file">
+                    <label>选择字幕</label>
+                    <input class="form-control form-subtitle-file" type="file" accept="text/vtt,application/ttml+xml">
+                </div>
+                <div class="form-group form-group-subtitle-name">
+                    <label>名称：</label>
+                    <input class="form-control form-subtitle-name" type="text">
+                </div>
+                <div class="form-group form-group-subtitle-lang">
+                    <label>语言：</label>
+                    <input class="form-control form-subtitle-lang" type="text">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default form-btn-upload-subtitle-cancel" data-dismiss="modal">关闭</button>
+                <button class="btn btn-primary form-btn-upload-subtitle-submit" type="button">上传</button>
             </div>
         </div>
     </div>
@@ -454,7 +594,7 @@
         <div class="modal-content animated flipInY">
             <div class="modal-header text-center">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h2 class="modal-title" id="loginModalLabel">登录/<a href="user.do?method=toregister" target="_blank">注册</a></h2>
+                <h2 class="modal-title" id="loginModalLabel">登录 / <a href="auth/register" target="_blank">注册</a></h2>
             </div>
             <form role="form" id="login_form">
                 <div class="modal-body">
@@ -482,15 +622,19 @@
 </div>
 <!-- login modal end -->
 
-<footer id="footer" role="contentinfo" class="card">
-    <span>© 2016 </span><a href="https://imcoder.site" target="_blank">ImCoder</a>
-    <span>博客 ，基于 </span><a>Java</a><span> 语言开发</span>
-    <span>，ICP备案：</span><a href="http://www.miibeian.gov.cn" target="__blank">湘ICP备17002133号</a>
+<footer id="footer" role="contentinfo" class="card site-footer">
+    <span>© 2016 </span><a href="https://imcoder.site" target="_blank">ImCoder</a><span> 博客 ，基于 </span><a>Java</a><span> 语言开发</span>
+    <c:if test="${not empty site_icp_record_code}">
+        <span>，ICP备案：</span><a href="http://beian.miit.gov.cn/" target="_blank">${site_icp_record_code}</a>
+    </c:if>
+    <c:if test="${not empty site_police_record_code}">
+        <span>，公安备案：</span><img class="police-record-icon" src="<%=staticPath%>img/police_record_icon.png"><a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=${site_police_record_number}" target="_blank">${site_police_record_code}</a>
+    </c:if>
 </footer>
 
-<a id="basePath" href="<%=basePath%>" style="display:none;"></a>
-<a id="staticPath" href="<%=staticPath%>" style="display:none;"></a>
-<a id="cloudPath" href="<%=cloudPath%>" style="display:none;"></a>
+<a id="basePath" class="site-path-prefix" href="<%=basePath%>" style="display:none;"></a>
+<a id="staticPath" class="site-path-prefix" href="<%=staticPath%>" style="display:none;"></a>
+<a id="cloudPath" class="site-path-prefix" href="<%=cloudPath%>" style="display:none;"></a>
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->

@@ -14,40 +14,42 @@
 })(function ($, domReady, toastr, common_utils, login_handle, PeriodCache) {
 
     var loadRankList = function (uid) {
-        $.get("article.do?method=ranking_list", {"uid": uid}, function (data) {
+        $.get("article.api?method=getRankingList", {"uid": uid}, function (response) {
+            if (response.status != 200) {
+                return;
+            }
+            var data = response.data;
             //热门文章
             if (data.clickRankList != null) {
                 var rank_hot_html = "";
-                $(data.clickRankList).each(function (i, article) {
-                    rank_hot_html += '<li><a target="_blank" href="article.do?method=detail&aid=' + article.aid + '" title="点击量：' + article.click + ' 次">' + article.title + '(<span>' + article.click + '</span>)</a></li>';
+                $.each(data.clickRankList, function (i, article) {
+                    rank_hot_html += '<li><a target="_blank" href="a/detail/' + article.aid + '" title="点击量：' + article.click_count + ' 次">' + article.title + '(<span>' + article.click_count + '</span>)</a></li>';
                 });
-                $('#rank_hot').html(rank_hot_html);
+                $('#rank_hot').html(rank_hot_html).parent().find(".label a").attr("href", "a/list?" + (uid ? ("author.uid=" + uid + "&click_count=-1") : "click_count=-1"));
             }
             //热门标签
-            if (uid == 0 && data.hotTagList != null) {
+            if (data.hotTagList != null) {
                 //alert(JSON.stringify(data.hotTagList));
                 var tag = null;
                 var count = null;
                 var rank_hotTag_html = "";
-                $(data.hotTagList).each(function (i, entry) {
+                $.each(data.hotTagList, function (i, entry) {
                     //[{"大数据":22},{"学习笔记":21},{"Hadoop":4},{"测试":2},{"HDFS":2}]
                     //返回数据结构如此，只能遍历得到key名
-                    $.each(entry, function (key, value) {
-                        tag = key;
-                        count = value;
-                    });
-                    rank_hotTag_html += '<li><a target="_blank" href="article.do?method=list&tags=' + tag + '" title="此标签下文章 ' + count + ' 篇以上" >' + tag + '(<span>' + count + '</span>)</a></li>';
+                    tag = Object.keys(entry)[0];
+                    count = Object.values(entry)[0];
+                    rank_hotTag_html += '<li><a target="_blank" href="a/list?tags=' + tag + (uid ? ("&author.uid=" + uid) : "") + '" title="此标签下文章 ' + count + ' 篇以上" >' + tag + '(<span>' + count + '</span>)</a></li>';
                 });
-                $('#rank_hotTag').html(rank_hotTag_html);
+                $('#rank_hotTag').html(rank_hotTag_html).parent().find(".label a").attr("href", "a/tags" + (uid ? ("?uid=" + uid) : ""));
             }
             //最新文章
             if (data.newestList != null) {
                 var rank_newest_html = "";
-                $(data.newestList).each(function (i, article) {
-                    rank_newest_html += '<li><a target="_blank" href="article.do?method=detail&aid=' + article.aid + '" title="发表时间：' + article.create_time + '" >' + article.title + '</a></li>';
-                    //rank_newest_html+='<li><a target="_blank" href="article.do?method=detail&aid='+article.aid+'" >'+article.title+'(<span>'+article.create_time.split(' ')[0]+'</span>)</a></li>';
+                $.each(data.newestList, function (i, article) {
+                    rank_newest_html += '<li><a target="_blank" href="a/detail/' + article.aid + '" title="发表时间：' + article.create_time + '" >' + article.title + '</a></li>';
+                    //rank_newest_html+='<li><a target="_blank" href="a/detail/'+article.aid+'" >'+article.title+'(<span>'+article.create_time.split(' ')[0]+'</span>)</a></li>';
                 });
-                $('#rank_newest').html(rank_newest_html);
+                $('#rank_newest').html(rank_newest_html).parent().find(".label a").attr("href", "a/archives" + (uid ? ("?uid=" + uid) : ""));
             }
         });
     };
@@ -58,10 +60,10 @@
         if (photoShowArea.length > 0) {
             var userAlbumsCacheConn = PeriodCache.getOrCreateGroup({ // 创建相册缓存读取器
                 "groupName": "user_albums_cache",
-                "version": "1.1",
-                "timeOut": 900000,
+                "version": "1.2",
+                "timeOut": 60000,
                 "reload": {
-                    "url": "photo.do?method=albumListByAjax",
+                    "url": "photo.api?method=getAlbumList",
                     "type": "GET",
                     "dataType": undefined,
                     "params": function (groupName, key) {
@@ -70,21 +72,26 @@
                         }
                         return key == 0 ? null : {"user.uid": key};
                     },
-                    "parse": function (cacheCtx, groupName, key, old_object_value, data) {
-                        if (data.albums && data.albums.length > 0) {
-                            var preview_args = null;
-                            if (data.cloud_photo_preview_args) {
-                                preview_args = data.cloud_photo_preview_args.replace("{col}", 4)
-                            }
-                            $.each(data.albums, function (i, album) {
-                                album.name = encodeURIComponent(encodeURIComponent(album.name));
-                                album.description = encodeURIComponent(encodeURIComponent(album.description));
-                                if (preview_args) {
-                                    album.cover.path = album.cover.path + preview_args;
+                    "parse": function (cacheCtx, groupName, key, old_object_value, response) {
+                        if (response.status == 200) {
+                            var data = response.data;
+                            if (data.albums && data.albums.length > 0) {
+                                var preview_args = null;
+                                if (data.cloud_photo_preview_args) {
+                                    preview_args = data.cloud_photo_preview_args.replace("{col}", 4)
                                 }
-                            });
+                                $.each(data.albums, function (i, album) {
+                                    album.name = encodeURIComponent(encodeURIComponent(album.name));
+                                    album.description = encodeURIComponent(encodeURIComponent(album.description));
+                                    if (preview_args) {
+                                        album.cover.path = album.cover.path + preview_args;
+                                    }
+                                });
+                            }
+                            return data.albums;
+                        } else {
+                            return [];
                         }
-                        return data.albums;
                     }
                 }
             });
@@ -110,19 +117,20 @@
                     }
                 }
                 var album = albums[index];
-                dom.querySelector("img").src = cloudPath + album.cover.path;
+                dom.querySelector("img").src = album.cover.path;
                 dom.setAttribute("data-index", "" + index);
-                dom.href = "photo.do?method=album_detail&id=" + album.album_id;
+                dom.href = "p/album/" + album.album_id;
                 common_utils.removeNotify("notify_album_show");
                 common_utils.notify({
                     "showDuration": 0,
                     "hideDuration": 0,
+                    "showDuration": 0,
                     "closeButton": false,
                     "progressBar": false,
                     "positionClass": isUserPage ? "toast-bottom-left" : "toast-bottom-right",
                     "iconClass": "toast-success-no-icon",
                     "onclick": function () {
-                        window.open("photo.do?method=album_detail&id=" + album.album_id);
+                        window.open("p/album/" + album.album_id);
                     }
                 }).success(album.description, album.name + " by " + album.user.nickname, "notify_album_show");
             };
@@ -138,9 +146,9 @@
                 var html = null;
                 if (albums && albums.length > 0) { // html
                     var first = albums[0];
-                    html = '<a class="openAlbumByCover" data-index="0" href="photo.do?method=album_detail&id=' + first.album_id + '" target="_blank" title="左键切换、右键打开"><img src="' + cloudPath + first.cover.path + '" style="width: 100%"></a>'
+                    html = '<a class="openAlbumByCover" data-index="0" href="p/album/' + first.album_id + '" target="_blank" title="左键切换、右键打开"><img src="' + first.cover.path + '" style="width: 100%"></a>'
                 } else {
-                    var userAlbumHref = "photo.do?method=user_albums" + (uid == 0 ? "" : ("&uid=" + uid));
+                    var userAlbumHref = "u/" + (uid == 0 ? "" : (uid + "/")) + "albums";
                     html = '<a href="' + userAlbumHref + '" target="_blank" title="打开用户相册"><img src="' + cloudPath + 'res/img/album_default.jpg" style="width: 100%"></a>'
                 }
                 photoShowArea.find(".photos").html(html);
@@ -172,8 +180,8 @@
     /* ********** main ************* */
 
     //用户的主页和用户文章页则查找用户的rank
-    var isUserPage = /^(.*method=detail.*|.*method=home.*)$/.test(document.location.href);
-    var uid = (isUserPage ? $('#h_auid').attr('auid') : 0); // uid为0，则查找所有文章总rank
+    var isUserPage = /^.*(\/a\/detail\/.*|\/u\/\w+\/home).*$/.test(document.location.pathname);
+    var uid = (isUserPage ? $('#first').find(".slogan_name").attr("data-user-id") : 0); // uid为0，则查找所有文章总rank
 
     // 加载文章rank列表
     loadRankList(uid);

@@ -44,7 +44,6 @@ public class SiteDaoImpl extends CommonDao implements ISiteDao {
         try {
             return this.getSqlSession().update("site.updateUserGroup", user);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("updateUserGroup fail", e);
             return -1;
@@ -66,7 +65,6 @@ public class SiteDaoImpl extends CommonDao implements ISiteDao {
         try {
             return this.getSqlSession().update("site.updateArticleBaseBatch", articleList);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("saveArticleBuffer fail", e);
             return -1;
@@ -87,12 +85,16 @@ public class SiteDaoImpl extends CommonDao implements ISiteDao {
         int sum = 0;
         Category defaultCategory = null;
         for (Category category : CategoryList) {
+            category.setCount(0);
             for (Category category_temp : categoryCountList) {
                 if (category.getAtid() == category_temp.getAtid()) {
-                    category.setCount(category_temp.getCount());
+                    if (category_temp.getCount() == null) {
+                        category.setCount(0);
+                    } else {
+                        category.setCount(category_temp.getCount());
+                    }
                 }
             }
-
             sum += category.getCount();
             if (category.getAtid() == 0) {
                 defaultCategory = category;
@@ -132,7 +134,6 @@ public class SiteDaoImpl extends CommonDao implements ISiteDao {
         try {
             return this.getSqlSession().update("site.updateArticleInfoByManager", article);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("updateArticleInfoByManager fail", e);
             return -1;
@@ -185,11 +186,10 @@ public class SiteDaoImpl extends CommonDao implements ISiteDao {
             Map<String, String> map = new HashMap<String, String>();
             map.put("oldPath", oldPath);
             map.put("newPath", newPath);
-            int left = this.getSqlSession().update("updateArticleDetailFilePath", map);
-            int right = this.getSqlSession().update("updateArticleSummaryFilePath", map);
+            int left = this.getSqlSession().update("site.updateArticleDetailFilePath", map);
+            int right = this.getSqlSession().update("site.updateArticleSummaryFilePath", map);
             return left * right < 0 ? -1 : left * right;
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("updateArticleFilePath fail", e);
             return -1;

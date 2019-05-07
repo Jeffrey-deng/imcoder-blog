@@ -1,5 +1,6 @@
 /**
- * Created by Jeffrey.Deng on 2018/4/9.
+ * @author Jeffrey.Deng
+ * @date 2018/4/9
  */
 (function (factory) {
     /* global define */
@@ -13,9 +14,9 @@
 })(function ($, bootstrap, domReady, toastr, common_utils, login_handle) {
 
     function textToVoice(text, load_condition) {
-        /*var notify = common_utils.notify({"timeOut": 4000});
-         notify.config({"timeOut": 0}).success("正在处理。。。", "", "notify_handle");
-         common_utils.removeNotify("notify_handle");*/
+        // var notify = common_utils.notify({"timeOut": 4000});
+        // notify.config({"timeOut": 0}).success("正在处理。。。", "", "notify_handle");
+        // common_utils.removeNotify("notify_handle");
         var notify_handle = toastr.success("正在处理。。。", "", {"timeOut": 0});
         var options = {};
         options.text = text;
@@ -24,19 +25,20 @@
         options.per = "4";
         options.cuid = login_handle.getCurrentUserId() + "";
         if (load_condition) {
-            $.extend(options, load_condition);
+            common_utils.extendNonNull(options, load_condition);
         }
-        $.post("site.do?method=runTextToVoice", options, function (data) {
-            if (data.flag == 200) {
+        $.post("tool.api?method=runTextToVoice", options, function (response) {
+            if (response.status == 200) {
+                var data = response.data;
                 toastr.remove(notify_handle, true);
                 toastr.success("转制成功！");
                 var mp3_html = '<audio controls="controls" style="width:100%">';
-                mp3_html += '<source src="' + $("#cloudFromSite").attr("href") + data.mp3_url + '" type="audio/mpeg"></audio>';
+                mp3_html += '<source src="' + data.mp3_cdn_url + '" type="audio/mp3"></audio>';
                 $('#audio_div').append(mp3_html);
                 //downloadFile(data.fileName, $("#cloudFromSite").attr("href") + data.mp3_url);
             } else {
-                toastr.error(data.info, "失败！");
-                console.warn("Error Code: " + data.flag);
+                toastr.error(response.message, "失败！");
+                console.warn("Error Code: " + response.status);
             }
         });
     }

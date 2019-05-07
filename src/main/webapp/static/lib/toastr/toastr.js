@@ -216,6 +216,7 @@
                 var $messageElement = $('<div/>');
                 var $progressElement = $('<div/>');
                 var $closeElement = $(options.closeHtml);
+                var closeType = 0; // 通知关闭的方式 - modify by Jeffrey.deng
                 var progressBar = {
                     intervalId: null,
                     hideEta: null,
@@ -265,6 +266,7 @@
 
                     if (options.closeButton && $closeElement) {
                         $closeElement.click(function (event) {
+                            closeType = 1; // 是否通过关闭按钮关闭 - modify by Jeffrey.deng
                             if (event.stopPropagation) {
                                 event.stopPropagation();
                             } else if (event.cancelBubble !== undefined && event.cancelBubble !== true) {
@@ -276,8 +278,9 @@
 
                     if (options.onclick) {
                         $toastElement.click(function (e) {
-                            var isHide = options.onclick(e);    // modify by Jeffrey.deng
+                            var isHide = options.onclick.call($toastElement, e, $toastElement);    // modify by Jeffrey.deng
                             if (isHide !== false) {
+                                closeType = 2;
                                 hideToast();
                             }
                         });
@@ -365,7 +368,7 @@
                         complete: function () {
                             removeToast($toastElement);
                             if (options.onHidden && response.state !== 'hidden') {
-                                options.onHidden();
+                                options.onHidden.call($toastElement, $toastElement, closeType);    // modify by Jeffrey.Deng
                             }
                             response.state = 'hidden';
                             response.endTime = new Date();

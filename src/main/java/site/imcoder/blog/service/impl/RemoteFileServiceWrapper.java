@@ -1,8 +1,10 @@
 package site.imcoder.blog.service.impl;
 
+import site.imcoder.blog.service.BaseService;
 import site.imcoder.blog.service.IFileService;
 
 import java.io.InputStream;
+import java.util.Map;
 
 /**
  * 远程文件系统
@@ -14,7 +16,7 @@ import java.io.InputStream;
  * @author Jeffrey.Deng
  * @date 2018-12-25
  */
-public abstract class RemoteFileServiceWrapper implements IFileService {
+public abstract class RemoteFileServiceWrapper extends BaseService implements IFileService {
 
     // 在实现类中覆盖
     public static String cloud_file_basepath = "";   // 云盘文件存储基础路径
@@ -42,6 +44,19 @@ public abstract class RemoteFileServiceWrapper implements IFileService {
      */
     @Override
     public boolean save(InputStream inputStream, String fileKey) {
+        return false;
+    }
+
+    /**
+     * 文件保存
+     *
+     * @param inputStream 输入流
+     * @param fileKey     文件保存路径
+     * @param metadata    文件头信息
+     * @return
+     */
+    @Override
+    public boolean save(InputStream inputStream, String fileKey, Map<String, Object> metadata) {
         return false;
     }
 

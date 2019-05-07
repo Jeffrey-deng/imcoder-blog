@@ -40,7 +40,7 @@
         var pageSize = params.size ? params.size : albumConfig.album_page.default_size;
         var pageNum = params.page ? params.page : 1;
         var col = params.col && parseInt(params.col);
-        var checkAlbumId = params.check ? parseInt(params.check) : 0;
+        var checkAlbumId = params.check ? params.check : 0;
         var cloud_photo_preview_args = "";
         var open_preview_compress = albumConfig.photo_page.preview_compress;
 
@@ -65,12 +65,13 @@
             "groupName": "album_size_cache",
             "timeOut": 1200000,
             "reload": {
-                "url": "photo.do?method=albumByAjax",
+                "url": "photo.api?method=getAlbum",
                 "params": function (groupName, key) {
                     return {"id": key, "mount": true};
                 },
-                "parse": function (cacheCtx, groupName, key, old_object_value, data) {
-                    if (data.flag == 200) {
+                "parse": function (cacheCtx, groupName, key, old_object_value, response) {
+                    if (response.status == 200) {
+                        var data = response.data;
                         var videoCovers = data.album.photos.filter(function (photo) {
                             return photo.image_type.indexOf("video") != -1;
                         });
@@ -92,29 +93,32 @@
                     common_utils.notify({
                         "progressBar": false,
                         "hideDuration": 0,
+                        "showDuration": 0,
                         "timeOut": 0,
                         "closeButton": false
                     }).success("正在加载数据", "", "notify_albums_loading");
-                    $.get("photo.do?method=albumListByAjax", config.load_condition, function (data) {
+                    $.get("photo.api?method=getAlbumList", config.load_condition, function (response) {
                         common_utils.removeNotify("notify_albums_loading");
-                        if (data.flag == 200) {
+                        if (response.status == 200) {
+                            var data = response.data;
                             cloud_photo_preview_args = data.cloud_photo_preview_args;
                             success(data);
                             if (data.albums.length == 0) {
                                 common_utils.notify({
                                     "progressBar": false,
                                     "hideDuration": 0,
+                                    "showDuration": 0,
                                     "timeOut": 10000,
                                     "closeButton": false
                                 }).success("抱歉，未找到您要的内容", "", "notify_albums_loading_empty");
                             }
                         } else {
-                            toastr.error(data.info, "加载相册失败!");
-                            console.warn("Error Code: " + data.flag);
+                            toastr.error(response.message, "加载相册失败!");
+                            console.warn("Error Code: " + response.status);
                         }
                     });
                 },
-                "generatePhotoPreviewUrl": function (source, relativePath, hitCol) { // 生成预览图片url的函数
+                "generatePhotoPreviewUrl": function (source, hitCol) { // 生成预览图片url的函数
                     if (open_preview_compress && cloud_photo_preview_args) {
                         return source + cloud_photo_preview_args.replace("{col}", hitCol);
                     } else {
@@ -132,7 +136,7 @@
                 },
                 "makeupNode_callback": function (album_node, album) {
                     var a = album_node.querySelector("a");
-                    a.title = album.description;
+                    a.title = album.description + "\n上传者@" + album.user.nickname;
                     var span = album_node.querySelector("span");
                     if (login_handle.equalsLoginUser(album.user.uid)) {
                         span.title = "点击编辑相册";
@@ -160,7 +164,7 @@
             },
             load_condition: load_condition,
             checkAlbumId: checkAlbumId,
-            album_href_prefix: "photo.do?method=album_detail&id="
+            album_href_prefix: "p/album/"
         });
 
         album_handle.init({
@@ -188,8 +192,8 @@
                     PeriodCache.utils.removeCache("user_albums_cache", login_handle.getCurrentUserId());
                     PeriodCache.utils.removeCache("user_albums_cache", "0_" + login_handle.getCurrentUserId());
                 },
-                "deleteCompleted": function (album_id) {  // 在相册删除完成后回调
-                    album_page_handle.utils.deleteAlbumInPage(album_id);
+                "deleteCompleted": function (params) {  // 在相册删除完成后回调
+                    album_page_handle.utils.deleteAlbumInPage(params.album_id);
                 },
                 "beforeCreateModalOpen": function (createModal, openCreateModal_callback) {  // 创建窗口打开前回调
                     openCreateModal_callback();
@@ -204,7 +208,7 @@
                             '</a></div>'
                         );
                     }
-                    var user_home_url = "user.do?method=home&uid=" + album.user.uid;
+                    var user_home_url = "u/" + album.user.uid + "/home";
                     updateModal.find('span[name="user_id"]').text(album.user.nickname).parent().attr("href", user_home_url);
                     // 回调
                     formatAlbumToModal_callback(album);
@@ -212,8 +216,8 @@
             }
         });
         // 要删除的相册中包含视频时提示用户
-        album_handle.utils.bindEvent(album_handle.config.event.beforeDelete, function (e, album_id, album_name) {
-            var albumSizeInfo = PeriodCache.utils.getCacheValue(album_size_cache_conn.groupConfig.groupName, album_id);
+        album_handle.utils.bindEvent(album_handle.config.event.beforeDelete, function (e, params) {
+            var albumSizeInfo = PeriodCache.utils.getCacheValue(album_size_cache_conn.groupConfig.groupName, params.album_id);
             if (albumSizeInfo.videoCount) {
                 if (!window.confirm("你删除的相册包含" + albumSizeInfo.videoCount + "个视频，确定要继续吗？（建议先删除视频）")) {
                     return false;

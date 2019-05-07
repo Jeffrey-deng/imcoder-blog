@@ -1,5 +1,7 @@
 package site.imcoder.blog.entity;
 
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+
 import java.io.Serializable;
 
 /**
@@ -15,49 +17,49 @@ public class Follow implements Serializable {
     /**
      * user_follow 表 主键
      */
-    private int fwid;
+    private Long fwid;
 
     /**
      * 用户id
      */
-    private int uid;
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long followerUid;
 
     /**
      * 用户关注的id
      */
-    private int fuid;
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long followingUid;
 
     public Follow() {
     }
 
-    public Follow(int uid, int fuid) {
-        this.uid = uid;
-        this.fuid = fuid;
+    public Follow(Long followerUid, Long followingUid) {
+        this.followerUid = followerUid;
+        this.followingUid = followingUid;
     }
 
-    public int getFwid() {
+    public Long getFwid() {
         return fwid;
     }
 
-    public void setFwid(int fwid) {
+    public void setFwid(Long fwid) {
         this.fwid = fwid;
     }
 
-    public int getUid() {
-        return uid;
+    public Long getFollowerUid() {
+        return followerUid;
     }
 
-    public void setUid(int uid) {
-        this.uid = uid;
+    public void setFollowerUid(Long followerUid) {
+        this.followerUid = followerUid;
     }
 
-    public int getFuid() {
-        return fuid;
+    public Long getFollowingUid() {
+        return followingUid;
     }
 
-    public void setFuid(int fuid) {
-        this.fuid = fuid;
+    public void setFollowingUid(Long followingUid) {
+        this.followingUid = followingUid;
     }
-
-
 }

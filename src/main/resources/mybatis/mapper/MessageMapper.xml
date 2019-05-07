@@ -60,12 +60,12 @@
         update letter set status = 1
         where r_uid = #{loginUser.uid} and status = 0 and leid in
         <foreach collection="leIdList" index="index" item="item" separator="," open="(" close=")">
-            #{item,jdbcType=INTEGER}
+            #{item,jdbcType=BIGINT}
         </foreach>
     </update>
 
     <resultMap id="letterMap" type="letter">
-        <result column="leid" property="leid"/>
+        <id column="leid" property="leid"/>
         <result column="s_uid" property="s_uid"/>
         <result column="r_uid" property="r_uid"/>
         <result column="content" property="content"/>
@@ -89,21 +89,22 @@
     <!-- Comment handle start -->
 
     <!-- 保存评论 -->
-    <insert id="saveComment" parameterType="comment" useGeneratedKeys="true" keyProperty="cid" keyColumn="cid">
-        insert into comment (main_type, main_id,uid,r_cid,content,send_time,anonymous)
-        values (#{mainType},#{mainId},#{user.uid},#{parentId},#{content},#{send_time},#{anonymous})
+    <insert id="saveComment" parameterType="comment">
+        insert into comment (cid, main_type, main_id,uid,r_cid,content,send_time,anonymous, like_count)
+        values (#{cid}, #{mainType},#{mainId},#{user.uid},#{parentId},#{content},#{send_time},#{anonymous},
+        #{like_count})
     </insert>
 
     <!-- 根据文章id查询评论列表 -->
     <select id="findCommentList" parameterType="article" resultMap="commentMap">
-        select cid,main_type,main_id,r_cid,content,send_time,anonymous,u.uid,u.nickname,u.head_photo,u.sex
+        select cid,main_type,main_id,r_cid,content,send_time,anonymous,like_count,u.uid,u.nickname,u.head_photo,u.sex
         from comment c left join user u on c.uid=u.uid
         where c.main_id=#{mainId} and c.main_type = #{mainType}
     </select>
 
     <!-- 根据文章id查询评论列表 -->
     <select id="findComment" parameterType="comment" resultMap="commentMap">
-        select cid,main_type,main_id,r_cid,content,send_time,anonymous,u.uid,u.nickname,u.head_photo,u.sex
+        select cid,main_type,main_id,r_cid,content,send_time,anonymous,like_count,u.uid,u.nickname,u.head_photo,u.sex
         from comment c left join user u on c.uid=u.uid
         where c.cid=#{cid}
     </select>
@@ -119,14 +120,21 @@
         select count(*) as rows from comment where r_cid=#{cid}
     </select>
 
+    <!-- 点赞评论 -->
+    <update id="updateCommentLikeCount" parameterType="hashMap">
+        update comment set like_count = (case when ((like_count + #{step}) > 0) then (like_count + #{step}) else 0 end)
+        where cid = #{comment.cid}
+    </update>
+
     <resultMap id="commentMap" type="comment">
-        <result column="cid" property="cid"/>
+        <id column="cid" property="cid"/>
         <result column="main_type" property="mainType"/>
         <result column="main_id" property="mainId"/>
         <result column="r_cid" property="parentId"/>
         <result column="content" property="content"/>
         <result column="send_time" property="send_time"/>
         <result column="anonymous" property="anonymous"/>
+        <result column="like_count" property="like_count"/>
         <association property="user" javaType="user">
             <result column="uid" property="uid"/>
             <result column="nickname" property="nickname"/>
@@ -163,7 +171,7 @@
         update system_message set status = 1
         where  uid = #{loginUser.uid} and status = 0 and smid in
         <foreach collection="smIdList" index="index" item="item" separator="," open="(" close=")">
-            #{item,jdbcType=INTEGER}
+            #{item,jdbcType=BIGINT}
         </foreach>
     </update>
 
@@ -172,12 +180,12 @@
         delete from system_message
         where  uid = #{loginUser.uid} and smid in
         <foreach collection="smIdList" index="index" item="item" separator="," open="(" close=")">
-            #{item,jdbcType=INTEGER}
+            #{item,jdbcType=BIGINT}
         </foreach>
     </delete>
 
     <resultMap id="sysMsgMap" type="sysMsg">
-        <result column="smid" property="smid"/>
+        <id column="smid" property="smid"/>
         <result column="uid" property="uid"/>
         <result column="content" property="content"/>
         <result column="send_time" property="send_time"/>

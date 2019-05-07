@@ -29,7 +29,7 @@
         var html = '<thead><tr>'
             + '<th style="text-align:center;">文章ID</th>'
             + '<th style="text-align:center;">标题</th>'
-            + '<th style="text-align:center;">用户</th>'
+            + '<th style="text-align:center;">作者</th>'
             + '<th style="text-align:center;">分类</th>'
             + '<th style="text-align:center;">发表时间</th>'
             + '<th style="text-align:center;">点击量</th>'
@@ -42,13 +42,13 @@
             var article = articles[i];
             html += '<tbody><tr style="height: 50px;" aid="' + article.aid + '">';
             html += '<td name="modifyModal_trigger" style="cursor: pointer;" title="' + article.title + '"><b>' + article.aid + '</b></td>';
-            html += '<td><a href="article.do?method=detail&aid=' + article.aid + '" target="_blank"><b>' + article.title + '</b></a></td>';
-            html += '<td><a href="user.do?method=home&uid=' + article.author.uid + '"  target="_blank"><i>' + article.author.nickname + '（' + article.author.uid + '）</i></a></td>';
+            html += '<td><a href="a/detail/' + article.aid + '" target="_blank"><b>' + article.title + '</b></a></td>';
+            html += '<td><a href="u/' + article.author.uid + '/home"  target="_blank"><i>' + article.author.nickname + '（' + article.author.uid + '）</i></a></td>';
             html += '<td>' + article.category.atname + '</td>';
             html += '<td>' + article.create_time + '</td>';
-            html += '<td>' + article.click + '</td>';
-            html += '<td>' + article.comment + '</td>';
-            html += '<td>' + article.collection + '</td>';
+            html += '<td>' + article.click_count + '</td>';
+            html += '<td>' + article.comment_count + '</td>';
+            html += '<td>' + article.collect_count + '</td>';
             html += '</tr></tbody>';
         }
         $('#article_tds').html(html);
@@ -93,21 +93,22 @@
         common_utils.notify({
             "progressBar": false,
             "hideDuration": 0,
+            "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
         }).success("正在加载数据", "", "notify_articles_loading");
-        $.get("article.do?method=getArticleList", {"author.uid": uid}, function (data) {
+        $.get("article.api?method=getArticleList", (uid && uid != '0') ? {"author.uid": uid} : {}, function (response) {
             common_utils.removeNotify("notify_articles_loading");
-            articles = data;
-            $('#articleCount').html(data.length);
-            if (data.length == 0) {
+            articles = response.data.articles;
+            $('#articleCount').html(articles.length);
+            if (articles.length == 0) {
                 common_utils.notify({
                     "progressBar": false,
                     "timeOut": 10000,
                     "closeButton": false
                 }).success("该用户未发表文章，或者你没有权限查看", "", "notify_articles_loading_empty");
             } else {
-                assembleCurrentTableHtml(data, 1, 20);
+                assembleCurrentTableHtml(articles, 1, 20);
             }
         });
     });

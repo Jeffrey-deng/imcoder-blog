@@ -13,11 +13,15 @@
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
+    request.setAttribute("site_icp_record_code", Config.get(ConfigConstants.SITE_ICP_RECORD_CODE));
+    request.setAttribute("site_police_record_code", Config.get(ConfigConstants.SITE_POLICE_RECORD_CODE));
+    request.setAttribute("site_police_record_number", Config.get(ConfigConstants.SITE_POLICE_RECORD_NUMBER));
 %>
 <!DOCTYPE html>
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <base href="<%=basePath%>" target="_self">
     <title>Cloud - ImCoder</title>
     <meta name="keywords" content="Cloud,ImCoder,ImCoder's 博客,blog">
     <meta name="description" content="Cloud,ImCoder,ImCoder's 博客,blog">
@@ -226,9 +230,9 @@
     </table>
 </div>
 
-<a id="basePath" href="<%=basePath%>" style="display:none;"></a>
-<a id="staticPath" href="<%=staticPath%>" style="display:none;"></a>
-<a id="cloudPath" href="<%=cloudPath%>" style="display:none;"></a>
+<a id="basePath" class="site-path-prefix" href="<%=basePath%>" style="display:none;"></a>
+<a id="staticPath" class="site-path-prefix" href="<%=staticPath%>" style="display:none;"></a>
+<a id="cloudPath" class="site-path-prefix" href="<%=cloudPath%>" style="display:none;"></a>
 <div style="display: none" id="require_modules">["jquery", "bootstrap", "domReady", "toastr", "common_utils", "aliyun-oss-sdk", "cloud_share"]</div>
 <script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true"
         async="true" id="require_node" page="cloud_share"></script>

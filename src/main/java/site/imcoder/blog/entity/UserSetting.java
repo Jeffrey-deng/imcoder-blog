@@ -1,17 +1,22 @@
 package site.imcoder.blog.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
 
 import java.io.Serializable;
 
 /**
- * Created by Jeffrey.Deng on 2018/2/17.
+ * 用户账号设置
+ *
+ * @author Jeffrey.Deng
+ * @date 2018-12-17
  */
 public class UserSetting implements Serializable {
 
     private static final long serialVersionUID = 1336765578106043573L;
 
-    private int uid;
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long uid;
 
     /**
      * 是否接收通知的邮件
@@ -36,11 +41,11 @@ public class UserSetting implements Serializable {
     public UserSetting() {
     }
 
-    public UserSetting(int uid) {
+    public UserSetting(Long uid) {
         assignmentDefault(uid);
     }
 
-    public UserSetting(int uid, Integer receiveNotifyEmail, Integer profileViewLevel, String pageBackground) {
+    public UserSetting(Long uid, Integer receiveNotifyEmail, Integer profileViewLevel, String pageBackground) {
         this.uid = uid;
         this.receiveNotifyEmail = receiveNotifyEmail;
         this.profileViewLevel = profileViewLevel;
@@ -51,11 +56,11 @@ public class UserSetting implements Serializable {
         return serialVersionUID;
     }
 
-    public int getUid() {
+    public Long getUid() {
         return uid;
     }
 
-    public void setUid(int uid) {
+    public void setUid(Long uid) {
         this.uid = uid;
     }
 
@@ -83,6 +88,7 @@ public class UserSetting implements Serializable {
         this.pageBackground = pageBackground;
     }
 
+    @JsonIgnore
     public boolean isEnableReceiveNotifyEmail() {
         return this.receiveNotifyEmail == null || this.receiveNotifyEmail == 0;
     }
@@ -92,7 +98,7 @@ public class UserSetting implements Serializable {
      *
      * @param uid
      */
-    public void assignmentDefault(int uid) {
+    public void assignmentDefault(Long uid) {
         this.uid = uid;
         this.receiveNotifyEmail = 0;
         this.profileViewLevel = 0;

@@ -22,7 +22,7 @@
         </property>
     </bean>
 
-    <!--自动扫描，里面填你的controller所在的包 同时隐式启用注释驱动自动注入-->
+    <!--自动扫描，里面填你的组件所在的包 同时隐式启用注释驱动自动注入-->
     <context:component-scan base-package="site.imcoder.blog"/>
 
     <!-- sessionFactor工厂-->
@@ -56,6 +56,7 @@
             <tx:method name="save*" propagation="REQUIRED"/>
             <tx:method name="update*" propagation="REQUIRED"/>
             <tx:method name="delete*" propagation="REQUIRED"/>
+            <tx:method name="batch*" propagation="REQUIRED"/>
             <tx:method name="find*" propagation="SUPPORTS" read-only="true"/>
             <tx:method name="get*" propagation="SUPPORTS" read-only="true"/>
             <tx:method name="load*" propagation="SUPPORTS" read-only="true"/>

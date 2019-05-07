@@ -9,314 +9,1170 @@
     }
 })(function ($, bootstrap, domReady, toastr, summernote, store, common_utils, login_handle, edit_tool_plugin) {
 
+    var pointer = {
+        mainEditor: null,
+        summaryEditor: null,
+    };
+
     var config = {
+        selector: {
+            "mainEditor": "#article_edit",
+            "summaryEditor": "#article_summary",
+        },
         maxUploadSize: 5 * 1024 * 1024
     };
 
-    $(document).ajaxError(function () {
-        toastr.error("An error occurred!", "执行Ajax请求时发生错误");
-    });
+    var init = function (options) {
+        common_utils.extendNonNull(true, config, options);
+        pointer.mainEditor = $(config.selector.mainEditor);
+        pointer.summaryEditor = $(config.selector.summaryEditor);
+        initEditor();
+    };
 
-    $.extend(true, $.summernote.lang, {
-        'zh-CN': {
-            font: {
-                bold: '粗体',
-                italic: '斜体',
-                underline: '下划线',
-                strikethrough: '删除线',
-                clear: '清除格式',
-                height: '行高',
-                name: '字体',
-                size: '字号'
-            },
-            image: {
-                image: '图片',
-                insert: '插入图片',
-                resizeFull: '调整至 100%',
-                resizeHalf: '调整至 50%',
-                resizeQuarter: '调整至 25%',
-                floatLeft: '左浮动',
-                floatRight: '右浮动',
-                floatNone: '不浮动',
-                remove: '移除图片',
-                dragImageHere: '将图片拖至此处',
-                selectFromFiles: '从本地上传',
-                url: '图片地址'
-            },
-            link: {
-                link: '链接',
-                insert: '插入链接',
-                unlink: '去除链接',
-                edit: '编辑链接',
-                textToDisplay: '显示文本',
-                url: '链接地址',
-                openInNewWindow: '在新窗口打开'
-            },
-            video: {
-                video: '视频',
-                videoLink: '视频链接',
-                insert: '插入视频',
-                url: '视频地址',
-                providers: '(优酷, Instagram, DailyMotion, Youtube等)'
-            },
-            table: {
-                table: '表格'
-            },
-            hr: {
-                insert: '水平线'
-            },
-            style: {
-                style: '样式',
-                normal: '普通',
-                blockquote: '引用',
-                pre: '代码',
-                h1: '标题 1',
-                h2: '标题 2',
-                h3: '标题 3',
-                h4: '标题 4',
-                h5: '标题 5',
-                h6: '标题 6'
-            },
-            lists: {
-                unordered: '无序列表',
-                ordered: '有序列表'
-            },
-            options: {
-                help: '帮助',
-                fullscreen: '全屏',
-                codeview: '源代码'
-            },
-            paragraph: {
-                paragraph: '段落',
-                outdent: '减少缩进',
-                indent: '增加缩进',
-                left: '左对齐',
-                center: '居中对齐',
-                right: '右对齐',
-                justify: '两端对齐'
-            },
-            color: {
-                recent: '最近使用',
-                more: '更多',
-                background: '背景',
-                foreground: '前景',
-                transparent: '透明',
-                setTransparent: '透明',
-                reset: '重置',
-                resetToDefault: '默认'
-            },
-            shortcut: {
-                shortcuts: '快捷键',
-                close: '关闭',
-                textFormatting: '文本格式',
-                action: '动作',
-                paragraphFormatting: '段落格式',
-                documentStyle: '文档样式'
-            },
-            history: {
-                undo: '撤销',
-                redo: '重做'
-            }
-        }
-    });
-
-    /**
-     * my code
-     */
-    domReady(function () {
-
-        /**  定义的插入代码按钮 start   */
-        var insertcode = function (context) {
-            var ui = $.summernote.ui;
-            // create button
-            var button = ui.button({
-                contents: '<i class="glyphicon glyphicon-list-alt"/> 插入代码',
-                tooltip: '插入代码',
-                click: function () {
-                    context.invoke('saveRange');
-                    $('#code_editModal').modal();
-                    //context.invoke('editor.insertText', );
+    var initEditorPlugin = function () {
+        // insert code plugin (插入代码插件)
+        $.extend(true, $.summernote.lang, {
+            'en-US': {
+                codeInsert: {
+                    name: "InsertCode",
+                    tooltip: "open code insert dialog",
+                    dialogTitle: "Insert Code block",
+                    dialogSubmit: "insert",
+                    dialogCancel: "cancel",
                 }
-            });
-            return button.render();   // return button as jquery object
-        };
-
-        //完成code插入点击事件
-        $("#btn_insertcode").click(function () {
-            var code_edit_area = $("#code_edit_area");
-            //创建节点
-            var pre = document.createElement('pre');
-            pre.className = "user-defined-code";
-            pre.setAttribute("style", "word-wrap:normal");
-            var code = document.createElement('code');
-            code.setAttribute("style", "white-space:pre;overflow-x:auto;word-wrap:normal");
-            //得到编辑区的值 并转义
-            code.innerHTML = common_utils.encodeHTML(code_edit_area.val());
-            pre.appendChild(code);
-
-            //
-            var fragment = document.createDocumentFragment();
-            fragment.appendChild(document.createElement("br"));
-            fragment.appendChild(pre);
-            fragment.appendChild(document.createElement("br"));
-
-            //插入节点
-            $('#article_edit').summernote('restoreRange');
-            $('#article_edit').summernote('insertNode', fragment);
-
-            //关闭
-            $('#code_editModal').modal('hide');
-            //toastr.info("代码在编辑区可能会变形，这不是最终的显示效果", "提示");
-            code_edit_area.val('');
+            },
+            'zh-CN': {
+                codeInsert: {
+                    name: "插入代码",
+                    tooltip: "打开插入代码编辑框",
+                    dialogTitle: "插入代码块",
+                    dialogSubmit: "提交代码",
+                    dialogCancel: "取消",
+                }
+            }
         });
-        /**  定义的插入代码按钮 stop   */
+        $.extend(true, $.summernote.options, {
+            codeInsert: {
+                icon: '<i class="glyphicon glyphicon-list-alt"/> ',
+                dialogClassName: "note-code-insert-dialog"
+            }
+        });
+        $.extend($.summernote.plugins, {
+            'codeInsert': function (context) {
+                var self = this,
+                    ui = $.summernote.ui,
+                    $note = context.layoutInfo.note,
+                    $editor = context.layoutInfo.editor,
+                    $editable = context.layoutInfo.editable,
+                    options = context.options,
+                    lang = context.options.langInfo;
+                context.memo('button.codeInsert', function () {
+                    var button = ui.button({
+                        contents: options.codeInsert.icon + lang.codeInsert.name,
+                        tooltip: lang.codeInsert.tooltip,
+                        click: function (e) {
+                            context.invoke('codeInsert.show');
+                        }
+                    });
+                    return button.render();
+                });
+                self.initialize = function () {
+                    var $container, body, footer;
+                    $container = options.dialogsInBody ? $(document.body) : $editor;
+                    body = '<div class="form-group note-form-group">'+
+                        '<textarea class="form-control note-form-control note-code-insert-editor" style="auto;height: 400px;" wrap="off" rows="12"></textarea>'+
+                        '</div>';
+                    footer = '<button class="btn btn-default note-btn note-btn-default note-btn-code-insert-cancel" data-dismiss="modal">' + lang.codeInsert.dialogCancel + '</button>' +
+                        '<button class="btn btn-primary note-btn note-btn-primary note-btn-code-insert-submit">' + lang.codeInsert.dialogSubmit + '</button>';
+                    self.$dialog = ui.dialog({
+                        className: options.codeInsert.dialogClassName,
+                        title: lang.codeInsert.dialogTitle,
+                        fade: options.dialogsFade,
+                        body: body,
+                        footer: footer
+                    }).render().appendTo($container);
+                    self.bindEvent();
+                };
+                self.alertSuccess = function (text) {
+                    var alterId = "note-alert-" + new Date().getTime();
+                    $editor.find('.note-status-output').html('<div class="alert alert-success" id="' + alterId + '">' + text + '</div>');
+                    setTimeout(function () {
+                        $editor.find('#' + alterId).remove();
+                    }, 2500);
+                };
+                self.alertError = function (text) {
+                    var alterId = "note-alert-" + new Date().getTime();
+                    $editor.find('.note-status-output').html('<div class="alert alert-danger" id="' + alterId + '">' + text + '</div>');
+                    setTimeout(function () {
+                        $editor.find('#' + alterId).remove();
+                    }, 2500);
+                };
+                self.destroy = function () {
+                    ui.hideDialog(self.$dialog);
+                    self.$dialog.remove();
+                };
+                self.show = function () {
+                    context.invoke('saveRange');
+                    ui.onDialogShown(self.$dialog, function () {
+                        context.triggerEvent('dialog.shown', self, context);
+                    });
+                    ui.showDialog(self.$dialog);
+                };
+                self.bindEvent = function () {
+                    self.$dialog.find('.note-btn-code-insert-submit').on("click", function () {
+                        self.saveCodeInsert();
+                    });
+                };
+                self.saveCodeInsert = function () {
+                    var $codeInsertEditor = self.$dialog.find('.note-code-insert-editor');
+                    // 创建节点
+                    var pre = document.createElement('pre');
+                    pre.className = "user-defined-code";
+                    pre.setAttribute("style", "word-wrap:normal");
+                    var code = document.createElement('code');
+                    code.setAttribute("style", "white-space:pre;overflow-x:auto;word-wrap:normal");
+                    // 得到编辑区的值 并转义
+                    code.innerHTML = common_utils.encodeHTML($codeInsertEditor.val());
+                    pre.appendChild(code);
+                    // 添加换行
+                    var fragment = document.createDocumentFragment();
+                    fragment.appendChild(document.createElement("br"));
+                    fragment.appendChild(pre);
+                    fragment.appendChild(document.createElement("br"));
+                    // 插入节点
+                    context.invoke('restoreRange'); // 还原range
+                    context.invoke('insertNode', fragment);
+                    // 关闭
+                    ui.hideDialog(self.$dialog);
+                    // toastr.info("代码在编辑区可能会变形，这不是最终的显示效果", "提示");
+                    $codeInsertEditor.val("");
+                };
+            }
+        });
 
-
-            //定义的重置图片大小按钮
-        var resetImgSize = function (context) {
-                var ui = $.summernote.ui;
-                var layoutInfo = context.layoutInfo;
-                var $editable = layoutInfo.editable;
-                return ui.button({
-                    contents: '<span class="note-fontsize-10">重置</span>',
-                    tooltip: "重置图片原始大小",
-                    click: function () {
-                        var $image = $($editable.data('target'));
-                        if ($image.attr('internetImage') == "false") {
-                            $image.attr("width", "");
-                            $image.attr("height", "");
-                            if ($image.width() < 1800) {
-                                $image.css({
-                                    width: $image.attr('data-rawwidth'),
-                                    height: ''
-                                });
-                            } else {
-                                $image.css({
-                                    width: 1800,
-                                    height: ''
-                                });
-                                toastr.info("图片过大，所以宽度调整为1800px");
+        // 查找替换
+        $.extend(true, $.summernote.lang, {
+            'en-US': {
+                findnreplace: {
+                    tooltip: 'Find \'N Replace',
+                    findBtn: 'Find ',
+                    findPlaceholder: 'Enter the text you want to find...',
+                    findResult: ' results found for ',
+                    findError: 'Nothing entered to find...',
+                    replaceBtn: 'Replace',
+                    replacePlaceholder: 'Enter the text to replace the text above or selected...',
+                    replaceResult: ', replaced by ',
+                    replaceError: 'Nothing entered to replace...',
+                    noneSelected: 'Nothing selected to replace...'
+                }
+            }
+        });
+        $.extend($.summernote.options, {
+            findnreplace: {
+                highlight: 'border-bottom: 3px solid #fc0; text-decoration: none;',
+                icon: '<i class="note-icon" data-toggle="findnreplace">' +
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" id="libre-findnreplace" width="14" height="14">' +
+                '<path d="m 5.8,2.3764705 c 0.941176,0 1.811765,0.376471 2.423529,1.011765 l -1.741176,1.741176 4.117647,0 0,-4.11' +
+                '7647 -1.411765,1.411765 C 8.317647,1.5529415 7.117647,1.0117645 5.8,1.0117645 c -2.423529,0 -4.423529,1.788236 -4.752941,' +
+                '4.117647 l 1.388235,0 C 2.741176,3.5529415 4.129412,2.3764705 5.8,2.3764705 Z m 3.8588235,6.282353 c 0.4470585,-0.611764 0.776' +
+                '4705,-1.341176 0.8705885,-2.164706 l -1.388236,0 c -0.305882,1.552942 -1.694117,2.752942 -3.364705,2.752942 -0.941177,0 -1.811765,' +
+                '-0.376471 -2.42353,-1.011765 L 5.094118,6.4941175 1,6.4941175 1,10.611765 2.411765,9.2000005 C 3.282353,10.070589 4.482353,10.61176' +
+                '5 5.8,10.611765 c 1.058824,0 2.047059,-0.352942 2.847059,-0.9411765 L 11.988235,12.988236 13,11.97647 9.6588235,8.6' +
+                '588235 Z"/></svg></i>',
+                enable: false
+            }
+        });
+        $.extend($.summernote.plugins, {
+            'findnreplace': function (context) {
+                var self = this,
+                    ui = $.summernote.ui,
+                    $note = context.layoutInfo.note,
+                    $editor = context.layoutInfo.editor,
+                    $editable = context.layoutInfo.editable,
+                    $toolbar = context.layoutInfo.toolbar,
+                    options = context.options,
+                    lang = context.options.langInfo;
+                context.memo('button.findnreplace', function () {
+                    var button = ui.button({
+                        contents: options.findnreplace.icon,
+                        tooltip: lang.findnreplace.tooltip,
+                        click: function (e) {
+                            e.preventDefault();
+                            $editor.find('.note-findnreplace').contents().unwrap('u');
+                            context.invoke('findnreplace.show');
+                            $toolbar.find('.note-findnreplace-info').text('');
+                            if ($note.summernote('createRange').toString()) {
+                                var selected = $note.summernote('createRange').toString();
+                                $toolbar.find('.note-findnreplace-find').val(selected);
                             }
                         }
-                    }
-                }).render();
-            };
-
-        //互联网图片本地化
-        var localimage = function (context) {
-            var layoutInfo = context.layoutInfo;
-            var $editor = layoutInfo.editor;
-            var $editable = layoutInfo.editable;
-            var ui = $.summernote.ui;
-            var button = ui.button({
-                contents: '<span class="note-fontsize-10">升级</span>',
-                tooltip: '将互联网图片上传到本站服务器',
-                click: function () {
-                    var $image = $($editable.data('target'));
-                    if ($image.attr('internetImage') != 'false') {
-                        localImage($image);
-                    } else {
-                        toastr.info("已经是本站服务器图片了，无须本地化！");
-                        /*
-                         var index = $image.attr('src').indexOf('upload');
-                         $image.attr('src', $image.attr('src').substring(index) );
-                         */
-                    }
-
-                }
-            });
-            this.$button = button.render();
-            return this.$button;
-        };
-
-        //设置图片为封面
-        var coverimage = function (context) {
-            var layoutInfo = context.layoutInfo;
-            var $editable = layoutInfo.editable;
-            var ui = $.summernote.ui;
-            var button = ui.button({
-                contents: '<span class="note-fontsize-10">封面</span>',
-                tooltip: '设为文章封面',
-                click: function () {
-                    var image = $editable.data('target');
-                    image.setAttribute('cover', 'true');
-                    //cover = image;
-                    $('#article_summary').summernote('code', image.outerHTML);
-                }
-            });
-            this.$button = button.render();
-            return this.$button;
-        };
-
-        // 从Cloud相册中插入图片
-        var insertAlbumPhotos = function (context) {
-            var layoutInfo = context.layoutInfo;
-            var $editable = layoutInfo.editable;
-            var ui = $.summernote.ui;
-            var button = ui.button({
-                contents: '<i class="fa fa-cloud" />插入相册',
-                tooltip: '从您的Cloud相册中插入图片',
-                click: function () {
-                    context.invoke('saveRange');
-                    var uid = $('body').attr('uid');
-                    if (uid == undefined || uid == "") {
-                        uid = 0;
-                    }
-                    $.get("photo.do?method=albumListByAjax", {"user.uid": uid}, function (data) {
-                        if (data.flag == 200) {
-                            var options_str = '';
-                            if (data.albums == null || data.albums.length == 0) {
-                                options_str = '<option value="0">无相册</option>';
-                            } else {
-                                $.each(data.albums, function (index, album) {
-                                    options_str += '<option value="' + album.album_id + '">' + album.name + '</option>';
-                                });
-                            }
-                            $('#insertAlbumPhotos_albumSelect').html(options_str);
-                            $('#insertAlbumPhotos_modal').modal();
+                    });
+                    return button.render();
+                });
+                self.shouldInitialize = function () {
+                    return options.findnreplace.enable;
+                };
+                self.initialize = function () {
+                    var fnrBody =
+                        '<div class="note-findnreplaceToolbar panel-heading hidden" style="z-index: 1000;position: absolute;">' +
+                        '<small class="note-findnreplace-info help-block small" style="opacity: 1;background: #337ab7;width: calc(100% - 30px);margin-left: 15px;color: white;">&nbsp;</small>' +
+                        '<div class="form-group">' +
+                        '<div class="input-group col-xs-12">' +
+                        '<input type="text" class="note-findnreplace-find form-control input-sm" value="" placeholder="' + lang.findnreplace.findPlaceholder + '">' +
+                        '<span class="note-findnreplace-find-btn input-group-addon btn btn-sm btn-default" style="width: 100px;">' + lang.findnreplace.findBtn + '</span>' +
+                        '</div>' +
+                        '<div class="input-group col-xs-12">' +
+                        '<input type="text" class="note-findnreplace-replace form-control input-sm" value="" placeholder="' + lang.findnreplace.replacePlaceholder + '">' +
+                        '<span class="note-findnreplace-replace-btn input-group-addon btn btn-sm btn-default" style="width: 100px;">' + lang.findnreplace.replaceBtn + '</span>' +
+                        '</div>' +
+                        '</div>' +
+                        '</div>';
+                    $editor.find('.note-toolbar').append(fnrBody);
+                    self.bindEvent();
+                };
+                self.bindEvent = function () {
+                    var $fnrFindBtn = $toolbar.find('.note-findnreplace-find-btn');
+                    var $fnrReplaceBtn = $toolbar.find('.note-findnreplace-replace-btn');
+                    $fnrFindBtn.click(function (e) {
+                        e.preventDefault();
+                        $editor.find('.note-findnreplace').contents().unwrap('u');
+                        var fnrCode = context.invoke('code');
+                        var fnrFind = $toolbar.find('.note-findnreplace-find').val();
+                        var fnrReplace = $toolbar.find('.note-findnreplace-replace').val();
+                        var fnrCount = (fnrCode.match(new RegExp(fnrFind, "gi")) || []).length;
+                        var $findnreplace_info = $toolbar.find('.note-findnreplace-info');
+                        if (fnrFind) {
+                            $findnreplace_info.text(fnrCount + lang.findnreplace.findResult + "`" + fnrFind + "`");
+                            var fnrReplaced = fnrCode.replace(new RegExp("(" + fnrFind + ")", "gi"), '<u class="note-findnreplace" style="' + options.findnreplace.highlight + '">$1</u>');
+                            $note.summernote('code', fnrReplaced);
+                        } else
+                            $findnreplace_info.html('<span class="text-danger">' + lang.findnreplace.findError + '</span>');
+                    });
+                    $fnrReplaceBtn.click(function (e) {
+                        e.preventDefault();
+                        $editor.find('.note-findnreplace').contents().unwrap('u');
+                        var fnrCode = context.invoke('code');
+                        var fnrFind = $toolbar.find('.note-findnreplace-find').val();
+                        var fnrReplace = $toolbar.find('.note-findnreplace-replace').val();
+                        var fnrCount = (fnrCode.match(new RegExp(fnrFind, "gi")) || []).length;
+                        var $findnreplace_info = $toolbar.find('.note-findnreplace-info');
+                        if (fnrFind) {
+                            $findnreplace_info.text(fnrCount + lang.findnreplace.findResult + "`" + fnrFind + "`" + lang.findnreplace.replaceResult + "`" + fnrReplace + "`");
+                            var fnrReplaced = fnrCode.replace(new RegExp(fnrFind, "gi"), fnrReplace);
+                            $note.summernote('code', fnrReplaced);
                         } else {
-                            toastr.error("读取相册列表失败");
-                            toastr.error(data.info);
+                            if (fnrReplace) {
+                                if ($note.summernote('createRange').toString()) {
+                                    $note.summernote('insertText', fnrReplace);
+                                    $findnreplace_info.text('');
+                                } else
+                                    $findnreplace_info.html('<span class="text-danger">' + lang.findnreplace.noneSelected + '</span>');
+                            } else
+                                $findnreplace_info.html('<span class="text-danger">' + lang.findnreplace.replaceError + '</span>');
+                        }
+                    });
+                };
+                self.show = function () {
+                    $editor.find('.note-findnreplaceToolbar').toggleClass('hidden');
+                };
+            }
+        });
+
+        // 草稿保存到本地缓存
+        $.extend($.summernote.options, {
+            sDrafts: {
+                storePrefix: 'sDrafts',
+                dateFormat: null,
+                saveIcon: null,
+                loadIcon: null
+            }
+        });
+        $.extend(true, $.summernote.lang, {
+            'en-US': {
+                sDrafts: {
+                    save: 'Save draft',
+                    saveTips: 'Save draft',
+                    load: 'Load Drafts',
+                    loadTips: 'Load Drafts',
+                    select: 'select the draft you want to load',
+                    provideName: 'Provide a name for this draft',
+                    saved: 'Draft was successfully saved',
+                    loaded: 'Draft was successfully loaded',
+                    deleteAll: 'Delete all drafts',
+                    noDraft: 'The selected draft couldn\'t be loaded, try again or select another one',
+                    nosavedDrafts: 'There aren\'t any drafts saved',
+                    deleteDraft: 'delete',
+                    youSure: 'Are you sure you want to do this?'
+                }
+            },
+            'zh-CN': {
+                sDrafts: {
+                    save: '保存草稿',
+                    saveTips: '保存草稿到本地缓存',
+                    load: '加载草稿',
+                    loadTips: '从本地缓存中加载草稿',
+                    select: 'select the draft you want to load',
+                    provideName: 'Provide a name for this draft',
+                    saved: 'Draft was successfully saved',
+                    loaded: 'Draft was successfully loaded',
+                    deleteAll: 'Delete all drafts',
+                    noDraft: 'The selected draft couldn\'t be loaded, try again or select another one',
+                    nosavedDrafts: 'There aren\'t any drafts saved',
+                    deleteDraft: 'delete',
+                    youSure: 'Are you sure you want to do this?'
+                }
+            }
+        });
+        $.extend($.summernote.plugins, {
+            'sDraftsSave': function (context) {
+                var self = this,
+                    ui = $.summernote.ui,
+                    $note = context.layoutInfo.note,
+                    $editor = context.layoutInfo.editor,
+                    $editable = context.layoutInfo.editable,
+                    options = context.options,
+                    lang = context.options.langInfo;
+                context.memo('button.sDraftsSave', function () {
+                    return ui.button({
+                        contents: options.sDrafts.saveIcon ? options.sDrafts.saveIcon : lang.sDrafts.save,
+                        tooltip: lang.sDrafts.saveTips,
+                        click: function (e) {
+                            e.preventDefault();
+                            context.invoke('sDraftsSave.show');
+                            return false;
+                        }
+                    }).render();
+                });
+                self.initialize = function () {
+                    var $container, body, footer;
+                    $container = options.dialogsInBody ? $(document.body) : $editor;
+                    body = "<div class='form-group'><label>" + lang.sDrafts.provideName + "</label><input class='note-draftName form-control' type='text' /></div>";
+                    footer = "<button class='btn btn-primary note-link-btn'>" + lang.sDrafts.save + "</button>";
+                    self.$dialog = ui.dialog({
+                        className: 'sDraftsSave-dialog',
+                        title: lang.sDrafts.save,
+                        fade: options.dialogsFade,
+                        body: body,
+                        footer: footer
+                    }).render().appendTo($container);
+                    self.bindEvent();
+                };
+                self.destroy = function () {
+                    ui.hideDialog(self.$dialog);
+                    self.$dialog.remove();
+                };
+                self.bindEvent = function () {
+                    self.$dialog.on('click', '.note-link-btn', function (e) {
+                        e.preventDefault();
+                        var draftName = self.$dialog.find('.note-draftName').val();
+                        self.saveDraft(draftName);
+                        return false;
+                    });
+                };
+                self.show = function () {
+                    ui.showDialog(self.$dialog);
+                };
+                self.saveDraft = function (name) {
+                    var body, isoDate, keyName;
+                    isoDate = new Date().toISOString();
+                    if (name == null) {
+                        name = isoDate;
+                    }
+                    keyName = options.sDrafts.storePrefix + '-' + (name || isoDate);
+                    body = context.code();
+                    store.set(keyName, {
+                        name: name,
+                        sDate: isoDate,
+                        body: body
+                    });
+                    ui.hideDialog(self.$dialog);
+                    self.alertSuccess(lang.sDrafts.saved + ': ' + (name || isoDate));
+                };
+                self.alertSuccess = function (text) {
+                    var alterId = "note-alert-" + new Date().getTime();
+                    $editor.find('.note-status-output').html('<div class="alert alert-success" id="' + alterId + '">' + text + '</div>');
+                    setTimeout(function () {
+                        $editor.find('#' + alterId).remove();
+                    }, 2500);
+                };
+                self.alertError = function (text) {
+                    var alterId = "note-alert-" + new Date().getTime();
+                    $editor.find('.note-status-output').html('<div class="alert alert-danger" id="' + alterId + '">' + text + '</div>');
+                    setTimeout(function () {
+                        $editor.find('#' + alterId).remove();
+                    }, 2500);
+                };
+            }
+        });
+        $.extend($.summernote.plugins, {
+            'sDraftsLoad': function (context) {
+                var self = this,
+                    ui = $.summernote.ui,
+                    $note = context.layoutInfo.note,
+                    $editor = context.layoutInfo.editor,
+                    $editable = context.layoutInfo.editable,
+                    options = context.options,
+                    lang = context.options.langInfo;
+                self.drafts = {};
+                context.memo('button.sDraftsLoad', function () {
+                    return ui.button({
+                        contents: options.sDrafts.loadIcon ? options.sDrafts.loadIcon : lang.sDrafts.load,
+                        tooltip: lang.sDrafts.loadTips,
+                        click: function (e) {
+                            e.preventDefault();
+                            context.invoke('sDraftsLoad.show');
+                            return false;
+                        }
+                    }).render();
+                });
+                self.initialize = function () {
+                    var $container = options.dialogsInBody ? $(document.body) : $editor;
+                    self.$dialog = ui.dialog({
+                        className: 'sDraftsLoad-dialog',
+                        title: lang.sDrafts.load,
+                        fade: options.dialogsFade,
+                        body: "<div></div>",
+                        footer: "<div></div>"
+                    }).render().appendTo($container);
+                    self.$dialog.on("click", '.note-draft', function (e) {
+                        e.preventDefault();
+                        var data, div, key;
+                        e.preventDefault;
+                        div = document.createElement('div');
+                        key = $(this).data('draft');
+                        data = self.drafts[key];
+                        if (data) {
+                            div.innerHTML = data.body;
+                            context.invoke('editor.insertNode', div);
+                            self.alertSuccess(lang.sDrafts.loaded);
+                        } else {
+                            self.alertError(lang.sDrafts.noDraft);
+                        }
+                        ui.hideDialog(self.$dialog);
+                    });
+                    self.$dialog.on("click", 'a.delete-draft', function (e) {
+                        e.preventDefault();
+                        var data, key, $draftLi;
+                        if (confirm(lang.sDrafts.youSure)) {
+                            $draftLi = $(this);
+                            key = $draftLi.data('draft');
+                            data = self.drafts[key];
+                            if (data) {
+                                store.remove(key);
+                                delete self.drafts[key];
+                                return $draftLi.parent().hide('slow', function () {
+                                    $draftLi.remove();
+                                });
+                            } else {
+                                self.alertError(lang.sDrafts.noDraft);
+                            }
+                        }
+                    });
+                    self.$dialog.on("click", 'button.deleteAll', function (e) {
+                        var $selfButton, key;
+                        $selfButton = $(this);
+                        if (confirm(lang.sDrafts.youSure)) {
+                            for (key in self.drafts) {
+                                store.remove(key);
+                            }
+                            self.drafts = {};
+                            return self.$dialog.find('ul.list-group').hide('slow', function () {
+                                $(this).replaceWith("<h4>" + lang.sDrafts.nosavedDrafts + "</h4>");
+                                $selfButton.hide('slow');
+                            });
+                        }
+                    });
+                };
+                self.destroy = function () {
+                    ui.hideDialog(self.$dialog);
+                    self.$dialog.remove();
+                };
+                self.show = function () {
+                    var key, htmlList;
+                    self.drafts = {};
+                    store.each(function (key, value) {
+                        if (typeof key === 'string' && key.indexOf(options.sDrafts.storePrefix) >= 0) {
+                            return self.drafts[key] = value;
+                        }
+                    });
+                    htmlList = '';
+                    for (key in self.drafts) {
+                        var draft = self.drafts[key];
+                        var fDate = options.sDrafts.dateFormat && typeof options.sDrafts.dateFormat === 'function' ? options.sDrafts.dateFormat(draft.sDate) : draft.sDate;
+                        htmlList += "<li class='list-group-item'><a class='note-draft' data-draft='" + key + "'>" + draft.name + " - <small>" + fDate + "</small></a>" +
+                            "<a class='label label-danger pull-right delete-draft' data-draft='" + key + "'>" + lang.sDrafts.deleteDraft + "</a></li>";
+                    }
+                    var body = htmlList ? "<h4>" + lang.sDrafts.select + "</h4><ul class='list-group'>" + htmlList + "</ul>" : "<h4>" + lang.sDrafts.nosavedDrafts + "</h4>";
+                    var footer = htmlList ? "<button class='btn btn-primary deleteAll'>" + lang.sDrafts.deleteAll + "</button>" : "";
+                    self.$dialog.find('.modal-body').html(body);
+                    self.$dialog.find('.modal-footer').html(footer);
+                    ui.showDialog(self.$dialog);
+                };
+                self.alertSuccess = function (text) {
+                    var alterId = "note-alert-" + new Date().getTime();
+                    $editor.find('.note-status-output').html('<div class="alert alert-success" id="' + alterId + '">' + text + '</div>');
+                    setTimeout(function () {
+                        $editor.find('#' + alterId).remove();
+                    }, 2500);
+                };
+                self.alertError = function (text) {
+                    var alterId = "note-alert-" + new Date().getTime();
+                    $editor.find('.note-status-output').html('<div class="alert alert-danger" id="' + alterId + '">' + text + '</div>');
+                    setTimeout(function () {
+                        $editor.find('#' + alterId).remove();
+                    }, 2500);
+                };
+            }
+        });
+
+        // image reset size （重置图片原始大小）
+        $.extend(true, $.summernote.lang, {
+            'en-US': {
+                imageResize: {
+                    tooltip: 'reset image source size',
+                    name: 'resize',
+                }
+            },
+            'zh-CN': {
+                imageResize: {
+                    tooltip: '重置图片原始大小',
+                    name: '重置',
+                }
+            }
+        });
+        $.extend($.summernote.options, {
+            imageResize: {
+                icon: '',
+                getImageSizeCall: function ($img, context) {
+                    return $.Deferred(function (dfd) {
+                        // dfd.resolve({
+                        //     width: 800,
+                        //     height: 800,
+                        // });
+                        alert("需要自己实现");
+                    });
+                }
+            }
+        });
+        $.extend($.summernote.plugins, {
+            'imageResize': function (context) {
+                var self = this,
+                    ui = $.summernote.ui,
+                    $note = context.layoutInfo.note,
+                    $editor = context.layoutInfo.editor,
+                    $editable = context.layoutInfo.editable,
+                    options = context.options,
+                    lang = context.options.langInfo;
+                context.memo('button.imageResize', function () {
+                    var button = ui.button({
+                        contents: options.imageResize.icon || ('<span class="note-fontsize-10">' + lang.imageResize.name + '</span>'),
+                        tooltip: lang.imageResize.tooltip,
+                        click: function (e) {
+                            e.preventDefault();
+                            var $img = $($editable.data('target'));
+                            options.imageResize.getImageSizeCall.call(self, $img, context).done(context.invoke('editor.wrapCommand', function (raw) {
+                                $img.css({
+                                    width: raw.width,
+                                    height: ''
+                                });
+                            }));
+                        }
+                    });
+                    return button.render();
+                });
+            }
+        });
+
+        // Set Image To Article Cover （设置图片为文章封面）
+        $.extend(true, $.summernote.lang, {
+            'en-US': {
+                imageSetToCover: {
+                    tooltip: 'set image to article cover',
+                    name: 'cover',
+                }
+            },
+            'zh-CN': {
+                imageSetToCover: {
+                    tooltip: '设置图片为文章封面',
+                    name: '封面',
+                }
+            }
+        });
+        $.extend($.summernote.options, {
+            imageSetToCover: {
+                icon: '',
+                setImageToCoverCall: function ($img, context) {
+                    alert("需要自己实现");
+                }
+            }
+        });
+        $.extend($.summernote.plugins, {
+            'imageSetToCover': function (context) {
+                var self = this,
+                    ui = $.summernote.ui,
+                    $note = context.layoutInfo.note,
+                    $editor = context.layoutInfo.editor,
+                    $editable = context.layoutInfo.editable,
+                    options = context.options,
+                    lang = context.options.langInfo;
+                context.memo('button.imageSetToCover', function () {
+                    var button = ui.button({
+                        contents: options.imageSetToCover.icon || ('<span class="note-fontsize-10">' + lang.imageSetToCover.name + '</span>'),
+                        tooltip: lang.imageSetToCover.tooltip,
+                        click: function (e) {
+                            e.preventDefault();
+                            var $img = $($editable.data('target'));
+                            options.imageSetToCover.setImageToCoverCall.call(self, $img, context);
+                        }
+                    });
+                    return button.render();
+                });
+            }
+        });
+
+        // add next line （尾部添加新行）
+        $.extend(true, $.summernote.lang, {
+            'en-US': {
+                newLineAdd: {
+                    tooltip: 'add next line',
+                    name: 'New Line',
+                }
+            },
+            'zh-CN': {
+                newLineAdd: {
+                    tooltip: '尾部添加新行',
+                    name: '新建一行',
+                }
+            }
+        });
+        $.extend($.summernote.options, {
+            newLineAdd: {
+                icon: '',
+                afterNewLineAddCall: function (context) {
+                }
+            }
+        });
+        $.extend($.summernote.plugins, {
+            'newLineAdd': function (context) {
+                var self = this,
+                    ui = $.summernote.ui,
+                    $note = context.layoutInfo.note,
+                    $editor = context.layoutInfo.editor,
+                    $editable = context.layoutInfo.editable,
+                    options = context.options,
+                    lang = context.options.langInfo;
+                context.memo('button.newLineAdd', function () {
+                    var button = ui.button({
+                        contents: options.newLineAdd.icon + lang.newLineAdd.name,
+                        tooltip: lang.newLineAdd.tooltip,
+                        click: function (e) {
+                            e.preventDefault();
+                            var detail = context.invoke('code');
+                            context.invoke('code', detail + "<br>Next Line");
+                            self.alertSuccess("Next Line Ready");
+                            options.newLineAdd.afterNewLineAddCall.call(self, context);
+                        }
+                    });
+                    return button.render();
+                });
+                self.alertSuccess = function (text) {
+                    var alterId = "note-alert-" + new Date().getTime();
+                    $editor.find('.note-status-output').html('<div class="alert alert-success" id="' + alterId + '">' + text + '</div>');
+                    setTimeout(function () {
+                        $editor.find('#' + alterId).remove();
+                    }, 2500);
+                };
+                self.alertError = function (text) {
+                    var alterId = "note-alert-" + new Date().getTime();
+                    $editor.find('.note-status-output').html('<div class="alert alert-danger" id="' + alterId + '">' + text + '</div>');
+                    setTimeout(function () {
+                        $editor.find('#' + alterId).remove();
+                    }, 2500);
+                };
+            }
+        });
+
+        // Upload Image From URL （互联网图片本地化）
+        $.extend(true, $.summernote.lang, {
+            'en-US': {
+                imageUploadFromURL: {
+                    tooltip: 'upload image from url',
+                    name: 'upgrade',
+                }
+            },
+            'zh-CN': {
+                imageUploadFromURL: {
+                    tooltip: '将互联网图片上传到本站服务器',
+                    name: '升级',
+                }
+            }
+        });
+        $.extend($.summernote.options, {
+            imageUploadFromURL: {
+                icon: '',
+                uploadImageFromURLCall: function ($img, context) {
+                    return $.Deferred(function (dfd) {
+                        // var newImageURL = "";
+                        // dfd.resolve(newImageURL);
+                        alert("需要自己实现");
+                    });
+                }
+            }
+        });
+        $.extend($.summernote.plugins, {
+            'imageUploadFromURL': function (context) {
+                var self = this,
+                    ui = $.summernote.ui,
+                    $note = context.layoutInfo.note,
+                    $editor = context.layoutInfo.editor,
+                    $editable = context.layoutInfo.editable,
+                    options = context.options,
+                    lang = context.options.langInfo;
+                context.memo('button.imageUploadFromURL', function () {
+                    var button = ui.button({
+                        contents: options.imageUploadFromURL.icon || ('<span class="note-fontsize-10">' + lang.imageUploadFromURL.name + '</span>'),
+                        tooltip: lang.imageUploadFromURL.tooltip,
+                        click: function (e) {
+                            e.preventDefault();
+                            var $img = $($editable.data('target'));
+                            options.imageUploadFromURL.uploadImageFromURLCall.call(self, $img, context).done(function (newImageURL) {
+                                $img.attr("src", newImageURL);
+                                self.alertSuccess("升级成功~");
+                            });
+                        }
+                    });
+                    return button.render();
+                });
+                self.alertSuccess = function (text) {
+                    var alterId = "note-alert-" + new Date().getTime();
+                    $editor.find('.note-status-output').html('<div class="alert alert-success" id="' + alterId + '">' + text + '</div>');
+                    setTimeout(function () {
+                        $editor.find('#' + alterId).remove();
+                    }, 2500);
+                };
+                self.alertError = function (text) {
+                    var alterId = "note-alert-" + new Date().getTime();
+                    $editor.find('.note-status-output').html('<div class="alert alert-danger" id="' + alterId + '">' + text + '</div>');
+                    setTimeout(function () {
+                        $editor.find('#' + alterId).remove();
+                    }, 2500);
+                };
+            }
+        });
+
+        // insert cloud photos (从Cloud相册中插入图片)
+        $.extend(true, $.summernote.lang, {
+            'en-US': {
+                cloudPhotosInsert: {
+                    name: "InsertAlbum",
+                    tooltip: "open cloud photos insert dialog",
+                    dialogTitle: "Insert Cloud Photos",
+                    dialogAlbumLabel: "Album",
+                    dialogClassLabel: "ClassName",
+                    dialogShapeOptions: ['None', 'Responsive', 'Rounded', 'Circle', 'Thumbnail'],
+                    dialogSizeLabel: "Size",
+                    dialogSubmit: "insert",
+                    dialogCancel: "cancel",
+                }
+            },
+            'zh-CN': {
+                cloudPhotosInsert: {
+                    name: "插入相册",
+                    tooltip: "从您的Cloud相册中插入图片",
+                    dialogTitle: "插入相册",
+                    dialogAlbumLabel: "相册",
+                    dialogClassLabel: "ClassName",
+                    dialogShapeOptions: ['None', 'Responsive', 'Rounded', 'Circle', 'Thumbnail'],
+                    dialogSizeLabel: "数量",
+                    dialogSubmit: "插入照片",
+                    dialogCancel: "取消",
+                }
+            }
+        });
+        $.extend(true, $.summernote.options, {
+            cloudPhotosInsert: {
+                icon: '<i class="fa fa-cloud" /> ',
+                dialogShapeOptions: ['', 'img-responsive', 'img-rounded', 'img-circle', 'img-thumbnail'],
+                dialogClassName: "note-cloud-photos-insert-dialog",
+                loadAlbumsCall: function (context) {
+                    return $.Deferred(function (dfd) {
+                        // var albums = [];
+                        // dfd.resolve(albums);
+                        alert("需要自己实现");
+                    });
+                },
+                loadAlbumCall: function (album_id, context) {
+                    return $.Deferred(function (dfd) {
+                        // var album = [];
+                        // dfd.resolve(album);
+                        alert("需要自己实现");
+                    });
+                },
+                buildCloudPhotosInsertHtmlCall: function (album, className, size, context) {
+                    return $.Deferred(function (dfd) {
+                        // var photosHtml = "";
+                        // dfd.resolve(photosHtml);
+                        alert("需要自己实现");
+                    });
+                },
+            }
+        });
+        $.extend($.summernote.plugins, {
+            'cloudPhotosInsert': function (context) {
+                var self = this,
+                    ui = $.summernote.ui,
+                    $note = context.layoutInfo.note,
+                    $editor = context.layoutInfo.editor,
+                    $editable = context.layoutInfo.editable,
+                    options = context.options,
+                    lang = context.options.langInfo;
+                context.memo('button.cloudPhotosInsert', function () {
+                    var button = ui.button({
+                        contents: options.cloudPhotosInsert.icon + lang.cloudPhotosInsert.name,
+                        tooltip: lang.cloudPhotosInsert.tooltip,
+                        click: function (e) {
+                            options.cloudPhotosInsert.loadAlbumsCall.call(self, context).done(function (albums) {
+                                var album_select_options_html = '';
+                                if (albums == null || albums.length == 0) {
+                                    album_select_options_html = '<option value="0">无相册</option>';
+                                    self.$dialog.find('.note-btn-cloud-photos-insert-submit').attr("disabled", "disabled");
+                                } else {
+                                    $.each(albums, function (index, album) {
+                                        album_select_options_html += '<option value="' + album.album_id + '">' + album.name + '</option>';
+                                    });
+                                    self.$dialog.find('.note-btn-cloud-photos-insert-submit').removeAttr("disabled");
+                                }
+                                self.$dialog.find('.note-cloud-photos-insert-album').html(album_select_options_html);
+                                context.invoke('cloudPhotosInsert.show');
+                            });
+                        }
+                    });
+                    return button.render();
+                });
+                self.initialize = function () {
+                    var $container, shape, body, footer;
+                    $container = options.dialogsInBody ? $(document.body) : $editor;
+                    shape = '';
+                    for (var i = 0, maxLength = options.cloudPhotosInsert.dialogShapeOptions.length; i < maxLength; i++) {
+                        var shapeClassValue = options.cloudPhotosInsert.dialogShapeOptions[i];
+                        var shapeClassName = lang.cloudPhotosInsert.dialogShapeOptions[i];
+                        shape += '<option value="' + shapeClassValue + '">' + shapeClassName + '</option>';
+                    }
+                    body = '<div class="form-group note-group-cloud-photos-insert-album">'+
+                        '<label class="note-form-label">' + lang.cloudPhotosInsert.dialogAlbumLabel + '</label>'+
+                        '<select class="form-control note-form-control note-cloud-photos-insert-album"></select>'+
+                        '</div>'+
+                        '<div class="form-group note-group-cloud-photos-insert-class">'+
+                        '<label class="note-form-label">' + lang.cloudPhotosInsert.dialogClassLabel + '</label>'+
+                        '<select class="form-control note-form-control note-cloud-photos-insert-class">' + shape + '</select>'+
+                        '</div>'+
+                        '<div class="form-group note-group-cloud-photos-insert-size">'+
+                        '<label class="note-form-label">' + lang.cloudPhotosInsert.dialogSizeLabel + '</label>'+
+                        '<input class="form-control note-form-control note-cloud-photos-insert-size" type="text">'+
+                        '</div>';
+                    footer = '<button class="btn btn-default note-btn note-btn-default note-btn-cloud-photos-insert-cancel" data-dismiss="modal">' + lang.cloudPhotosInsert.dialogCancel + '</button>' +
+                        '<button class="btn btn-primary note-btn note-btn-primary note-btn-cloud-photos-insert-submit">' + lang.cloudPhotosInsert.dialogSubmit + '</button>';
+                    self.$dialog = ui.dialog({
+                        className: options.cloudPhotosInsert.dialogClassName,
+                        title: lang.cloudPhotosInsert.dialogTitle,
+                        fade: options.dialogsFade,
+                        body: body,
+                        footer: footer
+                    }).render().appendTo($container);
+                    self.bindEvent();
+                };
+                self.alertSuccess = function (text) {
+                    var alterId = "note-alert-" + new Date().getTime();
+                    $editor.find('.note-status-output').html('<div class="alert alert-success" id="' + alterId + '">' + text + '</div>');
+                    setTimeout(function () {
+                        $editor.find('#' + alterId).remove();
+                    }, 2500);
+                };
+                self.alertError = function (text) {
+                    var alterId = "note-alert-" + new Date().getTime();
+                    $editor.find('.note-status-output').html('<div class="alert alert-danger" id="' + alterId + '">' + text + '</div>');
+                    setTimeout(function () {
+                        $editor.find('#' + alterId).remove();
+                    }, 2500);
+                };
+                self.destroy = function () {
+                    ui.hideDialog(self.$dialog);
+                    self.$dialog.remove();
+                };
+                self.show = function () {
+                    context.invoke('saveRange');
+                    ui.onDialogShown(self.$dialog, function () {
+                        context.triggerEvent('dialog.shown', self, context);
+                    });
+                    ui.showDialog(self.$dialog);
+                };
+                self.bindEvent = function () {
+                    self.$dialog.find('.note-btn-cloud-photos-insert-submit').on("click", function () {
+                        var album_id = self.$dialog.find('.note-cloud-photos-insert-album').val();
+                        var className = self.$dialog.find('.note-cloud-photos-insert-class').val();
+                        var size = self.$dialog.find('.note-cloud-photos-insert-size').val() || 0;
+                        self.saveCloudPhotosInsert(album_id, className, size);
+                    });
+                };
+                self.saveCloudPhotosInsert = function (album_id, className, size) {
+                    if (album_id && album_id != "0") {
+                        if (!/^[0-9]+$/.test(size)) {
+                            self.alertError("数量请输入整数");
+                        } else {
+                            size = parseInt(size);
+                            if (size == 0) {
+                                size = -1;
+                            }
+                            if (!className) {
+                                className = null;
+                            }
+                            options.cloudPhotosInsert.loadAlbumCall.call(self, album_id, context).done(function (album) {
+                                if (size == -1 || size > album.size) {
+                                    size = album.size;
+                                }
+                                options.cloudPhotosInsert.buildCloudPhotosInsertHtmlCall.call(self, album, className, size).done(function (photosHtml) {
+                                    var div = document.createElement("div");
+                                    div.className = "album_photos";
+                                    div.innerHTML = photosHtml;
+                                    context.invoke('restoreRange');
+                                    context.invoke('insertNode', div);
+                                    ui.hideDialog(self.$dialog);
+                                    self.alertSuccess("共插入" + (size == -1 ? album.size : size) + "张图片", "插入成功");
+                                });
+                            });
+                        }
+                    }
+                };
+            }
+        });
+    };
+
+    var initEditor = function () {
+        $.extend(true, $.summernote.lang, {
+            'zh-CN': {
+                font: {
+                    bold: '粗体',
+                    italic: '斜体',
+                    underline: '下划线',
+                    strikethrough: '删除线',
+                    clear: '清除格式',
+                    height: '行高',
+                    name: '字体',
+                    size: '字号'
+                },
+                image: {
+                    image: '图片',
+                    insert: '插入图片',
+                    resizeFull: '调整至 100%',
+                    resizeHalf: '调整至 50%',
+                    resizeQuarter: '调整至 25%',
+                    floatLeft: '左浮动',
+                    floatRight: '右浮动',
+                    floatNone: '不浮动',
+                    remove: '移除图片',
+                    dragImageHere: '将图片拖至此处',
+                    selectFromFiles: '从本地上传',
+                    url: '图片地址'
+                },
+                link: {
+                    link: '链接',
+                    insert: '插入链接',
+                    unlink: '去除链接',
+                    edit: '编辑链接',
+                    textToDisplay: '显示文本',
+                    url: '链接地址',
+                    openInNewWindow: '在新窗口打开'
+                },
+                video: {
+                    video: '视频',
+                    videoLink: '视频链接',
+                    insert: '插入视频',
+                    url: '视频地址',
+                    providers: '(优酷, Instagram, DailyMotion, Youtube等)'
+                },
+                table: {
+                    table: '表格'
+                },
+                hr: {
+                    insert: '水平线'
+                },
+                style: {
+                    style: '样式',
+                    normal: '普通',
+                    blockquote: '引用',
+                    pre: '代码',
+                    h1: '标题 1',
+                    h2: '标题 2',
+                    h3: '标题 3',
+                    h4: '标题 4',
+                    h5: '标题 5',
+                    h6: '标题 6'
+                },
+                lists: {
+                    unordered: '无序列表',
+                    ordered: '有序列表'
+                },
+                options: {
+                    help: '帮助',
+                    fullscreen: '全屏',
+                    codeview: '源代码'
+                },
+                paragraph: {
+                    paragraph: '段落',
+                    outdent: '减少缩进',
+                    indent: '增加缩进',
+                    left: '左对齐',
+                    center: '居中对齐',
+                    right: '右对齐',
+                    justify: '两端对齐'
+                },
+                color: {
+                    recent: '最近使用',
+                    more: '更多',
+                    background: '背景',
+                    foreground: '前景',
+                    transparent: '透明',
+                    setTransparent: '透明',
+                    reset: '重置',
+                    resetToDefault: '默认'
+                },
+                shortcut: {
+                    shortcuts: '快捷键',
+                    close: '关闭',
+                    textFormatting: '文本格式',
+                    action: '动作',
+                    paragraphFormatting: '段落格式',
+                    documentStyle: '文档样式'
+                },
+                history: {
+                    undo: '撤销',
+                    redo: '重做'
+                }
+            }
+        });
+
+        // 自定义的编辑器
+        pointer.mainEditor.summernote({
+            lang: "zh-CN",
+            height: 450,
+            findnreplace: {
+                highlight: 'border-bottom: 3px solid #fc0; text-decoration: none;',
+                icon: '<i class="glyphicon glyphicon-search" />',
+                enable: true
+            },
+            imageResize: {
+                icon: '',
+                getImageSizeCall: function ($img, context) {
+                    return $.Deferred(function (dfd) {
+                        if ($img.attr('data-inside-image') == "true") {
+                            var raw = {};
+                            if ($img.width() < 1800) {
+                                raw.width = $img.attr('data-raw-width');
+                                raw.height = $img.attr('data-raw-height');
+                            } else {
+                                raw.width = 1800;
+                                raw.height = 1800;
+                                toastr.info("图片过大，所以宽度调整为1800px");
+                            }
+                            dfd.resolve(raw);
+                        } else {
+                            dfd.reject();
                         }
                     });
                 }
-            });
-            this.$button = button.render();
-            return this.$button;
-        };
-
-        $('#insertAlbumPhotos_confirmBtn').click(function () {
-            var album_id = $('#insertAlbumPhotos_albumSelect').val();
-            if (album_id == 0) {
-                toastr.info("无相册，无法插入");
-            } else {
-                insertPhotosFromCloud(album_id);
-            }
-        });
-
-        // 新建一行
-        var nextLine = function (context) {
-            var layoutInfo = context.layoutInfo;
-            var $editable = layoutInfo.editable;
-            var ui = $.summernote.ui;
-            var button = ui.button({
-                contents: '新建一行',
-                tooltip: '从底部插入一行',
-                click: function () {
-                    var detail = $("#article_edit").summernote('code');
-                    $("#article_edit").summernote('code', detail + "<br>Next Line");
-                    //$('#article_edit').summernote('insertText', 'hello world');
-                    toastr.success("Next Line Ready");
+            },
+            imageSetToCover: {
+                icon: '',
+                setImageToCoverCall: function ($img, context) {
+                    $img.attr('data-cover', 'true');
+                    pointer.summaryEditor.summernote('code', $img.prop("outerHTML"));
                 }
-            });
-            this.$button = button.render();
-            return this.$button;
-        };
-
-        //自定义的编辑器
-        $("#article_edit").summernote({
-            lang: "zh-CN",
-            height: 450,
+            },
+            imageUploadFromURL: {
+                icon: '',
+                uploadImageFromURLCall: function ($img, context) {
+                    return $.Deferred(function (dfd) {
+                        var originalImageUrl = $img.attr('src');
+                        var isInsideImg = $img.attr('data-inside-image') == "true" ? true : false;
+                        if (isInsideImg) {
+                            toastr.success("已经是本站服务器图片了，无须再下载！");
+                            dfd.reject("已经是本站服务器图片了，无须再下载！");
+                            return;
+                        }
+                        uploadImageFromURL(originalImageUrl, function (data) {
+                            // 修改节点
+                            var imgLoadUrl = data.image_cdn_url;
+                            $img.attr('data-relative-path', data.image_url);
+                            $img.attr('data-filename', data.image_url.match(/^.*\/([^/]+)$/)[1]);
+                            $img.attr('data-raw-width', "" + data.width);
+                            $img.attr('data-raw-height', "" + data.height);
+                            // 添加不是网络引用图片标记
+                            $img.attr('data-inside-image', "true");
+                            dfd.resolve(imgLoadUrl);
+                            setTimeout(function () {
+                                if (!window.confirm("点确认完成修改，点取消还原为网络图片")) {
+                                    deleteImage(imgLoadUrl, true, false);
+                                    $img.removeAttr("data-inside-image");
+                                    $img.attr('src', originalImageUrl);
+                                }
+                            }, 2000);
+                        });
+                    });
+                }
+            },
+            cloudPhotosInsert: {
+                icon: '<i class="fa fa-cloud" /> ',
+                dialogShapeOptions: ['', 'img-responsive', 'img-rounded', 'img-circle', 'img-thumbnail'],
+                dialogClassName: "note-cloud-photos-insert-dialog",
+                loadAlbumsCall: function (context) {
+                    return $.Deferred(function (dfd) {
+                        $.get("photo.api?method=getAlbumList", {"user.uid": login_handle.getCurrentUserId()}, function (response) {
+                            if (response.status == 200) {
+                                dfd.resolve(response.data.albums);
+                            } else {
+                                toastr.error(response.message, "加载相册列表错误");
+                                console.warn("Error Code: " + response.status);
+                                dfd.reject(response.message);
+                            }
+                        });
+                    });
+                },
+                loadAlbumCall: function (album_id, context) {
+                    return $.Deferred(function (dfd) {
+                        $.get("photo.api?method=getAlbum", {"id": album_id, "mount": true, "photos": true}, function (response) {
+                            if (response.status == 200) {
+                                response.data.album.cdn_path_prefix = response.data.cdn_path_prefix;
+                                dfd.resolve(response.data.album);
+                            } else {
+                                toastr.error(response.message, "加载相册错误");
+                                console.warn("Error Code: " + response.status);
+                                dfd.reject(response.message);
+                            }
+                        });
+                    });
+                },
+                buildCloudPhotosInsertHtmlCall: function (album, className, size, context) {
+                    return $.Deferred(function (dfd) {
+                        var cdn_path_prefix = album.cdn_path_prefix;
+                        var photosHtml = '';
+                        for (var i = 0; i < size; i++) {
+                            var photo = album.photos[i];
+                            photosHtml += '<img ' + (className ? ('class="' + className + '" ') : '') + 'src="' + photo.path + '" ';
+                            photosHtml += 'data-filename="' + photo.path.substring(photo.path.lastIndexOf('/') + 1) + '" ';
+                            photosHtml += 'data-relative-path="' + photo.path.replace(cdn_path_prefix, "") + '" ';
+                            photosHtml += 'data-raw-width="' + photo.width + '" ';
+                            photosHtml += 'data-raw-height="' + photo.height + '" ';
+                            photosHtml += 'data-photo-id="' + photo.photo_id + '" ';
+                            photosHtml += 'data-album-id="' + photo.album_id + '" ';
+                            photosHtml += 'title="' + photo.name + '/' + photo.description + '" ';
+                            photosHtml += 'data-inside-image="true" ';
+                            photosHtml += 'data-cloud-image="true" ';
+                            photosHtml += 'style="width: 100%;"/>';
+                        }
+                        dfd.resolve(photosHtml);
+                    });
+                },
+            },
             nugget: {
                 list: [ // list of your nuggets
                     '[[code nugget 1]]',
@@ -347,20 +1203,6 @@
                 limitDisplay: 'both', // text|html|both
                 limitStop: false // true/false
             },
-            /*uploadcare: {
-             // button name (default is Uploadcare)
-             buttonLabel: '',//'Image / file',
-             // font-awesome icon name (you need to include font awesome on the page)
-             buttonIcon: 'cloud',//'picture-o',
-             // text which will be shown in button tooltip
-             tooltipText: 'Upload files or video or something',
-
-             // uploadcare widget options, see https://uploadcare.com/documentation/widget/#configuration
-             publicKey: '2b1b893903c8005f279e', // set your API key
-             crop: 'free',
-             tabs: 'all',
-             multiple: true
-             },*/
             toolbar: [
                 //[groupname, [button list]]
                 ['style', ['style', 'paperSize']],
@@ -374,24 +1216,17 @@
                 ['insert', ['hr', 'link', 'picture', 'video']],
                 ['table', ['table']],
                 ['Misc', ['fullscreen', 'codeview', 'undo', 'redo', 'help']],
-                ['ud_group_1', ['insertcode', 'insertAlbumPhotos']],
-                ['ud_group_2', ['nextLine', 'cleaner']],
+                ['ud_group_1', ['codeInsert', 'cloudPhotosInsert']],
+                ['ud_group_2', ['newLineAdd', 'cleaner']],
                 ['ud_group_3', ['sDraftsLoad', 'sDraftsSave']],
+                ['ud_group_4', ['findnreplace']],
             ],
-            buttons: {
-                'insertcode': insertcode,
-                'resetImgSize': resetImgSize,
-                'localimage': localimage,
-                'coverimage': coverimage,
-                'insertAlbumPhotos': insertAlbumPhotos,
-                'nextLine': nextLine
-            },
             popover: {
                 image: [
                     ['custom', ['imageTitle', 'imageAttributes', 'imageShapes']],
-                    ['imagesize', ['resetImgSize', 'imageSize100', 'imageSize50', 'imageSize25']],
+                    ['imagesize', ['imageResize', 'imageSize100', 'imageSize50', 'imageSize25']],
                     ['float', ['floatLeft', 'floatRight', 'floatNone']],
-                    ['remove', ['localimage', 'coverimage', 'removeMedia']]
+                    ['remove', ['imageUploadFromURL', 'imageSetToCover', 'removeMedia']]
                 ],
                 link: [
                     ['link', ['linkDialogShow', 'unlink']]
@@ -411,34 +1246,32 @@
             dialogsInBody: false,
             dialogsFade: true,
             callbacks: {
-                onImageUpload: function (filesJson) {
+                onImageUpload: function (selectFiles) {
                     var files = [];
-                    $.each(filesJson, function (index, file) {
+                    $.each(selectFiles, function (index, file) {
                         files.push(file);
                     });
                     // 可以同时上传多个图片
                     files.sort(SortLikeWin);
-                    sendFile(files);
+                    uploadImages(files);
                 },
                 onMediaDelete: function ($target, $editable) {
                     // 删除图片
-                    var image = $editable.data('target');
-                    deleteFile(image);
+                    if ($target.prop("tagName") == "IMG") {
+                        var $img = $target;
+                        var imgUrl = $img.attr("src");
+                        var isInsideImg = $img.attr('data-inside-image') == "true" ? true : false;
+                        var isCloudImg = $img.attr('data-cloud-image') == "true" ? true : false;
+                        deleteImage(imgUrl, isInsideImg, isCloudImg);
+                    }
                 },
                 onDialogShown: function () {
-                    /*
-                     toastr.info("点击选择图片时可能会卡住，要等一下，不要重复点！" +
-                     "当连续弹出来或其他bug刷新一下页面.","提示",{"timeOut" : 10000});
-                     */
                 }
             }
         });
 
-        $('#article_edit').on('summernote.change', function (we, contents, $editable) {
-            //console.log('summernote\'s content is changed.');
-        });
-
-        $("#article_summary").summernote({
+        // summary 编辑器
+        pointer.summaryEditor.summernote({
             lang: "zh-CN",
             cleaner: {
                 action: 'button', // both|button|paste 'button' only cleans via toolbar button, 'paste' only clean when pasting content, both does both options.
@@ -456,201 +1289,159 @@
             }
         });
 
-    });
+    };
 
-
-    //上传图片
-    function sendFile(files, index) {
-        index = index || 0;
-
-        if (files.length === 0) {
-            toastr.error("图片数量为0！", "", {progressBar: false});
-            return;
-        }
-        var file = files[index];
-        //检查大小
-        if (config.maxUploadSize != -1 && file.size > config.maxUploadSize) {
-            toastr.error(file['name'] + " 换个小的，最大" + (config.maxUploadSize / (1024 * 1024)) + "M", "别丢个这么大的图片给我a", {
-                timeOut: 0,
-                progressBar: false
-            });
-            return;
-        }
-
-        var filename = false;
-        try {
-            filename = file['name'];
-        } catch (e) {
-            filename = false;
-        }
-        //以上防止在图片在编辑器内拖拽引发第二次上传导致的提示错误
-        var ext = filename.substr(filename.lastIndexOf("."));
-        //ext = ext.toUpperCase();
-        var timestamp = new Date().getTime();
-        var name = timestamp + "_" + $('body').attr('uid') + "_" + "article" + ext;
-
-        var data = new FormData();
-        data.append("file", file);
-        data.append("fileName", name);
-        data.append("isImage", "true");
-        //name是文件名，自己随意定义
-        file['name'] = name;
-
-        var notify_uploading = toastr.info("正在上传图片" + ( (index === 0 && files.length === 1) ? "" : "第" + (index + 1) + "张" ), "提示", {
+    // 批量上次图片
+    function uploadImages(files) {
+        var uploadNotifyElement = common_utils.notify({
             "progressBar": false,
             "hideDuration": 0,
+            "showDuration": 0,
             "timeOut": 0,
-            "closeButton": false
-        });
-        $.ajax({
-            data: data,
-            type: "POST",
-            url: "article.do?method=uploadAttachment", //图片上传出来的url，返回的是图片上传后的路径，http格式
-            contentType: false,
-            dataType: "json",
-            cache: false,
-            processData: false,
-            success: function (data) {
-                //data是返回的hash,key之类的值，key是定义的文件名
-                //把图片放到编辑框中。editor.insertImage 是参数
-                toastr.remove(notify_uploading, true);
-                if (data.flag == 200) {
-                    index++;
-                    if (index > files.length - 1) {
-                        toastr.success("上传服务器成功,正在加载", "提示", {"progressBar": true});
-                    }
-                    var imgLoadUrl = $("#staticPath").attr("href") + (data.image_url).toString();
-
-                    //插入节点
-                    $('#article_edit').summernote('editor.insertImage', imgLoadUrl, function ($image) {
-                        $image.css('width', "100%");
-                        $image.attr('data-filename', name);
-                        $image.attr('data-relativepath', (data.image_url).toString());
-                        //设置后台计算的图片实际尺寸
-                        //用于用户可能还原要图片上传前的尺寸
-                        $image.attr('data-rawwidth', "" + data.width);
-                        $image.attr('data-rawheight', "" + data.height);
-                        //添加不是网络引用图片标记
-                        $image.attr('internetImage', "false");
-
-                        //继续上传下一张
-                        //写这个回调方法里面会在图片加载完再执行
-                        //当然也可以 判断 img.complete 或 img.onload = function(){};
-                        //删除第0个元素 files.shift();
-                        if (index < files.length) {
-                            sendFile(files, index);
-                        }
-                    });
-                } else {
-                    toastr.error(data.info, "上传失败", {timeOut: 0});
-                    console.warn("Error Code: " + data.flag);
-                }
-            },
-            error: function () {
-                toastr.remove(notify_uploading, true);
-                toastr.error("上传失败,我不背锅", "未知错误", {timeOut: 0});
+            "closeButton": false,
+            "iconClass": "toast-success-no-icon",
+            "hideOnHover": false
+        }).success("正在上传第 1 张~", "", "notify_post_image_uploading");
+        var taskQueue = new common_utils.TaskQueue(function (task) {
+            var dfd = $.Deferred();
+            var file = task.file;
+            var fileName;
+            try {
+                fileName = file.name;
+            } catch (e) {
+                fileName = "xx.jpg";
             }
+            // 检查大小
+            if (config.maxUploadSize != -1 && file.size > config.maxUploadSize) {
+                var overSizeError = fileName + " 换个小的，最大" + (config.maxUploadSize / (1024 * 1024)) + "M";
+                toastr.error(overSizeError, "别丢个这么大的图片给我a", {timeOut: 0,progressBar: false});
+                dfd.reject(overSizeError);
+                return;
+            }
+            var formData = new FormData();
+            formData.append("file", file);
+            formData.append("fileName", fileName);
+            formData.append("isImage", "true");
+            uploadNotifyElement.find(".toast-message").text("正在上传第 " + (task.index + 1) + " 张~");
+            $.ajax({
+                url: "article.api?method=uploadAttachment",
+                data: formData,
+                type: "POST",
+                contentType: false,
+                cache: false,
+                processData: false,
+                success: function (response) {
+                    if (response.status == 200) {
+                        var data = response.data;
+                        var imgLoadUrl = data.image_cdn_url;
+                        // 插入节点
+                        pointer.mainEditor.summernote('editor.insertImage', imgLoadUrl, function ($img) {
+                            $img.css('width', "100%");
+                            $img.attr('data-filename', data.image_url.match(/^.*\/([^/]+)$/)[1]);
+                            $img.attr('data-relative-path', data.image_url);
+                            // 设置后台计算的图片实际尺寸
+                            // 用于用户可能还原要图片上传前的尺寸
+                            $img.attr('data-raw-width', "" + data.width);
+                            $img.attr('data-raw-height', "" + data.height);
+                            // 添加不是网络引用图片标记
+                            $img.attr('data-inside-image', "true");
+                            // 继续上传下一张
+                            // 写这个回调方法里面会在图片加载完再执行
+                            dfd.resolve();
+                        });
+                    } else {
+                        dfd.reject(response.message);
+                        toastr.error(response.message, "错误", {"progressBar": false});
+                        console.warn("Error Code: " + response.status);
+                    }
+                    if (response.status != 200 || task.isLastOne) {
+                        common_utils.removeNotify("notify_post_image_uploading");
+                        toastr.success("上传服务器完毕, 正在加载", "提示", {"progressBar": true});
+                    }
+                },
+                error: function (XHR, TS) {
+                    common_utils.removeNotify("notify_post_image_uploading");
+                    dfd.reject(TS);
+                    toastr.error(TS, "错误", {"progressBar": false});
+                    console.warn("Error Code: " + TS);
+                }
+            });
+            return dfd;
         });
+        $.each(files, function (i, file) {
+            taskQueue.append({
+                "file": file,
+                "isLastOne": (i == (files.length - 1)),
+                "index": i
+            });
+        })
     }
 
-    //互联网图片本地化
-    function localImage($image) {
-        var originalImageUrl = $image.attr('src');
-
-        var internet_url = $image.attr('src');
-        if (internet_url.substr(0, 1) == "/") {
-            internet_url = window.location.protocol + "//" + window.location.host + internet_url;
+    // 互联网图片本地化
+    function uploadImageFromURL(internetUrl, call) {
+        if (internetUrl.substr(0, 1) == "/") {
+            internetUrl = window.location.protocol + "//" + window.location.host + internetUrl;
         }
-        //internet_url = encodeURIComponent(internet_url);
-
-        var ext = internet_url.substr(internet_url.lastIndexOf("."));
-        //ext = ext.toUpperCase();
-        var timestamp = new Date().getTime();
-        var name = timestamp + "_" + $('body').attr('uid') + "_" + "article" + ext;
-
+        var ext = (internetUrl.lastIndexOf(".") == -1 ? ".jpg" : internetUrl.substr(internetUrl.lastIndexOf(".")));
         var notify_downloading = toastr.info("服务器正在下载图片", "提示", {
             "progressBar": false,
             "hideDuration": 0,
+            "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
         });
         $.ajax({
-            data: {"fileName": name, "url": internet_url},
+            data: {"fileName": "download" + ext, "url": internetUrl},
             type: "POST",
-            url: "article.do?method=localImage",
+            url: "article.api?method=uploadImageFromURL",
             dataType: "json",
-            success: function (data) {
+            success: function (response) {
                 toastr.remove(notify_downloading, true);
-                if (data.flag == 200) {
+                if (response.status == 200) {
+                    var data = response.data;
                     toastr.success("服务器下载成功,正在加载", "提示", {"progressBar": true});
-                    //修改节点
-                    var imgLoadUrl = $("#staticPath").attr("href") + (data.image_url).toString();
-                    $image.attr('src', imgLoadUrl);
-                    $image.attr('data-relativepath', (data.image_url).toString());
-                    $image.attr('data-filename', name);
-                    $image.attr('data-rawwidth', "" + data.width);
-                    $image.attr('data-rawheight', "" + data.height);
-                    //添加不是网络引用图片标记
-                    $image.attr('internetImage', "false");
-
-                    restoreImage($image, originalImageUrl);
+                    call(data);
                 } else {
-                    toastr.error(data.info, "下载失败");
-                    console.warn("Error Code: " + data.flag);
+                    toastr.error(response.message, "下载失败");
+                    console.warn("uploadImageFromURL Error Code: " + response.status);
                 }
             },
             error: function () {
                 toastr.remove(notify_downloading, true);
-                toastr.error("服务器错误");
+                toastr.error("uploadImageFromURL 服务器错误");
+                console.warn("uploadImageFromURL 服务器错误");
             }
         });
     }
 
-    function restoreImage($image, originalImageUrl) {
-        setTimeout(function () {
-            if (!window.confirm("点确认完成修改，点取消还原为网络图片")) {
-                deleteFile($image);
-                $image.attr('internetImage', "true");
-                $image.attr('src', originalImageUrl);
-            }
-        }, 2000);
-    }
-
-    //删除文件
-    function deleteFile(image) {
-        var coverSrc = $($('#article_summary').summernote('code')).find('img').attr('src');
-        //此图片为封面图片则一起把摘要清空
-        //$image.getAttribute('cover') === "true"
-        if (coverSrc == $(image).attr("src")) {
-            $('#article_summary').summernote('code', "");
+    // 删除文件
+    function deleteImage(imgUrl, isInsideImg, isCloudImg) {
+        var coverUrl = $(pointer.summaryEditor.summernote('code')).find('img').attr('src');
+        // 此图片为封面图片则一起把摘要清空
+        if (coverUrl == imgUrl) {
+            pointer.summaryEditor.summernote('code', '');
         }
-
-        //网络引用图片则不提交
-        if ($(image).attr('internetImage') == 'false') {
-
-            //如果是引用的相册图片 直接返回
-            if ($(image).attr("cloudImage") == "true") {
+        // 网络引用图片则不提交
+        if (isInsideImg) {
+            // 如果是引用的相册图片 直接返回
+            if (isCloudImg) {
                 toastr.success("相册引用图片删除成功！");
                 toastr.success("如需完全删除，请至相册！");
                 return;
             }
-
-            //得到图片url
-            var image_url = $(image).attr('src');
-            //image_url = encodeURIComponent(image_url);
             $.ajax({
-                url: "article.do?method=deleteAttachment",
-                data: {"file_url": image_url, "isImage": true},
+                url: "article.api?method=deleteAttachment",
+                data: {"file_url": imgUrl, "isImage": true},
                 type: "POST",
                 dataType: 'json',
-                success: function (data) {
-                    if (data.flag == 200) {
+                success: function (response) {
+                    if (response.status == 200) {
                         toastr.success("图片服务器删除成功！");
-                    } else if (data.flag == 404) {
+                    } else if (response.status == 404) {
                         toastr.success("网络引用图片删除成功！");
                     } else {
-                        toastr.error(data.info, "删除失败！");
-                        console.warn("Error Code: " + data.flag);
+                        toastr.error(response.message, "删除失败！");
+                        console.warn("Error Code: " + response.status);
                     }
                 },
                 error: function () {
@@ -660,44 +1451,6 @@
         } else {
             toastr.success("网络引用图片删除成功！");
         }
-    }
-
-    /**
-     * 从用户Cloud相册中插入图片
-     * @param album_id
-     */
-    function insertPhotosFromCloud(album_id) {
-        $.get("photo.do?method=albumByAjax", {"id": album_id, "mount": true}, function (data) {
-            if (data.flag == 200) {
-                var editor = $('#article_edit');
-                var photos = data.album.photos;
-                var cloudHost = $('#cloudPath').attr('href');
-                var imgs_str = '';
-                $(photos).each(function (index, photo) {
-                    imgs_str += '<img src="' + cloudHost + photo.path + '" ';
-                    imgs_str += 'data-filename="' + photo.path.substring(photo.path.lastIndexOf('/') + 1) + '" ';
-                    imgs_str += 'data-relativepath="' + photo.path + '" ';
-                    imgs_str += 'data-rawwidth="' + photo.width + '" ';
-                    imgs_str += 'data-rawheight="' + photo.height + '" ';
-                    imgs_str += 'photo-id="' + photo.photo_id + '" ';
-                    imgs_str += 'album-id="' + photo.album_id + '" ';
-                    imgs_str += 'title="' + photo.name + '/' + photo.description + '" ';
-                    imgs_str += 'internetImage="false" ';
-                    imgs_str += 'cloudImage="true" ';
-                    imgs_str += 'style="width: 100%" />';
-                });
-                var div = document.createElement("div");
-                div.className = "album_photos";
-                div.innerHTML = imgs_str;
-                editor.summernote('restoreRange');
-                editor.summernote('insertNode', div);
-                $('#insertAlbumPhotos_modal').modal("hide");
-                toastr.success("共插入" + photos.length + "张图片", "插入成功")
-            } else {
-                toastr.error(data.info, "加载错误");
-                console.warn("Error Code: " + data.flag);
-            }
-        });
     }
 
     /**
@@ -759,9 +1512,13 @@
         }
     }
 
+    initEditorPlugin();
+
     var context = {
-        "config": config
-    }
+        "pointer": pointer,
+        "config": config,
+        "init": init,
+    };
 
     return context;
 });

@@ -11,24 +11,29 @@
 
     var initPageJump = function () {
         var params = common_utils.parseURL(document.location.href).params;
-        var page = "article.do?method=list";
+        var page = "";
         $.each(params, function (key, value) {
-            if (key != "method" && key != "jumpPage") {
+            if (key != "method" && key != "page") {
                 page += "&" + key + "=" + value;
             }
         });
         $(".page-navigator").find(".page-trigger").each(function (i, a) {
-            a.href = page + "&jumpPage=" + a.getAttribute("page");
+            if (page) {
+                a.href = "a/list" + "?" + page.substring(1) + "&page=" + a.getAttribute("page");
+            } else {
+                a.href = "a/list" + "?" + "page=" + a.getAttribute("page");
+            }
         });
     };
 
     var loadTopArticle = function () {
         $.ajax({
-            url: 'article.do?method=listTops',
+            url: 'article.api?method=getTopArticles',
             type: 'GET',
-            success: function (data) {
-                if (data != null && data != "") {
-                    data.sort(function (a1, a2) {
+            success: function (response) {
+                if (response.status == 200) {
+                    var articles = response.data.articles;
+                    articles.sort(function (a1, a2) {
                         var index = a2.top - a1.top;
                         if (index == 0) {
                             return a2.aid - a1.aid;
@@ -38,15 +43,15 @@
                     });
                     var html = "";
                     var nav_tab = '';
-                    $(data).each(function (i, article) {
+                    $.each(articles, function (i, article) {
                         nav_tab += '<li class="' + (i == 0 ? "active" : "") + '"><a data-toggle="tab" href="#tab-' + i + '" aria-expanded="' + (i == 0 ? "true" : "false") + '">' + (i + 1) + '</a></li>';
                         html += '<div id="tab-' + i + '" class="tab-pane ' + (i == 0 ? "active" : "") + '">';
                         html += '<div class="panel-body" style="width: 90%;">';
-                        html += '<h2 class="post-title" itemprop="name headline"><p class="ui red ribbon label" style="font-size: 1rem;margin-top:-0.6em"><a target="_blank" style="color:white;" href="article.do?method=list&recommend=1">推荐文章</a></p>';
-                        html += '<a itemtype="url" target="_blank" href="article.do?method=detail&aid=' + article.aid + '" article-top="' + article.top + '">' + article.title + '</a></h2>';
+                        html += '<h2 class="post-title" itemprop="name headline"><p class="ui red ribbon label" style="font-size: 1rem;margin-top:-0.6em"><a target="_blank" style="color:white;" href="a/list?recommend=1">推荐文章</a></p>';
+                        html += '<a itemtype="url" target="_blank" href="a/detail/' + article.aid + '" article-top="' + article.top + '">' + article.title + '</a></h2>';
                         html += '<ul class="post-meta">';
-                        html += '<li> 作者: <a href="user.do?method=home&uid=' + article.author.uid + '" target="_blank"> ' + article.author.nickname + '</a> </li>';
-                        html += '<li>分类: <a href="article.do?method=list&category.atid=' + article.category.atid + '">' + article.category.atname + '</a></li>';
+                        html += '<li> 作者: <a href="u/' + article.author.uid + '/home" target="_blank"> ' + article.author.nickname + '</a> </li>';
+                        html += '<li>分类: <a href="a/list?category.atid=' + article.category.atid + '">' + article.category.atname + '</a></li>';
                         html += '<li><time title="更新时间：' + article.update_time + '" datetime="" itemprop="datePublished">' + article.create_time + '</time></li>';
                         html += '</ul><div class="post-content" itemprop="articleBody">';
                         html += article.summary + '</div></div></div>';
@@ -71,7 +76,7 @@
         var load_condition = {};
         $.each(params, function (key, value) {
             params[key] = value && decodeURIComponent(decodeURIComponent(value));
-            if (key != "method" && key != "jumpPage") {
+            if (key != "method" && key != "page") {
                 load_condition[key] = params[key];
             }
         });
@@ -108,23 +113,36 @@
         }
     };
 
+    // 图片加载失败显示默认图片
+    function replaceLoadErrorImgToDefault(parentNode) {
+        $(parentNode).find("img").one("error", function (e) {
+            $(this)
+                .attr("src", $("#cloudPath").attr("href") + "res/img/img_load_error_default.jpg")
+                .attr("title", "该图片加载失败~");
+        });
+    }
+
     /* ********** main ************* */
 
-    if (/\/\?tdsourcetag=[\w]+$/.test(document.location.href)) { // 对付腾讯
+    if (/[&?]tdsourcetag=[\w]+/.test(document.location.search)) { // 对付腾讯
         history.replaceState(
             null,
             document.title,
-            $("#basePath").attr("href")
+            common_utils.removeParamForURL("tdsourcetag")
         );
     }
 
-    initPageJump();
+    replaceLoadErrorImgToDefault($("#main"));
+
     //为首页（最首页）则查找置顶文章
-    if (/^.*(imcoder.site\/?|(\d+\.){3}\d+\/?|method=list|localhost.*\/)$/.test(document.location.href)) {
+    if ((document.location.search == "" || document.location.search == "?page=1")) {
         loadTopArticle();
     } else {    // 没有就隐藏置顶栏
         $('#top').hide();
     }
+
+    initPageJump();
+
     showSearchCondition();
 
 });

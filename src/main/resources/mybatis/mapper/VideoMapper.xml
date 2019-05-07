@@ -5,16 +5,18 @@
 <mapper namespace="video">
 
     <!-- 插入视频 -->
-    <insert id="saveVideo" parameterType="video" useGeneratedKeys="true" keyProperty="video_id">
-        insert into video (uid, cover_id, name, description, tags, source_type, path, code, width, height, size, video_type, upload_time, originName, refer, permission, click)
+    <insert id="saveVideo" parameterType="video">
+        insert into video (video_id, uid, cover_id, name, description, tags, source_type, path, code, width, height,
+        size, video_type, upload_time, originName, refer, permission, rotate, click_count, like_count, comment_count)
         values
-        (#{user.uid},#{cover.photo_id},#{name},#{description},#{tags},#{source_type},#{path},#{code},#{width},#{height},#{size},#{video_type},
+        (#{video_id},
+        #{user.uid},#{cover.photo_id},#{name},#{description},#{tags},#{source_type},#{path},#{code},#{width},#{height},#{size},#{video_type},
         #{upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
-        ,#{originName}, #{refer}, #{permission}, 0)
+        ,#{originName}, #{refer}, #{permission}, #{rotate}, #{click_count}, #{like_count}, #{comment_count})
     </insert>
 
     <resultMap id="videoResultMap" type="video">
-        <result column="video_id" property="video_id"/>
+        <id column="video_id" property="video_id"/>
         <result column="name" property="name"/>
         <result column="description" property="description"/>
         <result column="tags" property="tags"/>
@@ -30,10 +32,18 @@
         <result column="originName" property="originName"/>
         <result column="refer" property="refer"/>
         <result column="permission" property="permission"/>
-        <result column="click" property="click"/>
+        <result column="rotate" property="rotate"/>
+        <result column="click_count" property="click_count"/>
+        <result column="like_count" property="like_count"/>
+        <result column="comment_count" property="comment_count"/>
+        <result column="accessed" property="accessed"/>
+        <result column="liked" property="liked"/>
+        <result column="commented" property="commented"/>
         <association column="uid" property="user" javaType="user">
             <result column="uid" property="uid"/>
             <result column="nickname" property="nickname"/>
+            <result column="sex" property="sex"/>
+            <result column="head_photo" property="head_photo"/>
         </association>
         <association column="cover_id" property="cover" javaType="photo">
             <result column="cover_id" property="photo_id"/>
@@ -43,19 +53,30 @@
             <result column="p_height" property="height"/>
             <result column="image_type" property="image_type"/>
         </association>
+        <collection property="subtitles" javaType="ArrayList" column="st_id" ofType="subtitle">
+            <id column="st_id" property="st_id"/>
+            <result column="st_name" property="name"/>
+            <result column="st_lang" property="lang"/>
+            <result column="st_mime_type" property="mime_type"/>
+            <result column="st_path" property="path"/>
+            <result column="st_upload_time" property="upload_time"/>
+            <result column="st_video_id" property="video_id"/>
+            <result column="st_uid" property="uid"/>
+        </collection>
     </resultMap>
 
     <select id="findVideoById" parameterType="video" resultMap="videoResultMap">
-        select v.video_id, v.uid , u.nickname, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
+        select v.video_id, v.uid , u.nickname, u.sex, u.head_photo, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
-        v.upload_time, v.originName, v.refer, v.permission, v.click
-        from ( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id
+        v.upload_time, v.originName, v.refer, v.permission, v.rotate, v.click_count, v.like_count, v.comment_count,
+        st.st_id, st.uid as st_uid, st.video_id as st_video_id, st.name as st_name, st.lang as st_lang, st.mime_type as st_mime_type, st.path as st_path, st.upload_time as st_upload_time
+        from (( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id) left join video_subtitle st on v.video_id = st.video_id
         <where>
             <choose>
-                <when test="video_id > 0">
+                <when test="video_id != null and video_id > 0">
                     v.video_id = #{video_id}
                 </when>
-                <when test="cover != null and cover.photo_id > 0">
+                <when test="cover != null and cover.photo_id != null and cover.photo_id > 0">
                     v.cover_id = #{cover.photo_id}
                 </when>
                 <otherwise>
@@ -63,58 +84,417 @@
                 </otherwise>
             </choose>
         </where>
-        limit 1
     </select>
 
     <select id="findVideoListByCoverIdArray" parameterType="hashMap" resultMap="videoResultMap">
-        select v.video_id, v.uid , u.nickname, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
+        <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
+        select v.video_id, v.uid , u.nickname, u.sex, u.head_photo, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
-        v.upload_time, v.originName, v.refer, v.permission, v.click
-        from ( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id
+        v.upload_time, v.refer, v.permission, v.rotate, v.click_count, v.like_count, v.comment_count,
+        <if test="is_login">
+            (case when v.uid = #{loginUser.uid} then v.originName else null end) as originName,
+        </if>
+        st.st_id, st.uid as st_uid, st.video_id as st_video_id, st.name as st_name, st.lang as st_lang, st.mime_type as st_mime_type, st.path as st_path, st.upload_time as st_upload_time
+        <if test="is_login">
+            , (case when (vah.vah_id is not null) then true else false end) as accessed
+            , (case when (vah.is_like is not null and vah.is_like != 0) then true else false end) as liked
+        </if>
+        from ((( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id) left join video_subtitle st on v.video_id = st.video_id)
+        <if test="is_login">
+            left join video_access_history vah on (v.video_id = vah.video_id and vah.uid = #{loginUser.uid})
+        </if>
         <where>
-            <choose>
-                <when test="loginUser != null">
-                    (
-                    ( v.permission = 0 )
-                    OR
-                    ( v.permission = 1 and (v.uid = #{loginUser.uid} or v.uid in (select f.uid from friends f where
-                    f.fid = #{loginUser.uid})) )
-                    OR
-                    ( v.permission = 2 and v.uid = #{loginUser.uid} )
-                    )
-                </when>
-                <otherwise>
-                    v.permission = 0
-                </otherwise>
-            </choose>
             <choose>
                 <when test="coverList != null and coverList.size > 0">
                     and v.cover_id in
                     <foreach collection="coverList" index="index" item="item" separator="," open="(" close=")">
-                        #{item,jdbcType=INTEGER}
+                        #{item,jdbcType=BIGINT}
                     </foreach>
                 </when>
                 <otherwise>
                     and 1 != 1
                 </otherwise>
             </choose>
+            <choose>
+                <when test="is_login">
+                    and (
+                    v.uid = #{loginUser.uid}
+                    or
+                    (
+                    (v.permission = 0 or v.permission = 1)
+                    or
+                    (v.permission = 2 or v.permission = 3)
+                    or
+                    ((v.permission = 4 or v.permission = 5) and v.uid in (select following.fuid from user_follow following where following.uid = #{loginUser.uid}))
+                    or
+                    ((v.permission = 6 or v.permission = 7) and v.uid in (select follower.uid from user_follow follower where follower.fuid = #{loginUser.uid}))
+                    or
+                    ((v.permission = 8 or v.permission = 9) and v.uid in (select friend.uid from friends friend where friend.fid = #{loginUser.uid}))
+                    )
+                    )
+                </when>
+                <otherwise>
+                    and (v.permission = 0 or v.permission = 1)
+                </otherwise>
+            </choose>
         </where>
+    </select>
+
+    <select id="findVideoList" parameterType="hashMap" resultMap="videoResultMap">
+        <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
+        <bind name="is_base_user_videos"
+              value="base != null and base == 'user_videos' and video != null and video.user != null and video.user.uid != null and video.user.uid > 0"/>
+        <bind name="is_base_album_detail"
+              value="base != null and base == 'album_detail' and video != null and video.cover != null and video.cover.album_id != null and video.cover.album_id > 0"/>
+        <bind name="is_base_user_likes" value="is_login and base != null and base == 'user_likes' and video != null and video.liked"/>
+        <bind name="is_base_user_history" value="is_login and base != null and base == 'user_history' and video != null and video.accessed"/>
+        <bind name="is_base_video_tag" value="base != null and base == 'video_tag' and video != null and video.tags != null and video.tags != ''"/>
+        <bind name="is_and_logic_conn" value="logic_conn == null or logic_conn == 'and'"/>
+        <bind name="is_as_user_likes_query" value="is_base_user_likes or (is_login and is_and_logic_conn and video != null and video.liked)"/>
+        <bind name="is_as_user_history_query" value="is_base_user_history or (is_login and is_and_logic_conn and video != null and video.accessed)"/>
+        select v.video_id, v.uid , u.nickname, u.sex, u.head_photo, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
+        v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
+        v.upload_time, v.refer, v.permission, v.rotate, v.click_count, v.like_count, v.comment_count,
+        <if test="is_login">
+            (case when v.uid = #{loginUser.uid} then v.originName else null end) as originName,
+        </if>
+        st.st_id, st.uid as st_uid, st.video_id as st_video_id, st.name as st_name, st.lang as st_lang, st.mime_type as st_mime_type, st.path as st_path, st.upload_time as st_upload_time
+        <if test="is_login">
+            , (case when (vah.vah_id is not null) then true else false end) as accessed
+            , (case when (vah.is_like is not null and vah.is_like > 0) then true else false end) as liked
+        </if>
+        from (((video v left join user u on v.uid = u.uid) left join photo p on v.cover_id = p.photo_id) left join video_subtitle st on v.video_id = st.video_id)
+        <if test="is_login">
+            left join video_access_history vah on (v.video_id = vah.video_id and vah.uid = #{loginUser.uid})
+        </if>
+        <where>
+            <if test="video == null">
+                <if test="!is_and_logic_conn">
+                    and (1 != 1)
+                </if>
+                <if test="feed_flow_allow_show_lowest_level != 0">
+                    and (
+                    <if test="feed_flow_allow_show_lowest_level == '-1'">
+                        (u.gid = -1)
+                    </if>
+                    <if test="feed_flow_allow_show_lowest_level > 0">
+                        (u.gid = -1 or u.gid >= #{feed_flow_allow_show_lowest_level})
+                    </if>
+                    <if test="is_login">
+                        or (u.uid = #{loginUser.uid})
+                        <if test="feed_flow_allow_following_show">
+                            or (u.uid in (select feed_follow.fuid from user_follow feed_follow where feed_follow.uid = #{loginUser.uid}))
+                        </if>
+                    </if>
+                    )
+                </if>
+            </if>
+            <if test="video != null">
+                <if test="is_base_user_videos">
+                    and (v.uid = #{video.user.uid})
+                </if>
+                <if test="is_base_album_detail">
+                    <bind name="search_like_album_mount" value="'%' + album_mount  + '%'"/>
+                    and (
+                    p.album_id = #{video.cover.album_id}
+                    or
+                    (p.uid = (select au.uid from album au where au.album_id = #{video.cover.album_id}) and p.tags like #{search_like_album_mount})
+                    )
+                </if>
+                <if test="is_base_user_likes">
+                    and (vah.is_like is not null and vah.is_like > 0)
+                </if>
+                <if test="is_base_user_history">
+                    and (vah.vah_id is not null)
+                </if>
+                <if test="is_base_video_tag">
+                    and (v.tags rlike '${video.tags}')
+                </if>
+                <choose>
+                    <when test="!is_and_logic_conn">
+                        and ( (1 != 1)
+                        <if test="video.video_id != null and video.video_id > 0">
+                            or v.video_id = #{video.video_id}
+                        </if>
+                        <if test="video.cover != null">
+                            <if test="!is_base_album_detail and (video.cover.album_id != null and video.cover.album_id > 0)">
+                                or p.album_id = #{video.cover.album_id}
+                            </if>
+                        </if>
+                        <if test="!is_base_user_videos and video.user != null and video.user.uid != null and video.user.uid > 0">
+                            or v.uid = #{video.user.uid}
+                        </if>
+                        <if test="video.name != null and video.name != ''">
+                            <bind name="search_like_video_name" value="'%' + video.name  + '%'"/>
+                            or v.name like #{search_like_video_name}
+                        </if>
+                        <if test="video.description != null and video.description != ''">
+                            <bind name="search_like_video_description" value="'%' + video.description  + '%'"/>
+                            or v.description like #{search_like_video_description}
+                        </if>
+                        <if test="!is_base_video_tag and video.tags != null and video.tags != ''">
+                            or (v.tags rlike '${video.tags}')
+                        </if>
+                        <if test="video.width > 0">
+                            or v.width >= #{video.width}
+                        </if>
+                        <if test="video.height > 0">
+                            or v.height >= #{video.height}
+                        </if>
+                        <if test="video.size > 0">
+                            or v.size >= #{video.size}
+                        </if>
+                        <if test="video.video_type != null and video.video_type != '' ">
+                            <bind name="search_like_video_video_type" value="'%' + video.video_type  + '%'"/>
+                            or v.video_type like #{search_like_video_video_type}
+                        </if>
+                        <if test="video.upload_time != null">
+                            or v.upload_time >
+                            #{video.upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+                        </if>
+                        <if test="video.source_type != null">
+                            or v.source_type = #{video.source_type}
+                        </if>
+                        <if test="video.path != null and video.path != ''">
+                            <bind name="search_like_video_video_path" value="'%' + video.path  + '%'"/>
+                            or v.path like #{search_like_video_video_path}
+                        </if>
+                        <if test="video.code != null and video.code != ''">
+                            <bind name="search_like_video_video_code" value="'%' + video.code  + '%'"/>
+                            or v.code like #{search_like_video_video_code}
+                        </if>
+                        <if test="is_login and video.originName != null and video.originName != ''">
+                            <bind name="search_like_video_video_originName" value="'%' + video.originName  + '%'"/>
+                            or (v.uid = #{loginUser.uid} and v.originName #{search_like_video_video_originName})
+                        </if>
+                        <if test="video.refer != null and video.refer != ''">
+                            <bind name="search_like_video_video_refer" value="'%' + video.refer  + '%'"/>
+                            or v.refer like #{search_like_video_video_refer}
+                        </if>
+                        <if test="video.rotate != null">
+                            or v.rotate = #{video.rotate}
+                        </if>
+                        <if test="loginUser != null and loginUser.uid != null">
+                            <if test="!is_base_user_likes and video.liked">
+                                or (vah.is_like is not null and vah.is_like > 0)
+                            </if>
+                            <if test="!is_base_user_history and video.accessed">
+                                or (vah.vah_id is not null)
+                            </if>
+                        </if>
+                        )
+                    </when>
+                    <otherwise>
+                        and ( (1=1)
+                        <if test="video.video_id != null and video.video_id > 0">
+                            and v.video_id = #{video.video_id}
+                        </if>
+                        <if test="video.cover != null">
+                            <if test="!is_base_album_detail and (video.cover.album_id != null and video.cover.album_id > 0)">
+                                and p.album_id = #{video.cover.album_id}
+                            </if>
+                        </if>
+                        <if test="!is_base_user_videos and video.user != null and video.user.uid != null and video.user.uid > 0">
+                            and v.uid = #{video.user.uid}
+                        </if>
+                        <if test="video.name != null and video.name != ''">
+                            <bind name="search_like_video_name" value="'%' + video.name  + '%'"/>
+                            and v.name like #{search_like_video_name}
+                        </if>
+                        <if test="video.description != null and video.description != ''">
+                            <bind name="search_like_video_description" value="'%' + video.description  + '%'"/>
+                            and v.description like #{search_like_video_description}
+                        </if>
+                        <if test="!is_base_video_tag and video.tags != null and video.tags != ''">
+                            and (v.tags rlike '${video.tags}')
+                        </if>
+                        <if test="video.width > 0">
+                            and v.width >= #{video.width}
+                        </if>
+                        <if test="video.height > 0">
+                            and v.height >= #{video.height}
+                        </if>
+                        <if test="video.size > 0">
+                            and v.size >= #{video.size}
+                        </if>
+                        <if test="video.video_type != null and video.video_type != ''">
+                            and v.video_type like concat('%', #{video.video_type} ,'%')
+                        </if>
+                        <if test="video.upload_time != null">
+                            and v.upload_time >
+                            #{video.upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+                        </if>
+                        <if test="video.source_type != null">
+                            and v.source_type = #{video.source_type}
+                        </if>
+                        <if test="video.path != null and video.path != ''">
+                            <bind name="search_like_video_video_path" value="'%' + video.path  + '%'"/>
+                            and v.path like #{search_like_video_video_path}
+                        </if>
+                        <if test="video.code != null and video.code != ''">
+                            <bind name="search_like_video_video_code" value="'%' + video.code  + '%'"/>
+                            and v.code like #{search_like_video_video_code}
+                        </if>
+                        <if test="is_login and video.originName != null and video.originName != ''">
+                            <bind name="search_like_video_video_originName" value="'%' + video.originName  + '%'"/>
+                            and (v.uid = #{loginUser.uid} and v.originName #{search_like_video_video_originName})
+                        </if>
+                        <if test="video.refer != null and video.refer != ''">
+                            <bind name="search_like_video_video_refer" value="'%' + video.refer  + '%'"/>
+                            and v.refer like #{search_like_video_video_refer}
+                        </if>
+                        <if test="video.rotate != null">
+                            and v.rotate = #{video.rotate}
+                        </if>
+                        <if test="loginUser != null and loginUser.uid != null">
+                            <if test="!is_base_user_likes and video.liked">
+                                and (vah.is_like is not null and vah.is_like > 0)
+                            </if>
+                            <if test="!is_base_user_history and video.accessed">
+                                and (vah.vah_id is not null)
+                            </if>
+                        </if>
+                        )
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="photo == null and !is_and_logic_conn">
+                and (1 != 1)
+            </if>
+            <choose>
+                <when test="is_login">
+                    <choose>
+                        <when test="is_as_user_likes_query or is_as_user_history_query">
+                            and (
+                            v.uid = #{loginUser.uid}
+                            or
+                            (
+                            (v.permission = 0 or v.permission = 1)
+                            or
+                            (v.permission = 2 or v.permission = 3)
+                            or
+                            ((v.permission = 4 or v.permission = 5) and v.uid in (select following.fuid from user_follow following where following.uid
+                            = #{loginUser.uid}))
+                            or
+                            ((v.permission = 6 or v.permission = 7) and v.uid in (select follower.uid from user_follow follower where follower.fuid =
+                            #{loginUser.uid}))
+                            or
+                            ((v.permission = 8 or v.permission = 9) and v.uid in (select friend.uid from friends friend where friend.fid =
+                            #{loginUser.uid}))
+                            )
+                            )
+                        </when>
+                        <otherwise>
+                            and (
+                            v.uid = #{loginUser.uid}
+                            or
+                            (
+                            (v.permission = 0)
+                            or
+                            (v.permission = 2)
+                            or
+                            ((v.permission = 4) and v.uid in (select following.fuid from user_follow following where following.uid =
+                            #{loginUser.uid}))
+                            or
+                            ((v.permission = 6) and v.uid in (select follower.uid from user_follow follower where follower.fuid = #{loginUser.uid}))
+                            or
+                            ((v.permission = 8) and v.uid in (select friend.uid from friends friend where friend.fid = #{loginUser.uid}))
+                            )
+                            )
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    and v.permission = 0
+                </otherwise>
+            </choose>
+        </where>
+        order by
+        <choose>
+            <when test="is_base_user_likes or is_base_user_history">
+                vah.last_access_time
+            </when>
+            <otherwise>
+                v.video_id
+            </otherwise>
+        </choose>
+        <choose>
+            <when test="order_type == 'desc'">
+                desc
+            </when>
+            <otherwise>
+                asc
+            </otherwise>
+        </choose>
+        <choose>
+            <when test="start >= 0 and size > 0">
+                limit #{start}, #{size}
+            </when>
+            <when test="start >= 0 and size == 0">
+                limit #{start}, 18446744073709551615
+            </when>
+        </choose>
     </select>
 
     <update id="updateVideo" parameterType="video">
         update video set cover_id = #{cover.photo_id}, name = #{name}, description = #{description}, tags = #{tags}, source_type = #{source_type}, path = #{path},
-         code = #{code}, width = #{width}, height = #{height}, size = #{size}, video_type = #{video_type}, originName = #{originName}, refer = #{refer}, permission = #{permission}
+         code = #{code}, width = #{width}, height = #{height}, size = #{size}, video_type = #{video_type}, originName = #{originName}, refer = #{refer}, permission = #{permission},
+         rotate = #{rotate}
         where video_id = #{video_id}
     </update>
 
     <!-- 点击量加1 -->
-    <update id="raiseVideoClickCount" parameterType="video">
-        update video set click = click + 1 where video_id = #{video_id}
+    <update id="updateVideoClickCount" parameterType="hashMap">
+        update video set click_count = (case when ((click_count + #{step}) > 0) then (click_count + #{step}) else 0 end)
+         where video_id = #{video.video_id}
     </update>
+
+    <!-- 点赞量加1 -->
+    <update id="updateVideoLikeCount" parameterType="hashMap">
+        update video set like_count = (case when ((like_count + #{step}) > 0) then (like_count + #{step}) else 0 end)
+        where video_id = #{video.video_id}
+    </update>
+
+    <!-- 评论量加1 -->
+    <update id="updateVideoCommentCount" parameterType="hashMap">
+        update video set comment_count = (case when ((comment_count + #{step}) > 0) then (comment_count + #{step}) else 0 end)
+        where video_id = #{video.video_id}
+    </update>
+
 
     <!-- 更新封面图片的image_type -->
     <update id="updateCoverImageType" parameterType="photo">
         update photo set image_type = #{image_type} where photo_id = #{photo_id}
     </update>
+
+    <!-- 字幕 start -->
+    <insert id="saveSubtitle" parameterType="subtitle">
+        insert into video_subtitle (st_id, uid, video_id, name, lang, mime_type, path, upload_time) values
+        (#{st_id}, #{uid}, #{video_id}, #{name}, #{lang}, #{mime_type}, #{path}, #{upload_time})
+    </insert>
+    <update id="updateSubtitle" parameterType="subtitle">
+        update video_subtitle
+        <set>
+            <if test="name != null and name != ''">
+                name =  #{name},
+            </if>
+            <if test="lang != null and lang != ''">
+                lang = #{lang},
+            </if>
+            <if test="path != null and path != ''">
+                path = #{path},
+            </if>
+            <if test="mime_type != null and mime_type != ''">
+                mime_type = #{mime_type},
+            </if>
+        </set>
+        where st_id = #{st_id}
+    </update>
+    <select id="findSubtitle" parameterType="subtitle" resultType="subtitle">
+        select st_id, uid, video_id, name, lang, mime_type, path, upload_time
+        from video_subtitle
+        where st_id = #{st_id} limit 1
+    </select>
+    <!-- 字幕 end -->
 
 </mapper>

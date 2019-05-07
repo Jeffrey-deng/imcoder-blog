@@ -5,34 +5,37 @@
 <mapper namespace="album">
 
     <!-- 插入相册 -->
-    <insert id="saveAlbum" parameterType="album" useGeneratedKeys="true" keyProperty="album_id">
-		insert into album (uid, name, cover, description, create_time, permission, size, show_col)
+    <insert id="saveAlbum" parameterType="album">
+        insert into album (album_id, uid, name, cover, description, create_time, permission, mount, size, show_col)
 			values
-		(#{user.uid},#{name},#{cover.photo_id},#{description},
+        (#{album_id}, #{user.uid},#{name},#{cover.photo_id},#{description},
 		#{create_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
-		,#{permission}, #{size}, #{show_col})
+		,#{permission}, #{mount}, #{size}, #{show_col})
 	</insert>
 
     <!-- 查找相册 -->
     <select id="findAlbumInfo" parameterType="album" resultMap="albumResultMap">
-		select a.album_id, a.name, a.description, a.create_time, a.permission, a.size, a.show_col,
-				a.uid, u.nickname, p.photo_id, p.path, p.width, p.height
+		select a.album_id, a.name, a.description, a.create_time, a.permission, a.mount, a.size, a.show_col,
+				a.uid, u.nickname, u.sex, u.head_photo, p.photo_id, p.path, p.width, p.height
 		from (album a left join user u on a.uid = u.uid) left join photo p on a.cover = p.photo_id
 			where a.album_id = #{album_id} limit 1
 	</select>
 
     <resultMap id="albumResultMap" type="album">
-        <result column="album_id" property="album_id"/>
+        <id column="album_id" property="album_id"/>
         <result column="name" property="name"/>
         <result column="description" property="description"/>
         <result column="create_time" property="create_time" javaType="java.util.Date" jdbcType="BIGINT"
                 typeHandler="site.imcoder.blog.dao.typehandler.DateTypeHandler"/>
         <result column="permission" property="permission"/>
+        <result column="mount" property="mount"/>
         <result column="size" property="size"/>
         <result column="show_col" property="show_col"/>
         <association column="uid" property="user" javaType="user">
             <result column="uid" property="uid"/>
             <result column="nickname" property="nickname"/>
+            <result column="sex" property="sex"/>
+            <result column="head_photo" property="head_photo"/>
         </association>
         <association column="cover" property="cover" javaType="photo">
             <result column="uid" property="uid"/>
@@ -45,47 +48,86 @@
 
     <!-- 查找相册列表 -->
     <select id="findAlbumInfoList" resultMap="albumResultMap" parameterType="hashMap">
-        select a.album_id, a.name, a.description, a.create_time, a.permission, a.size, a.show_col,
-        u.uid, u.nickname, p.photo_id, p.path, p.width, p.height
+        <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
+        select a.album_id, a.name, a.description, a.create_time, a.permission, a.mount, a.size, a.show_col,
+        u.uid, u.nickname, u.sex, u.head_photo, p.photo_id, p.path, p.width, p.height
         from (album a left join user u on a.uid = u.uid) left join photo p on a.cover = p.photo_id
         <where>
-            <choose>
-                <when test="loginUser != null">
-                    (
-                    ( permission = 0 )
-                    OR
-                    ( permission = 1 and (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid
-                    = #{loginUser.uid})) )
-                    OR
-                    ( permission = 2 and a.uid = #{loginUser.uid} )
+            <if test="album == null">
+                <if test="feed_flow_allow_show_lowest_level != 0">
+                    and (
+                    <if test="feed_flow_allow_show_lowest_level == '-1'">
+                        (u.gid = -1)
+                    </if>
+                    <if test="feed_flow_allow_show_lowest_level > 0">
+                        (u.gid = -1 or u.gid >= #{feed_flow_allow_show_lowest_level})
+                    </if>
+                    <if test="is_login">
+                        or (u.uid = #{loginUser.uid})
+                        <if test="feed_flow_allow_following_show">
+                            or (u.uid in (select feed_follow.fuid from user_follow feed_follow where feed_follow.uid = #{loginUser.uid}))
+                        </if>
+                    </if>
                     )
-                </when>
-                <otherwise>
-                    permission = 0
-                </otherwise>
-            </choose>
+                </if>
+            </if>
             <if test="album != null">
-                and ( (1=1)
-                <if test="album.album_id != 0">
+                and ((1=1)
+                <if test="album.album_id > 0">
                     and a.album_id = #{album.album_id}
                 </if>
                 <if test="album.user != null and album.user.uid > 0">
                     and a.uid = #{album.user.uid}
                 </if>
-                <if test="album.name != null and album.name != '' ">
+                <if test="album.name != null and album.name != ''">
                     and a.name rlike #{album.name}
                 </if>
                 <if test="album.description != null and album.description != '' ">
-                    and a.description like concat('%', #{album.description} ,'%')
+                    <bind name="search_like_album_description" value="'%' + album.description  + '%'"/>
+                    and a.description like #{search_like_album_description}
                 </if>
                 )
             </if>
+            <choose>
+                <when test="loginUser != null and loginUser.uid > 0">
+                    <choose>
+                        <when test="album != null and album.permission > 0">
+                            and (a.uid = #{loginUser.uid} and a.permission = #{condition.permission})
+                        </when>
+                        <otherwise>
+                            and (
+                            a.uid = #{loginUser.uid}
+                            or
+                            (
+                            (a.permission = 0)
+                            or
+                            (a.permission = 2)
+                            or
+                            (a.permission = 4 and a.uid in (select following.fuid from user_follow following where
+                            following.uid = #{loginUser.uid}))
+                            or
+                            (a.permission = 6 and a.uid in (select follower.uid from user_follow follower where
+                            follower.fuid = #{loginUser.uid}))
+                            or
+                            (a.permission = 8 and a.uid in (select friend.uid from friends friend where friend.fid =
+                            #{loginUser.uid}))
+                            )
+                            )
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    and (a.permission = 0)
+                </otherwise>
+            </choose>
         </where>
+        order by a.album_id asc
     </select>
 
     <!-- 更新相册  -->
     <update id="updateAlbum" parameterType="album">
-		update album set name = #{name}, cover = #{cover.photo_id}, description = #{description}, permission=#{permission}, show_col=#{show_col}
+		update album set name = #{name}, cover = #{cover.photo_id}, description = #{description},
+		permission=#{permission}, mount=#{mount}, show_col=#{show_col}
 		where album_id = #{album_id}
 	</update>
 
@@ -103,24 +145,20 @@
     <update id="updateCoverForAlbum" parameterType="album">
 		update album set cover = #{cover.photo_id} where album_id = #{album_id}
 	</update>
-    <update id="updateCoverForPhoto" parameterType="photo">
-        update photo set iscover = 1 where photo_id = #{photo_id}
-    </update>
 
     <!-- 清空封面  -->
-    <update id="clearCoverForPhoto" parameterType="album">
-		update photo set iscover = 0 where album_id = #{album_id} and iscover = 1
-	</update>
     <update id="clearCoverForAlbum" parameterType="photo">
         update album set cover = 0 where cover = #{photo_id}
     </update>
 
     <!-- 插入照片 -->
-    <insert id="savePhoto" parameterType="photo" useGeneratedKeys="true" keyProperty="photo_id">
-		insert into photo (uid, album_id, name, path, description, tags, upload_time, width, height, size, image_type, iscover, originName, refer, click)
-		values (#{uid},#{album_id},#{name},#{path},#{description},#{tags},
+    <insert id="savePhoto" parameterType="photo">
+        insert into photo (photo_id, uid, album_id, name, path, description, tags, upload_time, width, height, size,
+        image_type, originName, refer, click_count, like_count, comment_count, topic)
+        values (#{photo_id}, #{uid},#{album_id},#{name},#{path},#{description},#{tags},
 		#{upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler},
-		#{width},#{height},#{size},#{image_type},#{iscover}, #{originName}, #{refer}, 0)
+        #{width},#{height},#{size},#{image_type}, #{originName}, #{refer}, #{click_count}, #{like_count}, #{comment_count},
+        #{topic.ptwid})
 	</insert>
 
     <!-- 删除照片 -->
@@ -132,18 +170,451 @@
     <update id="updatePhoto" parameterType="photo">
 		update photo set
 		album_id = #{album_id}, name = #{name}, path = #{path}, description = #{description}, tags = #{tags},
-		 width = #{width}, height = #{height}, size = #{size}, image_type = #{image_type}, iscover = #{iscover}, originName = #{originName}, refer = #{refer}
+        width = #{width}, height = #{height}, size = #{size}, image_type = #{image_type}, originName = #{originName},
+        refer = #{refer},
+		topic = #{topic.ptwid}
 		where photo_id = #{photo_id}
 	</update>
 
+    <!--批量替换照片标签 -->
+    <update id="batchReplacePhotoTag" parameterType="hashMap">
+        <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
+        <bind name="is_base_user_photos" value="base != null and base == 'user_photos' and photo != null and photo.uid != null and photo.uid > 0"/>
+        <bind name="is_base_album_detail"
+              value="base != null and base == 'album_detail' and photo != null and photo.album_id != null and photo.album_id > 0"/>
+        <bind name="is_base_user_likes" value="is_login and base != null and base == 'user_likes' and photo != null and photo.liked"/>
+        <bind name="is_base_user_history" value="is_login and base != null and base == 'user_history' and photo != null and photo.accessed"/>
+        <bind name="is_base_photo_tag" value="base != null and base == 'photo_tag' and photo != null and photo.tags != null and photo.tags != ''"/>
+        <bind name="is_base_photo_topic"
+              value="base != null and base == 'photo_topic' and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0"/>
+        <bind name="is_and_logic_conn" value="logic_conn == null or logic_conn == 'and'"/>
+        <bind name="is_as_album_query"
+              value="is_base_album_detail or (is_and_logic_conn and photo != null and photo.album_id != null and photo.album_id > 0)"/>
+        <bind name="is_as_user_likes_query" value="is_base_user_likes or (is_login and is_and_logic_conn and photo != null and photo.liked)"/>
+        <bind name="is_as_user_history_query" value="is_base_user_history or (is_login and is_and_logic_conn and photo != null and photo.accessed)"/>
+        <bind name="is_as_topic_query"
+              value="is_base_photo_topic or (is_and_logic_conn and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0)"/>
+        update (photo p left join photo_tag_wrapper t on p.topic = t.ptwid)
+        <if test="is_login">
+            left join photo_access_history pah on (p.photo_id = pah.photo_id and pah.uid = #{loginUser.uid})
+        </if>
+        set p.tags = replace(p.tags, #{replacedTag}, #{newTag})
+        <where>
+            <if test="photo != null">
+                <if test="is_base_user_photos">
+                    and (p.uid = #{photo.uid})
+                </if>
+                <if test="is_base_album_detail">
+                    <bind name="search_like_album_mount" value="'%' + album_mount  + '%'"/>
+                    and (
+                    p.album_id = #{photo.album_id}
+                    or
+                    (p.uid = (select au.uid from album au where au.album_id = #{photo.album_id}) and p.tags like search_like_album_mount)
+                    )
+                </if>
+                <if test="is_base_user_likes">
+                    and (pah.is_like is not null and pah.is_like > 0)
+                </if>
+                <if test="is_base_user_history">
+                    and (pah.pah_id is not null)
+                </if>
+                <if test="is_base_photo_tag">
+                    and (p.tags rlike '${photo.tags}')
+                </if>
+                <if test="is_base_photo_topic">
+                    and (t.ptwid = #{photo.topic.ptwid})
+                </if>
+                <choose>
+                    <when test="!is_and_logic_conn">
+                        and ( (1 != 1)
+                        <if test="photo.photo_id != null and photo.photo_id > 0">
+                            or p.photo_id = #{photo.photo_id}
+                        </if>
+                        <if test="!is_base_album_detail and (photo.album_id != null and photo.album_id > 0)">
+                            or p.album_id = #{photo.album_id}
+                        </if>
+                        <if test="photo.topic != null">
+                            <if test="!is_base_photo_topic and photo.topic.ptwid != null and photo.topic.ptwid > 0">
+                                or t.ptwid = #{photo.topic.ptwid}
+                            </if>
+                            <if test="!is_base_photo_topic and photo.topic.name != null and photo.topic.name != ''">
+                                or t.name = #{photo.topic.name}
+                            </if>
+                        </if>
+                        <if test="!is_base_user_photos and (photo.uid != null and photo.uid > 0)">
+                            or p.uid = #{photo.uid}
+                        </if>
+                        <if test="photo.name != null and photo.name != ''">
+                            <bind name="search_like_photo_name" value="'%' + photo.name  + '%'"/>
+                            or p.name like #{search_like_photo_name}
+                        </if>
+                        <if test="photo.description != null and photo.description != ''">
+                            <bind name="search_like_photo_description" value="'%' + photo.description  + '%'"/>
+                            or p.description like #{search_like_photo_description}
+                        </if>
+                        <if test="!is_base_photo_tag and photo.tags != null and photo.tags != ''">
+                            or (p.tags rlike '${photo.tags}')
+                        </if>
+                        <if test="photo.width > 0">
+                            or p.width >= #{photo.width}
+                        </if>
+                        <if test="photo.height > 0">
+                            or p.height >= #{photo.height}
+                        </if>
+                        <if test="photo.size > 0">
+                            or p.size >= #{photo.size}
+                        </if>
+                        <if test="photo.image_type != null and photo.image_type != ''">
+                            <bind name="search_like_photo_image_type" value="'%' + photo.image_type  + '%'"/>
+                            or p.image_type like #{search_like_photo_image_type}
+                        </if>
+                        <if test="photo.upload_time != null">
+                            or p.upload_time >
+                            #{photo.upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+                        </if>
+                        <if test="photo.path != null and photo.path != ''">
+                            <bind name="search_like_photo_path" value="'%' + photo.path  + '%'"/>
+                            or p.path like #{search_like_photo_path}
+                        </if>
+                        <if test="is_login and photo.originName != null and photo.originName != ''">
+                            <bind name="search_like_photo_originName" value="'%' + photo.originName  + '%'"/>
+                            or p.uid = #{loginUser.uid} and p.originName like #{search_like_photo_originName})
+                        </if>
+                        <if test="photo.refer != null and photo.refer != ''">
+                            <bind name="search_like_photo_refer" value="'%' + photo.refer  + '%'"/>
+                            or p.refer like #{search_like_photo_refer}
+                        </if>
+                        <if test="loginUser != null and loginUser.uid != null">
+                            <if test="!is_base_user_likes and photo.liked">
+                                or (pah.is_like is not null and pah.is_like > 0)
+                            </if>
+                            <if test="!is_base_user_history and photo.accessed">
+                                or (pah.pah_id is not null)
+                            </if>
+                        </if>
+                        )
+                    </when>
+                    <otherwise>
+                        and ( (1=1)
+                        <if test="photo.photo_id != null and photo.photo_id > 0">
+                            and p.photo_id = #{photo.photo_id}
+                        </if>
+                        <if test="!is_base_album_detail and (photo.album_id != null and photo.album_id > 0)">
+                            and p.album_id = #{photo.album_id}
+                        </if>
+                        <if test="photo.topic != null">
+                            <if test="!is_base_photo_topic and photo.topic.ptwid != null and photo.topic.ptwid > 0">
+                                and t.ptwid = #{photo.topic.ptwid}
+                            </if>
+                            <if test="!is_base_photo_topic and photo.topic.name != null and photo.topic.name != ''">
+                                and t.name = #{photo.topic.name}
+                            </if>
+                        </if>
+                        <if test="!is_base_user_photos and (photo.uid != null and photo.uid > 0)">
+                            and p.uid = #{photo.uid}
+                        </if>
+                        <if test="photo.name != null and photo.name != ''">
+                            <bind name="search_like_photo_name" value="'%' + photo.name  + '%'"/>
+                            and p.name like #{search_like_photo_name}
+                        </if>
+                        <if test="photo.description != null and photo.description != ''">
+                            <bind name="search_like_photo_description" value="'%' + photo.description  + '%'"/>
+                            and p.description like #{search_like_photo_description}
+                        </if>
+                        <if test="!is_base_photo_tag and photo.tags != null and photo.tags != ''">
+                            and (p.tags rlike '${photo.tags}')
+                        </if>
+                        <if test="photo.width > 0">
+                            and p.width >= #{photo.width}
+                        </if>
+                        <if test="photo.height > 0">
+                            and p.height >= #{photo.height}
+                        </if>
+                        <if test="photo.size > 0">
+                            and p.size >= #{photo.size}
+                        </if>
+                        <if test="photo.image_type != null and photo.image_type != ''">
+                            <bind name="search_like_photo_image_type" value="'%' + photo.image_type  + '%'"/>
+                            and p.image_type like #{search_like_photo_image_type}
+                        </if>
+                        <if test="photo.upload_time != null">
+                            and p.upload_time >
+                            #{photo.upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+                        </if>
+                        <if test="photo.path != null and photo.path != ''">
+                            <bind name="search_like_photo_path" value="'%' + photo.path  + '%'"/>
+                            and p.path like #{search_like_photo_path}
+                        </if>
+                        <if test="is_login and photo.originName != null and photo.originName != ''">
+                            <bind name="search_like_photo_originName" value="'%' + photo.originName  + '%'"/>
+                            and (p.uid = #{loginUser.uid} and p.originName like #{search_like_photo_originName})
+                        </if>
+                        <if test="photo.refer != null and photo.refer != ''">
+                            <bind name="search_like_photo_refer" value="'%' + photo.refer  + '%'"/>
+                            and p.refer like #{search_like_photo_refer}
+                        </if>
+                        <if test="loginUser != null and loginUser.uid != null">
+                            <if test="!is_base_user_likes and photo.liked">
+                                and (pah.is_like is not null and pah.is_like > 0)
+                            </if>
+                            <if test="!is_base_user_history and photo.accessed">
+                                and (pah.pah_id is not null)
+                            </if>
+                        </if>
+                        )
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="photo == null and !is_and_logic_conn">
+                and (1 != 1)
+            </if>
+            <if test="replacedTag != null and replacedTag != ''">
+                and p.tags rlike #{replacedTag}
+            </if>
+        </where>
+    </update>
+
+    <!--批量替换照片标签 -->
+    <update id="batchReplacePhotoTagFromArray" parameterType="hashMap">
+        update photo p
+        set p.tags = replace(p.tags, #{replacedTag}, #{newTag})
+        <where>
+            p.uid = #{user.uid}
+            <if test="replacedTag != null and replacedTag != ''">
+                and p.tags rlike #{replacedTag}
+            </if>
+            and p.photo_id in
+            <foreach collection="photoIds" index="index" item="id" separator="," open="(" close=")">
+                #{id,jdbcType=BIGINT}
+            </foreach>
+        </where>
+    </update>
+
+    <!--批量添加照片标签 -->
+    <update id="batchSetPhotoTag" parameterType="hashMap">
+        <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
+        <bind name="is_base_user_photos" value="base != null and base == 'user_photos' and photo != null and photo.uid != null and photo.uid > 0"/>
+        <bind name="is_base_album_detail"
+              value="base != null and base == 'album_detail' and photo != null and photo.album_id != null and photo.album_id > 0"/>
+        <bind name="is_base_user_likes" value="is_login and base != null and base == 'user_likes' and photo != null and photo.liked"/>
+        <bind name="is_base_user_history" value="is_login and base != null and base == 'user_history' and photo != null and photo.accessed"/>
+        <bind name="is_base_photo_tag" value="base != null and base == 'photo_tag' and photo != null and photo.tags != null and photo.tags != ''"/>
+        <bind name="is_base_photo_topic"
+              value="base != null and base == 'photo_topic' and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0"/>
+        <bind name="is_and_logic_conn" value="logic_conn == null or logic_conn == 'and'"/>
+        <bind name="is_as_album_query"
+              value="is_base_album_detail or (is_and_logic_conn and photo != null and photo.album_id != null and photo.album_id > 0)"/>
+        <bind name="is_as_user_likes_query" value="is_base_user_likes or (is_login and is_and_logic_conn and photo != null and photo.liked)"/>
+        <bind name="is_as_user_history_query" value="is_base_user_history or (is_login and is_and_logic_conn and photo != null and photo.accessed)"/>
+        <bind name="is_as_topic_query"
+              value="is_base_photo_topic or (is_and_logic_conn and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0)"/>
+        update (photo p left join photo_tag_wrapper t on p.topic = t.ptwid)
+        <if test="is_login">
+            left join photo_access_history pah on (p.photo_id = pah.photo_id and pah.uid = #{loginUser.uid})
+        </if>
+        set p.tags = concat(p.tags, #{addTag})
+        <where>
+            <if test="photo != null">
+                <if test="is_base_user_photos">
+                    and (p.uid = #{photo.uid})
+                </if>
+                <if test="is_base_album_detail">
+                    <bind name="search_like_album_mount" value="'%' + album_mount  + '%'"/>
+                    and (
+                    p.album_id = #{photo.album_id}
+                    or
+                    (p.uid = (select au.uid from album au where au.album_id = #{photo.album_id}) and p.tags like #{search_like_album_mount})
+                    )
+                </if>
+                <if test="is_base_user_likes">
+                    and (pah.is_like is not null and pah.is_like > 0)
+                </if>
+                <if test="is_base_user_history">
+                    and (pah.pah_id is not null)
+                </if>
+                <if test="is_base_photo_tag">
+                    and (p.tags rlike '${photo.tags}')
+                </if>
+                <if test="is_base_photo_topic">
+                    and (t.ptwid = #{photo.topic.ptwid})
+                </if>
+                <choose>
+                    <when test="!is_and_logic_conn">
+                        and ( (1 != 1)
+                        <if test="photo.photo_id != null and photo.photo_id > 0">
+                            or p.photo_id = #{photo.photo_id}
+                        </if>
+                        <if test="!is_base_album_detail and (photo.album_id != null and photo.album_id > 0)">
+                            or p.album_id = #{photo.album_id}
+                        </if>
+                        <if test="photo.topic != null">
+                            <if test="!is_base_photo_topic and photo.topic.ptwid != null and photo.topic.ptwid > 0">
+                                or t.ptwid = #{photo.topic.ptwid}
+                            </if>
+                            <if test="!is_base_photo_topic and photo.topic.name != null and photo.topic.name != ''">
+                                or t.name = #{photo.topic.name}
+                            </if>
+                        </if>
+                        <if test="!is_base_user_photos and (photo.uid != null and photo.uid > 0)">
+                            or p.uid = #{photo.uid}
+                        </if>
+                        <if test="photo.name != null and photo.name != ''">
+                            <bind name="search_like_photo_name" value="'%' + photo.name  + '%'"/>
+                            or p.name like #{search_like_photo_name}
+                        </if>
+                        <if test="photo.description != null and photo.description != ''">
+                            <bind name="search_like_photo_description" value="'%' + photo.description  + '%'"/>
+                            or p.description like #{search_like_photo_description}
+                        </if>
+                        <if test="!is_base_photo_tag and photo.tags != null and photo.tags != ''">
+                            or (p.tags rlike '${photo.tags}')
+                        </if>
+                        <if test="photo.width > 0">
+                            or p.width >= #{photo.width}
+                        </if>
+                        <if test="photo.height > 0">
+                            or p.height >= #{photo.height}
+                        </if>
+                        <if test="photo.size > 0">
+                            or p.size >= #{photo.size}
+                        </if>
+                        <if test="photo.image_type != null and photo.image_type != ''">
+                            <bind name="search_like_photo_image_type" value="'%' + photo.image_type  + '%'"/>
+                            or p.image_type like #{search_like_photo_image_type}
+                        </if>
+                        <if test="photo.upload_time != null">
+                            or p.upload_time >
+                            #{photo.upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+                        </if>
+                        <if test="photo.path != null and photo.path != ''">
+                            <bind name="search_like_photo_path" value="'%' + photo.path  + '%'"/>
+                            or p.path like #{search_like_photo_path}
+                        </if>
+                        <if test="is_login and photo.originName != null and photo.originName != ''">
+                            <bind name="search_like_photo_originName" value="'%' + photo.originName  + '%'"/>
+                            or (p.uid = #{loginUser.uid} and p.originName like #{search_like_photo_originName})
+                        </if>
+                        <if test="photo.refer != null and photo.refer != ''">
+                            <bind name="search_like_photo_refer" value="'%' + photo.refer  + '%'"/>
+                            or p.refer like #{search_like_photo_refer}
+                        </if>
+                        <if test="loginUser != null and loginUser.uid != null">
+                            <if test="!is_base_user_likes and photo.liked">
+                                or (pah.is_like is not null and pah.is_like > 0)
+                            </if>
+                            <if test="!is_base_user_history and photo.accessed">
+                                or (pah.pah_id is not null)
+                            </if>
+                        </if>
+                        )
+                    </when>
+                    <otherwise>
+                        and ( (1=1)
+                        <if test="photo.photo_id != null and photo.photo_id > 0">
+                            and p.photo_id = #{photo.photo_id}
+                        </if>
+                        <if test="!is_base_album_detail and (photo.album_id != null and photo.album_id > 0)">
+                            and p.album_id = #{photo.album_id}
+                        </if>
+                        <if test="photo.topic != null">
+                            <if test="!is_base_photo_topic and photo.topic.ptwid != null and photo.topic.ptwid > 0">
+                                and t.ptwid = #{photo.topic.ptwid}
+                            </if>
+                            <if test="!is_base_photo_topic and photo.topic.name != null and photo.topic.name != ''">
+                                and t.name = #{photo.topic.name}
+                            </if>
+                        </if>
+                        <if test="!is_base_user_photos and (photo.uid != null and photo.uid > 0)">
+                            and p.uid = #{photo.uid}
+                        </if>
+                        <if test="photo.name != null and photo.name != ''">
+                            <bind name="search_like_photo_name" value="'%' + photo.name  + '%'"/>
+                            and p.name like #{search_like_photo_name}
+                        </if>
+                        <if test="photo.description != null and photo.description != ''">
+                            <bind name="search_like_photo_description" value="'%' + photo.description  + '%'"/>
+                            and p.description like #{search_like_photo_description}
+                        </if>
+                        <if test="!is_base_photo_tag and photo.tags != null and photo.tags != ''">
+                            and (p.tags rlike '${photo.tags}')
+                        </if>
+                        <if test="photo.width > 0">
+                            and p.width >= #{photo.width}
+                        </if>
+                        <if test="photo.height > 0">
+                            and p.height >= #{photo.height}
+                        </if>
+                        <if test="photo.size > 0">
+                            and p.size >= #{photo.size}
+                        </if>
+                        <if test="photo.image_type != null and photo.image_type != ''">
+                            <bind name="search_like_photo_image_type" value="'%' + photo.image_type  + '%'"/>
+                            and p.image_type like #{search_like_photo_image_type}
+                        </if>
+                        <if test="photo.upload_time != null">
+                            and p.upload_time >
+                            #{photo.upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
+                        </if>
+                        <if test="photo.path != null and photo.path != ''">
+                            <bind name="search_like_photo_path" value="'%' + photo.path  + '%'"/>
+                            and p.path like #{search_like_photo_path}
+                        </if>
+                        <if test="is_login and photo.originName != null and photo.originName != ''">
+                            <bind name="search_like_photo_originName" value="'%' + photo.originName  + '%'"/>
+                            and p.uid = #{loginUser.uid} and p.originName like #{search_like_photo_originName})
+                        </if>
+                        <if test="photo.refer != null and photo.refer != ''">
+                            <bind name="search_like_photo_refer" value="'%' + photo.refer  + '%'"/>
+                            and p.refer like #{search_like_photo_refer}
+                        </if>
+                        <if test="loginUser != null and loginUser.uid != null">
+                            <if test="!is_base_user_likes and photo.liked">
+                                and (pah.is_like is not null and pah.is_like > 0)
+                            </if>
+                            <if test="!is_base_user_history and photo.accessed">
+                                and (pah.pah_id is not null)
+                            </if>
+                        </if>
+                        )
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="photo == null and !is_and_logic_conn">
+                and (1 != 1)
+            </if>
+            <if test="addTag != null and addTag != ''">
+                and p.tags not rlike #{addTag}
+            </if>
+        </where>
+    </update>
+
+    <!--批量添加照片标签 -->
+    <update id="batchSetPhotoTagFromArray" parameterType="hashMap">
+        update photo p
+        set p.tags = concat(p.tags, #{addTag})
+        <where>
+            p.uid = #{user.uid}
+            <if test="addTag != null and addTag != ''">
+                and p.tags not rlike #{addTag}
+            </if>
+            and p.photo_id in
+            <foreach collection="photoIds" index="index" item="id" separator="," open="(" close=")">
+                #{id,jdbcType=BIGINT}
+            </foreach>
+        </where>
+    </update>
+
     <!-- 查找照片信息 -->
     <select id="findPhotoInfo" parameterType="photo" resultMap="photoResultMap">
-		select photo_id, uid, album_id, name, path, description, tags, upload_time, width, height, size, image_type, iscover, originName, refer, click
-		from photo where photo_id = #{photo_id}
+        select p.photo_id, p.uid, p.album_id, p.name, p.path, p.description, p.tags, p.upload_time, p.width, p.height,
+        p.size, p.image_type, p.originName, p.refer, p.click_count, p.like_count, p.comment_count,
+        t.ptwid, t.name as tname, t.permission as tpermission, t.scope, t.description as tdescription
+        from (photo p left join photo_tag_wrapper t on p.topic = t.ptwid)
+        where photo_id = #{photo_id} limit 1
 	</select>
 
     <resultMap id="photoResultMap" type="photo">
-        <result column="photo_id" property="photo_id"/>
+        <id column="photo_id" property="photo_id"/>
         <result column="uid" property="uid"/>
         <result column="album_id" property="album_id"/>
         <result column="name" property="name"/>
@@ -156,59 +627,147 @@
         <result column="height" property="height"/>
         <result column="size" property="size"/>
         <result column="image_type" property="image_type"/>
-        <result column="iscover" property="iscover"/>
         <result column="originName" property="originName"/>
         <result column="refer" property="refer"/>
-        <result column="click" property="click"/>
+        <result column="click_count" property="click_count"/>
+        <result column="like_count" property="like_count"/>
+        <result column="comment_count" property="comment_count"/>
+        <result column="sort" property="sort"/>
+        <result column="accessed" property="accessed"/>
+        <result column="liked" property="liked"/>
+        <result column="commented" property="commented"/>
+        <association column="ptwid" property="topic" javaType="photoTagWrapper">
+            <result column="ptwid" property="ptwid"/>
+            <result column="tname" property="name"/>
+            <result column="tpermission" property="permission"/>
+            <result column="scope" property="scope"/>
+            <result column="tdescription" property="description"/>
+        </association>
     </resultMap>
 
     <!-- 查找一个相册下的照片集合 -->
     <select id="findPhotosFromAlbum" parameterType="album" resultMap="photoResultMap">
-        select photo_id, uid, album_id, name, path, description, tags, upload_time, width, height, size, image_type, iscover, originName, refer, click
-        from photo where album_id = #{album_id}
+        select p.photo_id, p.uid, p.album_id, p.name, p.path, p.description, p.tags, p.upload_time, p.width, p.height,
+        p.size, p.image_type, p.originName, p.refer, p.click_count, p.like_count,
+        t.ptwid, t.name as tname, t.permission as tpermission, t.scope, t.description as tdescription
+        from photo p left join photo_tag_wrapper t on p.topic = t.ptwid
+        where album_id = #{album_id}
     </select>
 
     <!-- 查找照片集合 -->
     <select id="findPhotoList" parameterType="hashMap" resultMap="photoResultMap">
+        <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
+        <bind name="is_base_user_photos" value="base != null and base == 'user_photos' and photo != null and photo.uid != null and photo.uid > 0"/>
+        <bind name="is_base_album_detail"
+              value="base != null and base == 'album_detail' and photo != null and photo.album_id != null and photo.album_id > 0"/>
+        <bind name="is_base_user_likes" value="is_login and base != null and base == 'user_likes' and photo != null and photo.liked"/>
+        <bind name="is_base_user_history" value="is_login and base != null and base == 'user_history' and photo != null and photo.accessed"/>
+        <bind name="is_base_photo_tag" value="base != null and base == 'photo_tag' and photo != null and photo.tags != null and photo.tags != ''"/>
+        <bind name="is_base_photo_topic"
+              value="base != null and base == 'photo_topic' and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0"/>
+        <bind name="is_and_logic_conn" value="logic_conn == null or logic_conn == 'and'"/>
+        <bind name="is_as_album_query"
+              value="is_base_album_detail or (is_and_logic_conn and photo != null and photo.album_id != null and photo.album_id > 0)"/>
+        <bind name="is_as_user_likes_query" value="is_base_user_likes or (is_login and is_and_logic_conn and photo != null and photo.liked)"/>
+        <bind name="is_as_user_history_query" value="is_base_user_history or (is_login and is_and_logic_conn and photo != null and photo.accessed)"/>
+        <bind name="is_as_topic_query"
+              value="is_base_photo_topic or (is_and_logic_conn and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0)"/>
         select p.photo_id, p.uid, p.album_id, p.name, p.path, p.description, p.tags, p.upload_time, p.width, p.height,
-        p.size, p.image_type, p.iscover, p.originName, p.refer, p.click
-        from photo p left join album a on p.album_id = a.album_id
+        p.size, p.image_type, p.refer, p.click_count, p.like_count, p.comment_count,
+        <if test="is_login">
+            (case when p.uid = #{loginUser.uid} then p.originName else null end) as originName,
+        </if>
+        t.ptwid, t.name as tname, t.permission as tpermission, t.scope, t.description as tdescription
+        <if test="is_as_album_query">
+            , (case when apr.sort is NULL then p.photo_id else apr.sort end) as sort
+        </if>
+        <if test="is_login">
+            , (case when (pah.pah_id is not null) then true else false end) as accessed
+            , (case when (pah.is_like is not null and pah.is_like > 0) then true else false end) as liked
+        </if>
+        from (((photo p left join (album a left join user u on a.uid = u.uid) on p.album_id = a.album_id)
+        <if test="is_as_album_query">
+            left join album_photo_relation apr on (apr.photo_id = p.photo_id and apr.album_id = #{photo.album_id})
+        </if>
+        ) left join photo_tag_wrapper t on p.topic = t.ptwid)
+        <if test="is_login">
+            left join photo_access_history pah on (p.photo_id = pah.photo_id and pah.uid = #{loginUser.uid})
+        </if>
         <where>
-            <choose>
-                <when test="loginUser != null">
-                    (
-                    ( a.permission = 0 )
-                    OR
-                    ( a.permission = 1 and (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where
-                    f.fid = #{loginUser.uid})) )
-                    OR
-                    ( a.permission = 2 and a.uid = #{loginUser.uid} )
+            <if test="photo == null">
+                <if test="!is_and_logic_conn">
+                    and (1 != 1)
+                </if>
+                <if test="feed_flow_allow_show_lowest_level != 0">
+                    and (
+                    <if test="feed_flow_allow_show_lowest_level == '-1'">
+                        (u.gid = -1)
+                    </if>
+                    <if test="feed_flow_allow_show_lowest_level > 0">
+                        (u.gid = -1 or u.gid >= #{feed_flow_allow_show_lowest_level})
+                    </if>
+                    <if test="is_login">
+                        or (u.uid = #{loginUser.uid})
+                        <if test="feed_flow_allow_following_show">
+                            or (u.uid in (select feed_follow.fuid from user_follow feed_follow where feed_follow.uid = #{loginUser.uid}))
+                        </if>
+                    </if>
                     )
-                </when>
-                <otherwise>
-                    a.permission = 0
-                </otherwise>
-            </choose>
+                </if>
+            </if>
             <if test="photo != null">
+                <if test="is_base_user_photos">
+                    and (p.uid = #{photo.uid})
+                </if>
+                <if test="is_base_album_detail">
+                    <bind name="search_like_album_mount" value="'%' + album_mount  + '%'"/>
+                    and (
+                    p.album_id = #{photo.album_id}
+                    or
+                    (p.uid = (select au.uid from album au where au.album_id = #{photo.album_id}) and p.tags like #{search_like_album_mount})
+                    )
+                </if>
+                <if test="is_base_user_likes">
+                    and (pah.is_like is not null and pah.is_like > 0)
+                </if>
+                <if test="is_base_user_history">
+                    and (pah.pah_id is not null)
+                </if>
+                <if test="is_base_photo_tag">
+                    and (p.tags rlike '${photo.tags}')
+                </if>
+                <if test="is_base_photo_topic">
+                    and (t.ptwid = #{photo.topic.ptwid})
+                </if>
                 <choose>
-                    <when test="logic_conn != null and logic_conn == 'or' ">
+                    <when test="!is_and_logic_conn">
                         and ( (1 != 1)
-                        <if test="photo.photo_id > 0">
+                        <if test="photo.photo_id != null and photo.photo_id > 0">
                             or p.photo_id = #{photo.photo_id}
                         </if>
-                        <if test="photo.album_id > 0">
+                        <if test="!is_base_album_detail and (photo.album_id != null and photo.album_id > 0)">
                             or p.album_id = #{photo.album_id}
                         </if>
-                        <if test="photo.uid > 0">
+                        <if test="photo.topic != null">
+                            <if test="!is_base_photo_topic and photo.topic.ptwid != null and photo.topic.ptwid > 0">
+                                or t.ptwid = #{photo.topic.ptwid}
+                            </if>
+                            <if test="!is_base_photo_topic and photo.topic.name != null and photo.topic.name != ''">
+                                or t.name = #{photo.topic.name}
+                            </if>
+                        </if>
+                        <if test="!is_base_user_photos and (photo.uid != null and photo.uid > 0)">
                             or p.uid = #{photo.uid}
                         </if>
-                        <if test="photo.name != null and photo.name != '' ">
-                            or p.name like concat('%', #{photo.name} ,'%')
+                        <if test="photo.name != null and photo.name != ''">
+                            <bind name="search_like_photo_name" value="'%' + photo.name  + '%'"/>
+                            or p.name like #{search_like_photo_name}
                         </if>
-                        <if test="photo.description != null and photo.description != '' ">
-                            or p.description like concat('%', #{photo.description} ,'%')
+                        <if test="photo.description != null and photo.description != ''">
+                            <bind name="search_like_photo_description" value="'%' + photo.description  + '%'"/>
+                            or p.description like #{search_like_photo_description}
                         </if>
-                        <if test="photo.tags != null and photo.tags != '' ">
+                        <if test="!is_base_photo_tag and photo.tags != null and photo.tags != ''">
                             or (p.tags rlike '${photo.tags}')
                         </if>
                         <if test="photo.width > 0">
@@ -220,42 +779,64 @@
                         <if test="photo.size > 0">
                             or p.size >= #{photo.size}
                         </if>
-                        <if test="photo.iscover > 0">
-                            or p.iscover = #{photo.iscover}
-                        </if>
-                        <if test="photo.image_type != null and photo.image_type != '' ">
-                            or p.image_type like concat('%', #{photo.image_type} ,'%')
+                        <if test="photo.image_type != null and photo.image_type != ''">
+                            <bind name="search_like_photo_image_type" value="'%' + photo.image_type  + '%'"/>
+                            or p.image_type like #{search_like_photo_image_type}
                         </if>
                         <if test="photo.upload_time != null">
                             or p.upload_time >
                             #{photo.upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
                         </if>
-                        <if test="photo.path != null and photo.path != '' ">
-                            or p.path like concat('%', #{photo.path} ,'%')
+                        <if test="photo.path != null and photo.path != ''">
+                            <bind name="search_like_photo_path" value="'%' + photo.path  + '%'"/>
+                            or p.path like #{search_like_photo_path}
                         </if>
-                        <if test="photo.originName != null and photo.originName != '' ">
-                            or p.originName like concat('%', #{photo.originName} ,'%')
+                        <if test="is_login and photo.originName != null and photo.originName != ''">
+                            <bind name="search_like_photo_originName" value="'%' + photo.originName  + '%'"/>
+                            or (p.uid = #{loginUser.uid} and p.originName like #{search_like_photo_originName})
+                        </if>
+                        <if test="photo.refer != null and photo.refer != ''">
+                            <bind name="search_like_photo_refer" value="'%' + photo.refer  + '%'"/>
+                            or p.refer like #{search_like_photo_refer}
+                        </if>
+                        <if test="loginUser != null and loginUser.uid != null">
+                            <if test="!is_base_user_likes and photo.liked">
+                                or (pah.is_like is not null and pah.is_like > 0)
+                            </if>
+                            <if test="!is_base_user_history and photo.accessed">
+                                or (pah.pah_id is not null)
+                            </if>
                         </if>
                         )
                     </when>
                     <otherwise>
                         and ( (1=1)
-                        <if test="photo.photo_id > 0">
+                        <if test="photo.photo_id != null and photo.photo_id > 0">
                             and p.photo_id = #{photo.photo_id}
                         </if>
-                        <if test="photo.album_id > 0">
+                        <if test="!is_base_album_detail and (photo.album_id != null and photo.album_id > 0)">
                             and p.album_id = #{photo.album_id}
                         </if>
-                        <if test="photo.uid > 0">
+                        <if test="photo.topic != null">
+                            <if test="!is_base_photo_topic and photo.topic.ptwid != null and photo.topic.ptwid > 0">
+                                and t.ptwid = #{photo.topic.ptwid}
+                            </if>
+                            <if test="!is_base_photo_topic and photo.topic.name != null and photo.topic.name != ''">
+                                and t.name = #{photo.topic.name}
+                            </if>
+                        </if>
+                        <if test="!is_base_user_photos and (photo.uid != null and photo.uid > 0)">
                             and p.uid = #{photo.uid}
                         </if>
-                        <if test="photo.name != null and photo.name != '' ">
-                            and p.name like concat('%', #{photo.name} ,'%')
+                        <if test="photo.name != null and photo.name != ''">
+                            <bind name="search_like_photo_name" value="'%' + photo.name  + '%'"/>
+                            and p.name like #{search_like_photo_name}
                         </if>
-                        <if test="photo.description != null and photo.description != '' ">
-                            and p.description like concat('%', #{photo.description} ,'%')
+                        <if test="photo.description != null and photo.description != ''">
+                            <bind name="search_like_photo_description" value="'%' + photo.description  + '%'"/>
+                            and p.description like #{search_like_photo_description}
                         </if>
-                        <if test="photo.tags != null and photo.tags != '' ">
+                        <if test="!is_base_photo_tag and photo.tags != null and photo.tags != ''">
                             and (p.tags rlike '${photo.tags}')
                         </if>
                         <if test="photo.width > 0">
@@ -267,28 +848,138 @@
                         <if test="photo.size > 0">
                             and p.size >= #{photo.size}
                         </if>
-                        <if test="photo.iscover > 0">
-                            and p.iscover = #{photo.iscover}
-                        </if>
-                        <if test="photo.image_type != null and photo.image_type != '' ">
-                            and p.image_type like concat('%', #{photo.image_type} ,'%')
+                        <if test="photo.image_type != null and photo.image_type != ''">
+                            <bind name="search_like_photo_image_type" value="'%' + photo.image_type  + '%'"/>
+                            and p.image_type like #{search_like_photo_image_type}
                         </if>
                         <if test="photo.upload_time != null">
                             and p.upload_time >
                             #{photo.upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
                         </if>
-                        <if test="photo.path != null and photo.path != '' ">
-                            and p.path like concat('%', #{photo.path} ,'%')
+                        <if test="photo.path != null and photo.path != ''">
+                            <bind name="search_like_photo_path" value="'%' + photo.path  + '%'"/>
+                            and p.path like #{search_like_photo_path}
                         </if>
-                        <if test="photo.originName != null and photo.originName != '' ">
-                            and p.originName like concat('%', #{photo.originName} ,'%')
+                        <if test="is_login and photo.originName != null and photo.originName != ''">
+                            <bind name="search_like_photo_originName" value="'%' + photo.originName  + '%'"/>
+                            and (p.uid = #{loginUser.uid} and p.originName like #{search_like_photo_originName})
+                        </if>
+                        <if test="photo.refer != null and photo.refer != ''">
+                            <bind name="search_like_photo_refer" value="'%' + photo.refer  + '%'"/>
+                            and p.refer like #{search_like_photo_refer}
+                        </if>
+                        <if test="loginUser != null and loginUser.uid != null">
+                            <if test="!is_base_user_likes and photo.liked">
+                                and (pah.is_like is not null and pah.is_like > 0)
+                            </if>
+                            <if test="!is_base_user_history and photo.accessed">
+                                and (pah.pah_id is not null)
+                            </if>
                         </if>
                         )
                     </otherwise>
                 </choose>
             </if>
+            <choose>
+                <when test="is_login">
+                    <choose>
+                        <when test="is_as_album_query or is_as_user_likes_query or is_as_user_history_query">
+                            and (
+                            a.uid = #{loginUser.uid}
+                            or
+                            (
+                            (a.permission = 0 or a.permission = 1)
+                            or
+                            (a.permission = 2 or a.permission = 3)
+                            or
+                            ((a.permission = 4 or a.permission = 5) and a.uid in (select following.fuid from user_follow
+                            following where following.uid = #{loginUser.uid}))
+                            or
+                            ((a.permission = 6 or a.permission = 7) and a.uid in (select follower.uid from user_follow
+                            follower where follower.fuid = #{loginUser.uid}))
+                            or
+                            ((a.permission = 8 or a.permission = 9) and a.uid in (select friend.uid from friends friend
+                            where friend.fid = #{loginUser.uid}))
+                            )
+                            )
+                        </when>
+                        <when test="is_as_topic_query">
+                            and (t.ptwid is not null and
+                            (
+                            t.uid = #{loginUser.uid}
+                            or
+                            (
+                            (t.permission = 0 or t.permission = 1)
+                            or
+                            (t.permission = 2 or t.permission = 3)
+                            or
+                            ((t.permission = 4 or t.permission = 5) and t.uid in (select following.fuid from user_follow
+                            following where following.uid = #{loginUser.uid}))
+                            or
+                            ((t.permission = 6 or t.permission = 7) and t.uid in (select follower.uid from user_follow
+                            follower where follower.fuid = #{loginUser.uid}))
+                            or
+                            ((t.permission = 8 or t.permission = 9) and t.uid in (select friend.uid from friends friend
+                            where friend.fid = #{loginUser.uid}))
+                            )
+                            ))
+                        </when>
+                        <otherwise>
+                            and (
+                            a.uid = #{loginUser.uid}
+                            or
+                            (
+                            (a.permission = 0)
+                            or
+                            (a.permission = 2)
+                            or
+                            (a.permission = 4 and a.uid in (select following.fuid from user_follow following where
+                            following.uid = #{loginUser.uid}))
+                            or
+                            (a.permission = 6 and a.uid in (select follower.uid from user_follow follower where
+                            follower.fuid = #{loginUser.uid}))
+                            or
+                            (a.permission = 8 and a.uid in (select friend.uid from friends friend where friend.fid =
+                            #{loginUser.uid}))
+                            )
+                            )
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    <choose>
+                        <when test="is_as_album_query">
+                            and (a.permission = 0 or a.permission = 1)
+                        </when>
+                        <when test="is_as_topic_query">
+                            and (t.permission = 0 or t.permission = 1)
+                        </when>
+                        <otherwise>
+                            and (a.permission = 0)
+                        </otherwise>
+                    </choose>
+                </otherwise>
+            </choose>
         </where>
-        order by p.photo_id desc
+        <choose>
+            <when test="is_as_user_likes_query or is_as_user_history_query">
+                order by pah.last_access_time
+            </when>
+            <when test="is_as_album_query">
+                order by sort
+            </when>
+            <otherwise>
+                order by p.photo_id
+            </otherwise>
+        </choose>
+        <choose>
+            <when test="order_type == 'desc'">
+                desc
+            </when>
+            <otherwise>
+                asc
+            </otherwise>
+        </choose>
         <choose>
             <when test="start >= 0 and size > 0">
                 limit #{start}, #{size}
@@ -300,60 +991,203 @@
     </select>
 
     <!-- 点击量加1 -->
-    <update id="raisePhotoClickCount" parameterType="photo">
-        update photo set click = click + 1 where photo_id = #{photo_id}
+    <update id="updatePhotoClickCount" parameterType="hashMap">
+        update photo set click_count = (case when ((click_count + #{step}) > 0) then (click_count + #{step}) else 0 end)
+        where photo_id = #{photo.photo_id}
     </update>
 
-    <!-- 扩展标签 -->
+    <!-- 点赞量加1 -->
+    <update id="updatePhotoLikeCount" parameterType="hashMap">
+        update photo set like_count = (case when ((like_count + #{step}) > 0) then (like_count + #{step}) else 0 end)
+         where photo_id = #{photo.photo_id}
+    </update>
+
+    <!-- 评论量加1 -->
+    <update id="updatePhotoCommentCount" parameterType="hashMap">
+        update photo set comment_count = (case when ((comment_count + #{step}) > 0) then (comment_count + #{step}) else 0 end)
+        where photo_id = #{photo.photo_id}
+    </update>
+
+    <!-- 扩展标签  start -->
     <resultMap id="photoTagResultMap" type="photoTagWrapper">
-        <result column="ptwid" property="ptwid"/>
+        <id column="ptwid" property="ptwid"/>
         <result column="uid" property="uid"/>
+        <result column="type" property="type"/>
         <result column="name" property="name"/>
-        <result column="extra" property="extra"/>
         <result column="match_mode" property="match_mode"/>
         <result column="pattern" property="pattern"/>
+        <result column="action" property="action"/>
+        <result column="extra" property="extra"/>
         <result column="weight" property="weight"/>
         <result column="scope" property="scope"/>
         <result column="permission" property="permission"/>
         <result column="description" property="description"/>
+        <result column="common_value" property="common_value"/>
+        <result column="topic" property="topic"/>
     </resultMap>
 
     <!-- 查询扩展标签 -->
     <select id="findPhotoTagWrappers" parameterType="hashMap" resultMap="photoTagResultMap">
-        select t.ptwid, t.uid, t.name, t.extra, t.match_mode, t.pattern, t.weight, t.scope, t.permission, t.description
+        select t.ptwid, t.uid, t.type, t.name, t.match_mode, t.pattern, t.action, t.extra, t.weight, t.scope,
+        t.permission, t.description, t.common_value, t.topic
+        from photo_tag_wrapper t
+        <where>
+            <if test="wrapper != null">
+                <if test="wrapper.type != null">
+                    and t.type = #{wrapper.type}
+                </if>
+                <if test="wrapper.action != null">
+                    and action = #{wrapper.action}
+                </if>
+                <if test="wrapper.name != null and wrapper.name != ''">
+                    and name = #{wrapper.name}
+                </if>
+                <if test="wrapper.uid != null and wrapper.uid > 0">
+                    <choose>
+                        <when test="wrapper.common_value == null">
+                            and (uid = #{wrapper.uid} or common_value = 1)
+                        </when>
+                        <otherwise>
+                            and uid = #{wrapper.uid}
+                        </otherwise>
+                    </choose>
+                </if>
+                <if test="wrapper.scope != null and wrapper.scope > 0">
+                    and scope = #{wrapper.scope}
+                </if>
+                <if test="wrapper.topic != null">
+                    and topic = #{wrapper.topic}
+                </if>
+                <if test="wrapper.common_value != null">
+                    and common_value = #{wrapper.common_value}
+                </if>
+            </if>
+            <choose>
+                <when test="loginUser != null and loginUser.uid > 0">
+                    <choose>
+                        <when test="wrapper != null and wrapper.type != null and wrapper.type == wrapper_type_search">
+                            and (
+                            t.uid = #{loginUser.uid}
+                            or
+                            (
+                            (t.permission = 0 or t.permission = 1)
+                            or
+                            (t.permission = 2 or t.permission = 3)
+                            or
+                            ((t.permission = 4 or t.permission = 5) and t.uid in (select following.fuid from user_follow
+                            following where following.uid = #{loginUser.uid}))
+                            or
+                            ((t.permission = 6 or t.permission = 7) and t.uid in (select follower.uid from user_follow
+                            follower where follower.fuid = #{loginUser.uid}))
+                            or
+                            ((t.permission = 8 or t.permission = 9) and t.uid in (select friend.uid from friends friend
+                            where friend.fid = #{loginUser.uid}))
+                            )
+                            )
+                        </when>
+                        <otherwise>
+                            and (
+                            t.uid = #{loginUser.uid}
+                            or
+                            (
+                            (t.permission = 0)
+                            or
+                            (t.permission = 2)
+                            or
+                            (t.permission = 4 and t.uid in (select following.fuid from user_follow following where
+                            following.uid = #{loginUser.uid}))
+                            or
+                            (t.permission = 6 and t.uid in (select follower.uid from user_follow follower where
+                            follower.fuid = #{loginUser.uid}))
+                            or
+                            (t.permission = 8 and t.uid in (select friend.uid from friends friend where friend.fid =
+                            #{loginUser.uid}))
+                            )
+                            )
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    <choose>
+                        <when test="wrapper != null and wrapper.type != null and wrapper.type == wrapper_type_search">
+                            and (t.permission = 0 or t.permission = 1)
+                        </when>
+                        <otherwise>
+                            and (t.permission = 0)
+                        </otherwise>
+                    </choose>
+                </otherwise>
+            </choose>
+        </where>
+        order by t.type desc, t.action asc, t.topic desc, t.extra desc, t.weight desc, t.ptwid asc
+    </select>
+
+    <select id="findPhotoTagWrapper" parameterType="photoTagWrapper" resultMap="photoTagResultMap">
+        select t.ptwid, t.uid, t.type, t.name, t.match_mode, t.pattern, t.action, t.extra, t.weight, t.scope,
+        t.permission, t.description, t.common_value, t.topic
         from photo_tag_wrapper t
         <where>
             <choose>
-                <when test="loginUser != null">
-                    (
-                    ( t.permission = 0 )
-                    OR
-                    ( t.permission = 1 and (t.uid = #{loginUser.uid} or t.uid in (select f.uid from friends f where
-                    f.fid = #{loginUser.uid})) )
-                    OR
-                    ( t.permission = 2 and t.uid = #{loginUser.uid} )
-                    )
+                <when test="ptwid != null and ptwid > 0">
+                    and ptwid = #{ptwid}
                 </when>
                 <otherwise>
-                    t.permission = 0
+                    <choose>
+                        <when test="(uid != null and uid > 0) and (name != null and name != '')">
+                            <if test="type != null">
+                                and type = #{type}
+                            </if>
+                            <if test="uid != null and uid > 0">
+                                and uid = #{uid}
+                            </if>
+                            <if test="name != null and name != ''">
+                                and name = #{name}
+                            </if>
+                        </when>
+                        <otherwise>
+                            and 1 != 1
+                        </otherwise>
+                    </choose>
                 </otherwise>
             </choose>
-            <if test="wrapper != null">
-                <if test="wrapper.name != null and  wrapper.name != '' ">
-                    and name = #{wrapper.name}
-                </if>
-                <if test="wrapper.uid > 0">
-                    and uid = #{wrapper.uid}
-                </if>
-                <if test="wrapper.scope > 0">
-                    and scope = #{wrapper.scope}
-                </if>
-            </if>
         </where>
-        order by t.weight desc
+        limit 1
     </select>
 
-    <insert id="saveAlbumPhotoRelation" parameterType="album" useGeneratedKeys="true" keyColumn="aprid" keyProperty="aprid">
+    <insert id="savePhotoTagWrapper" parameterType="photoTagWrapper">
+        insert into photo_tag_wrapper (ptwid,
+        uid,type,name,extra,topic,match_mode,pattern,action,weight,scope,permission,description,common_value)
+        values (#{ptwid}, #{uid},#{type},#{name},#{extra},
+        #{topic},#{match_mode},#{pattern},#{action},#{weight},#{scope},#{permission},#{description},#{common_value})
+    </insert>
+
+    <update id="updatePhotoTagWrapper" parameterType="photoTagWrapper">
+        update photo_tag_wrapper set type=#{type}, name=#{name},extra=#{extra},topic=#{topic},match_mode=#{match_mode},pattern=#{pattern},
+        action=#{action},weight=#{weight},scope=#{scope},permission=#{permission},description=#{description},common_value=#{common_value}
+        where ptwid = #{ptwid}
+    </update>
+
+    <update id="updatePhotoTagWrapperPermissionInScope" parameterType="album">
+        update photo_tag_wrapper set permission=#{permission}
+        where scope = #{album_id} and uid = #{user.uid} and permission != #{permission}
+    </update>
+
+    <delete id="deletePhotoTagWrapper" parameterType="photoTagWrapper">
+        delete from photo_tag_wrapper where ptwid = #{ptwid}
+    </delete>
+
+    <update id="updatePhotoTopicRelation" parameterType="hashMap">
+        update photo set topic = #{wrapper.ptwid} where uid = #{wrapper.uid}
+        <if test="syncTopicToPhotosMode == 0 or syncTopicToPhotosMode == ''">
+            and topic = 0
+        </if>
+        and tags rlike concat('#', #{wrapper.name}, '#')
+    </update>
+    <!-- 扩展标签  end -->
+
+    <!-- 相册照片关联  start -->
+    <insert id="saveAlbumPhotoRelation" parameterType="album" useGeneratedKeys="true" keyColumn="aprid"
+            keyProperty="aprid">
       insert into album_photo_relation (album_id, photo_id, sort) values (#{album_id}, #{photo_id}, #{sort});
     </insert>
 
@@ -381,16 +1215,17 @@
         update album_photo_relation set sort=#{sort} where photo_id = #{photo_id} and album_id = #{album_id}
     </update>
 
-    <delete id="deleteAlbumPhotoRelation" parameterType="albumPhotoRelation" >
+    <delete id="deleteAlbumPhotoRelation" parameterType="albumPhotoRelation">
         delete from album_photo_relation where photo_id = #{photo_id} and album_id = #{album_id}
     </delete>
 
-    <delete id="deleteAlbumPhotoRelationsByPhoto" parameterType="Integer" >
+    <delete id="deleteAlbumPhotoRelationsByPhoto" parameterType="Long">
         delete from album_photo_relation where photo_id = #{_parameter}
     </delete>
 
-    <delete id="deleteAlbumPhotoRelationsByAlbum" parameterType="Integer" >
+    <delete id="deleteAlbumPhotoRelationsByAlbum" parameterType="Long">
         delete from album_photo_relation where album_id = #{_parameter}
     </delete>
+    <!-- 相册照片关联  end -->
 
 </mapper>

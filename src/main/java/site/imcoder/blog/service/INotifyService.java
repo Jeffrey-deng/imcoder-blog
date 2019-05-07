@@ -6,17 +6,17 @@ import site.imcoder.blog.entity.*;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * 消息服务接口
+ */
 public interface INotifyService {
 
     /**
-     * 类实例化配置参数
+     * 异步运行
+     *
+     * @param command
      */
-    public void init();
-
-    /**
-     * 停止通知服务
-     */
-    public void stop();
+    public void executeByAsync(Runnable command);
 
     /**
      * 发送验证码
@@ -24,7 +24,7 @@ public interface INotifyService {
      * @param user
      * @return validateCode 验证码
      */
-    public String validateCode(User user);
+    public String sendValidateCode(User user);
 
     /**
      * 新用户欢迎通知
@@ -55,7 +55,7 @@ public interface INotifyService {
      * @param replyUid 父类评论的用户id(parentId为0时设置主体对象的作者id)
      * @param object   评论主体的对象（article?photo?video?）
      */
-    public void receivedComment(Comment comment, int replyUid, Object object);
+    public void receivedComment(Comment comment, Long replyUid, Object object);
 
     /**
      * 新的关注者提醒
@@ -138,4 +138,13 @@ public interface INotifyService {
      * @return
      */
     public <T> Set<T> getAllPushSessions();
+
+    /**
+     * 得到用户所有实时通信session
+     *
+     * @param user
+     * @param <T>
+     * @return
+     */
+    public <T> List<T> getUserAllPushSessions(User user);
 }

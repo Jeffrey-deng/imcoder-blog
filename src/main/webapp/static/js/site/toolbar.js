@@ -27,8 +27,8 @@
         "special_value_separator": /[:：=]/,    //键与值的分隔符
         "special_search_object": {    //需要特殊处理的关键字
             "model_schema": ["model", "mode", "m"],
-            "photo_schema": ["logic_conn", "name", "description", "desc", "tag", "tags", "uid", "photo_id", "id", "album_id", "aid", "originName", "origin", "path", "image_type", "type", "from", "extend"],
-            "article_schema": ["logic_conn", "id", "aid", "author.uid", "uid", "category.atid", "atid", "title", "tag", "tags", "summary", "create_time", "update_time", "click", "top", "recommend"],
+            "photo_schema": ["logic_conn", "name", "description", "desc", "tag", "tags", "uid", "photo_id", "id", "album_id", "aid", "originName", "origin", "path", "image_type", "topic.ptwid", "topic.name", "type", "from", "extend", "accessed", "liked", "commented"],
+            "article_schema": ["logic_conn", "id", "aid", "author.uid", "uid", "category.atid", "atid", "title", "tag", "tags", "summary", "create_time", "update_time", "click", "top", "recommend", "accessed", "collected", "commented"],
             "album_schema": ["id", "album_id", "name", "description", "desc", "user.uid", "uid"]
         },
         "special_multiple_match_joiner": "' and ${column} rlike '",    //多重匹配,
@@ -43,10 +43,10 @@
                 var elMap = context.config.elMap = {}; // 保存el标记内的key
                 var elSourceMap = context.config.elSourceMap = {};  // 保存标记包含el表达式的符号包裹
                 key = common_utils.replaceByEL(key, function (index, key) {
-                    var replaceFlag = context.config.special_replace_prefix + index;
-                    elMap[replaceFlag] = key;
-                    elSourceMap[replaceFlag] = this[0];
-                    return replaceFlag;
+                    var replaceMark = context.config.special_replace_prefix + index;
+                    elMap[replaceMark] = key;
+                    elSourceMap[replaceMark] = this[0];
+                    return replaceMark;
                 });
                 var model = null;
                 var modelPairRegex = null;
@@ -68,14 +68,13 @@
             },
             "photo_search": function (key) {
                 var isFindSpecial = false; //标记是否找到特殊关键字
-                var photo_url = "photo.do?method=dashboard&model=photo";
+                var photo_url = "p/dashboard?model=photo";
                 if (key == "") {
                     window.open(photo_url);
                     return;
                 }
-
                 // 如果不是直接输入的本站图片URL
-                if (!/^https?:\/\/.*?\/(blog\/)?(user\/\d+\/album\/\d+\/\d+\/[0-9a-zA-Z_\.]+\.(gif|jpe?g|png|bmp|svg|ico))(\?[\x21-\x7e]*)?$/.test(key)) {
+                if (!/^https?:\/\/[a-z0-9\.:]+\/([\x21-\x7e]*\/)?(user\/\w+\/photos\/\w+\/[0-9a-zA-Z_\.]+\.(gif|jpe?g|png|bmp|svg|ico))(\?[\x21-\x7e]*)?$/.test(key)) {
                     // Users can search exactly by special keywords in input box.
                     // input eg: tags:邓超 ， convert to "&tags=邓超"
                     // input eg: tags:邓超,album_id=5 ， convert to "&tags=邓超&album_id=5"
@@ -92,11 +91,11 @@
                         entry[0] == "tag" && (entry[0] = "tags");
                         entry[0] == "type" && (entry[0] = "image_type");
                         // 转化图片路径为相对路径
-                        entry[0] == "path" && (entry[1] = encodeURIComponent(
-                            entry[1].match(/^https?:\/\/.*?\/(blog\/)?(user\/\d+\/album\/\d+\/\d+\/[0-9a-zA-Z_\.]+\.(gif|jpe?g|png|bmp|svg|ico))(\?[\x21-\x7e]*)?$/) ? RegExp.$2 : entry[1]));
+                        entry[0] == "path" && (entry[1] = (
+                            entry[1].match(/^https?:\/\/[a-z0-9\.:]+\/([\x21-\x7e]*\/)?(user\/\w+\/photos\/\w+\/[0-9a-zA-Z_\.]+\.(gif|jpe?g|png|bmp|svg|ico))(\?[\x21-\x7e]*)?$/) ? RegExp.$2 : entry[1]));
                         // 编码正则表达式
                         entry[0] == "tags" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
-                        photo_url += "&" + entry[0] + "=" + entry[1];
+                        photo_url += "&" + entry[0] + "=" + encodeURIComponent(entry[1]);
                         isFindSpecial = true;
                     });
                 } else { // 直接输入的本站图片URL则直接查找该图片
@@ -114,9 +113,9 @@
             },
             "article_search": function (key) {
                 var isFindSpecial = false; //标记是否找到特殊关键字
-                var article_url = "article.do?method=list";
+                var article_url = "";
                 if (key == "") {
-                    window.open(article_url);
+                    window.open("a/list");
                     return;
                 }
                 context.utils.eachEntry(key, context.config.special_search_object.article_schema, function (entry) {
@@ -130,19 +129,19 @@
                     // 编码正则表达式
                     entry[0] == "tags" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
                     entry[0] == "title" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
-                    article_url += "&" + entry[0] + "=" + entry[1];
+                    article_url += "&" + entry[0] + "=" + encodeURIComponent(entry[1]);
                     isFindSpecial = true;
                 });
-                if (isFindSpecial) {
-                    window.open(article_url);
-                } else {
+                if (!isFindSpecial) {
                     key = encodeURIComponent(key);
-                    window.open(article_url + "&title=" + key);
+                    article_url += "&title=" + key;
                 }
+                article_url = "a/list" + (article_url ? ("?" + article_url.substring(1)) : "");
+                window.open(article_url);
             },
             "album_search": function (key) {
                 var isFindSpecial = false; //标记是否找到特殊关键字
-                var album_url = "photo.do?method=dashboard&model=album";
+                var album_url = "p/dashboard?model=album";
                 if (key == "") {
                     window.open(album_url);
                     return;
@@ -156,7 +155,7 @@
                     entry[0] == "uid" && (entry[0] = "user.uid");
                     // 编码正则表达式
                     entry[0] == "name" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
-                    album_url += "&" + entry[0] + "=" + entry[1];
+                    album_url += "&" + entry[0] + "=" + encodeURIComponent(entry[1]);
                     isFindSpecial = true;
                 });
                 if (isFindSpecial) {
@@ -168,9 +167,9 @@
             },
             "tags_square_search": function (key) {
                 var isFindSpecial = false; //标记是否找到特殊关键字
-                var tags_square_url = "photo.do?method=tags_square";
+                var tags_square_url = "";
                 if (key == "") {
-                    window.open(tags_square_url);
+                    window.open("p/tags_square");
                     return;
                 }
                 var filterKeyWord = null;
@@ -198,16 +197,18 @@
                     entry[0] == "path" && (entry[1] = entry[1].replace(context.config.path_params.cloudPath, ""));
                     // 编码正则表达式
                     entry[0] == "tags" && (entry[1] = context.utils.encodeRegexSearch(entry[0], entry[1]));
-                    tags_square_url += "&" + entry[0] + "=" + entry[1];
+                    tags_square_url += "&" + entry[0] + "=" + encodeURIComponent(entry[1]);
                     isFindSpecial = true;
                 });
                 if (isFindSpecial) {
-                    window.open(tags_square_url + (filterKeyWord ? ("&filter=" + encodeURIComponent(filterKeyWord)) : ""));
+                    tags_square_url += (filterKeyWord ? ("&filter=" + encodeURIComponent(filterKeyWord)) : "");
                 } else if (filterKeyWord) {
-                    window.open(tags_square_url + "&filter=" + encodeURIComponent(filterKeyWord));
+                    tags_square_url += "&filter=" + encodeURIComponent(filterKeyWord);
                 } else {
-                    window.open(tags_square_url + (key ? ("&filter=" + encodeURIComponent(key)) : ""));
+                    tags_square_url += (key ? ("&filter=" + encodeURIComponent(key)) : "");
                 }
+                tags_square_url = "p/tags_square" + (tags_square_url ? ("?" + tags_square_url.substring(1)) : "");
+                window.open(tags_square_url)
             }
         },
         "placeholder": null,
@@ -216,17 +217,21 @@
     };
 
     var init_search = function () {
-        if (config.location_info.file == "photo.do") {
-            config.placeholder = "输入关键字搜索照片"
-        } else {
-            config.placeholder = "输入关键字搜索"
+        var isPhotoPage = false;
+        if (config.location_info.segments) {
+            $.each(config.location_info.segments, function (i, seg) {
+                if (seg == "p" || seg == "albums" || seg == "videos" || seg == "photos") {
+                    isPhotoPage = true;
+                }
+            });
         }
+        config.placeholder = isPhotoPage ? "输入关键字搜索照片" : "输入关键字搜索";
         var searchInputBox = _self.find('.toolbar_search_input');
         searchInputBox.attr("placeholder", config.placeholder);
         config.inputInitialValue && searchInputBox.val(config.inputInitialValue);
         config.special_model_mapping = {
             "default": function (key) {
-                if (config.location_info.file == "photo.do") {
+                if (isPhotoPage) {
                     config.callback.photo_search.call(context, key);
                 } else {
                     config.callback.article_search.call(context, key);
@@ -252,7 +257,7 @@
                             "iconClass": "toast-success-no-icon",
                             "positionClass": "toast-top-right",
                             "onclick": function () {
-                                window.open("site.do?method=help&module=search");
+                                window.open("site/help?module=search");
                                 searchConfig.hasReadHelp = true;
                                 common_utils.setLocalConfig("search", searchConfig);
                             }
@@ -264,17 +269,18 @@
             });
         }
         // bind search btn
-        _self.find('.toolbar_search_trigger').click(function () {
+        _self.find('.toolbar_search_trigger').click(function (e) {
             var key = _self.find('.toolbar_search_input').val();
             config.callback.action_search.call(context, key);
+            e.preventDefault();
         });
         searchInputBox.parent().parent().keydown(function (e) {
-            e.defaultPrevented;
             var theEvent = e || window.event;
             var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
             if (code == 13) {// keyCode=13是回车键
                 _self.find('.toolbar_search_trigger').click();
                 // 防止触发表单提交 返回false
+                // e.preventDefault();
                 return false;
             }
         });
@@ -282,8 +288,8 @@
         $(document).keyup(searchHotKey_event);
     };
 
+    // 按 s 或 f 搜索
     var searchHotKey_event = function (e) {
-        e.defaultPrevented;
         var theEvent = e || window.event;
         var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
         var tagName = e.target.tagName;
@@ -329,9 +335,9 @@
             parts: {
                 0: 'header'
             }
-            /* itemClass: 'menuItem',
-             itemHover: 'active',
-             topMargin: 'auto' */
+            // itemClass: 'menuItem',
+            // itemHover: 'active',
+            // topMargin: 'auto'
         });
     }
 
@@ -365,10 +371,8 @@
         });
     }
 
-    //
+    // 初始化导航栏链接
     function init_toolbar_href() {
-        // init tag a href
-        _self.find('.toolbar_user_setting').attr('href', "user.do?method=profilecenter&action=settings");
 
         // bind_click
         _self.find('.toolbar_jump_writeblog').click(function () {
@@ -381,23 +385,23 @@
             logout();
         });
 
-        _self.find('.toolbar_jump_albums').attr("href", "photo.do?method=dashboard&model=photo");
+        _self.find('.toolbar_jump_albums').attr("href", "p/dashboard?model=album");
 
-        _self.find('.toolbar_jump_help').attr("href", "site.do?method=help");
+        _self.find('.toolbar_jump_help').attr("href", "help");
 
-        _self.find('.toolbar_jump_notice').attr("href", "site.do?method=notices");
+        _self.find('.toolbar_jump_notice').attr("href", "notices");
 
-        _self.find('.toolbar_jump_cloud').attr("href", "cloud.do?method=share");
+        _self.find('.toolbar_jump_cloud').attr("href", "cloud/share");
     }
 
     //写博客
     function jump_writeblog() {
         if (!login_handle.validateLogin()) {
             //弹出登陆框
-            login_handle.jumpLogin("article.do?method=edit&flag=new", true);
+            login_handle.jumpLogin("a/edit?mark=new", true);
         } else {
             //跳转
-            window.open("article.do?method=edit&flag=new");
+            window.open("a/edit?mark=new");
         }
     }
 
@@ -452,7 +456,7 @@
             //由于在后端又实现了转义，所以此方法失效
             // value = utils.encodeRegexSearchInWeb(key, value);
             value = value.replace(/(^[\|#])|([\|]$)/g, "");  // 去掉首尾|与首#
-            value = encodeURIComponent(value);  // 转义
+            // value = encodeURIComponent(value);  // 转义
             return value;
         },
         /**

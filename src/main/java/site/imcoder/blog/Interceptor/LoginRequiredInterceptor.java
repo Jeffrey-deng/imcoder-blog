@@ -3,11 +3,17 @@ package site.imcoder.blog.Interceptor;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.log4j.Logger;
 import org.springframework.web.method.HandlerMethod;
+import site.imcoder.blog.Interceptor.annotation.LoginRequired;
 import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.common.type.UserAuthType;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.entity.UserAuth;
 import site.imcoder.blog.service.IAuthService;
+import site.imcoder.blog.service.message.IRequest;
+import site.imcoder.blog.service.message.IResponse;
+import site.imcoder.blog.setting.Config;
+import site.imcoder.blog.setting.ConfigConstants;
 
 import javax.annotation.Resource;
 import javax.servlet.ServletException;
@@ -18,9 +24,10 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
-import java.util.Map;
 
 /**
+ * 登录权限过滤器
+ *
  * @author Jeffrey.Deng
  * @date 2018/5/15
  */
@@ -60,38 +67,93 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
         boolean isLogin = false;
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
-            String uid = null;
-            String token = null;
+            String uid = null; // old api
+            String token = null; // old api
+            String identifier = null; // new api
+            String credential = null; // new api
             for (Cookie cookie : cookies) {
                 if (cookie == null) {
                     continue;
                 }
-                if ("uid".equalsIgnoreCase(cookie.getName())) {
+                if ("identifier".equalsIgnoreCase(cookie.getName())) {
+                    identifier = cookie.getValue();
+                } else if ("credential".equalsIgnoreCase(cookie.getName())) {
+                    credential = cookie.getValue();
+                } else if ("uid".equalsIgnoreCase(cookie.getName())) {
                     uid = cookie.getValue();
                 } else if ("token".equalsIgnoreCase(cookie.getName())) {
                     token = cookie.getValue();
                 }
             }
-            if (uid != null && token != null) {
-                UserAuth userAuth = new UserAuth(Integer.valueOf(uid), UserAuthType.TOKEN, uid, token);
-                userAuth.setLogin_ip(Utils.getRemoteAddr(request));
-                Map<String, Object> map = authService.login(userAuth, false);
-                int flag = (int) map.get("flag");
-                if (flag == 200) {
-                    session.setAttribute("loginUser", map.get("user"));
-                    Cookie responseCookie = new Cookie("login_status", "true");
-                    response.addCookie(responseCookie);
-                    isLogin = true;
-                } else {
-                    logger.warn(String.format("用户 %s 自动登录失败，CODE：%d，IP：%s", userAuth.getUid(), flag, userAuth.getLogin_ip()));
+            try {
+                UserAuth userAuth = null;
+                if (identifier != null && credential != null) {
+                    long longIdentifier = Long.valueOf(identifier);
+                    userAuth = new UserAuth(longIdentifier, UserAuthType.TOKEN, String.valueOf(longIdentifier), credential);
+                } else if (uid != null && token != null) {
+                    long longIdentifier = IdUtil.convertOldPrimaryKeyToNew(Long.valueOf(uid));
+                    userAuth = new UserAuth(longIdentifier, UserAuthType.TOKEN, String.valueOf(longIdentifier), token);
                 }
+                if (userAuth != null) {
+                    userAuth.setLogin_ip(Utils.getRemoteAddr(request));
+                    // iRequest
+                    IRequest iRequest = new IRequest(null);
+                    iRequest.setAccessIp(Utils.getRemoteAddr(request));
+                    iRequest.setAccessPath(Utils.getRequestPath(request));
+                    iRequest.setQueryString(request.getQueryString() != null ? request.getQueryString() : "");
+                    IResponse loginResp = authService.login(userAuth, iRequest.putAttr("remember", false));
+                    if (loginResp.isSuccess()) {
+                        // 存储标记
+                        session.setAttribute("loginUser", loginResp.getAttr("user"));
+                        // 登录成功cookie标记
+                        Cookie responseCookie = new Cookie("login_status", "true");
+                        responseCookie.setPath(request.getContextPath().length() == 0 ? "/" : request.getContextPath());
+                        responseCookie.setSecure(request.getScheme().equalsIgnoreCase("https"));
+                        responseCookie.setMaxAge(-1);
+                        response.addCookie(responseCookie);
+                        // 升级旧api为新api
+                        if (identifier == null || credential == null) {
+                            String longUid = String.valueOf(IdUtil.convertOldPrimaryKeyToNew(Long.parseLong(uid)));
+                            String cookie_path = (request.getContextPath().length() == 0 ? "/" : request.getContextPath());
+                            boolean cookie_secure = request.getScheme().equalsIgnoreCase("https");
+                            int max_age = 3600 * 24 * Integer.parseInt(Config.getChild(ConfigConstants.USER_LOGIN_REMEMBER_MAX_AGE, "@user_", longUid + "", ":"));
+                            Cookie identifier_cookie = new Cookie("identifier", longUid);
+                            identifier_cookie.setPath(cookie_path);
+                            identifier_cookie.setSecure(cookie_secure);
+                            identifier_cookie.setMaxAge(max_age); // max_age
+                            Cookie credential_cookie = new Cookie("credential", token);
+                            credential_cookie.setPath(cookie_path);
+                            credential_cookie.setSecure(cookie_secure);
+                            credential_cookie.setMaxAge(max_age); // max_age
+                            response.addCookie(identifier_cookie);
+                            response.addCookie(credential_cookie);
+                        }
+                        for (Cookie cookie : request.getCookies()) {
+                            if (cookie == null) {
+                                continue;
+                            }
+                            if ("uid".equalsIgnoreCase(cookie.getName()) || "token".equalsIgnoreCase(cookie.getName())) {
+                                cookie.setValue(null);
+                                cookie.setMaxAge(0);// 立即销毁cookie
+                                response.addCookie(cookie);
+                            }
+                        }
+                        isLogin = true;
+                    } else {
+                        logger.warn(String.format("用户 %s 自动登录失败，CODE：%d，IP：%s", userAuth.getUid(), loginResp.getStatus(), userAuth.getLogin_ip()));
+                    }
+                }
+            } catch (NumberFormatException e) {
+                logger.warn("用户自动登录失败: " + e.toString());
             }
             if (!isLogin) {
                 for (Cookie cookie : cookies) {
                     if (cookie == null) {
                         continue;
                     }
-                    if ("login_status".equalsIgnoreCase(cookie.getName()) || "uid".equalsIgnoreCase(cookie.getName()) || "token".equalsIgnoreCase(cookie.getName())) {
+                    if ("login_status".equalsIgnoreCase(cookie.getName()) ||
+                            "uid".equalsIgnoreCase(cookie.getName()) || "token".equalsIgnoreCase(cookie.getName()) ||
+                            "identifier".equalsIgnoreCase(cookie.getName()) || "credential".equalsIgnoreCase(cookie.getName())) {
                         cookie.setValue(null);
                         cookie.setMaxAge(0);// 立即销毁cookie
                         response.addCookie(cookie);
@@ -135,30 +197,14 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.warn("发送未登录response错误", e);
         } catch (ServletException e) {
-            e.printStackTrace();
+            logger.warn("发送未登录response错误", e);
         } finally {
             if (out != null) {
                 out.close();
             }
         }
-    }
-
-    /**
-     * 某个请求是否ajax请求
-     *
-     * @param request
-     * @return
-     */
-    private boolean isAjaxRequest(HttpServletRequest request) {
-        String requestType = request.getHeader("X-Requested-With");
-        if ("XMLHttpRequest".equals(requestType)) {
-            return true;
-        } else {
-            return false;
-        }
-        //return ((HandlerMethod) handler).getMethodAnnotation(ResponseBody.class) != null;
     }
 
     @Override

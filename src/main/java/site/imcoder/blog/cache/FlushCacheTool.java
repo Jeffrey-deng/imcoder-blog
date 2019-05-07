@@ -32,7 +32,7 @@ public class FlushCacheTool {
      * @param articleBuffer
      * @return int 成功与否
      */
-    public void flushArticleCache(Map<Integer, Article> articleBuffer, Set<Integer> hasUpdateArticle) {
+    public void flushArticleCache(Map<Long, Article> articleBuffer, Set<Long> hasUpdateArticle) {
 
         if (hasUpdateArticle.size() == 0) {
             logger.debug("FlushArticleCache: hasUpdateArticle 的大小为 0 ，跳过flush article");
@@ -43,24 +43,22 @@ public class FlushCacheTool {
 
         logger.info("FlushArticleCache: Cache触发执行flush, flush article数量：" + hasUpdateArticle.size());
 
-        for (int aid : hasUpdateArticle) {
+        for (Long aid : hasUpdateArticle) {
             Article article = articleBuffer.get(aid);
             if (article != null) {
                 articleList.add(article);
             }
         }
-        //重置hasUpdateArticle
+        // 重置hasUpdateArticle
         if (statsDao.saveArticleBuffer(articleList) > 0) {
-
             logger.debug("FlushArticleCache: 重置 hasUpdateArticle");
             logger.debug("FlushArticleCache: flush success!");
-
             hasUpdateArticle.clear();
         } else {
             String tips = "";
             if (hasUpdateArticle.size() > 0) {
                 tips = " 可能是文章 ";
-                for (int aid : hasUpdateArticle) {
+                for (Long aid : hasUpdateArticle) {
                     tips += (aid + ",");
                 }
                 tips = tips.substring(0, tips.length() - 1);

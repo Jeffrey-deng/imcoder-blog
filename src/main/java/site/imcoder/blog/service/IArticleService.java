@@ -2,11 +2,9 @@ package site.imcoder.blog.service;
 
 import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.entity.Article;
-import site.imcoder.blog.entity.Category;
 import site.imcoder.blog.entity.User;
-
-import java.util.List;
-import java.util.Map;
+import site.imcoder.blog.service.message.IRequest;
+import site.imcoder.blog.service.message.IResponse;
 
 
 public interface IArticleService {
@@ -14,135 +12,187 @@ public interface IArticleService {
     /**
      * 得到文章上传的配置信息
      *
-     * @param loginUser
-     * @return
+     * @param iRequest
+     * @return IResponse:
+     * <pre>
+     * allowCreateLowestLevel
+     * isAllowCreate
+     * uploadArgs
+     *   mode
+     *   maxPhotoUploadSize
+     *   maxVideoUploadSize
+     * </pre>
      */
-    public Map<String, Object> getCreateConfigInfo(User loginUser);
+    public IResponse getCreateConfigInfo(IRequest iRequest);
 
     /**
      * description:保存文章
      *
      * @param article
-     * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，500: 失败
+     * @param iRequest
+     * @return IResponse:
+     * article：文章
+     * status - 200：成功，400: 参数错误，401：需要登录，500: 失败
      */
-    public int save(Article article, User loginUser);
+    public IResponse saveArticle(Article article, IRequest iRequest);
 
     /**
      * 更新文章
      *
      * @param article
-     * @return
+     * @param iRequest
+     * @return ResponseEntity
+     * article：文章
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此文章，500: 失败
      */
-    /**
-     * @param article
-     * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此文章，500: 失败
-     */
-    public int update(Article article, User loginUser);
+    public IResponse updateArticle(Article article, IRequest iRequest);
 
     /**
      * 打开文章
      *
-     * @param aid
-     * @param loginUser (to check AUTH)
-     * @return map (article:文章，flag：{200, 401, 403：无权限，404：无此文章})
+     * @param article
+     * @param isNeedAdjacentArticle 是否一起返回文章的相邻文章信息
+     * @param iRequest              (to check AUTH)
+     * @return IResponse:
+     * article:文章
      */
-    public Map<String, Object> detail(int aid, User loginUser);
+    public IResponse findArticle(Article article, boolean isNeedAdjacentArticle, IRequest iRequest);
+
+    /**
+     * 打开文章
+     *
+     * @param article
+     * @param iRequest (to check AUTH) attr:
+     *                 <p>{Boolean} isNeedAdjacentArticle - 是否一起返回文章的相邻文章信息</p>
+     * @return IResponse:
+     * article:文章
+     */
+    public IResponse findArticle(Article article, IRequest iRequest);
 
     /**
      * 查找文章列表，分页
      *
-     * @param pageSize  每页篇数
-     * @param jumpPage  跳转页
      * @param condition article查找条件
-     * @param loginUser 发送请求的用户 用来判断权限
-     * @return 文章列表, 分页bean
+     * @param pageSize  每页篇数
+     * @param pageNum   跳转页
+     * @param iRequest  发送请求的用户 用来判断权限
+     * @return IResponse:
+     * articles 文章列表,
+     * page 分页bean
      */
-    public Map<String, Object> list(int pageSize, int jumpPage, Article condition, User loginUser);
+    public IResponse findArticleList(Article condition, int pageSize, int pageNum, IRequest iRequest);
 
     /**
      * 查找文章列表, 不分页
      *
      * @param condition
-     * @param loginUser
-     * @return
+     * @param iRequest
+     * @return IResponse:
+     * articles 文章列表
      */
-    public List<Article> list(Article condition, User loginUser);
+    public IResponse findArticleList(Article condition, IRequest iRequest);
 
     /**
      * 删除文章
      *
      * @param article
-     * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此文章，500: 失败
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此文章，500: 失败
      */
-    public int delete(Article article, User loginUser);
+    public IResponse deleteArticle(Article article, IRequest iRequest);
 
     /**
      * 得到每种分类的数量
      *
-     * @return
+     * @param iRequest:
+     * @return IResponse:
+     * categories
      */
-    public List<Category> getCategoryCount();
+    public IResponse findCategoryCount(IRequest iRequest);
 
     /**
      * description: 获得置顶列表
      *
-     * @param size 列表数量
-     * @return List<Article>
+     * @param size     列表数量
+     * @param iRequest
+     * @return IResponse:
+     * articles
      */
-    public List<Article> listTops(int size);
+    public IResponse findTopArticles(int size, IRequest iRequest);
 
     /**
      * description:获得排行榜列表
      *
-     * @param uid  是否查询所有还是单个用户 uid=0 为查询所有
-     * @param size list长度 默认5
-     * @return Map<String, List>
+     * @param uid      是否查询所有还是单个用户 uid=0 为查询所有
+     * @param size     list长度 默认5
+     * @param iRequest
+     * @return IResponse:
+     * clickRankList
+     * newestList
+     * hotTagList
      */
-    public Map<String, Object> listRanking(int uid, int size, User loginUser);
+    public IResponse findRankingList(Long uid, int size, IRequest iRequest);
 
     /**
      * 获取文章标签列表，按文章数量降序排序
      *
-     * @param hostUser  文章作者，为null,查询所有
-     * @param size      列表长度，为0返回全部
-     * @param loginUser
-     * @return
+     * @param hostUser 文章作者，为null,查询所有
+     * @param size     列表长度，为0返回全部
+     * @param iRequest
+     * @return IResponse:
+     * {List<Entry<String, Integer>>} tags
      */
-    public List<Map.Entry<String, Integer>> findTagList(User hostUser, int size, User loginUser);
+    public IResponse findTagList(User hostUser, int size, IRequest iRequest);
 
     /**
      * 图片或附件上传
      *
      * @param file
-     * @param fileName  重命名名字
-     * @param isImage   是否是图片
-     * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，500: 失败
-     * info - 提示
+     * @param originName 源文件名
+     * @param isImage    是否是图片
+     * @param iRequest
+     * @return IResponse:
+     * image_url:
+     * width:
+     * height:
+     * file_url:
      */
-
-    public Map<String, Object> uploadAttachment(MultipartFile file, String fileName, String isImage, User loginUser);
+    public IResponse uploadAttachment(MultipartFile file, String originName, String isImage, IRequest iRequest);
 
     /**
      * 互联网图片本地化
      *
      * @param url
-     * @param fileName
-     * @param loginUser
-     * @return
+     * @param originName
+     * @param iRequest
+     * @return IResponse:
+     * image_url:
+     * width:
+     * height:
+     * file_url:
      */
-    public Map<String, Object> localImage(String url, String fileName, User loginUser);
+    public IResponse uploadImageFromURL(String url, String originName, IRequest iRequest);
 
     /**
      * 删除文件
      *
      * @param file_url
-     * @param isImage   是否时图片
-     * @param loginUser
-     * @return flag: [200:服务器删除成功] [404:文章插入的图片为链接，不需要删除，返回成功] [500:图片删除失败]
+     * @param isImage  是否时图片
+     * @param iRequest
+     * @return IResponse:
+     * status: [200:服务器删除成功] [404:文章插入的图片为链接，不需要删除，返回成功] [500:图片删除失败]
      */
-    public Map<String, Object> deleteAttachment(String file_url, String isImage, User loginUser);
+    public IResponse deleteAttachment(String file_url, String isImage, IRequest iRequest);
+
+    /**
+     * 查询文章的历史用户访问记录
+     *
+     * @param article
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     */
+    public IResponse findArticleAccessRecordList(Article article, IRequest iRequest);
+
 }

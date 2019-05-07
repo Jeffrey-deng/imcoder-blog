@@ -1,5 +1,6 @@
 package site.imcoder.blog.event;
 
+import site.imcoder.blog.Interceptor.annotation.AccessRecorder;
 import site.imcoder.blog.entity.*;
 
 /**
@@ -14,24 +15,52 @@ public interface IEventTrigger {
     /**
      * 文章被浏览事件
      *
-     * @param user    访客
-     * @param article 文章
+     * @param accessRecord
+     * @param accessRecorder
      */
-    public void clickArticle(User user, Article article);
+    public void accessArticle(AccessRecord<Article> accessRecord, AccessRecorder accessRecorder);
+
+
+    /**
+     * 视频被浏览事件
+     *
+     * @param accessRecord
+     * @param accessRecorder
+     */
+    public void accessVideo(AccessRecord<Video> accessRecord, AccessRecorder accessRecorder);
+
+
+    /**
+     * 照片被浏览事件
+     *
+     * @param accessRecord
+     * @param accessRecorder
+     */
+    public void accessPhoto(AccessRecord<Photo> accessRecord, AccessRecorder accessRecorder);
+
+    /**
+     * 相册被浏览事件
+     *
+     * @param accessRecord
+     * @param accessRecorder
+     */
+    public void accessAlbum(AccessRecord<Album> accessRecord, AccessRecorder accessRecorder);
 
     /**
      * 用户个人空间被浏览事件
      *
-     * @param user
+     * @param accessRecord
+     * @param accessRecorder
      */
-    public void clickUserHome(User user);
+    public void accessUserHome(AccessRecord<User> accessRecord, AccessRecorder accessRecorder);
 
     /**
      * 网站被浏览事件
      *
-     * @param user
+     * @param accessRecord
+     * @param accessRecorder - 可能为null
      */
-    public void clickSite(User user);
+    public void accessSite(AccessRecord accessRecord, AccessRecorder accessRecorder);
 
     /**
      * 添加评论事件
@@ -60,7 +89,7 @@ public interface IEventTrigger {
      *
      * @param follow
      */
-    public void unFollow(Follow follow);
+    public void removeFollow(Follow follow);
 
     /**
      * 成为好友事件
@@ -74,7 +103,7 @@ public interface IEventTrigger {
      *
      * @param friend
      */
-    public void unFriend(Friend friend);
+    public void removeFriend(Friend friend);
 
     /**
      * 新文章创建事件

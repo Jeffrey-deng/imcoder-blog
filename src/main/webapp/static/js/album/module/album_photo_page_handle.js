@@ -1,5 +1,7 @@
 /**
- * Created by Jeffrey.Deng on 2018/3/29.
+ * 照片页面处理插件
+ * @author Jeffery.deng
+ * @date 2018/3/29
  */
 (function (factory) {
     /* global define */
@@ -62,8 +64,9 @@
                 var object = {};
                 object.logic_conn = "or";
                 object.query_size = 500;
-                $.get("photo.do?method=photoListByAjax", object, function (data) {
-                    if (data.flag == 200) {
+                $.get("photo.api?method=getPhotoList", object, function (response) {
+                    if (response.status == 200) {
+                        var data = response.data;
                         var album = {};
                         album.photos = data.photos;
                         album.size = data.photos ? data.photos.length : 0;
@@ -71,12 +74,12 @@
                         data.album = album;
                         success(data);
                     } else {
-                        toastr.error(data.info, "加载相册信息失败!");
-                        console.warn("Error Code: " + data.flag);
+                        toastr.error(response.message, "加载相册信息失败!");
+                        console.warn("Error Code: " + response.status);
                     }
                 });
             },
-            "generatePhotoPreviewUrl": function (source, relativePath, hitCol) { // 生成预览图片url的函数
+            "generatePhotoPreviewUrl": function (source, hitCol) { // 生成预览图片url的函数
                 return source;
             },
             "parsePhotosZipName": function (config) {   // 生成打包下载照片压缩包的名字
@@ -118,6 +121,7 @@
             "photosContainer_id": "masonryContainer",
             "page_nav": ".page-navigator",
             "photo_id_prefix": "photo_",
+            "photo_node": ".photo",
             "album_size": "#album_size"
         },
         page_params: {
@@ -138,10 +142,13 @@
         page_method_address: "dashboard",
         load_condition: null,
         checkPhotoId: 0,
-        zipPhoto_groupWithAlbum: false
+        zipPhoto_groupWithAlbum: false,
+        zipPhoto_groupWithMirrorPath: false,
+        allowZipPhotos: false,
+        img_load_error_default: "res/img/img_load_error_default.jpg"
     };
     var init = function (options) {
-        $.extend(true, config, options);
+        common_utils.extendNonNull(true, config, options);
         loadAlbumWithPhotos(config, function (data) {
             pointer.album = data.album;
             if (pointer.album.photos != null) {
@@ -150,22 +157,63 @@
                 }
                 config.page_params.pageCount = utils.calcPageCount();
                 config.page_params.col && (config.use_album_col = false);
+
+                $(config.selector.page_nav).on("click", "a", function (e) {
+                    var _self = e.currentTarget;
+                    var className = _self.parentNode.className;
+                    if (className == "page-left") {
+                        jumpPage(config.page_params.pageNum - 1);
+                    } else if (className == "page-right") {
+                        jumpPage(config.page_params.pageNum + 1);
+                    } else if (className != "separator") {
+                        jumpPage(_self.getAttribute('jumpPage'))
+                    }
+                    config.callback.paginationClick_callback.call(context, _self.parentNode);
+                    utils.triggerEvent(config.event.pagePaginationClick, _self.parentNode);
+                    return false;
+                });
+
+                $('#' + config.selector.photosContainer_id).on({
+                    "dragstart": function (e) {
+                        var uid = e.currentTarget.parentNode.getAttribute("data-uid");
+                        var isAuthor = login_handle.equalsLoginUser(uid);
+                        var tips = isAuthor ? "松开鼠标打开编辑窗口~" : "松开鼠标查看图片信息~";
+                        common_utils.notify({
+                            "progressBar": false,
+                            "timeOut": 0,
+                            "closeButton": false
+                        }).success(tips, "", "notify_drag");
+                    },
+                    "dragend": function (e) {
+                        common_utils.removeNotify("notify_drag");
+                        var photo = utils.getPhotoByCache(e.currentTarget.parentNode.getAttribute("data-id"));
+                        config.callback.actionForEditPhoto.call(context, photo);
+                        utils.triggerEvent(config.event.actionForEditPhoto, photo);
+                    }
+                }, "img");
+
+                initClickEnlarge();
+
+                initWaterfallFlow();
+
                 bindPopstate();
-                if (config.checkPhotoId > 0) {
+
+                if (config.checkPhotoId) {
                     jumpPage(utils.getPhotoPageNum(config.checkPhotoId));
                     var params = common_utils.parseURL(window.location.href).params;
-                    var search = "?method=" + config.page_method_address;
+                    var search = "";
                     $.each(params, function (key, value) {
                         if (key != "method" && key != "check") {
                             search += "&" + key + "=" + value;
                         }
                     });
+                    search = (search ? ("?" + search.substring(1)) : "");
                     history.replaceState(
-                        {"flag": "page"},
+                        {"mark": "page"},
                         document.title,
                         location.pathname + search
                     );
-                    $("#" + config.selector.photo_id_prefix + config.checkPhotoId).find("img").click();
+                    utils.openPhotoPopup(config.checkPhotoId);
                 } else {
                     jumpPage(config.page_params.pageNum);
                 }
@@ -205,10 +253,43 @@
                 var zipName = config.callback.parsePhotosZipName.call(context, config);
                 zipName !== false && utils.zipPhotosAndDownload(zipName);
             });
+            // 触发服务器未统计的在相册内图片访问事件
+            utils.bindEvent(config.event.popupChanged, function (e, photo_id) {
+                if (photo_id) {
+                    if (!utils.getPhotoImageDom(photo_id).hasClass("has-trigger-photo-access")) {
+                        setTimeout(function () {
+                            request.triggerPhotoAccess(photo_id, function (photo) {
+                                utils.getPhotoImageDom(photo_id).addClass("has-trigger-photo-access");
+                            });
+                        }, 100);
+                    }
+                }
+            })
         });
     };
     var loadAlbumWithPhotos = function (config, success) {
         config.callback.loadPhotos_callback.call(context, config, success);
+    };
+    var request = {
+        "triggerPhotoAccess": function (photo_id, callback) {
+            if (!photo_id) {
+                return;
+            }
+            var post_param = null;
+            if (typeof photo_id == "object") {
+                post_param = {"photo_id": photo_id.photo_id};
+            } else {
+                post_param = {"photo_id": photo_id};
+            }
+            post_param.deep = 0;
+            post_param.first_access_referer = document.referrer;
+            post_param.first_access_path = document.location.href;
+            $.post("photo.api?method=triggerPhotoAccess", post_param, function (response) {
+                if (response.status == 200) {
+                    callback && callback(response.data.photo);
+                }
+            });
+        }
     };
     var jumpPage = function (pagenum) {
         config.page_params.pageCount = utils.calcPageCount();
@@ -221,61 +302,41 @@
         common_utils.removeNotify("notify_pageLoading");
         common_utils.notify({
             "progressBar": false,
+            "hideDuration": 0,
+            "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
         }).success("加载中～", "第" + config.page_params.pageNum + "页", "notify_pageLoading");
 
         // 组装该页的html
         assembleCurrentPageHtml(pagenum);
-        $(config.selector.page_nav).find('a').unbind().click(function (e) {
-            var _self = e.currentTarget;
-            var className = _self.parentNode.className;
-            if (className == "page-left") {
-                jumpPage(config.page_params.pageNum - 1);
-            } else if (className == "page-right") {
-                jumpPage(config.page_params.pageNum + 1);
-            } else if (className != "separator") {
-                jumpPage(_self.getAttribute('jumpPage'))
+
+        // 瀑布流重新计算
+        pointer.masonryInstance.recalculate(true);
+        $.each($('#' + config.selector.photosContainer_id).children(), function (i, dom) {
+            var img = dom.querySelector("img");
+            if (img && !img.naturalHeight) {
+                var scale = img.offsetWidth / dom.getAttribute("data-width");
+                img.style.height = (dom.getAttribute("data-height") * scale) + "px";
             }
-            config.callback.paginationClick_callback.call(context, _self.parentNode);
-            utils.triggerEvent(config.event.pagePaginationClick, _self.parentNode);
-            return false;
         });
-
-        $('#' + config.selector.photosContainer_id).find("img").on("dragstart", function (e) {
-            var uid = parseInt(e.currentTarget.parentNode.getAttribute("data-uid"));
-            var isAuthor = login_handle.equalsLoginUser(uid);
-            var tips = isAuthor ? "松开鼠标打开编辑窗口~" : "松开鼠标查看图片信息~";
-            common_utils.notify({
-                "progressBar": false,
-                "timeOut": 0,
-                "closeButton": false
-            }).success(tips, "", "notify_drag");
-        });
-        $('#' + config.selector.photosContainer_id).find("img").on("dragend", function (e) {
-            common_utils.removeNotify("notify_drag");
-            var photo = utils.getPhotoByCache(e.currentTarget.parentNode.getAttribute("data-id"));
-            config.callback.actionForEditPhoto.call(context, photo);
-            utils.triggerEvent(config.event.actionForEditPhoto, photo);
-        });
-
-        initWaterfallFlow();
-
-        initClickEnlarge();
-        /*$(window).resize(function () {
-         initClickEnlarge();
-         });*/
+        pointer.masonryInstance.recalculate(true);
+        pointer.masonryInstance.recalculateOnImageLoad(true);
 
         var params = common_utils.parseURL(window.location.href).params;
-        var search = "?method=" + config.page_method_address;
+        var search = "";
         $.each(params, function (key, value) {
             if (key != "method" && key != "page") {
                 search += "&" + key + "=" + value;
             }
         });
         (pagenum != 1) && (search += "&page=" + pagenum);
+        search = (search ? ("?" + search.substring(1)) : "");
+        if (window.location.hash && window.location.hash != '#') {
+            search += window.location.hash
+        }
         history.replaceState(
-            {"flag": "page"},
+            {"mark": "page"},
             document.title,
             location.pathname + search
         );
@@ -296,6 +357,7 @@
         var photosContainer = document.getElementById(config.selector.photosContainer_id);
         photosContainer.innerHTML = "";
         photosContainer.appendChild(fragment);
+        utils.replaceLoadErrorImgToDefault(photosContainer);
 
         // 分页
         var navigator_fragment = document.createDocumentFragment();
@@ -336,8 +398,22 @@
         utils.calcNavLocation();
     };
     var utils = {
-        "bindEvent": function (eventName, func) {
-            $(context).bind(eventName, func);
+        "once": function (eventName, func, bindFirst) {
+            var funcWrapper = function () {
+                try {
+                    func.apply(context, arguments);
+                } finally {
+                    utils.unbindEvent(eventName, funcWrapper);
+                }
+            };
+            utils.bindEvent(eventName, funcWrapper, bindFirst);
+        },
+        "bindEvent": function (eventName, func, bindFirst) {
+            if (bindFirst == true) {
+                $(context).onfirst(eventName, func);
+            } else {
+                $(context).bind(eventName, func);
+            }
         },
         "triggerEvent": function (eventName) {
             return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
@@ -357,10 +433,9 @@
             div.setAttribute("data-desc", photo.description);
             div.setAttribute("data-width", photo.width);
             div.setAttribute("data-height", photo.height);
-            div.setAttribute("data-iscover", photo.iscover);
-            div.setAttribute("data-path", photo.path);
+            div.setAttribute("data-origin-path", photo.path);
             var img = document.createElement("img");
-            img.setAttribute("src", config.callback.generatePhotoPreviewUrl.call(context, (config.path_params.cloudPath + photo.path), photo.path, config.page_params.real_col[config.hitColKey]));
+            img.setAttribute("src", config.callback.generatePhotoPreviewUrl.call(context, photo.path, config.page_params.real_col[config.hitColKey]));
             //img.className = "img-thumbnail";
             div.appendChild(img);
             config.callback.makeupNode_callback.call(context, div, photo);
@@ -383,23 +458,40 @@
             if (pointer.album.photos == null || pointer.album.photos == undefined) {
                 pointer.album.photos = [];
             }
+            if (photo.topic && photo.topic.ptwid) {
+                var update_ptwid = photo.topic.ptwid;
+                var update_scope = photo.topic.scope;
+                var update_permission = photo.topic.permission;
+                $.each(pointer.album.photos, function (i, p) {
+                    if (p.topic && p.topic.ptwid && p.topic.ptwid == update_ptwid && (p.topic.scope != update_scope || p.topic.permission != update_permission)) {
+                        p.topic = $.extend({}, photo.topic);
+                    }
+                });
+            }
             pointer.album.photos.push(photo);
             utils.updateAlbumSizeInPage();
             utils.calcNavLocation();
         },
         "updatePhotoInPage": function (photo) {
             var photo_source = utils.getPhotoByCache(photo.photo_id);
-            if (photo.iscover == 1) {
-                $.each(pointer.album.photos, function (i, value) {
-                    if (photo_source.album_id == value.album_id && value.iscover == 1) {
-                        value.iscover = 0;
-                        $("#" + config.selector.photo_id_prefix + value.photo_id).attr("data-iscover", 0);
-                    }
-                });
+            if (photo.topic && photo.topic.ptwid) {
+                var isTopicPermissionUpdate = (!photo_source.topic || !photo_source.topic.ptwid || photo_source.topic.ptwid != photo.topic.ptwid ||
+                (photo_source.topic.scope != photo.topic.scope || photo_source.topic.permission != photo.topic.permission));
+                if (isTopicPermissionUpdate) {
+                    var update_ptwid = photo.topic.ptwid;
+                    $.each(pointer.album.photos, function (i, p) {
+                        if (p.topic && p.topic.ptwid && p.topic.ptwid == update_ptwid) {
+                            p.topic = $.extend({}, photo.topic);
+                        }
+                    });
+                }
             }
-            $.extend(photo_source, photo);
+            common_utils.extendNonNull(photo_source, photo);
+            if (!photo.topic || photo.topic.ptwid == null) {
+                photo_source.topic = photo.topic;
+            }
             $("#" + config.selector.photo_id_prefix + photo.photo_id).attr("data-name", photo.name).attr("title", photo.name)
-                .attr("data-desc", photo.description).attr("data-iscover", photo.iscover);
+                .attr("data-desc", photo.description).attr("data-origin-path", photo.path);
         },
         "deletePhotoInPage": function (photo_id) {
             $("#" + config.selector.photo_id_prefix + photo_id).remove();
@@ -516,19 +608,21 @@
                 key: config.search_params,
                 callback: {
                     "parseFiles_callback": function (location_info, options) {
-                        // options.photos.slice(0)
-                        /*var photo_arr = [];
-                         $.each(options.album.photos, function (i, photo_src) {
-                         var photo = $.extend(true, {}, photo_src);
-                         photo.url = options.cloudPath + photo.path;
-                         photo.location = "photos";
-                         photo_arr.push(photo);
-                         });*/
+                        // // options.photos.slice(0)
+                        // var photo_arr = [];
+                        //  $.each(options.album.photos, function (i, photo_src) {
+                        //  var photo = $.extend(true, {}, photo_src);
+                        //  photo.url = options.cloudPath + photo.path;
+                        //  photo.location = "photos";
+                        //  photo_arr.push(photo);
+                        //  });
                         var groupWithAlbum = config.zipPhoto_groupWithAlbum;
+                        var groupWithMirrorPath = config.zipPhoto_groupWithMirrorPath;
+                        var getSavePathRegex = /(user\/[^/]+\/photos\/[^/]+)/;
                         var photo_arr = options.album.photos;
                         $.each(photo_arr, function (i, photo) {
-                            photo.url = options.cloudPath + photo.path;
-                            photo.location = "photos" + (groupWithAlbum ? ("/" + photo.album_id) : "");
+                            photo.url = photo.path;
+                            photo.location = "photos" + (groupWithAlbum ? ("/" + photo.album_id) : "") + (groupWithMirrorPath ? ("/" + photo.path.match(getSavePathRegex)[1]) : "");
                         });
                         return photo_arr;
                     },
@@ -540,144 +634,160 @@
                         names.suffix = null;
                         return names;
                     },
-                    "beforeFileDownload_callback": function (photos, names, location_info, options, zip, main_folder) {
+                    "beforeFilesDownload_callback": function (photos, names, location_info, options, zip, main_folder) {
                         main_folder.file("photos_info.json", JSON.stringify(options.album));
                         main_folder.file("photos_info_format.txt", common_utils.formatJson(options.album));
                         var page_info = "url: " + decodeURIComponent(decodeURIComponent(location_info.source)) + "\r\n" + "title: " + document.title + "\r\n" + "search params: " + options.key;
                         main_folder.file("page_info.txt", page_info);
+                        options.failFiles = undefined;
                     },
                     "eachFileOnload_callback": function (blob, photo, location_info, options, zipFileLength, zip, main_folder, folder) {
                         var fileName = photo.path.substring(photo.path.lastIndexOf('/') + 1);
                         photo.fileName = fileName;
                         if (blob == null) {
-                            toastr.error("照片" + photo.photo_id + "打包失败，已单独下载！", "", {"progressBar": false, timeOut: 0});
-                            common_utils.downloadUrlFile(photo.url, fileName);
+                            if (!options.failFiles) {
+                                options.failFiles = [];
+                            }
+                            options.failFiles.push(photo);
                         }
                         return true;
+                    },
+                    "allFilesOnload_callback": function (files, names, location_info, options, zip, main_folder) {
+                        if (options.failFiles && options.failFiles.length > 0) {
+                            toastr.error("共 " + options.failFiles.length + " 张下载失败，已记录在photos_fail_list.txt！", "", {
+                                "progressBar": false,
+                                timeOut: 0
+                            });
+                            var failPhotoListStr = "";
+                            for (var i in options.failFiles) {
+                                var failFile = options.failFiles[i];
+                                failPhotoListStr += (failFile.location + "/" + failFile.fileName + "\t" + failFile.url + "\r\n");
+                            }
+                            main_folder.file("photos_fail_list.txt", failPhotoListStr);
+                        }
                     }
                 }
             };
             config.callback.beforeZipPhotos.call(context, options);
             common_utils.zipRemoteFilesAndDownload(JSZip, options);
         },
+        "openPhotoPopup": function (checkPhotoId) {
+            utils.getPhotoImageDom(checkPhotoId).find("img").click();
+        },
         "closePhotoPopup": function () {
             $.magnificPopup.close();
+        },
+        "replaceLoadErrorImgToDefault": function (parentNode) { // 图片加载失败显示默认图片
+            $(parentNode).find("img").one("error", function (e) {
+                $(this)
+                    .attr("src", config.path_params.cloudPath + config.img_load_error_default)
+                    .attr("title", "该图片加载失败~");
+            });
         }
     };
     // 瀑布流
     var initWaterfallFlow = function () {
-        /*$("#masonry").mpmansory(
-         {
-         childrenClass: 'photo', // default is a div
-         columnClasses: 'padding', //add classes to items
-         breakpoints: {
-         lg: 3,
-         md: 4,
-         sm: 6,
-         xs: 6
-         },
-         distributeBy: {order: false, height: false, attr: 'data-order', attrOrder: 'asc'},
-         onload: function (items) {
-         //make somthing with items
-         }
-         }
-         );*/
-        /*
-         var $grid = $('#masonry').masonry({
-         // set itemSelector so .grid-sizer is not used in layout
-         itemSelector: '.box',
-         // use element for option
-         columnWidth: ".box-size",
-         //percentPosition: true,
-         fitWidth: true,
-         gutter: 10
-         });
-
-         $grid.imagesLoaded().progress( function() {
-         $grid.masonry('layout');
-         });*/
+        // // -------------mpmansory----------------
+        // $("#masonry").mpmansory({
+        //     childrenClass: 'photo', // default is a div
+        //     columnClasses: 'padding', //add classes to items
+        //     breakpoints: {
+        //         lg: 3,
+        //         md: 4,
+        //         sm: 6,
+        //         xs: 6
+        //     },
+        //     distributeBy: {order: false, height: false, attr: 'data-order', attrOrder: 'asc'},
+        //     onload: function (items) {
+        //         //make somthing with items
+        //     }
+        // });
+        // // ---------------masonry-----------------
+        // var $grid = $('#masonry').masonry({
+        //     // set itemSelector so .grid-sizer is not used in layout
+        //     itemSelector: '.box',
+        //     // use element for option
+        //     columnWidth: ".box-size",
+        //     //percentPosition: true,
+        //     fitWidth: true,
+        //     gutter: 10
+        // });
+        //
+        // $grid.imagesLoaded().progress(function () {
+        //     $grid.masonry('layout');
+        // });
         var real_col = config.page_params.real_col;
-        if (pointer.masonryInstance == null) {
-            pointer.masonryInstance = new Macy({
-                container: '#' + config.selector.photosContainer_id, // 图像列表容器id
-                trueOrder: false,
-                waitForImages: true,
-                useOwnImageLoader: false,
-                //设计间距
-                margin: {
-                    x: 7.5,
-                    y: 7.5
+        pointer.masonryInstance = new Macy({
+            container: '#' + config.selector.photosContainer_id, // 图像列表容器id
+            trueOrder: false,
+            waitForImages: true,
+            useOwnImageLoader: false,
+            //设计间距
+            margin: {
+                x: 7.5,
+                y: 7.5
+            },
+            //设置列数
+            columns: real_col["2000"],
+            //定义不同分辨率（1200，940，520，400这些是分辨率）
+            breakAt: {
+                1800: { // 1600px以下显示
+                    columns: real_col["1800"],
+                    margin: {
+                        x: 7.5,
+                        y: 7.5
+                    }
                 },
-                //设置列数
-                columns: real_col["2000"],
-                //定义不同分辨率（1200，940，520，400这些是分辨率）
-                breakAt: {
-                    1800: { // 1600px以下显示
-                        columns: real_col["1800"],
-                        margin: {
-                            x: 7.5,
-                            y: 7.5
-                        }
-                    },
-                    1600: { // 1600px以下显示
-                        columns: real_col["1600"],
-                        margin: {
-                            x: 7.5,
-                            y: 7.5
-                        }
-                    },
-                    940: {
-                        columns: real_col["940"],
-                        margin: {
-                            x: 10,
-                            y: 10
-                        }
-                    },
-                    720: {
-                        columns: real_col["720"],
-                        margin: {
-                            x: 7,
-                            y: 7
-                        }
+                1600: { // 1600px以下显示
+                    columns: real_col["1600"],
+                    margin: {
+                        x: 7.5,
+                        y: 7.5
+                    }
+                },
+                940: {
+                    columns: real_col["940"],
+                    margin: {
+                        x: 10,
+                        y: 10
+                    }
+                },
+                720: {
+                    columns: real_col["720"],
+                    margin: {
+                        x: 7,
+                        y: 7
                     }
                 }
-            });
-            pointer.masonryInstance.recalculate(true);
-            $.each($('#' + config.selector.photosContainer_id).children(), function (i, dom) {
+            }
+        });
+        pointer.masonryInstance.runOnImageLoad(function (e) {
+            var breakCnt = 2; // 跳过第一次运行时默认的complete和load
+            if (config.masonry_recalculate_mark !== null) {
+                if (!config.hasOwnProperty("masonry_recalculate_mark")) {
+                    config.masonry_recalculate_mark = 1;
+                }
+                if (config.masonry_recalculate_mark <= breakCnt) {
+                    config.masonry_recalculate_mark = config.masonry_recalculate_mark + 1;
+                    return;
+                } else {
+                    config.masonry_recalculate_mark = null;
+                }
+            }
+            var nodes = $('#' + config.selector.photosContainer_id).children();
+            $.each(nodes, function (i, dom) {
                 var img = dom.querySelector("img");
-                if (!img.naturalHeight) {
-                    var scale = img.offsetWidth / dom.getAttribute("data-width");
-                    img.style.height = (dom.getAttribute("data-height") * scale) + "px";
+                if (img && img.style.height) {
+                    img.style.height = "";
                 }
             });
             pointer.masonryInstance.recalculate(true);
-            pointer.masonryInstance.runOnImageLoad(function () {
-                var nodes = $('#' + config.selector.photosContainer_id).children();
-                $.each(nodes, function (i, dom) {
-                    var img = dom.querySelector("img");
-                    if (img && img.style.height) {
-                        img.style.height = "";
-                    }
-                });
-                pointer.masonryInstance.recalculate(true);
-                console.log('第 ' + config.page_params.pageNum + ' 页加载完成！');
-                //pointer.masonryInstance.recalculate(true, true); 刷新所有（无视完成标记） / 添加完成标记
-                common_utils.removeNotify("notify_pageLoading");
-                config.callback.photosOnLoad_callback.call(context, pointer.masonryInstance, nodes);
-                utils.triggerEvent(config.event.pageLoadCompleted, pointer.masonryInstance, nodes);
-            });
-        } else {
-            pointer.masonryInstance.recalculate(true);
-            $.each($('#' + config.selector.photosContainer_id).children(), function (i, dom) {
-                var img = dom.querySelector("img");
-                if (img && !img.naturalHeight) {
-                    var scale = img.offsetWidth / dom.getAttribute("data-width");
-                    img.style.height = (dom.getAttribute("data-height") * scale) + "px";
-                }
-            });
-            pointer.masonryInstance.recalculate(true);
-            pointer.masonryInstance.recalculateOnImageLoad(true);
-        }
+            console.log('第 ' + config.page_params.pageNum + ' 页加载完成~');
+            // pointer.masonryInstance.recalculate(true, true); 刷新所有（无视完成标记） / 添加完成标记
+            common_utils.removeNotify("notify_pageLoading");
+            config.callback.photosOnLoad_callback.call(context, pointer.masonryInstance, nodes);
+            utils.triggerEvent(config.event.pageLoadCompleted, pointer.masonryInstance, nodes);
+        });
     };
     var bindPopstate = function () {
         window.addEventListener('popstate', function (e) {
@@ -685,21 +795,21 @@
             //console.log(data);
             if (data == null) {
                 return;
-            } else if (data.flag == "page" && config.isMagnificPopupOpen) { // 转到列表界面时，当灯箱未关闭时运行（即只有当点击浏览器返回按钮时运行）
+            } else if (data.mark == "page" && config.isMagnificPopupOpen) { // 转到列表界面时，当灯箱未关闭时运行（即只有当点击浏览器返回按钮时运行）
                 $.magnificPopup.close();
-            } else if (data.flag == "check" && !config.isMagnificPopupOpen) { // 转到详情界面时，当灯箱未开启时运行（即只有当点击浏览器前进按钮时运行）
+            } else if (data.mark == "check" && !config.isMagnificPopupOpen) { // 转到详情界面时，当灯箱未开启时运行（即只有当点击浏览器前进按钮时运行）
                 var params = common_utils.parseURL(window.location.href).params;
                 var photo_id = params.check;
-                if (photo_id) {
-                    $("#photo_" + photo_id).children().click();
+                if (photo_id && photo_id != "0") {
+                    utils.openPhotoPopup(photo_id);
                 }
             }
         });
     };
     var initClickEnlarge = function () {
         //图片查看modal
-        $('.photo').magnificPopup({
-            delegate: 'img', // child items selector, by clicking on it popup will open
+        $("#" + config.selector.photosContainer_id).magnificPopup({
+            delegate: config.selector.photo_node + ' img', // child items selector, by clicking on it popup will open
             type: 'image',
             //tLoading: null,
             callbacks: {
@@ -707,18 +817,17 @@
                     // Function will fire for each target element
                     // "item.el" is a target DOM element (if present)
                     // "item.src" is a source that you may modify
-                    item.src = config.path_params.cloudPath + item.el[0].parentNode.getAttribute("data-path");
+                    item.src = item.el[0].parentNode.getAttribute("data-origin-path");
                     item.photo_id = item.el[0].parentNode.getAttribute("data-id");
                 },
                 markupParse: function (template, values, item) {
                     // Triggers each time when content of popup changes
                     // console.log('Parsing:', template, values, item);
                     var photo_node = item.el[0].parentNode;
-                    var isAuthor = login_handle.equalsLoginUser(parseInt(photo_node.getAttribute("data-uid")));
+                    var isAuthor = login_handle.equalsLoginUser(photo_node.getAttribute("data-uid"));
                     var photo_id = photo_node.getAttribute("data-id");
                     var trigger = '<a style="color:white;cursor: pointer;margin-right: 5px" class="openPhotoDetailPage" photo-id=' + photo_id + ' title="点击打开图片详情页"' +
-                        ' href="photo.do?method=detail&id=' + photo_id + '" target="_blank"' +
-                        '>评论</a>';
+                        ' href="p/detail/' + photo_id + '#comments" target="_blank"' + '>评论</a>';
                     if (isAuthor) {
                         trigger += '<a style="color:white;cursor: pointer;" class="openUpdateModal" photo-id=' + photo_id + ' title="点击编辑图片信息">编辑</a>'
                     } else {
@@ -736,6 +845,7 @@
                 },
                 change: function () {
                     //console.log(this.content); // Direct reference to your popup element
+                    // utils.replaceLoadErrorImgToDefault(this.content);
                     $(this.content).find(".openUpdateModal").unbind("click").click(function () {
                         var photo = utils.getPhotoByCache(this.getAttribute("photo-id"));
                         config.callback.actionForEditPhoto.call(context, photo);
@@ -744,15 +854,19 @@
                     // 修改地址栏, 改变check, 在切换图片的时候
                     if (config.isMagnificPopupOpen) { // 灯箱打开的时候不替换，切换的时候替换, 回调markupParse,change在open之前运行
                         var params = common_utils.parseURL(document.location.href).params;
-                        var search = "?method=" + config.page_method_address;
+                        var search = "";
                         $.each(params, function (key, value) {
                             if (key != "method" && key != "check") {
                                 search += "&" + key + "=" + value;
                             }
                         });
                         search += "&check=" + this.currItem.photo_id;
+                        search = (search ? ("?" + search.substring(1)) : "");
+                        if (document.location.hash && document.location.hash != '#') {
+                            search += document.location.hash
+                        }
                         history.replaceState(
-                            {"flag": "check"},
+                            {"mark": "check"},
                             document.title,
                             location.pathname + search
                         );
@@ -767,7 +881,7 @@
                     var params = common_utils.parseURL(window.location.href).params;
                     var check = params.check;
                     if (!check) { // 当已经到详情页，就不运行
-                        var search = "?method=" + config.page_method_address;
+                        var search = "";
                         $.each(params, function (key, value) {
                             if (key != "method" && key != "check") {
                                 search += "&" + key + "=" + value;
@@ -775,8 +889,12 @@
                         });
                         check = $.magnificPopup.instance.currItem.photo_id;
                         search += "&check=" + check;
+                        search = (search ? ("?" + search.substring(1)) : "");
+                        if (document.location.hash && document.location.hash != '#') {
+                            search += document.location.hash
+                        }
                         history.pushState(
-                            {"flag": "check"},
+                            {"mark": "check"},
                             document.title,
                             location.pathname + search
                         );
@@ -795,6 +913,25 @@
                         check = this.currItem.photo_id;
                     }
                     utils.triggerEvent(config.event.popupClosed, check);
+                    var $checkOriginNode = utils.getPhotoImageDom(check);
+                    if ($checkOriginNode.length > 0 && !common_utils.isOnScreen($checkOriginNode.get(0), 150, 150)) {
+                        $('html, body').animate({
+                            scrollTop: $checkOriginNode.offset().top - ($(window).height() / 2 - 300)
+                        }, 260);
+                    }
+                },
+                updateStatus: function (data) {
+                    // console.log('Status changed', data);
+                    // "data" is an object that has two properties:
+                    // "data.status" - current status type, can be "loading", "error", "ready"
+                    // "data.text" - text that will be displayed (e.g. "Loading...")
+                    // you may modify this properties to change current status or its text dynamically
+                    if (data.status == "error") {
+                        data.status = "loading";
+                        this.contentContainer.find(".mfp-img")
+                            .attr("src", config.path_params.cloudPath + config.img_load_error_default)
+                            .attr("title", "该图片加载失败~");
+                    }
                 }
             },
             gallery: {
@@ -807,7 +944,7 @@
             },
             removalDelay: 300,
             mainClass: 'mfp-with-zoom',
-            fixedContentPos: true,
+            fixedContentPos: true, // true: 弹窗不能滚动，false: 弹窗可滚动，初始位于元素的上方，
             fixedBgPos: true,
             autoFocusLast: true,
             closeBtnInside: true,
@@ -817,13 +954,14 @@
                     var photoNode = item.el[0].parentNode;
                     var name = photoNode.getAttribute('data-name');
                     var desc = photoNode.getAttribute('data-desc');
-                    var src = config.path_params.cloudPath + photoNode.getAttribute("data-path");
-                    var photoDetailUrl = "photo.do?method=detail&id=" + item.photo_id;
-                    if ((!desc) && name) {
-                        desc = name;
-                        name = "";
+                    var src = photoNode.getAttribute("data-origin-path");
+                    var photoDetailUrl = "p/detail/" + item.photo_id;
+                    if ((!name) && desc) {
+                        name = desc;
+                        desc = "";
                     }
-                    return '<a style="color:white;cursor: pointer;" href="' + photoDetailUrl + '" target="_blank" title="点击新标签打开图片">' + desc + '</a><small>' + name + '</small>';
+                    return '<a style="color:white;cursor: pointer;" href="' + photoDetailUrl + '" target="_blank" title="点击新标签打开图片">' + common_utils.encodeHTML(name) + '</a>' +
+                        '<small>' + common_utils.encodeHTML(desc) + '</small>';
                 },
                 verticalFit: true, // Fits image in area vertically
                 tError: '<a href="%url%" target="_blank">此图片</a> 不能加载.' // Error message
@@ -847,12 +985,6 @@
 
         // $('.photo img').click(function () {
         //     enlargephoto(this)
-        // });
-        //
-        // $(window).resize(function () {
-        //     $('.photo img').click(function () {
-        //         enlargephoto(this)
-        //     });
         // });
         //
         // $('#enlargephoto-modal .close').click(function () {

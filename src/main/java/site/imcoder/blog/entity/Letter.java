@@ -1,10 +1,10 @@
 package site.imcoder.blog.entity;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import site.imcoder.blog.controller.json.EscapeEmojiJsonDeserializer;
-import site.imcoder.blog.controller.json.LongToDateStrJsonSerializer;
-import site.imcoder.blog.controller.propertyeditors.EmojiConvert;
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+import site.imcoder.blog.controller.formatter.timeformat.TimeFormat;
+import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFill;
+import site.imcoder.blog.controller.formatter.urlprefix.impl.ImgTagURLPrefixFiller;
+import site.imcoder.blog.controller.propertyeditors.annotation.EmojiConvert;
 
 import java.io.Serializable;
 
@@ -21,17 +21,19 @@ public class Letter implements Serializable {
     /**
      * 私信ID
      */
-    private int leid;
+    private Long leid;
 
     /**
      * 私信发送者ID
      */
-    private int s_uid;
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long s_uid;
 
     /**
      * 私信接收者ID
      */
-    private int r_uid;
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long r_uid;
 
     /**
      * 该查询者聊天对象的资料(不必须是消息发送者)
@@ -41,13 +43,14 @@ public class Letter implements Serializable {
     /**
      * 私信内容
      */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
+    @EmojiConvert //转义emoji表情
+    @URLPrefixFill(using = ImgTagURLPrefixFiller.class, prefixConfigKey = URLPrefixFill.DEFAULT_CLOUD_PREFIX)
     private String content;
 
     /**
      * 私信时间
      */
+    @TimeFormat(pattern = "yyyy-MM-dd | HH:mm:ss")
     private Long send_time;
 
     /**
@@ -57,28 +60,36 @@ public class Letter implements Serializable {
      */
     private int status;
 
-    public int getLeid() {
+    public Long getLeid() {
         return leid;
     }
 
-    public void setLeid(int leid) {
+    public void setLeid(Long leid) {
         this.leid = leid;
     }
 
-    public int getS_uid() {
+    public Long getS_uid() {
         return s_uid;
     }
 
-    public void setS_uid(int s_uid) {
+    public void setS_uid(Long s_uid) {
         this.s_uid = s_uid;
     }
 
-    public int getR_uid() {
+    public Long getR_uid() {
         return r_uid;
     }
 
-    public void setR_uid(int r_uid) {
+    public void setR_uid(Long r_uid) {
         this.r_uid = r_uid;
+    }
+
+    public User getChatUser() {
+        return chatUser;
+    }
+
+    public void setChatUser(User chatUser) {
+        this.chatUser = chatUser;
     }
 
     public String getContent() {
@@ -89,8 +100,6 @@ public class Letter implements Serializable {
         this.content = content;
     }
 
-    //  [json] Long-->DateStr
-    @JsonSerialize(using = LongToDateStrJsonSerializer.class)
     public Long getSend_time() {
         return send_time;
     }
@@ -106,13 +115,4 @@ public class Letter implements Serializable {
     public void setStatus(int status) {
         this.status = status;
     }
-
-    public User getChatUser() {
-        return chatUser;
-    }
-
-    public void setChatUser(User chatUser) {
-        this.chatUser = chatUser;
-    }
-
 }

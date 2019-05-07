@@ -4,16 +4,21 @@ import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.common.FileUtil;
 import site.imcoder.blog.common.ImageUtil;
 import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.entity.Album;
 import site.imcoder.blog.entity.Photo;
+import site.imcoder.blog.entity.User;
 import site.imcoder.blog.entity.Video;
+import site.imcoder.blog.service.BaseService;
 import site.imcoder.blog.service.IFileService;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.io.*;
 import java.math.BigDecimal;
@@ -31,9 +36,12 @@ import java.util.regex.Pattern;
  * @author Jeffrey.Deng
  */
 @Service("localFileService")
-public class localFileServiceImpl implements IFileService {
+public class localFileServiceImpl extends BaseService implements IFileService {
 
     private static Logger logger = Logger.getLogger(localFileServiceImpl.class);
+
+    @Resource
+    private Cache cache;
 
     private static Comparator<File> ALBUM_DISK_PART_COMPARATOR = new Comparator<File>() {
         @Override
@@ -142,8 +150,8 @@ public class localFileServiceImpl implements IFileService {
                 }
                 FileUtils.copyDirectory(source, target); // 复制source下的文件，复制到target下
                 FileUtils.deleteDirectory(source);
-                //FileUtils.moveDirectoryToDirectory(source, target, true); //这个方法是将source移动到target的目录下，所以不符合要求
-                //FileUtils.moveDirectory(source, target); //这个方法相当于将source重命名为target，需要target不存在，所以不符合要求
+                // FileUtils.moveDirectoryToDirectory(source, target, true); //这个方法是将source移动到target的目录下，所以不符合要求
+                // FileUtils.moveDirectory(source, target); //这个方法相当于将source重命名为target，需要target不存在，所以不符合要求
             }
             rs = true;
         } catch (IOException e) {
@@ -221,6 +229,19 @@ public class localFileServiceImpl implements IFileService {
      */
     @Override
     public boolean save(InputStream inputStream, String filePath) {
+        return save(inputStream, filePath, null);
+    }
+
+    /**
+     * 文件保存
+     *
+     * @param inputStream 输入流
+     * @param filePath    文件保存绝对路径
+     * @param metadata    文件头信息
+     * @return
+     */
+    @Override
+    public boolean save(InputStream inputStream, String filePath, Map<String, Object> metadata) {
         byte[] buff = new byte[16384];
         int len = 0;
         FileOutputStream outputStream = null;
@@ -246,7 +267,7 @@ public class localFileServiceImpl implements IFileService {
                     outputStream.close();
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("localFileServiceImpl's method save find exception: " + e.toString());
             }
         }
         return false;
@@ -266,17 +287,27 @@ public class localFileServiceImpl implements IFileService {
     public boolean saveArticleAttachment(MultipartFile file, String relativePath, String fileName, boolean isImage, Map<String, Object> map) {
         boolean isSave = false;
 
-        getCurrentFileDateDir(relativePath, isImage, map);
+        // 文件所属日期目录
+        String datePath = Utils.formatDate(new Date(), "yyyy/MM/");
+        // 服务器文件真实路径
+        // String realPath = request.getSession().getServletContext().getRealPath(basePath) + datePath;
+        String realPath = null;
+        if (isImage) {
+            realPath = baseArticleUploadDir(relativePath + datePath);
+        } else {
+            realPath = baseCloudDir(relativePath + datePath);
+        }
+        // 不存在则创建
+        File dir = new File(realPath);
+        if (!dir.exists()) {
+            logger.info("FileUpload create dirs " + realPath);
+            dir.mkdirs();
+        }
 
-        //服务器文件目录真实路径
-        String realPath = (String) map.get("realPath");
-        //文件所属日期目录
-        String datePath = (String) map.get("datePath");
-
-        //保存目标文件对象
+        // 保存目标文件对象
         File targetFile = new File(realPath, fileName);
 
-        //保存
+        // 保存
         try {
             file.transferTo(targetFile);
             isSave = true;
@@ -288,18 +319,20 @@ public class localFileServiceImpl implements IFileService {
         }
         logger.info("FileUpload into " + realPath + fileName);
 
-        //计算图片高宽
+        // 计算图片高宽
         if (isImage) {
             calculateWH(targetFile, map);
         }
 
-        //返回给客户端的相对路径
+        // 返回给客户端的相对路径
         if (isImage) {
             map.put("image_url", relativePath + datePath + fileName);
+            map.put("image_cdn_url", Config.get(ConfigConstants.SITE_CDN_ADDR) + relativePath + datePath + fileName);
         } else {
             map.put("file_url", relativePath + datePath + fileName);
+            map.put("file_cdn_url", Config.get(ConfigConstants.SITE_CDN_ADDR) + relativePath + datePath + fileName);
         }
-
+        map.put("cdn_url_prefix", Config.get(ConfigConstants.SITE_CDN_ADDR));
         return isSave;
     }
 
@@ -315,15 +348,20 @@ public class localFileServiceImpl implements IFileService {
     public boolean downloadInternetImage(String url, String relativePath, String fileName, Map<String, Object> map) {
         boolean isDownload = false;
 
-        getCurrentFileDateDir(relativePath, true, map);
-        //服务器文件目录真实路径
-        String realPath = (String) map.get("realPath");
         //文件所属日期目录
-        String datePath = (String) map.get("datePath");
+        String datePath = Utils.formatDate(new Date(), "yyyy/MM/");
+        //服务器文件真实路径
+        String realPath = baseArticleUploadDir(relativePath + datePath);
+        //不存在则创建
+        File dir = new File(realPath);
+        if (!dir.exists()) {
+            logger.info("FileUpload create dirs " + realPath);
+            dir.mkdirs();
+        }
 
         //下载
         try {
-            FileUtil.downloadFromUrl(url, fileName, realPath);
+            FileUtil.downloadFromUrl(url, realPath, fileName);
             isDownload = true;
         } catch (IOException e) {
             //下载失败
@@ -341,7 +379,8 @@ public class localFileServiceImpl implements IFileService {
 
         //返回给客户端的相对路径
         map.put("image_url", relativePath + datePath + fileName);
-
+        map.put("image_cdn_url", Config.get(ConfigConstants.SITE_CDN_ADDR) + relativePath + datePath + fileName);
+        map.put("cdn_url_prefix", Config.get(ConfigConstants.SITE_CDN_ADDR));
         return isDownload;
     }
 
@@ -361,7 +400,7 @@ public class localFileServiceImpl implements IFileService {
         int result = 0;
         int index = file_url.indexOf(deleteRelativePath);
         if (index == -1) {
-            result = 404;
+            result = STATUS_NOT_FOUND;
             return result;
         }
         file_url = file_url.substring(index);
@@ -375,13 +414,13 @@ public class localFileServiceImpl implements IFileService {
         if (file.exists()) {
             if (file.isDirectory()) {
                 logger.warn("FileDelete submit is a directory! so not delete：" + file.getPath());
-                result = 404;
+                result = STATUS_NOT_FOUND;
             } else if (recycleTrash(basePath, file_url, true)) {
                 //logger.info("FileDelete from " + file.getPath());
-                result = 200;
+                result = STATUS_SUCCESS;
             } else {
                 logger.warn("FileDelete error path: " + file.getPath());
-                result = 500;
+                result = STATUS_SERVER_ERROR;
             }
         } else if (request != null) {
             String realPath = request.getSession().getServletContext().getRealPath(file_url);
@@ -390,21 +429,21 @@ public class localFileServiceImpl implements IFileService {
                 File thefile = new File(realPath);
                 if (thefile.isDirectory()) {
                     logger.warn("FileDelete submit is a directory! so not delete：" + file.getPath());
-                    result = 404;
+                    result = STATUS_NOT_FOUND;
                 } else if (recycleTrashFile(realPath, "upload/image/article/deleteByRequest/")) {
                     //返回成功
                     //logger.info("FileDelete from " + realPath);
-                    result = 200;
+                    result = STATUS_SUCCESS;
                 } else {
                     //返回失败
                     logger.warn("FileDelete error path: " + realPath);
-                    result = 500;
+                    result = STATUS_SERVER_ERROR;
                 }
             } else {
-                result = 404;
+                result = STATUS_NOT_FOUND;
             }
         } else {
-            result = 404;
+            result = STATUS_NOT_FOUND;
         }
         return result;
     }
@@ -420,7 +459,6 @@ public class localFileServiceImpl implements IFileService {
         //文件所属日期目录
         String datePath = Utils.formatDate(new Date(), "yyyy/MM/");
         map.put("datePath", datePath);
-
         //服务器文件真实路径
         //String realPath = request.getSession().getServletContext().getRealPath(basePath) + datePath;
         String realPath = null;
@@ -479,7 +517,6 @@ public class localFileServiceImpl implements IFileService {
             isSave = true;
         } catch (IOException e) {
             logger.error("FileUpload error path: " + realPath + " 头像上传失败，exception: " + e.toString());
-            e.printStackTrace();
         }
         return isSave;
     }
@@ -503,6 +540,7 @@ public class localFileServiceImpl implements IFileService {
 
             // todo "save file md5"
             // String md5Value = FileUtil.getMD5Value(photoFile);
+            // photo.setMd5(md5Value);
 
             ImageUtil.SimpleImageInfo imageInfo = ImageUtil.getImageInfo(photoFile);
             photo.setWidth(imageInfo.getWidth());
@@ -513,7 +551,6 @@ public class localFileServiceImpl implements IFileService {
             isSave = true;
         } catch (IOException e) {
             logger.error("FileUpload error path: " + realPath + " 相册上传失败，exception: " + e.toString());
-            e.printStackTrace();
         } finally {
             return isSave;
         }
@@ -624,9 +661,16 @@ public class localFileServiceImpl implements IFileService {
         try {
             FileUtil.copy(inputStream, videoFile);
             Photo cover = video.getCover();
-            video.setWidth(cover.getWidth());
-            video.setHeight(cover.getHeight());
-            video.setVideo_type("video/mp4");
+            if (!video.getOriginName().matches(".*\\.(?i)mp3$")) {
+                video.setWidth(cover.getWidth());
+                video.setHeight(cover.getHeight());
+                int dotIndex = video.getOriginName().lastIndexOf(".");
+                video.setVideo_type("video/" + ((dotIndex == -1 || dotIndex == (video.getOriginName().length() - 1)) ? "mp4" : video.getOriginName().substring(dotIndex + 1).toLowerCase()));
+            } else {
+                video.setWidth(cover.getWidth());
+                video.setHeight(cover.getHeight());
+                video.setVideo_type("video/mp3");
+            }
             BigDecimal big = new BigDecimal(videoFile.length() / 1048576.00f); // MiB
             float size = big.setScale(2, BigDecimal.ROUND_HALF_UP).floatValue();
             video.setSize(size);
@@ -639,12 +683,15 @@ public class localFileServiceImpl implements IFileService {
         }
     }
 
+    /********************* - ****** - OLD GENERATE NAME API - ***** - ****************************/
+
     /**
      * 生成相册相对路径
      *
      * @param album
      * @return
      */
+    @Deprecated
     @Override
     public String generateAlbumPath(Album album) {
         return Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + album.getUser().getUid() + "/album/" + String.format("%05d", album.getAlbum_id()) + "/";
@@ -655,6 +702,7 @@ public class localFileServiceImpl implements IFileService {
      *
      * @return
      */
+    @Deprecated
     @Override
     public String generatePhotoFolderPath(Album album) {
         int folderIndex = 1;
@@ -667,7 +715,7 @@ public class localFileServiceImpl implements IFileService {
                 List<Integer> pathList = new ArrayList<>(photos.size());
                 Pattern subPattern = Pattern.compile("^.*/(\\d+)/[^/]+$");
                 for (Photo photo : photos) {
-                    if (photo.getAlbum_id() == album.getAlbum_id()) {
+                    if (photo.getAlbum_id().equals(album.getAlbum_id())) {
                         Matcher matcher = subPattern.matcher(photo.getPath());
                         matcher.find();
                         pathList.add(Integer.valueOf(matcher.group(1)));
@@ -726,6 +774,7 @@ public class localFileServiceImpl implements IFileService {
      * @param savePath
      * @return
      */
+    @Deprecated
     @Override
     public String generateNextPhotoFilename(Photo photo, String savePath) {
         String filename = "";
@@ -754,6 +803,7 @@ public class localFileServiceImpl implements IFileService {
      * @param index 编号，属于这个文件夹第几个文件
      * @return
      */
+    @Deprecated
     @Override
     public String generatePhotoFilename(Photo photo, int index) {
         String path = (photo.getOriginName() == null || photo.getOriginName().equals("")) ? photo.getPath() : photo.getOriginName();
@@ -768,6 +818,7 @@ public class localFileServiceImpl implements IFileService {
      * @param video
      * @return
      */
+    @Deprecated
     @Override
     public String generateVideoFolderPath(Video video) {
         return Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + video.getUser().getUid() + "/video/" + String.format("%05d", video.getCover().getAlbum_id()) + "/";
@@ -780,6 +831,7 @@ public class localFileServiceImpl implements IFileService {
      * @param savePath 保存文件夹的绝对路径
      * @return
      */
+    @Deprecated
     @Override
     public String generateNextVideoName(Video video, String savePath) {
         File dir = new File(baseCloudDir(savePath));
@@ -807,12 +859,117 @@ public class localFileServiceImpl implements IFileService {
      * @param index 编号，属于这个文件夹第几个文件
      * @return
      */
+    @Deprecated
     @Override
     public String generateVideoFilename(Video video, int index) {
         String path = (video.getOriginName() == null || video.getOriginName().equals("")) ? video.getPath() : video.getOriginName();
         int i = path.lastIndexOf('.');
         String suffix = (i == -1 ? ".mp4" : path.substring(i));
         return String.format("%05d", video.getCover().getAlbum_id()) + "_" + String.format("%04d", index) + "_" + video.getUpload_time().getTime() + suffix;
+    }
+
+    /********************* - ****** - NEW GENERATE NAME API - ***** - ****************************/
+
+    /**
+     * 生成照片的块文件夹地址
+     *
+     * @param photo
+     * @return
+     */
+    @Override
+    public String generatePhotoSaveBlockPath(Photo photo) {
+        String user_photos_path = Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + IdUtil.convertToShortPrimaryKey(photo.getUid()) + "/photos/";
+        Map<String, Object> userHoldCache = cache.getUserHoldCache(new User(photo.getUid()));
+        String max_upload_block_name = (String) userHoldCache.get("USER_PHOTO_MAX_UPLOAD_BLOCK");
+        max_upload_block_name = generateMaxBlockName(user_photos_path, max_upload_block_name, 3600000L, 499);
+        userHoldCache.put("USER_PHOTO_MAX_UPLOAD_BLOCK", max_upload_block_name);
+        return user_photos_path + max_upload_block_name + "/";
+    }
+
+    /**
+     * 生成照片文件名称，需要照片id
+     *
+     * @param photo
+     * @param blockPath 块文件夹地址
+     * @return
+     */
+    @Override
+    public String generatePhotoFilename(Photo photo, String blockPath) {
+        Matcher matcher = Pattern.compile("^.*/([0-9A-Za-z]+)/[^/]*$").matcher(blockPath);
+        matcher.find();
+        String block = matcher.group(1);
+        String path = (photo.getOriginName() == null || photo.getOriginName().equals("")) ? photo.getPath() : photo.getOriginName();
+        int i = path.lastIndexOf('.');
+        String suffix = (i == -1 ? ".jpg" : path.substring(i));
+        return IdUtil.convertToShortPrimaryKey(photo.getUid()) + "_" + block + "_" + IdUtil.convertToShortPrimaryKey(photo.getPhoto_id()) + "_" + IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis()) + suffix;
+    }
+
+    /**
+     * 生成视频的块文件夹地址
+     *
+     * @param video
+     * @return
+     */
+    @Override
+    public String generateVideoSaveBlockPath(Video video) {
+        String user_videos_path = Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + IdUtil.convertToShortPrimaryKey(video.getUser().getUid()) + "/videos/";
+        Map<String, Object> userHoldCache = cache.getUserHoldCache(new User(video.getUser().getUid()));
+        String max_upload_block_name = (String) userHoldCache.get("USER_VIDEO_MAX_UPLOAD_BLOCK");
+        max_upload_block_name = generateMaxBlockName(user_videos_path, max_upload_block_name, 3600000L, 29);
+        userHoldCache.put("USER_VIDEO_MAX_UPLOAD_BLOCK", max_upload_block_name);
+        return user_videos_path + max_upload_block_name + "/";
+    }
+
+    /**
+     * 生成视频文件名称，需要视频id
+     *
+     * @param video
+     * @param blockPath 块文件夹地址
+     * @return
+     */
+    @Override
+    public String generateVideoFilename(Video video, String blockPath) {
+        Matcher matcher = Pattern.compile(".*/([0-9A-Za-z]+)/[^/]*$").matcher(blockPath);
+        matcher.find();
+        String block = matcher.group(1);
+        String path = (video.getOriginName() == null || video.getOriginName().equals("")) ? video.getPath() : video.getOriginName();
+        int i = path.lastIndexOf('.');
+        String suffix = (i == -1 ? ".mp4" : path.substring(i));
+        return IdUtil.convertToShortPrimaryKey(video.getUser().getUid()) + "_" + block + "_" + IdUtil.convertToShortPrimaryKey(video.getVideo_id()) + "_" + IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis()) + suffix;
+    }
+
+    private String generateMaxBlockName(String basePath, String lastCacheBlockName, long maxCacheBlockNameTime, int maxSize) {
+        String max_upload_block_name = lastCacheBlockName;
+        // 每隔maxSize毫秒，重新获取最大的block
+        if (lastCacheBlockName == null || (System.currentTimeMillis() - IdUtil.convert62radixIdToDecimal(lastCacheBlockName) > maxCacheBlockNameTime)) {
+            File dir = new File(baseCloudDir(basePath));
+            createDirs(dir.getAbsolutePath());
+            File[] files = dir.listFiles(new FileFilter() {
+                @Override
+                public boolean accept(File file) {
+                    return file.isDirectory();
+                }
+            });
+            if (files == null || files.length == 0) {
+                max_upload_block_name = IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis());
+            } else {
+                Arrays.sort(files, new Comparator<File>() {
+                    @Override
+                    public int compare(File left, File right) {
+                        Long time_left = IdUtil.convert62radixIdToDecimal(left.getName());
+                        Long time_right = IdUtil.convert62radixIdToDecimal(right.getName());
+                        return -time_left.compareTo(time_right);
+                    }
+                });
+                max_upload_block_name = files[0].getName();
+            }
+        }
+        // 每次都检查当前block里的文件个数
+        File[] photoFiles = new File(baseCloudDir(basePath + max_upload_block_name)).listFiles();
+        if (photoFiles != null && photoFiles.length >= maxSize) {
+            max_upload_block_name = IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis());
+        }
+        return max_upload_block_name;
     }
 
 }

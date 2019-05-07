@@ -5,11 +5,11 @@
 <mapper namespace="article">
 
     <!-- 保存文章表 -->
-    <insert id="saveArticle" parameterType="article" useGeneratedKeys="true" keyProperty="aid" keyColumn="aid">
+    <insert id="saveArticle" parameterType="article">
         insert into article
-        (atid,title,uid,tags,summary,permission,create_time,update_time)
+        (aid, atid,title,uid,tags,summary,permission,create_time,update_time)
         values(
-        #{category.atid},#{title},#{author.uid},#{tags},#{summary},#{permission},
+        #{aid}, #{category.atid},#{title},#{author.uid},#{tags},#{summary},#{permission},
         #{create_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler},
         #{update_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
         )
@@ -37,24 +37,25 @@
     </update>
 
     <!-- 根据文章id查询 -->
-    <select id="findArticle" parameterType="int" resultMap="articleMap">
-        select uid,a.aid,title,tags,summary,create_time,update_time,click,collection,comment,permission,top,recommend,
+    <select id="findArticle" parameterType="Long" resultMap="articleMap">
+        select uid, a.aid, a.title, a.tags, a.summary, a.create_time, a.update_time, a.click_count, a.collect_count, a.comment_count, a.permission,
+        a.top, a.recommend,
         ad.detail,
-        at.atid,at.atname
-        from ( article a left join article_type at on a.atid=at.atid ) left join article_detail ad on a.aid=ad.aid
+        at.atid, at.atname
+        from (article a left join article_type at on a.atid = at.atid) left join article_detail ad on a.aid = ad.aid
         where a.aid=#{aid} limit 1
     </select>
 
     <resultMap id="articleMap" type="article">
-        <result column="aid" property="aid"/>
+        <id column="aid" property="aid"/>
         <result column="title" property="title"/>
         <result column="tags" property="tags"/>
         <result column="summary" property="summary"/>
         <result column="create_time" property="create_time" javaType="java.util.Date" jdbcType="BIGINT"/>
         <result column="update_time" property="update_time" javaType="java.util.Date" jdbcType="BIGINT"/>
-        <result column="click" property="click"/>
-        <result column="collection" property="collection"/>
-        <result column="comment" property="comment"/>
+        <result column="click_count" property="click_count"/>
+        <result column="collect_count" property="collect_count"/>
+        <result column="comment_count" property="comment_count"/>
         <result column="permission" property="permission"/>
         <result column="top" property="top"/>
         <result column="recommend" property="recommend"/>
@@ -67,7 +68,7 @@
     </resultMap>
 
     <resultMap id="userMap" type="user">
-        <result column="uid" property="uid"/>
+        <id column="uid" property="uid"/>
         <result column="nickname" property="nickname"/>
         <result column="sex" property="sex"/>
         <result column="address" property="address"/>
@@ -85,7 +86,7 @@
     </resultMap>
 
     <!-- 根据用户ID查询 -->
-    <select id="findUser" parameterType="int" resultMap="userMap">
+    <select id="findUser" parameterType="Long" resultMap="userMap">
         select
         uid,u.gid,nickname,sex,address,birthday,description,head_photo,qq,weibo,site,says,
         ug.group_name
@@ -93,100 +94,163 @@
         where uid=#{uid} limit 1
     </select>
 
-
     <!-- 根据文章条件查询 -->
     <select id="findArticleList" parameterType="hashMap" resultMap="articleListMap">
-        select a.aid,title,tags,summary,create_time,update_time,click,collection,comment,permission,top,recommend,
-        at.atid,at.atname,
-        u.uid as auid,u.gid,nickname,sex,head_photo,
-        ug.group_name
-        from ( article a left join article_type at on a.atid=at.atid )
-        left join ( user u left join user_group ug on u.gid = ug.gid )
-        on a.uid = u.uid
+        <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
+        select a.aid, a.title, a.tags, a.summary, a.create_time, a.update_time, a.click_count, a.collect_count, a.comment_count, a.permission, a.top,
+        a.recommend,
+        at.atid, at.atname,
+        u.uid as auid, u.nickname, u.sex, u.head_photo,
+        u.gid, ug.group_name
+        <if test="is_login">
+            , (case when (aah.aah_id is not null) then true else false end) as accessed
+            , (case when (aah.is_like is not null and aah.is_like > 0) then true else false end) as liked
+        </if>
+        from ((article a left join article_type at on a.atid = at.atid)
+        left join (user u left join user_group ug on u.gid = ug.gid)
+        on a.uid = u.uid)
+        <if test="is_login">
+            left join article_access_history aah on (a.aid = aah.aid and aah.uid = #{loginUser.uid})
+        </if>
         <where>
-            <choose>
-                <when test="loginUser!= null and loginUser.uid>0">
-                    <choose>
-                        <when test="condition!=null and condition.permission != 0">
-                            (a.uid=#{loginUser.uid} and a.permission=#{condition.permission})
-                        </when>
-                        <otherwise>
-                            ( ( a.permission = 0 )
-                            or
-                            ( a.permission = 1
-                            and
-                            (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid =
-                            #{loginUser.uid}) )
-                            )
-                            or
-                            ( a.permission = 2 and a.uid = #{loginUser.uid} )
-                            )
-                        </otherwise>
-                    </choose>
-                </when>
-                <otherwise>
-                    a.permission=0
-                </otherwise>
-            </choose>
-            <if test="condition!=null">
+            <if test="condition == null">
+                <if test="feed_flow_allow_show_lowest_level != 0">
+                    and (
+                    <if test="feed_flow_allow_show_lowest_level == '-1'">
+                        (u.gid = -1)
+                    </if>
+                    <if test="feed_flow_allow_show_lowest_level > 0">
+                        (u.gid = -1 or u.gid >= #{feed_flow_allow_show_lowest_level})
+                    </if>
+                    <if test="is_login">
+                        or (u.uid = #{loginUser.uid})
+                        <if test="feed_flow_allow_following_show">
+                            or (u.uid in (select feed_follow.fuid from user_follow feed_follow where feed_follow.uid = #{loginUser.uid}))
+                        </if>
+                    </if>
+                    )
+                </if>
+            </if>
+            <if test="condition != null">
                 and ( (1=1)
-                <if test="condition.aid != 0">
+                <if test="condition.aid > 0">
                     and a.aid = #{condition.aid}
                 </if>
                 <if test="condition.author != null">
-                    <if test="condition.author.uid != 0">
+                    <if test="condition.author.uid > 0">
                         and a.uid = #{condition.author.uid}
                     </if>
                     <if test="condition.author.userGroup != null">
-                        <if test="condition.author.userGroup.gid != 0">
+                        <if test="condition.author.userGroup.gid > 0">
                             and u.gid = #{condition.author.userGroup.gid}
                         </if>
                     </if>
                 </if>
                 <if test="condition.category != null">
-                    <if test="condition.category.atid != 0">
+                    <if test="condition.category.atid > 0">
                         and a.atid = #{condition.category.atid}
                     </if>
                 </if>
-                <if test="condition.title != null and condition.title != '' ">
+                <if test="condition.title != null and condition.title != ''">
                     and a.title rlike #{condition.title}
                 </if>
-                <if test="condition.tags != null and condition.tags != '' ">
+                <if test="condition.tags != null and condition.tags != ''">
                     and (a.tags rlike '${condition.tags}')
                 </if>
-                <if test="condition.summary != null and condition.summary != '' ">
-                    and a.summary like concat('%', #{condition.summary} ,'%')
+                <if test="condition.summary != null and condition.summary != ''">
+                    <bind name="search_like_condition_summary" value="'%' + condition.summary  + '%'"/>
+                    and a.summary like #{search_like_condition_summary}
                 </if>
-                <if test="condition.create_time != null ">
+                <if test="condition.create_time != null">
                     and a.create_time &lt;=
                     #{create_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
                 </if>
-                <if test="condition.update_time != null ">
+                <if test="condition.update_time != null">
                     and a.update_time &lt;=
                     #{update_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
                 </if>
-                <if test="condition.click != 0">
-                    and a.click >= #{condition.click}
+                <if test="condition.click_count > 0">
+                    and a.click_count >= #{condition.click_count}
                 </if>
-                <if test="condition.top != 0">
+                <if test="condition.top > 0">
                     and a.top >= #{condition.top}
                 </if>
-                <if test="condition.recommend != 0">
+                <if test="condition.recommend > 0">
                     and a.recommend = #{condition.recommend}
+                </if>
+                <if test="loginUser != null and loginUser.uid != null">
+                    <if test="condition.collected">
+                        and (aah.is_like is not null and aah.is_like > 0)
+                    </if>
+                    <if test="condition.accessed">
+                        and (aah.aah_id is not null)
+                    </if>
                 </if>
                 )
             </if>
+            <choose>
+                <when test="is_login">
+                    <choose>
+                        <when test="condition != null and condition.permission > 0">
+                            and (a.uid = #{loginUser.uid} and a.permission = #{condition.permission})
+                        </when>
+                        <when test="condition != null and (condition.collected || condition.accessed)">
+                            and (
+                            a.uid = #{loginUser.uid}
+                            or
+                            (
+                            (a.permission = 0 or a.permission = 1)
+                            or
+                            (a.permission = 2 or a.permission = 3)
+                            or
+                            ((a.permission = 4 or a.permission = 5) and a.uid in (select following.fuid from user_follow following where following.uid
+                            = #{loginUser.uid}))
+                            or
+                            ((a.permission = 6 or a.permission = 7) and a.uid in (select follower.uid from user_follow follower where follower.fuid =
+                            #{loginUser.uid}))
+                            or
+                            ((a.permission = 8 or a.permission = 9) and a.uid in (select friend.uid from friends friend where friend.fid =
+                            #{loginUser.uid}))
+                            )
+                            )
+                        </when>
+                        <otherwise>
+                            and (
+                            a.uid = #{loginUser.uid}
+                            or
+                            (
+                            (a.permission = 0)
+                            or
+                            (a.permission = 2)
+                            or
+                            (a.permission = 4 and a.uid in (select following.fuid from user_follow following where following.uid = #{loginUser.uid}))
+                            or
+                            (a.permission = 6 and a.uid in (select follower.uid from user_follow follower where follower.fuid = #{loginUser.uid}))
+                            or
+                            (a.permission = 8 and a.uid in (select friend.uid from friends friend where friend.fid = #{loginUser.uid}))
+                            )
+                            )
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    and a.permission = 0
+                </otherwise>
+            </choose>
         </where>
         order by
         <if test="condition!=null">
-            <if test="condition.click&lt;0">
-                a.click
-                <if test="condition.click==-1">
+            <if test="condition.click_count&lt;0">
+                a.click_count
+                <if test="condition.click_count==-1">
                     desc,
                 </if>
-                <if test="condition.click==-2">
+                <if test="condition.click_count==-2">
                     asc,
                 </if>
+            </if>
+            <if test="is_login and condition != null and (condition.collected || condition.accessed)">
+                aah.last_access_time desc,
             </if>
         </if>
         a.aid desc
@@ -194,31 +258,64 @@
     </select>
 
     <!-- 根据置顶文章 -->
-    <select id="findTopsList" parameterType="int" resultMap="articleListMap">
-        select a.aid,title,tags,summary,create_time,update_time,click,collection,comment,permission,top,recommend,
+    <select id="findTopsList" parameterType="hashMap" resultMap="articleListMap">
+        select a.aid,title,tags,summary,create_time,update_time,click_count,collect_count,comment_count,permission,top,recommend,
         at.atid,at.atname,
         u.uid as auid,u.gid,nickname,sex,head_photo,
         ug.group_name
         from ( article a left join article_type at on a.atid = at.atid )
         left join ( user u left join user_group ug on u.gid = ug.gid )
         on a.uid = u.uid
-        where recommend=1 order by top desc
-        limit #{num}
+        where recommend = 1
+        <choose>
+            <when test="loginUser != null and loginUser.uid > 0">
+                <choose>
+                    <when test="condition != null and condition.permission > 0">
+                        and (a.uid = #{loginUser.uid} and a.permission = #{condition.permission})
+                    </when>
+                    <otherwise>
+                        and (
+                        a.uid = #{loginUser.uid}
+                        or
+                        (
+                        (a.permission = 0)
+                        or
+                        (a.permission = 2)
+                        or
+                        (a.permission = 4 and a.uid in (select following.fuid from user_follow following where following.uid = #{loginUser.uid}))
+                        or
+                        (a.permission = 6 and a.uid in (select follower.uid from user_follow follower where follower.fuid = #{loginUser.uid}))
+                        or
+                        (a.permission = 8 and a.uid in (select friend.uid from friends friend where friend.fid = #{loginUser.uid}))
+                        )
+                        )
+                    </otherwise>
+                </choose>
+            </when>
+            <otherwise>
+                and a.permission = 0
+            </otherwise>
+        </choose>
+        order by top desc
+        limit #{size}
     </select>
 
     <resultMap id="articleListMap" type="article">
-        <result column="aid" property="aid"/>
+        <id column="aid" property="aid"/>
         <result column="title" property="title"/>
         <result column="tags" property="tags"/>
         <result column="summary" property="summary"/>
         <result column="create_time" property="create_time" javaType="java.util.Date" jdbcType="BIGINT"/>
         <result column="update_time" property="update_time" javaType="java.util.Date" jdbcType="BIGINT"/>
-        <result column="click" property="click"/>
-        <result column="collection" property="collection"/>
-        <result column="comment" property="comment"/>
+        <result column="click_count" property="click_count"/>
+        <result column="collect_count" property="collect_count"/>
+        <result column="comment_count" property="comment_count"/>
         <result column="permission" property="permission"/>
         <result column="top" property="top"/>
         <result column="recommend" property="recommend"/>
+        <result column="accessed" property="accessed"/>
+        <result column="liked" property="collected"/>
+        <result column="commented" property="commented"/>
         <association property="category" column="atid" javaType="category">
             <result column="atid" property="atid"/>
             <result column="atname" property="atname"/>
@@ -237,144 +334,181 @@
 
     <!-- 根据文章条件查询文章数量 -->
     <select id="findCount" parameterType="hashMap" resultType="int">
-        select count(*) as count from article a left join user u on a.uid = u.uid
+        <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
+        select count(*) as count
+        from (article a left join user u on a.uid = u.uid)
+        <if test="is_login">
+            left join article_access_history aah on (a.aid = aah.aid and aah.uid = #{loginUser.uid})
+        </if>
         <where>
-            <choose>
-                <when test="loginUser!= null and loginUser.uid>0">
-                    <choose>
-                        <when test="condition!=null and condition.permission != 0">
-                            (a.uid=#{loginUser.uid} and a.permission=#{condition.permission})
-                        </when>
-                        <otherwise>
-                            ( ( a.permission = 0 )
-                            or
-                            ( a.permission = 1
-                            and
-                            (a.uid = #{loginUser.uid} or a.uid in (select f.uid from friends f where f.fid =
-                            #{loginUser.uid} ) )
-                            )
-                            or
-                            ( a.permission = 2 and a.uid = #{loginUser.uid} )
-                            )
-                        </otherwise>
-                    </choose>
-                </when>
-                <otherwise>
-                    a.permission=0
-                </otherwise>
-            </choose>
-            <if test="condition!=null">
+            <if test="condition == null">
+                <if test="feed_flow_allow_show_lowest_level != 0">
+                    and (
+                    <if test="feed_flow_allow_show_lowest_level == '-1'">
+                        (u.gid = -1)
+                    </if>
+                    <if test="feed_flow_allow_show_lowest_level > 0">
+                        (u.gid = -1 or u.gid >= #{feed_flow_allow_show_lowest_level})
+                    </if>
+                    <if test="is_login">
+                        or (u.uid = #{loginUser.uid})
+                        <if test="feed_flow_allow_following_show">
+                            or (u.uid in (select feed_follow.fuid from user_follow feed_follow where feed_follow.uid = #{loginUser.uid}))
+                        </if>
+                    </if>
+                    )
+                </if>
+            </if>
+            <if test="condition != null">
                 and ( (1=1)
-                <if test="condition.aid != 0">
+                <if test="condition.aid > 0">
                     and a.aid = #{condition.aid}
                 </if>
                 <if test="condition.author != null">
-                    <if test="condition.author.uid != 0">
+                    <if test="condition.author.uid > 0">
                         and a.uid = #{condition.author.uid}
                     </if>
                     <if test="condition.author.userGroup != null">
-                        <if test="condition.author.userGroup.gid != 0">
+                        <if test="condition.author.userGroup.gid > 0">
                             and u.gid = #{condition.author.userGroup.gid}
                         </if>
                     </if>
                 </if>
                 <if test="condition.category != null">
-                    <if test="condition.category.atid != 0">
+                    <if test="condition.category.atid > 0">
                         and a.atid = #{condition.category.atid}
                     </if>
                 </if>
-                <if test="condition.title != null and condition.title != '' ">
+                <if test="condition.title != null and condition.title != ''">
                     and a.title rlike #{condition.title}
                 </if>
-                <if test="condition.tags != null and condition.tags != '' ">
+                <if test="condition.tags != null and condition.tags != ''">
                     and (a.tags rlike '${condition.tags}')
                 </if>
-                <if test="condition.summary != null and condition.summary != '' ">
-                    and a.summary like concat('%', #{condition.summary} ,'%')
+                <if test="condition.summary != null and condition.summary != ''">
+                    <bind name="search_like_condition_summary" value="'%' + condition.summary  + '%'"/>
+                    and a.summary like #{search_like_condition_summary}
                 </if>
-                <if test="condition.create_time != null ">
+                <if test="condition.create_time != null">
                     and a.create_time &lt;=
                     #{create_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
                 </if>
-                <if test="condition.update_time != null ">
+                <if test="condition.update_time != null">
                     and a.update_time &lt;=
                     #{update_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
                 </if>
-                <if test="condition.click != 0">
-                    and a.click >= #{condition.click}
+                <if test="condition.click_count > 0">
+                    and a.click_count >= #{condition.click_count}
                 </if>
-                <if test="condition.top != 0">
+                <if test="condition.top > 0">
                     and a.top >= #{condition.top}
                 </if>
-                <if test="condition.recommend != 0">
+                <if test="condition.recommend > 0">
                     and a.recommend = #{condition.recommend}
+                </if>
+                <if test="loginUser != null and loginUser.uid != null">
+                    <if test="condition.collected">
+                        and (aah.is_like is not null and aah.is_like > 0)
+                    </if>
+                    <if test="condition.accessed">
+                        and (aah.is_like is not null)
+                    </if>
                 </if>
                 )
             </if>
+            <choose>
+                <when test="is_login">
+                    <choose>
+                        <when test="condition != null and condition.permission > 0">
+                            and (a.uid = #{loginUser.uid} and a.permission = #{condition.permission})
+                        </when>
+                        <otherwise>
+                            and (
+                            a.uid = #{loginUser.uid}
+                            or
+                            (
+                            (a.permission = 0)
+                            or
+                            (a.permission = 2)
+                            or
+                            (a.permission = 4 and a.uid in (select following.fuid from user_follow following where following.uid = #{loginUser.uid}))
+                            or
+                            (a.permission = 6 and a.uid in (select follower.uid from user_follow follower where follower.fuid = #{loginUser.uid}))
+                            or
+                            (a.permission = 8 and a.uid in (select friend.uid from friends friend where friend.fid = #{loginUser.uid}))
+                            )
+                            )
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    and a.permission = 0
+                </otherwise>
+            </choose>
         </where>
     </select>
 
     <!-- article rank manager start -->
     <!-- 评论数量 -->
     <update id="raiseCommentCnt" parameterType="comment">
-        update article set comment=comment+1 where aid=#{aid}
+        update article set comment_count=comment_count+1 where aid=#{aid}
     </update>
     <update id="reduceCommentCnt" parameterType="comment">
-        update article set comment=comment-1 where aid=#{aid}
+        update article set comment_count=comment_count-1 where aid=#{aid}
     </update>
     <!-- 收藏数量 -->
     <update id="raiseCollectCnt" parameterType="article">
-        update article set collection=collection+1 where aid=#{aid}
+        update article set collect_count=collect_count+1 where aid=#{aid}
     </update>
     <update id="reduceCollectCnt" parameterType="comment">
-        update article set collection=collection-1 where aid=#{aid}
+        update article set collect_count=collect_count-1 where aid=#{aid}
     </update>
     <!-- 点击数量 -->
     <update id="raiseClickCnt" parameterType="article">
-        update article set click=click+1 where aid=#{aid}
+        update article set click_count=click_count+1 where aid=#{aid}
     </update>
     <!-- article rank manager end -->
 
     <!-- article rank find start -->
     <select id="findClickRankList" parameterType="hashMap" resultType="article">
-        select title,aid,click from article
+        select title,aid,click_count from article
         <where>
             permission=0
-            <if test="uid!=0">
+            <if test="uid > 0">
                 and uid=#{uid}
             </if>
         </where>
-        order by click desc limit #{num}
+        order by click_count desc limit #{size}
     </select>
     <select id="findCommentRankList" parameterType="hashMap" resultType="article">
-        select title,aid,comment from article
+        select title,aid,comment_count from article
         <where>
             permission=0
-            <if test="uid!=0">
+            <if test="uid > 0">
                 and uid=#{uid}
             </if>
         </where>
-        order by comment desc limit #{num}
+        order by comment_count desc limit #{size}
     </select>
     <select id="findCollectRankList" parameterType="hashMap" resultType="article">
         select title,aid,collent from article
         <where>
             permission=0
-            <if test="uid!=0">
+            <if test="uid > 0">
                 and uid=#{uid}
             </if>
         </where>
-        order by collection desc limit #{num}
+        order by collect_count desc limit #{size}
     </select>
     <select id="findNewestList" parameterType="hashMap" resultType="article">
         select title,aid from article
         <where>
             permission=0
-            <if test="uid!=0">
+            <if test="uid > 0">
                 and uid=#{uid}
             </if>
         </where>
-        order by aid desc limit #{num}
+        order by aid desc limit #{size}
     </select>
     <select id="findCategoryCntList" resultType="article">
     </select>
@@ -394,4 +528,5 @@
         delete from article where aid=#{aid}
     </delete>
     <!-- 删除文章 end -->
+
 </mapper>

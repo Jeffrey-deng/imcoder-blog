@@ -1,9 +1,8 @@
 package site.imcoder.blog.entity;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import site.imcoder.blog.controller.json.EscapeEmojiJsonDeserializer;
-import site.imcoder.blog.controller.propertyeditors.EmojiConvert;
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+import site.imcoder.blog.controller.formatter.timeformat.TimeFormat;
+import site.imcoder.blog.controller.propertyeditors.annotation.EmojiConvert;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -12,8 +11,10 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Created by Jeffrey.Deng on 2018/1/5.
  * 相册实体类
+ *
+ * @author Jeffrey.Deng
+ * @date 2018/1/5
  */
 public class Album implements Serializable {
 
@@ -22,7 +23,8 @@ public class Album implements Serializable {
     /**
      * 相册ID
      */
-    private int album_id;
+    @PrimaryKeyConvert
+    private Long album_id;
 
     /**
      * 用户
@@ -32,15 +34,13 @@ public class Album implements Serializable {
     /**
      * 相册名称
      */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
+    @EmojiConvert //转义emoji表情
     private String name;
 
     /**
      * 相册说明
      */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
+    @EmojiConvert //转义emoji表情
     private String description;
 
     /**
@@ -51,13 +51,25 @@ public class Album implements Serializable {
     /**
      * 创建时间
      */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    // @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    @TimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date create_time;
 
     /**
      * 查看权限 0：公开 ， 1：好友， 2：私有
      */
     private int permission;
+
+    /**
+     * <pre>
+     * 挂载的标签名称
+     * 可用前缀标识使用哪种搜索
+     *  “tagWrapper:” - 使用 {@link PhotoTagWrapper#name}
+     *  “tag:”- 使用 {@link Photo#tags} ，支持搜索语法
+     *  不填前缀，优先搜索 {@link PhotoTagWrapper#name} ，无结果再使用 {@link Photo#tags} 搜索
+     * </pre>
+     */
+    private String mount;
 
     /**
      * 照片数量
@@ -77,11 +89,11 @@ public class Album implements Serializable {
     public Album() {
     }
 
-    public Album(int album_id) {
+    public Album(Long album_id) {
         this.album_id = album_id;
     }
 
-    public Album(int album_id, String name) {
+    public Album(Long album_id, String name) {
         this.album_id = album_id;
         this.name = name;
     }
@@ -110,7 +122,7 @@ public class Album implements Serializable {
         Iterator<Photo> iterator = photos.iterator();
         while (iterator.hasNext()) {
             Photo p = iterator.next();
-            if (p.getPhoto_id() == photo.getPhoto_id()) {
+            if (p.getPhoto_id().equals(photo.getPhoto_id())) {
                 iterator.remove();
             }
         }
@@ -124,11 +136,11 @@ public class Album implements Serializable {
         this.photos = photos;
     }
 
-    public int getAlbum_id() {
+    public Long getAlbum_id() {
         return album_id;
     }
 
-    public void setAlbum_id(int album_id) {
+    public void setAlbum_id(Long album_id) {
         this.album_id = album_id;
     }
 
@@ -178,6 +190,14 @@ public class Album implements Serializable {
 
     public void setPermission(int permission) {
         this.permission = permission;
+    }
+
+    public String getMount() {
+        return mount;
+    }
+
+    public void setMount(String mount) {
+        this.mount = mount;
     }
 
     public int getSize() {

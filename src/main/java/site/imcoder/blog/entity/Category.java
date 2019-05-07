@@ -1,5 +1,7 @@
 package site.imcoder.blog.entity;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.io.Serializable;
 
 /**
@@ -8,6 +10,7 @@ import java.io.Serializable;
  * @author dengchao
  * @date 2016-9-1
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Category implements Serializable {
 
     private static final long serialVersionUID = -6062563580975894350L;
@@ -25,7 +28,7 @@ public class Category implements Serializable {
     /**
      * 类型 数量
      */
-    private int count;
+    private Integer count;
 
     public Category() {
     }
@@ -51,11 +54,11 @@ public class Category implements Serializable {
         this.atname = atname;
     }
 
-    public int getCount() {
+    public Integer getCount() {
         return count;
     }
 
-    public void setCount(int count) {
+    public void setCount(Integer count) {
         this.count = count;
     }
 

@@ -1,6 +1,7 @@
 package site.imcoder.blog.dao;
 
 import site.imcoder.blog.entity.Photo;
+import site.imcoder.blog.entity.Subtitle;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.entity.Video;
 
@@ -28,12 +29,25 @@ public interface IVideoDao {
     public Video findVideo(Video video);
 
     /**
-     * 查找视频
+     * 查找视频集合
      *
-     * @param covers 封面id集合
+     * @param base
+     * @param video
+     * @param logic_conn
+     * @param start
+     * @param size
+     * @param loginUser
+     * @return videos
+     */
+    public List<Video> findVideoList(String base, Video video, String logic_conn, int start, int size, User loginUser);
+
+    /**
+     * 查找视频通过封面photo_id集合
+     *
+     * @param covers 封面photo_id集合
      * @return Video
      */
-    public List<Video> findVideoListByCoverArray(List<Integer> covers, User loginUser);
+    public List<Video> findVideoListByCoverArray(List<Long> covers, User loginUser);
 
     /**
      * 更新视频
@@ -47,9 +61,19 @@ public interface IVideoDao {
      * 点击量加1
      *
      * @param video
+     * @param step - 步长，可为负数
      * @return
      */
-    public int raiseVideoClickCount(Video video);
+    public int updateVideoClickCount(Video video, int step);
+
+    /**
+     * 点赞量加1
+     *
+     * @param video
+     * @param step - 步长，可为负数
+     * @return
+     */
+    public int updateVideoLikeCount(Video video, int step);
 
     /**
      * 更新封面图片的image_type
@@ -58,5 +82,29 @@ public interface IVideoDao {
      * @return
      */
     public int updateCoverImageType(Photo cover);
+
+    /**
+     * 保存字幕对象
+     *
+     * @param subtitle
+     * @return
+     */
+    public int saveSubtitle(Subtitle subtitle);
+
+    /**
+     * 查询字幕对象
+     *
+     * @param subtitle
+     * @return
+     */
+    public Subtitle findSubtitle(Subtitle subtitle);
+
+    /**
+     * 更新字幕对象
+     *
+     * @param subtitle
+     * @return
+     */
+    public int updateSubtitle(Subtitle subtitle);
 
 }

@@ -1,5 +1,7 @@
 /**
- * Created by Jeffrey.Deng on 2018/5/3.
+ * 照片页面处理插件
+ * @author Jeffery.deng
+ * @date 2018/5/3
  */
 (function (factory) {
     /* global define */
@@ -20,16 +22,16 @@
         callback: {
             "loadAlbums_callback": function (config, success) { // 加载相册列表的回调
                 var object = {};
-                $.get("photo.do?method=albumListByAjax", object, function (data) {
-                    if (data.flag == 200) {
-                        success(data.albums);
+                $.get("photo.api?method=getAlbumList", object, function (response) {
+                    if (response.status == 200) {
+                        success(response.data);
                     } else {
-                        toastr.error(data.info, "加载相册失败!");
-                        console.warn("Error Code: " + data.flag);
+                        toastr.error(response.message, "加载相册失败!");
+                        console.warn("Error Code: " + response.status);
                     }
                 });
             },
-            "generatePhotoPreviewUrl": function (source, relativePath, hitCol) { // 生成预览图片url的函数
+            "generatePhotoPreviewUrl": function (source, hitCol) { // 生成预览图片url的函数
                 return source;
             },
             "actionForEditAlbum": function (album) {
@@ -77,11 +79,12 @@
             }
         },
         load_condition: null,
-        album_href_prefix: ""
+        album_href_prefix: "",
+        img_load_error_default: "res/img/img_load_error_default.jpg"
     };
 
     var init = function (options) {
-        $.extend(true, config, options);
+        common_utils.extendNonNull(true, config, options);
         loadAlbums(config, function (data) {
 
             pointer.albums = data.albums;
@@ -91,6 +94,47 @@
                 config.page_params.default_size = 0;
             }
             config.page_params.pageCount = utils.calcPageCount();
+
+            $(config.selector.page_nav).on("click", "a", function (e) {
+                var _self = e.currentTarget;
+                var className = _self.parentNode.className;
+                if (className == "page-left") {
+                    jumpPage(config.page_params.pageNum - 1);
+                } else if (className == "page-right") {
+                    jumpPage(config.page_params.pageNum + 1);
+                } else if (className != "separator") {
+                    jumpPage(_self.getAttribute('jumpPage'))
+                }
+                config.callback.paginationClick_callback.call(context, _self.parentNode);
+                utils.triggerEvent(config.event.pagePaginationClick, _self.parentNode);
+                return false;
+            });
+            $("#" + config.selector.albumsContainer_id)
+                .on("click", ".album_name", function (e) {
+                    var album = utils.getAlbumByCache(e.currentTarget.parentNode.getAttribute("data-id"));
+                    config.callback.actionForEditAlbum.call(context, album);
+                    utils.triggerEvent(config.event.actionForEditAlbum, album);
+                })
+                .on({
+                    "dragstart": function (e) {
+                        var uid = e.currentTarget.parentNode.parentNode.getAttribute("data-uid");
+                        var isAuthor = login_handle.equalsLoginUser(uid);
+                        var tips = isAuthor ? "松开鼠标打开编辑窗口~" : "松开鼠标查看相册信息~";
+                        pointer.notify_drag = toastr.success(tips, "", {
+                            "progressBar": false,
+                            "timeOut": 0,
+                            "closeButton": false
+                        });
+                    },
+                    "dragend": function (e) {
+                        toastr.remove(pointer.notify_drag, true);
+                        var album = utils.getAlbumByCache(e.currentTarget.parentNode.parentNode.getAttribute("data-id"));
+                        config.callback.actionForEditAlbum.call(context, album);
+                        utils.triggerEvent(config.event.actionForEditAlbum, album);
+                    }
+                }, "img");
+
+            initWaterfallFlow();
 
             if (pointer.albums != null) {
                 jumpPage(config.page_params.pageNum);
@@ -144,39 +188,20 @@
 
         // 组装该页的html
         assembleCurrentPageHtml(pagenum);
-        $(config.selector.page_nav).find('a').unbind().click(function (e) {
-            var _self = e.currentTarget;
-            var className = _self.parentNode.className;
-            if (className == "page-left") {
-                jumpPage(config.page_params.pageNum - 1);
-            } else if (className == "page-right") {
-                jumpPage(config.page_params.pageNum + 1);
-            } else if (className != "separator") {
-                jumpPage(_self.getAttribute('jumpPage'))
-            }
-            config.callback.paginationClick_callback.call(context, _self.parentNode);
-            utils.triggerEvent(config.event.pagePaginationClick, _self.parentNode);
-            return false;
-        });
-        $("#" + config.selector.albumsContainer_id + " .album_name").unbind("click").click(function (e) {
-            var album = utils.getAlbumByCache(e.currentTarget.parentNode.getAttribute("data-id"));
-            config.callback.actionForEditAlbum.call(context, album);
-            utils.triggerEvent(config.event.actionForEditAlbum, album);
-        });
 
-        $('#' + config.selector.albumsContainer_id).find("img").on("dragstart", function (e) {
-            var uid = parseInt(e.currentTarget.parentNode.parentNode.getAttribute("data-uid"));
-            var isAuthor = login_handle.equalsLoginUser(uid);
-            var tips = isAuthor ? "松开鼠标打开编辑窗口~" : "松开鼠标查看相册信息~";
-            pointer.notify_drag = toastr.success(tips, "", {"progressBar": false, "timeOut": 0, "closeButton": false});
+        // 瀑布流重新计算
+        pointer.masonryInstance.recalculate(true);
+        $.each($('#' + config.selector.albumsContainer_id).children(), function (i, dom) {
+            var img = dom.querySelector("img");
+            var width = dom.getAttribute("data-width");
+            var height = dom.getAttribute("data-height");
+            if (img && !img.naturalHeight && width && height) {
+                var scale = img.offsetWidth / width;
+                img.style.height = (height * scale) + "px";
+            }
         });
-        $('#' + config.selector.albumsContainer_id).find("img").on("dragend", function (e) {
-            toastr.remove(pointer.notify_drag, true);
-            var album = utils.getAlbumByCache(e.currentTarget.parentNode.parentNode.getAttribute("data-id"));
-            config.callback.actionForEditAlbum.call(context, album);
-            utils.triggerEvent(config.event.actionForEditAlbum, album);
-        });
-        initWaterfallFlow();
+        pointer.masonryInstance.recalculate(true);
+        pointer.masonryInstance.recalculateOnImageLoad(true);
 
         var params = common_utils.parseURL(document.location.href).params;
         var search = "";
@@ -188,7 +213,7 @@
         (pagenum != 1) && (search += "&page=" + pagenum);
         search = search ? ("?" + search.substring(1)) : "";
         history.replaceState(
-            {"flag": "page"},
+            {"mark": "page"},
             document.title,
             location.pathname + search
         );
@@ -210,6 +235,7 @@
         var albumsContainer = document.getElementById(config.selector.albumsContainer_id);
         albumsContainer.innerHTML = "";
         albumsContainer.appendChild(fragment);
+        utils.replaceLoadErrorImgToDefault(albumsContainer);
 
         // 分页
         var navigator_fragment = document.createDocumentFragment();
@@ -253,96 +279,96 @@
     // 瀑布流
     var initWaterfallFlow = function () {
         var real_col = config.page_params.real_col;
-        if (pointer.masonryInstance == null) {
-            pointer.masonryInstance = new Macy({
-                container: '#' + config.selector.albumsContainer_id, // 图像列表容器id
-                trueOrder: false,
-                waitForImages: true,
-                useOwnImageLoader: false,
-                //设计间距
-                margin: {
-                    x: 20,
-                    y: 30
+        pointer.masonryInstance = new Macy({
+            container: '#' + config.selector.albumsContainer_id, // 图像列表容器id
+            trueOrder: false,
+            waitForImages: true,
+            useOwnImageLoader: false,
+            //设计间距
+            margin: {
+                x: 20,
+                y: 30
+            },
+            //设置列数
+            columns: real_col["2000"],
+            //定义不同分辨率（1200，940，520，400这些是分辨率）
+            breakAt: {
+                1800: {
+                    columns: real_col["1800"],
+                    margin: {
+                        x: 20,
+                        y: 30
+                    }
                 },
-                //设置列数
-                columns: real_col["2000"],
-                //定义不同分辨率（1200，940，520，400这些是分辨率）
-                breakAt: {
-                    1800: {
-                        columns: real_col["1800"],
-                        margin: {
-                            x: 20,
-                            y: 30
-                        }
-                    },
-                    1600: {
-                        columns: real_col["1600"],
-                        margin: {
-                            x: 20,
-                            y: 30
-                        }
-                    },
-                    940: {
-                        columns: real_col["940"],
-                        margin: {
-                            x: 20,
-                            y: 20
-                        }
-                    },
-                    720: {
-                        columns: real_col["720"],
-                        margin: {
-                            x: 20,
-                            y: 20
-                        }
+                1600: {
+                    columns: real_col["1600"],
+                    margin: {
+                        x: 20,
+                        y: 30
+                    }
+                },
+                940: {
+                    columns: real_col["940"],
+                    margin: {
+                        x: 20,
+                        y: 20
+                    }
+                },
+                720: {
+                    columns: real_col["720"],
+                    margin: {
+                        x: 20,
+                        y: 20
                     }
                 }
-            });
-            pointer.masonryInstance.recalculate(true);
-            $.each($('#' + config.selector.albumsContainer_id).children(), function (i, dom) {
+            }
+        });
+        pointer.masonryInstance.runOnImageLoad(function () {
+            var breakCnt = 2; // 跳过第一次运行时默认的complete和load
+            if (config.masonry_recalculate_mark !== null) {
+                if (!config.hasOwnProperty("masonry_recalculate_mark")) {
+                    config.masonry_recalculate_mark = 1;
+                }
+                if (config.masonry_recalculate_mark <= breakCnt) {
+                    config.masonry_recalculate_mark = config.masonry_recalculate_mark + 1;
+                    return;
+                } else {
+                    config.masonry_recalculate_mark = null;
+                }
+            }
+            var nodes = $('#' + config.selector.albumsContainer_id).children();
+            $.each(nodes, function (i, dom) {
                 var img = dom.querySelector("img");
-                var width = dom.getAttribute("data-width");
-                var height = dom.getAttribute("data-height");
-                if (!img.naturalHeight && width && height) {
-                    var scale = img.offsetWidth / width;
-                    img.style.height = (height * scale) + "px";
+                if (img && img.style.height) {
+                    img.style.height = "";
                 }
             });
             pointer.masonryInstance.recalculate(true);
-            pointer.masonryInstance.runOnImageLoad(function () {
-                var nodes = $('#' + config.selector.albumsContainer_id).children();
-                $.each(nodes, function (i, dom) {
-                    var img = dom.querySelector("img");
-                    if (img && img.style.height) {
-                        img.style.height = "";
-                    }
-                });
-                pointer.masonryInstance.recalculate(true);
-                console.log('第 ' + config.page_params.pageNum + ' 页加载完成！');
-                //pointer.masonryInstance.recalculate(true, true);
-                pointer.notify_pageloading && toastr.remove(pointer.notify_pageloading, true);
-                config.callback.photosOnLoad_callback.call(context, pointer.masonryInstance, nodes);
-                utils.triggerEvent(config.event.pageLoadCompleted, pointer.masonryInstance, nodes);
-            });
-        } else {
-            pointer.masonryInstance.recalculate(true);
-            $.each($('#' + config.selector.albumsContainer_id).children(), function (i, dom) {
-                var img = dom.querySelector("img");
-                var width = dom.getAttribute("data-width");
-                var height = dom.getAttribute("data-height");
-                if (img && !img.naturalHeight && width && height) {
-                    var scale = img.offsetWidth / width;
-                    img.style.height = (height * scale) + "px";
-                }
-            });
-            pointer.masonryInstance.recalculate(true);
-            pointer.masonryInstance.recalculateOnImageLoad(true);
-        }
+            console.log('第 ' + config.page_params.pageNum + ' 页加载完成~');
+            // pointer.masonryInstance.recalculate(true, true); 刷新所有（无视完成标记） / 添加完成标记
+            pointer.notify_pageloading && toastr.remove(pointer.notify_pageloading, true);
+            config.callback.photosOnLoad_callback.call(context, pointer.masonryInstance, nodes);
+            utils.triggerEvent(config.event.pageLoadCompleted, pointer.masonryInstance, nodes);
+        });
     };
 
     var utils = {
-        "bindEvent": function (eventName, func) {
-            $(context).bind(eventName, func);
+        "once": function (eventName, func, bindFirst) {
+            var funcWrapper = function () {
+                try {
+                    func.apply(context, arguments);
+                } finally {
+                    utils.unbindEvent(eventName, funcWrapper);
+                }
+            };
+            utils.bindEvent(eventName, funcWrapper, bindFirst);
+        },
+        "bindEvent": function (eventName, func, bindFirst) {
+            if (bindFirst == true) {
+                $(context).onfirst(eventName, func);
+            } else {
+                $(context).bind(eventName, func);
+            }
         },
         "triggerEvent": function (eventName) {
             return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
@@ -366,7 +392,7 @@
             a.href = config.album_href_prefix + album.album_id;
             div.appendChild(a);
             var img = document.createElement("img");
-            img.setAttribute("src", config.callback.generatePhotoPreviewUrl.call(context, config.path_params.cloudPath + album.cover.path, album.cover.path, config.page_params.real_col[config.hitColKey]));
+            img.setAttribute("src", config.callback.generatePhotoPreviewUrl.call(context, album.cover.path, config.page_params.real_col[config.hitColKey]));
             //img.className = "img-thumbnail";
             a.appendChild(img);
 
@@ -401,10 +427,10 @@
         },
         "updateAlbumInPage": function (album) {
             var album_source = utils.getAlbumByCache(album.album_id);
-            $.extend(album_source, album);
+            common_utils.extendNonNull(album_source, album);
             var dom = utils.getAlbumDom(album.album_id);
             dom.attr("data-cover", album.cover.path).attr("data-width", album.cover.width).attr("data-height", album.cover.height)
-                .find("img").attr("src", config.path_params.cloudPath + album.cover.path).attr("title", album.description);
+                .find("img").attr("src", album.cover.path).attr("title", album.description);
             dom.find(".album_name span").text(album.name);
         },
         "deleteAlbumInPage": function (album_id) {
@@ -508,6 +534,13 @@
                 }
             });
             return pageNum;
+        },
+        "replaceLoadErrorImgToDefault": function (parentNode) { // 图片加载失败显示默认图片
+            $(parentNode).find("img").one("error", function (e) {
+                $(this)
+                    .attr("src", config.path_params.cloudPath + config.img_load_error_default)
+                    .attr("title", "该图片加载失败~");
+            });
         }
     };
 

@@ -2,9 +2,14 @@ package site.imcoder.blog.cache;
 
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
+import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.common.id.IdUtil;
+import site.imcoder.blog.common.type.PermissionType;
 import site.imcoder.blog.dao.ISiteDao;
 import site.imcoder.blog.dao.IUserDao;
 import site.imcoder.blog.entity.*;
+import site.imcoder.blog.setting.Config;
+import site.imcoder.blog.setting.ConfigConstants;
 
 import javax.annotation.Resource;
 import java.util.*;
@@ -34,8 +39,11 @@ public class InitCacheTool {
      *
      * @return
      */
-    public Map<Integer, Article> initArticleBuffer(Map<String, Object> siteBuffer) {
-        Map<Integer, Article> articleBuffer = new LinkedHashMap<>();
+    public Map<Long, Article> initArticleBuffer(Cache cache) {
+
+        Map<String, Object> siteBuffer = cache.siteBuffer;
+
+        Map<Long, Article> articleBuffer = new LinkedHashMap<>();
 
         List<Article> ArticleBaseList = siteDao.findArticleBaseList();
         if (ArticleBaseList != null) {
@@ -43,14 +51,14 @@ public class InitCacheTool {
             logger.info("初始化文章的缓存 size:" + ArticleBaseList.size());
 
             int articleCount = 0;
-            int articleViewCount = 0;
+            int articleAccessCount = 0;
             for (Article article : ArticleBaseList) {
                 articleBuffer.put(article.getAid(), article);
                 articleCount++;
-                articleViewCount += article.getClick();
+                articleAccessCount += article.getClick_count();
             }
-            siteBuffer.put("articleCount", articleCount);
-            siteBuffer.put("articleViewCount", articleViewCount);
+            siteBuffer.put("article_count", articleCount);
+            siteBuffer.put("article_access_count", articleAccessCount);
         }
         return articleBuffer;
     }
@@ -60,9 +68,15 @@ public class InitCacheTool {
      *
      * @return
      */
-    public Map<Integer, User> initUserBuffer(Map<Integer, Article> articleBuffer, List<Follow> followBuffer, Map<String, Object> siteBuffer) {
+    public Map<Long, User> initUserBuffer(Cache cache) {
 
-        Map<Integer, User> userBuffer = new LinkedHashMap<Integer, User>();
+        Map<Long, Article> articleBuffer = cache.articleBuffer;
+        List<Follow> followBuffer = cache.followBuffer;
+        List<Friend> friendBuffer = cache.friendBuffer;
+        Map<String, Object> siteBuffer = cache.siteBuffer;
+        List<Category> categoryCount = cache.categoryCount;
+
+        Map<Long, User> userBuffer = new LinkedHashMap<Long, User>();
 
         List<User> userBaseList = siteDao.loadUserTable();
         if (userBaseList != null) {
@@ -78,35 +92,70 @@ public class InitCacheTool {
                     user.setUserSetting(userDao.findUserSetting(user));
                 }
 
-                //该用户文章数
+                UserStats userStats = new UserStats();
+                user.setUserStats(userStats);
+                List<Category> userArticleCateCount = Utils.copyListByJson(categoryCount, Category.class);
+                for (Category category : userArticleCateCount) {
+                    category.setCount(0);
+                }
+                userStats.setArticleCateCount(userArticleCateCount);
+
+                // 该用户文章数
                 int userArticleCount = 0;
+                int userArticleClickCount = 0;
+                int userArticleCommentCount = 0;
+                int userArticleCollectCount = 0;
+                int userArticleLikeCount = 0;
                 userBuffer.put(user.getUid(), user);
                 for (Article article : articleBuffer.values()) {
-                    if (article.getAuthor().getUid() == user.getUid()) {
+                    if (article.getAuthor().getUid().equals(user.getUid())) {
                         userArticleCount++;
+                        for (Category category : userArticleCateCount) {
+                            if (category.getAtid() == article.getCategory().getAtid()) {
+                                category.setCount(category.getCount() + 1);
+                            }
+                        }
+                        userArticleClickCount += article.getClick_count();
+                        userArticleCommentCount += article.getComment_count();
+                        userArticleCollectCount += article.getCollect_count();
+                        // userArticleLikeCount += article.getLike();
                     }
                 }
-                user.getUserStatus().setArticleCount(userArticleCount);
+                for (Category category : userArticleCateCount) {
+                    if (category.getAtid() == 0) {
+                        category.setCount(userArticleCount);
+                    }
+                }
+                userStats.setArticleCount(userArticleCount);
+                userStats.setArticleClickCount(userArticleClickCount);
+                userStats.setArticleCommentCount(userArticleCommentCount);
+                userStats.setArticleCollectCount(userArticleCollectCount);
+                userStats.setArticleLikeCount(userArticleLikeCount);
 
-                int followCount = 0;
-                int fansCount = 0;
+                int followingCount = 0; // 关注数
+                int followerCount = 0; // 粉丝数
+                int friendCount = 0; // 好友数
                 for (Follow follow : followBuffer) {
-                    //关注数
-                    if (follow.getUid() == user.getUid()) {
-                        followCount++;
+                    if (follow.getFollowerUid().equals(user.getUid())) {
+                        followingCount++;
                     }
-                    //粉丝数
-                    if (follow.getFuid() == user.getUid()) {
-                        fansCount++;
+                    if (follow.getFollowingUid().equals(user.getUid())) {
+                        followerCount++;
                     }
                 }
-                user.getUserStatus().setFollowCount(followCount);
-                user.getUserStatus().setFansCount(fansCount);
+                for (Friend friend : friendBuffer) {
+                    if (friend.getUid().equals(user.getUid())) {
+                        friendCount++;
+                    }
+                }
+                userStats.setFollowingCount(followingCount);
+                userStats.setFollowerCount(followerCount);
+                userStats.setFriendCount(friendCount);
 
                 userCount++;
             }
 
-            siteBuffer.put("userCount", userCount);
+            siteBuffer.put("user_count", userCount);
         }
 
 
@@ -144,20 +193,27 @@ public class InitCacheTool {
     /**
      * 统计每个tag的数量
      *
+     * @param checkPermission    是否只统计公开文章的标签
      * @param articleBuffer
      * @param uid           大于0时只统计该用户的文章
-     * @param publicOnly    是否只统计公开文章的标签
+     * @param cache
      * @return
      */
-    public List<Entry<String, Integer>> initTagCount(Map<Integer, Article> articleBuffer, int uid, boolean publicOnly) {
-        boolean isFindUser = uid > 0 ? true : false;
+    public List<Entry<String, Integer>> initTagCount(boolean checkPermission, Map<Long, Article> articleBuffer, Long uid, Cache cache) {
+        boolean isFindUser = IdUtil.containValue(uid) ? true : false;
+        int feed_flow_allow_show_lowest_level = Config.getInt(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL);
         Map<String, Integer> map = new HashMap<String, Integer>();
         for (Article article : articleBuffer.values()) {
-            if (isFindUser && article.getAuthor().getUid() != uid) { //是否只统计某一个用户文章的标签
+            if (isFindUser && !article.getAuthor().getUid().equals(uid)) { //是否只统计某一个用户文章的标签
                 continue;
             }
-            if (publicOnly && article.getPermission() > 0) { //是否只统计公开文章的标签
+            if (checkPermission && article.getPermission() != PermissionType.PUBLIC.value) { //是否只统计公开文章的标签
                 continue;
+            }
+            if (!isFindUser && checkPermission) {
+                if (!cache.isFeedFlowAllowShow(true, article.getAuthor(), null, false, false, feed_flow_allow_show_lowest_level)) {
+                    continue;
+                }
             }
             //例：#Hadoop#大数据#HA#学习笔记#ZK#JNS
             String tags = article.getTags();
@@ -186,11 +242,11 @@ public class InitCacheTool {
     /**
      * 统计每个tag的数量
      *
-     * @param articleBuffer
+     * @param cache
      * @return
      */
-    public List<Entry<String, Integer>> initTagCount(Map<Integer, Article> articleBuffer) {
-        return initTagCount(articleBuffer, 0, true);
+    public List<Entry<String, Integer>> initTagCount(Cache cache) {
+        return initTagCount(true, cache.articleBuffer, 0L, cache);
     }
 
 }

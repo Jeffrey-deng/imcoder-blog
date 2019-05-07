@@ -3,6 +3,7 @@ package site.imcoder.blog.dao.impl;
 import org.apache.ibatis.session.SqlSession;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.dao.CommonDao;
 import site.imcoder.blog.dao.IAuthDao;
 import site.imcoder.blog.entity.User;
@@ -39,7 +40,6 @@ public class AuthDaoImpl extends CommonDao implements IAuthDao {
                 return 0;
             }
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("saveUserAuthList fail", e);
             return -1;
@@ -57,7 +57,6 @@ public class AuthDaoImpl extends CommonDao implements IAuthDao {
         try {
             return this.getSqlSession().insert("auth.insertUserAuth", userAuth);
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("saveUserAuth fail", e);
             return -1;
@@ -75,7 +74,6 @@ public class AuthDaoImpl extends CommonDao implements IAuthDao {
         try {
             return this.getSqlSession().selectList("auth.findUserAuth", userAuth);
         } catch (Exception e) {
-            e.printStackTrace();
             logger.error("findUserAuthList fail", e);
             return null;
         }
@@ -89,7 +87,7 @@ public class AuthDaoImpl extends CommonDao implements IAuthDao {
      */
     @Override
     public List<UserAuth> findUserAuthList(User user) {
-        if (user != null && user.getUid() > 0) {
+        if (user != null && IdUtil.containValue(user.getUid())) {
             UserAuth userAuth = new UserAuth();
             userAuth.setUid(user.getUid());
             return findUserAuthList(userAuth);
@@ -110,7 +108,6 @@ public class AuthDaoImpl extends CommonDao implements IAuthDao {
         try {
             return this.getSqlSession().selectOne("auth.findUserAuth", userAuth);
         } catch (Exception e) {
-            e.printStackTrace();
             logger.error("findUserAuth fail", e);
             return null;
         }
@@ -138,7 +135,6 @@ public class AuthDaoImpl extends CommonDao implements IAuthDao {
                 return 0;
             }
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("updateUserAuthList fail", e);
             return -1;
@@ -160,7 +156,6 @@ public class AuthDaoImpl extends CommonDao implements IAuthDao {
                 return 0;
             }
         } catch (Exception e) {
-            e.printStackTrace();
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("updateUserAuth fail", e);
             return -1;

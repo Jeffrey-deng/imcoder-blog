@@ -2,6 +2,7 @@ package site.imcoder.blog.entity;
 
 import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.common.type.UserAuthType;
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
 
 import java.io.Serializable;
 
@@ -13,9 +14,10 @@ public class UserAuth implements Serializable {
 
     private static final long serialVersionUID = 5013672743658092923L;
 
-    private Integer uaid;
+    private Long uaid;
 
-    private Integer uid;
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long uid;
 
     private Integer group_type; // identity_type对应的大组类型，0：站内账号、 1：第三方账号、 2：鉴权类（非登陆账号）
 
@@ -40,7 +42,7 @@ public class UserAuth implements Serializable {
         this.credential = credential;
     }
 
-    public UserAuth(Integer uid, UserAuthType userAuthType, String identifier, String credential) {
+    public UserAuth(Long uid, UserAuthType userAuthType, String identifier, String credential) {
         this.uid = uid;
         this.group_type = userAuthType.group;
         this.identity_type = userAuthType.value;
@@ -48,7 +50,7 @@ public class UserAuth implements Serializable {
         this.credential = credential;
     }
 
-    public UserAuth(Integer uid, UserAuthType userAuthType, String identifier, String credential, Integer verified, String login_ip) {
+    public UserAuth(Long uid, UserAuthType userAuthType, String identifier, String credential, Integer verified, String login_ip) {
         this.uid = uid;
         this.group_type = userAuthType.group;
         this.identity_type = userAuthType.value;
@@ -58,19 +60,19 @@ public class UserAuth implements Serializable {
         this.login_ip = login_ip;
     }
 
-    public Integer getUaid() {
+    public Long getUaid() {
         return uaid;
     }
 
-    public void setUaid(Integer uaid) {
+    public void setUaid(Long uaid) {
         this.uaid = uaid;
     }
 
-    public Integer getUid() {
+    public Long getUid() {
         return uid;
     }
 
-    public void setUid(Integer uid) {
+    public void setUid(Long uid) {
         this.uid = uid;
     }
 

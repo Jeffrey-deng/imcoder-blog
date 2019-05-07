@@ -13,9 +13,6 @@ import java.security.MessageDigest;
  */
 public class FileUtil {
 
-    private static char[] digits = new char[]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
-
     public static byte[] downloadBytesFormUrl(String urlStr, int timeout) throws IOException {
         URL url = new URL(urlStr);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -77,7 +74,7 @@ public class FileUtil {
      * @param savePath
      * @throws IOException
      */
-    public static void downloadFromUrl(String urlStr, String fileName, String savePath) throws IOException {
+    public static void downloadFromUrl(String urlStr, String savePath, String fileName) throws IOException {
         URL url = new URL(urlStr);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         //设置超时间为3秒
@@ -114,34 +111,6 @@ public class FileUtil {
         }
     }
 
-
-    public static byte[] decodeHex(char[] data) throws Exception {
-        int l = data.length;
-        if ((l & 1) != 0) {
-            throw new Exception("Odd number of characters.");
-        } else {
-            byte[] out = new byte[l >> 1];
-            int i = 0;
-            for (int j = 0; j < l; ++i) {
-                int f = Character.digit(data[j++], 16) << 4;
-                f |= Character.digit(data[j++], 16);
-                out[i] = (byte) (f & 255);
-            }
-            return out;
-        }
-    }
-
-    public static char[] encodeHex(byte[] data) {
-        int l = data.length;
-        char[] out = new char[l << 1];
-        int i = 0;
-        for (int j = 0; i < l; ++i) {
-            out[j++] = digits[(240 & data[i]) >>> 4];
-            out[j++] = digits[15 & data[i]];
-        }
-        return out;
-    }
-
     /**
      * 计算文件md5
      *
@@ -173,7 +142,7 @@ public class FileUtil {
             while ((len = input.read(buff)) != -1) {
                 md.update(buff, 0, len);
             }
-            return new String(encodeHex(md.digest()));
+            return new String(Utils.encodeHex(md.digest()));
         } catch (Exception e) {
             e.printStackTrace();
             return null;

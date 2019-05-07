@@ -2,6 +2,7 @@ package site.imcoder.blog.common;
 
 import com.baidu.aip.speech.AipSpeech;
 import com.baidu.aip.speech.TtsResponse;
+import org.apache.log4j.Logger;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
 
@@ -14,6 +15,8 @@ import java.util.List;
  * Created by Jeffrey.Deng on 2018/2/19.
  */
 public class AudioUtil {
+
+    private static Logger logger = Logger.getLogger(AudioUtil.class);
 
     //设置APPID/AK/SK
     public static String APP_ID = null;
@@ -56,7 +59,17 @@ public class AudioUtil {
         return synthesis(client, text, options, savePath);
     }
 
-    public static int synthesis(AipSpeech client, String text, HashMap<String, Object> options, String savePath) {
+    public static byte[] textToVoice(String text, HashMap<String, Object> options) {
+        // 初始化一个FaceClient
+        AipSpeech client = new AipSpeech(APP_ID, API_KEY, SECRET_KEY);
+        // 可选：设置网络连接参数
+        client.setConnectionTimeoutInMillis(2000);
+        client.setSocketTimeoutInMillis(60000);
+        // 调用API
+        return synthesis(client, text, options);
+    }
+
+    protected static int synthesis(AipSpeech client, String text, HashMap<String, Object> options, String savePath) {
         text = text.replaceAll("\r|\n", "");
         DataOutputStream out = null;
         int status = 0;
@@ -72,22 +85,51 @@ public class AudioUtil {
             status = 1;
         } catch (FileNotFoundException e) {
             status = -1;
-            e.printStackTrace();
+            logger.error("AudioUtil's method synthesis find execption: " + e.toString());
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("AudioUtil's method synthesis find execption: " + e.toString());
             status = -1;
         } finally {
             try {
                 if (out != null)
                     out.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("AudioUtil's method synthesis find execption: " + e.toString());
             }
         }
         return status;
     }
 
-    public static List<String> splitText(String text) {
+    protected static byte[] synthesis(AipSpeech client, String text, HashMap<String, Object> options) {
+        text = text.replaceAll("\r|\n", "");
+        ByteArrayOutputStream out = null;
+        byte[] bytes = null;
+        try {
+            out = new ByteArrayOutputStream();
+            for (String str : splitText(text)) {
+                TtsResponse res = client.synthesis(str, "zh", 1, options);
+                if (res.getResult() != null) {
+
+                }
+                out.write(res.getData());
+            }
+            bytes = out.toByteArray();
+        } catch (FileNotFoundException e) {
+            logger.error("AudioUtil's method synthesis find execption: " + e.toString());
+        } catch (IOException e) {
+            logger.error("AudioUtil's method synthesis find execption: " + e.toString());
+        } finally {
+            try {
+                if (out != null)
+                    out.close();
+            } catch (IOException e) {
+                logger.error("AudioUtil's method synthesis find execption: " + e.toString());
+            }
+        }
+        return bytes;
+    }
+
+    protected static List<String> splitText(String text) {
         List<String> list = new ArrayList<>();
         int MAX = 300;
         int len = text.length();

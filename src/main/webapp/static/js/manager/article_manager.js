@@ -1,6 +1,7 @@
 /**
  * 文章管理
- * Created by Jeffrey.Deng on 2018/1/11.
+ * @author Jeffrey.deng
+ * @date 2018/1/11
  */
 (function (factory) {
     /* global define */
@@ -12,7 +13,22 @@
         factory(window.jQuery, null, $(document).ready, toastr);
     }
 })(function ($, bootstrap, domReady, toastr) {
+
     var articles = null;
+
+    var permissionMap = {
+        "0": "游客可见",
+        "1": "游客可见，但不公开",
+        "2": "登陆可见",
+        "3": "登陆可见，但不公开",
+        "4": "粉丝可见",
+        "5": "粉丝可见，但不公开",
+        "6": "关注的用户可见",
+        "7": "关注的用户可见，但不公开",
+        "8": "好友可见",
+        "9": "好友可见，但不公开",
+        "10": "私有"
+    };
 
     function getArticle(aid, articles) {
         var article = null;
@@ -29,7 +45,7 @@
         var html = '<thead><tr>'
             + '<th style="text-align:center;">文章ID</th>'
             + '<th style="text-align:center;">标题</th>'
-            + '<th style="text-align:center;">用户</th>'
+            + '<th style="text-align:center;">作者</th>'
             + '<th style="text-align:center;">分类</th>'
             + '<th style="text-align:center;">权限</th>'
             + '<th style="text-align:center;">发表时间</th>'
@@ -42,38 +58,28 @@
         var end = start + (articles.length - start < pageSize ? articles.length - start - 1 : pageSize - 1);
         for (var i = start; i <= end; i++) {
             var article = articles[i];
-            html += '<tbody><tr style="height: 50px;" aid="' + article.aid + '">';
+            html += '<tbody><tr style="height: 50px;" data-aid="' + article.aid + '">';
             html += '<td name="modifyModal_trigger" style="cursor: pointer;" title="点击编辑"><b>' + article.aid + '</b></td>';
-            html += '<td><a href="article.do?method=detail&aid=' + article.aid + '" target="_blank"><b>' + article.title + '</b></a></td>';
-            html += '<td><a href="user.do?method=home&uid=' + article.author.uid + '"  target="_blank"><i>' + article.author.nickname + '（' + article.author.uid + '）</i></a></td>';
+            html += '<td><a href="a/detail/' + article.aid + '" target="_blank"><b>' + article.title + '</b></a></td>';
+            html += '<td><a href="u/' + article.author.uid + '/home"  target="_blank"><i>' + article.author.nickname + '（' + article.author.uid + '）</i></a></td>';
             html += '<td>' + article.category.atname + '</td>';
-            var permission_name = "公开";
-            if (article.permission == 1) {
-                permission_name = "好友";
-            } else if (article.permission == 2) {
-                permission_name = "私有";
-            }
-            html += '<td>' + permission_name + '</td>';
+            html += '<td title="' + permissionMap[article.permission] + '">' + article.permission + '</td>';
             html += '<td>' + article.create_time + '</td>';
-            html += '<td>' + article.click + '</td>';
-            html += '<td>' + article.comment + '</td>';
+            html += '<td>' + article.click_count + '</td>';
+            html += '<td>' + article.comment_count + '</td>';
             html += '<td>' + article.top + '</td>';
             html += '<td>' + (article.recommend == 0 ? "否" : "<span style=\"color:green;\">推荐</span>") + '</td>';
             html += '</tr></tbody>';
         }
         $('#article_tds').html(html);
 
-        $('#article_tds td').click(function () {
-            var aid = $(this).parent().attr("aid");
+        $('#article_tds').on("click", "td", function () {
+            var aid = $(this).parent().attr("data-aid");
             var article = getArticle(aid, articles);
             $('#modifyArticleModal span[name="article_aid"]').html(article.aid);
             $('#modifyArticleModal span[name="article_title"]').html(article.title);
             $('#modifyArticleModal select[name="article_category"]').val(article.category.atid);
-            $("#modifyArticleModal input[name='article_permission']").each(function () {
-                if ($(this).val() == article.permission) {
-                    $(this).prop("checked", true);
-                }
-            });
+            $("#modifyArticleModal select[name='article_permission']").val(article.permission);
             $("#modifyArticleModal input[name='article_recommend']").each(function () {
                 if ($(this).val() == article.recommend) {
                     $(this).prop("checked", true);
@@ -82,7 +88,7 @@
             $("#modifyArticleModal input[name='article_top']").val(article.top);
             $('#modifyArticleModal').modal();
         });
-        $('#article_tds a').click(function (e) {
+        $('#article_tds').on("click", "a", function (e) {
             var tagA = e.currentTarget;
             var domA = document.createElement("a");
             domA.setAttribute("href", tagA.getAttribute("href"));
@@ -110,14 +116,14 @@
     }
 
     domReady(function () {
-        $.get("manager.do?method=articleListByAjax", function (data) {
-            if (data.flag == 200) {
-                articles = data.articles;
+        $.get("manager.api?method=getArticleInfoList", function (response) {
+            if (response.status == 200) {
+                articles = response.data.articles;
                 assembleCurrentTableHtml(articles, 1, 20);
                 $('#articleCount').html(articles.length);
             } else {
-                toastr.error(data.info, data.flag);
-                console.warn("Error Code: " + data.flag);
+                toastr.error(response.message, response.status);
+                console.warn("Error Code: " + response.status);
             }
         });
 
@@ -133,11 +139,11 @@
             var article = {};
             article.aid = $('#modifyArticleModal span[name="article_aid"]').html();
             article.atid = $('#modifyArticleModal select[name="article_category"]').val();
-            article.permission = $("#modifyArticleModal input[name='article_permission']:checked").val();
+            article.permission = $("#modifyArticleModal select[name='article_permission']").val();
             article.top = $("#modifyArticleModal input[name='article_top']").val();
             article.recommend = $("#modifyArticleModal input[name='article_recommend']:checked").val();
-            $.post("manager.do?method=modifyArticleInfoByManager", article, function (data) {
-                if (data.flag == 200) {
+            $.post("manager.api?method=modify_article_info", article, function (response) {
+                if (response.status == 200) {
                     toastr.success("更新成功");
                     var article_temp = getArticle(article.aid, articles);
                     article_temp.category.atid = article.atid;
@@ -148,8 +154,8 @@
                     assembleCurrentTableHtml(articles, $('.page-navigator .current').find('a').attr('jumpPage'), 20);
                     $('#modifyArticleModal').modal('hide');
                 } else {
-                    toastr.error(data.info, "更新失败");
-                    console.warn("Error Code: " + data.flag);
+                    toastr.error(response.message, "更新失败");
+                    console.warn("Error Code: " + response.status);
                 }
             });
         });

@@ -9,26 +9,26 @@
     }
 })(function ($, bootstrap, domReady, toastr, summernote, common_utils, login_handle) {
 
-    function loadConfig(type) {
+    function loadLogFile(type) {
         var params = {};
         params.type = type;
         common_utils.notify({
             "progressBar": false,
             "hideDuration": 0,
+            "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
-        }).success("正在加载数据", "", "notify_log_loading");
+        }).success("正在加载数据~", "", "notify_log_loading");
         $.ajax({
-            url: "manager.do?method=load_log",
+            url: "manager.api?method=load_log",
             data: params,
             type: "GET",
             complete: function (XHR, TS) {
-                common_utils.removeNotify("notify_log_loading");
                 if (XHR.status == 200 || XHR.status == 304) {
                     if (XHR.getResponseHeader('Content-Length') !== "0") {
                         var data = XHR.responseText;
                         if (data) {
-                            toastr.success("加载成功！");
+                            common_utils.getNotify("notify_log_loading").find(".toast-message").text("加载成功, 计算中~");
                             //创建节点
                             var pre = document.createElement('pre');
                             pre.setAttribute('class', "user-defined-code");
@@ -41,7 +41,7 @@
                             //插入节点
                             $('#log_area').summernote('code', pre.outerHTML);
                         } else {
-                            toastr.info("日志为空！");
+                            toastr.info("日志为空~");
                         }
                     } else {
                         toastr.error("需要登录");
@@ -57,16 +57,17 @@
                 } else {
                     toastr.error("服务器错误");
                 }
-
+                common_utils.removeNotify("notify_log_loading");
                 if (XHR.status != 400) {
                     var params = common_utils.parseURL(document.location.href).params;
-                    var search = "?method=log_view";
+                    var search = "";
                     $.each(params, function (key, value) {
                         if (key != "method" && key != "type") {
                             search += "&" + key + "=" + value;
                         }
                     });
                     search += "&type=" + type;
+                    search = (search ? ("?" + search.substring(1)) : "");
                     history.replaceState(
                         null,
                         document.title,
@@ -93,7 +94,7 @@
         $("#btn_log_load").click(function () {
             var type = $("#log_type").val();
             if (type) {
-                loadConfig(type);
+                loadLogFile(type);
             } else {
                 toastr.error("请选择值");
             }
@@ -102,14 +103,15 @@
         $("#btn_log_download").click(function () {
             var type = $("#log_type").val();
             toastr.success("正在下载。。。");
-            common_utils.downloadUrlFile("manager.do?method=load_log&type=" + type);
+            common_utils.downloadUrlFile("manager/load_log?type=" + type);
         });
 
         var type = common_utils.parseURL(document.location.href).params.type;
         if (type) {
-            loadConfig(type);
+            loadLogFile(type);
             $("#log_type").val(type);
         }
+
     });
 });
 

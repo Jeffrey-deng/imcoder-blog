@@ -10,16 +10,16 @@
 })(function ($, bootstrap, domReady, toastr, common_utils, magnificPopup, login_handle, comment_plugin, websocket_util) {
 
     var config = {
-        pageArticleId: parseInt($("#h_aid").attr("aid")) || 0,
-        hostUserId: parseInt($("#h_auid").attr("auid")) || 0,
+        pageArticleId: ($("#first").find(".slogan_name").attr("data-article-id")) || 0,
+        hostUserId: ($("#first").find(".slogan_name").attr("data-user-id")) || 0,
         selector: {
-            "articleHandleArea": ".article_header .article_handle",
+            "articleHandleArea": ".article-header .article-handle",
             "collectArticleBtn": "#collectArticleBtn",
             "fillArticleToMainAreaBtn": "#fillArticleToMainAreaBtn",
             "firstHeaderArea": "#first",
             "mainArea": "#main",
             "rankListArea": "#rank_col",
-            "hostUserNickName": "#h_auid > :nth-child(1)",
+            "hostUserNickName": "#user_rank .author-nickname",
             "showDeleteModalBtn": "#showDeleteModalBtn",
             "submitDeleteArticleBtn": "#deleteArticleBtn"
         },
@@ -27,7 +27,8 @@
             "basePath": $('#basePath').attr('href'),
             "staticPath": $('#staticPath').attr('href'),
             "cloudPath": $('#cloudPath').attr('href')
-        }
+        },
+        img_load_error_default: "res/img/img_load_error_default.jpg"
     };
 
     /**
@@ -39,19 +40,22 @@
         //添加收藏
         if (preStatus == "no") {
             $.ajax({
-                url: "user.do?method=collectArticle",
+                url: "user.api?method=collectArticle",
                 type: "POST",
                 data: {"aid": config.pageArticleId},
-                success: function (data) {
-                    if (data.flag == 200) {
-                        toastr.success("文章收藏成功~");
-                        setCollectBtnStatus("yes");
-                    } else if (data.flag == 204) {
-                        toastr.success("已经收藏过了，无须再点击~");
-                        setCollectBtnStatus("yes");
+                success: function (response) {
+                    if (response.status == 200) {
+                        var data = response.data;
+                        if (data.type == 1) {
+                            toastr.success("文章收藏成功~");
+                            setCollectBtnStatus("yes");
+                        } else if (data.type == 0) {
+                            toastr.success("已经收藏过了，无须再点击~");
+                            setCollectBtnStatus("yes");
+                        }
                     } else {
-                        toastr.error(data.info, "文章收藏失败");
-                        console.warn("Error Code: " + data.flag);
+                        toastr.error(response.message, "文章收藏失败");
+                        console.warn("Error Code: " + response.status);
                     }
                 },
                 error: function () {
@@ -61,16 +65,16 @@
         } else { // 取消收藏
             if (confirm("你确定要取消收藏吗？")) {
                 $.ajax({
-                    url: "user.do?method=unCollectArticle",
+                    url: "user.api?method=unCollectArticle",
                     type: "POST",
                     data: {"aid": config.pageArticleId},
-                    success: function (data) {
-                        if (data.flag == 200) {
+                    success: function (response) {
+                        if (response.status == 200) {
                             toastr.success("删除收藏成功~");
                             setCollectBtnStatus("no");
                         } else {
-                            toastr.error(data.info, "删除收藏失败");
-                            console.warn("Error Code: " + data.flag);
+                            toastr.error(response.message, "删除收藏失败");
+                            console.warn("Error Code: " + response.status);
                         }
                     },
                     error: function () {
@@ -99,11 +103,11 @@
      */
     function checkCollection() {
         $.ajax({
-            url: 'user.do?method=checkCollection',
+            url: 'user.api?method=checkCollection',
             data: {'aid': config.pageArticleId},
-            success: function (data) {
-                if (data.flag == 200) {
-                    console.log("已收藏该文章~");
+            success: function (response) {
+                if (response.status == 200 && response.data.type == 1) {
+                    console.debug("已收藏该文章~");
                     setCollectBtnStatus("yes");
                 }
             }
@@ -148,12 +152,12 @@
             $(config.selector.submitDeleteArticleBtn).click(function () {
                 var inputValidateCode = $(selector.validateMailForm).find('input[name="validateCode"]').val().replace(/(^\s*)|(\s*$)/g, '');
                 if (inputValidateCode) {
-                    $.get("site.do?method=checkValidateCode", {"code": inputValidateCode}, function (data) {
-                        if (data.flag == 200) {
+                    $.post("auth.api?method=checkValidateCode", {"code": inputValidateCode}, function (response) {
+                        if (response.status == 200) {
                             callOnValidate(inputValidateCode, validateMailModal);
                         } else {
-                            toastr.error(data.info, data.flag);
-                            console.warn("Error Code: " + data.flag);
+                            toastr.error(response.message, response.status);
+                            console.warn("Error Code: " + response.status);
                         }
                     });
                 } else {
@@ -170,19 +174,20 @@
         common_utils.notify({
             "progressBar": false,
             "hideDuration": 0,
+            "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
         }).success("服务器正在发送邮件~", "", "notify_validate_code_mail_sending");
         $.ajax({
-            url: 'site.do?method=sendValidateCode',
+            url: 'auth.api?method=sendValidateCode',
             type: "POST",
-            success: function (data) {
+            success: function (response) {
                 common_utils.removeNotify("notify_validate_code_mail_sending");
-                if (data.flag == 200) {
+                if (response.status == 200) {
                     toastr.success("验证邮件发送成功~");
                 } else {
-                    toastr.error(data.info, "错误");
-                    console.warn("Error Code: " + data.flag);
+                    toastr.error(response.message, "错误");
+                    console.warn("Error Code: " + response.status);
                 }
             },
             error: function (XHR, TS) {
@@ -209,18 +214,19 @@
         common_utils.notify({
             "progressBar": false,
             "hideDuration": 0,
+            "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
         }).success("正在删除~", "", "notify_article_deleting");
-        $.post("article.do?method=delete", {"aid": aid, "validateCode": validateCode}, function (data) {
+        $.post("article.api?method=delete", {"aid": aid, "validateCode": validateCode}, function (response) {
             common_utils.removeNotify("notify_article_deleting");
-            if (data.flag == 200) {
+            if (response.status == 200) {
                 toastr.success('删除成功~');
                 toastr.success("此页面刷新后将不可用~", "", {"timeOut": 0});
                 call && call();
             } else {
-                toastr.error(data.info, '删除失败！');
-                console.warn("Error Code: " + data.flag);
+                toastr.error(response.message, '删除失败！');
+                console.warn("Error Code: " + response.status);
             }
         }).fail(function () {
             common_utils.removeNotify("notify_article_deleting");
@@ -238,15 +244,15 @@
         var hashIndex = url.indexOf('#');
         var mainArea = $(config.selector.mainArea);
         var rankListArea = $(config.selector.rankListArea);
-        var article_header_ul = mainArea.find(".article_header .article_category").parent().parent();
+        var article_header_ul = mainArea.find(".article-header .article-category").closest("ul");
         if (preStatus == "no") {
             rankListArea.hide(300);
             mainArea.removeClass('col-md-9').addClass('col-md-12');
-            var author_nickname_dom = rankListArea.find("#user_rank .author_nickname");
+            var author_nickname_dom = rankListArea.find("#user_rank .author-nickname");
             var author_url = author_nickname_dom.attr("href");
             var author_nickname = author_nickname_dom.text();
-            if (article_header_ul.find(".article_author").length == 0) {
-                article_header_ul.append('<li class="article_author">作者: <a href="' + author_url + '" target="_blank">' + author_nickname + '</a></li>')
+            if (article_header_ul.find(".article-author").length == 0) {
+                article_header_ul.append('<li class="article-author">作者: <a href="' + author_url + '" target="_blank">' + author_nickname + '</a></li>')
             }
             setFillArticleToMainAreaStatus("yes");
             history.replaceState(
@@ -257,7 +263,7 @@
         } else {
             rankListArea.show(300);
             mainArea.removeClass('col-md-12').addClass('col-md-9');
-            article_header_ul.find(".article_author").remove();
+            article_header_ul.find(".article-author").remove();
             setFillArticleToMainAreaStatus("no");
             history.replaceState(
                 null,
@@ -295,6 +301,19 @@
                     // "item.src" is a source that you may modify
                     item.src = item.el[0].src;
                 },
+                updateStatus: function (data) {
+                    // console.log('Status changed', data);
+                    // "data" is an object that has two properties:
+                    // "data.status" - current status type, can be "loading", "error", "ready"
+                    // "data.text" - text that will be displayed (e.g. "Loading...")
+                    // you may modify this properties to change current status or its text dynamically
+                    if (data.status == "error") {
+                        data.status = "loading";
+                        this.contentContainer.find(".mfp-img")
+                            .attr("src", config.path_params.cloudPath + config.img_load_error_default)
+                            .attr("title", "该图片加载失败~");
+                    }
+                }
             },
             gallery: {
                 enabled: true, // set to true to enable gallery
@@ -317,10 +336,16 @@
                     var photo_dom = item.el[0];
                     var photo_name = photo_dom.title || photo_dom.getAttribute("data-filename");
                     var openUrl = "";
-                    if (photo_dom.getAttribute("cloudImage")) {
-                        openUrl = "redirect.do?model=album&photo_id=" + photo_dom.getAttribute("photo-id");
+                    if (photo_dom.getAttribute("data-cloud-image")) {
+                        openUrl = "redirect?model=album&photo_id=" + photo_dom.getAttribute("data-photo-id");
+                        if (!photo_name) {
+                            photo_name = photo_dom.getAttribute("data-photo-id")
+                        }
                     } else {
                         openUrl = photo_dom.src;
+                        if (!photo_name) {
+                            photo_name = openUrl.match(/\/([^\/]+)$/) ? RegExp.$1 : openUrl;
+                        }
                     }
                     return '<a style="color:white" href="' + openUrl + '" target="_blank">' + photo_name + '</a><small>by ' + $(config.selector.hostUserNickName).text() + '</small>';
                 },
@@ -343,6 +368,15 @@
         });
     };
 
+    // 图片加载失败显示默认图片
+    function replaceLoadErrorImgToDefault(parentNode) {
+        $(parentNode).find("img").one("error", function (e) {
+            $(this)
+                .attr("src", config.path_params.cloudPath + config.img_load_error_default)
+                .attr("title", "该图片加载失败~");
+        });
+    }
+
     function isHasArticleHandleArea() {
         return $(config.selector.articleHandleArea).length > 0
     }
@@ -356,15 +390,30 @@
                 "positionClass": "toast-top-right",
                 "iconClass": "toast-success-no-icon",
                 "timeOut": 0,
-                "onclick": function () {
-
+                "onclick": function (e) {
+                    if ($(e.target).closest('a').length > 0) {
+                        e.preventDefault();
+                        window.open(e.target.href);
+                        return false;
+                    }
                 },
                 "onShown": function () {
                     $(this).css("opacity", "1");
+                },
+                "onHidden": function (toastElement, closeType) {
+                    if (closeType != 0 && toastElement.hasClass("wsMessage") && !toastElement.hasClass("not-sync-ws-message")) {
+                        websocket_util.post({
+                            "mapping": "transfer_data_in_tabs",
+                            "metadata": {
+                                "handle": "remove_ws_message",
+                                "ws_message_id": parseInt(toastElement.attr("data-wsid"))
+                            }
+                        });
+                    }
                 }
             };
-            // 收到新评论，unbind取消login.js中的默认处理
-            websocket_util.unbind(eventPrefix + "receive_comment").bind(eventPrefix + "receive_comment", function (e, wsMessage, wsEvent) {
+            // 收到新评论，取消login.js中的默认处理
+            websocket_util.on(eventPrefix + "receive_comment", function (e, wsMessage, wsEvent) {
                 var comment = wsMessage.metadata.comment;
                 var notify_opts = null;
                 var msg = null;
@@ -372,7 +421,8 @@
                     case 0:
                         var article = wsMessage.metadata.article;
                         notify_opts = $.extend({}, notify_ws_opts, {
-                            "onclick": function () {
+                            "onclick": function (e) {
+                                ($(e.target).closest('a').length > 0) && e.preventDefault();
                                 if (article.aid == config.pageArticleId) {   // 当前文章是被评论的文章
                                     comment_plugin.utils.scrollToSpecialComment(comment);
                                     // var commentDiv = document.getElementById("li_" + comment.cid);
@@ -394,7 +444,7 @@
                                     //     }
                                     // }
                                 } else {
-                                    window.open("article.do?method=detail&aid=" + article.aid + "#comment_" + comment.cid);
+                                    window.open("a/detail/" + article.aid + "#comment_" + comment.cid);
                                 }
                             }
                         });
@@ -408,34 +458,7 @@
                         } else {
                             msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
                         }
-                        break;
-                    case 1:
-                        var photo = wsMessage.metadata.photo;
-                        notify_opts = $.extend({}, notify_ws_opts, {
-                            "onclick": function () {
-                                window.open("photo.do?method=detail&id=" + photo.photo_id + "#comment_" + comment.cid);
-                            }
-                        });
-                        msg = null;
-                        if (comment.parentId == 0) {
-                            msg = comment.user.nickname + " 对你的照片<br><b>“" + photo.photo_id + "”</b><br>发表了评论~";
-                        } else {
-                            msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
-                        }
-                        break;
-                    case 2:
-                        var video = wsMessage.metadata.video;
-                        notify_opts = $.extend({}, notify_ws_opts, {
-                            "onclick": function () {
-                                window.open("video.do?method=detail&id=" + video.video_id + "#comment_" + comment.cid);
-                            }
-                        });
-                        msg = null;
-                        if (comment.parentId == 0) {
-                            msg = comment.user.nickname + " 对你的视频<br><b>“" + video.video_id + "”</b><br>发表了评论~";
-                        } else {
-                            msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
-                        }
+                        e.stopImmediatePropagation(); // 阻止login中绑定的事件, stopImmediatePropagation能阻止委托事件
                         break;
                 }
                 if (msg) {
@@ -443,7 +466,7 @@
                         .success(msg, "", "receive_comment" + "_" + comment.cid)
                         .addClass("wsMessage receive_comment").attr("data-wsid", wsMessage.id).attr("data-cid", comment.cid);
                 }
-            });
+            }, true); // 插入到事件队列第一个
         }
     }
 
@@ -475,14 +498,15 @@
              * @param {Function} call - 请求完后执行此回调，将评论列表数组作为参数传入此方法，请求错误则传入null
              */
             "userDefinedLoadComments": function (mainId, hostUserId, call) {   // 从服务器加载评论的回调， 在call中返回评论数组
-                $.get("message.do?method=listComment", {
-                    "mainType": config.mainType,
+                var mainType = this.config.mainType;
+                $.get("message.api?method=getCommentList", {
+                    "mainType": mainType,
                     "mainId": mainId
-                }, function (data) {
-                    if (data && data.flag == 200) {
-                        call && call.call(comment_plugin, data.comments);   // 调用call传入评论数组
+                }, function (response) {
+                    if (response.status == 200) {
+                        call && call.call(comment_plugin, response.data.comments);   // 调用call传入评论数组
                     } else {
-                        toastr.error("无权限加载评论？", data.flag);
+                        toastr.error("无权限加载评论？", response.status);
                     }
                 }).fail(function () {
                     toastr.error("加载评论出错");
@@ -500,15 +524,15 @@
                 $.ajax({
                     data: postComment,
                     type: "POST",
-                    url: "message.do?method=addComment",
+                    url: "message.api?method=addComment",
                     global: false,    // 去掉全局事件
-                    success: function (data) {
-                        if (data.flag == 200) {
-                            call(data.comment);
+                    success: function (response) {
+                        if (response.status == 200) {
+                            call(response.data.comment);
                         } else {
                             call(null);
-                            toastr.error(data.info, "添加评论失败");
-                            console.warn("Error Code: " + data.flag);
+                            toastr.error(response.message, "添加评论失败");
+                            console.warn("Error Code: " + response.status);
                         }
                     },
                     error: function (XHR, TS) {
@@ -529,22 +553,20 @@
              */
             "userDefinedDeleteComment": function (postComment, call) {
                 var data = {"cid": postComment.cid, "parentId": postComment.parentId};
-                $.post("message.do?method=deleteComment", data, function (data) {
-                    if (data) {
-                        if (data.flag == 200) {
+                $.post("message.api?method=deleteComment", data, function (response) {
+                    if (response.status == 200) {
+                        var data = response.data;
+                        if (data.type == 2) {
                             call("full");
                             toastr.success("评论删除成功~");
-                        } else if (data.flag == 201) {
+                        } else if (data.type == 1) {
                             call("fill");
                             toastr.success("评论删除成功~");
-                        } else {
-                            call(null);
-                            toastr.error(data.info, "评论删除失败");
-                            console.warn("Error Code: " + data.flag);
                         }
                     } else {
                         call(null);
-                        toastr.error("返回数据出错");
+                        toastr.error(response.message, "评论删除失败");
+                        console.warn("Error Code: " + response.status);
                     }
                 });
             }
@@ -556,6 +578,8 @@
         }
     });
 
+    replaceLoadErrorImgToDefault($("#article_content"));
+
     domReady(function () {
         // hash响应
         var hash = document.location.href.match(/#(.*)$/) ? RegExp.$1 : "";
@@ -563,7 +587,7 @@
             switch (hash) {
                 case "full-screen":
                     if (document.body.clientWidth >= 768 && isHasArticleHandleArea()) {
-                        $(config.selector.mainArea).find(".article_header .article_handle").find(".dropdown-toggle").eq(0).click();
+                        $(config.selector.mainArea).find(".article-header .article-handle").find(".dropdown-toggle").eq(0).click();
                         fillArticleToMainArea("no");
                     }
                     break;
@@ -609,6 +633,12 @@
 
         // 注册监控服务器的未读评论消息推送
         initWsReceiveServerPush();
+
+        // hash锚点设置前缀
+        var prefix = document.location.href.replace(/#.*$/, "");
+        $('a[href^="#"]').each(function (i, node) {
+            node.href = prefix + node.getAttribute("href");
+        });
     });
 
 });

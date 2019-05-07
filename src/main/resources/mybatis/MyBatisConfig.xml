@@ -3,6 +3,12 @@
         "http://mybatis.org/dtd/mybatis-3-config.dtd">
 
 <configuration>
+
+    <!-- 打印SQL -->
+    <!--<settings>-->
+        <!--<setting name="logImpl" value="STDOUT_LOGGING"/>-->
+    <!--</settings>-->
+
     <!-- 别名 -->
     <typeAliases>
         <typeAlias type="site.imcoder.blog.entity.User" alias="user"/>
@@ -23,6 +29,8 @@
         <typeAlias type="site.imcoder.blog.entity.Video" alias="video"/>
         <typeAlias type="site.imcoder.blog.entity.PhotoTagWrapper" alias="photoTagWrapper"/>
         <typeAlias type="site.imcoder.blog.entity.AlbumPhotoRelation" alias="albumPhotoRelation"/>
+        <typeAlias type="site.imcoder.blog.entity.AccessRecord" alias="accessRecord"/>
+        <typeAlias type="site.imcoder.blog.entity.Subtitle" alias="subtitle"/>
     </typeAliases>
 
     <!-- 注册类型转换器 -->

@@ -170,6 +170,7 @@
         common_utils.notify({
             "progressBar": false,
             "hideDuration": 0,
+            "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
         }).success(sharepath, "正在加载列表", "notify_file_list_loading");
@@ -265,6 +266,7 @@
             common_utils.notify({
                 "progressBar": false,
                 "hideDuration": 0,
+                "showDuration": 0,
                 "timeOut": 10000,
                 "closeButton": false
             }).error(e.message, e.status, "notify_no_permission");

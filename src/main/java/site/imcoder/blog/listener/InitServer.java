@@ -21,9 +21,9 @@ public class InitServer implements ApplicationListener<ContextRefreshedEvent> {
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
         if (event.getApplicationContext().getParent() == null) {
-            //event.getApplicationContext().getApplicationName().equals("")
-            //logger.info("Init : 执行服务器初始化！");
-            //需要执行的逻辑代码，当spring容器初始化完成后就会执行该方法。
+            // event.getApplicationContext().getApplicationName().equals("")
+            // logger.info("Init : 执行服务器初始化！");
+            // 需要执行的逻辑代码，当spring容器初始化完成后就会执行该方法。
             logger.debug("InitServer run \" Root WebApplicationContext \"");
             logger.info("Init : 服务器执行 初始化 完毕");
         }

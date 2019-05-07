@@ -6,6 +6,52 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
 
 ## develop log
 
+#### 2020.02.04
+
+use RESTFul style for url、new primary key style.
+
+    (1) site back-end
+    1、modify IRequest as service input、IResponse as service result.
+    2、move all ajax request to alone api controller.
+    3、use new id generator：SnowflakeIdWorker.
+    4、use new primary key style, the front end uses a short id, the back end uses a long id, and automatically converts.
+    5、update old primary key style to new.
+    6、modify url to RESTFul style.
+    7、add auto convert annotation: URLPrefixFill(file path auto fill with cdn full address)、GeneralConvert、PrimaryKeyConvert.
+    8、add access interceptor to automatically record access to user creations.
+    9、unified exclusion filter with ExcludedFilter.
+    >
+    （2）site front-end
+    1、reorganize css of modal and profilecenter and so forth.
+    2、reorganize css and js of edit page.
+    3、show a default img when img load error.
+    >
+    （3）user module
+    1、user's feed flow according to user's followings and the allow user groups by manager.
+    2、add history page for showing user's visited and liked creations.
+    >
+    （4）album module:
+    1、support define topic for photos.
+    2、support comment for tags and topic.
+    3、support like photo for user.
+    4、support more permission type.
+    5、add users's photo-tag-wrapper manager page.
+    6、support set auto mount by tagWrapper.name or photo.tags for album.
+    >
+    （5）video module
+    1、add upload mp3 file support.
+    2、support upload subtitle for video.
+    3、support topic comment for video.
+    4、support like video for user.
+    5、support more permission type.
+    6、add video player rotate、flip、loop control btn.
+    7、video iframe web fullscreen and auto setting by iframe attr.
+    >
+    （6）message service
+    1、support notify history unread message when user login.
+    2、support upload image in comment and letter.
+    3、support like comment.
+
 #### 2019.05.06
 
 new account auth system, new message system, photo、video detail page, and so forth.
@@ -36,10 +82,10 @@ new account auth system, new message system, photo、video detail page, and so f
     4、modify update url address bar when view video.
     5、use Plyr to replace origin html5 video player.
     >
-    File Service:
+    （5）File Service:
     1、unified file service, automatically switch according to the configured service type.
     >
-    （5）message service:
+    （6）message service:
     1、unified comment, private message, system message to message service class.
     2、unified commenting service, and pluging for commenting features.
     3、support user withdrawal private letter.

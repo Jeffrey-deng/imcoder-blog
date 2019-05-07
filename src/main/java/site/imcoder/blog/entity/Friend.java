@@ -1,5 +1,7 @@
 package site.imcoder.blog.entity;
 
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+
 import java.io.Serializable;
 
 /**
@@ -15,48 +17,49 @@ public class Friend implements Serializable {
     /**
      * friend 表 主键
      */
-    private int frid;
+    private Long frid;
 
     /**
      * 用户id
      */
-    private int uid;
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long uid;
 
     /**
      * 好友id
      */
-    private int fid;
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long fid;
 
     public Friend() {
     }
 
-    public Friend(int uid, int fid) {
+    public Friend(Long uid, Long fid) {
         this.uid = uid;
         this.fid = fid;
     }
 
-    public int getFrid() {
+    public Long getFrid() {
         return frid;
     }
 
-    public void setFrid(int frid) {
+    public void setFrid(Long frid) {
         this.frid = frid;
     }
 
-    public int getUid() {
+    public Long getUid() {
         return uid;
     }
 
-    public void setUid(int uid) {
+    public void setUid(Long uid) {
         this.uid = uid;
     }
 
-    public int getFid() {
+    public Long getFid() {
         return fid;
     }
 
-    public void setFid(int fid) {
+    public void setFid(Long fid) {
         this.fid = fid;
     }
-
 }

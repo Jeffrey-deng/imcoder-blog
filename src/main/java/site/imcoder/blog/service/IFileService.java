@@ -95,6 +95,16 @@ public interface IFileService {
     public boolean save(InputStream inputStream, String filePath);
 
     /**
+     * 文件保存
+     *
+     * @param inputStream 输入流
+     * @param filePath    文件保存绝对路径
+     * @param metadata    文件头信息
+     * @return
+     */
+    public boolean save(InputStream inputStream, String filePath, Map<String, Object> metadata);
+
+    /**
      * 保存文章中上传的图片或附件
      *
      * @param file
@@ -204,12 +214,15 @@ public interface IFileService {
      */
     public boolean saveVideoFile(InputStream inputStream, Video video, String relativePath, String fileName);
 
+    /********************* - ****** - OLD GENERATE NAME API - ***** - ****************************/
+
     /**
      * 生成相册相对路径
      *
      * @param album
      * @return
      */
+    @Deprecated
     public String generateAlbumPath(Album album);
 
     /**
@@ -217,6 +230,7 @@ public interface IFileService {
      *
      * @return
      */
+    @Deprecated
     public String generatePhotoFolderPath(Album album);
 
     /**
@@ -227,6 +241,7 @@ public interface IFileService {
      * @param savePath
      * @return
      */
+    @Deprecated
     public String generateNextPhotoFilename(Photo photo, String savePath);
 
     /**
@@ -237,6 +252,7 @@ public interface IFileService {
      * @param index 编号，属于这个文件夹第几个文件
      * @return
      */
+    @Deprecated
     public String generatePhotoFilename(Photo photo, int index);
 
     /**
@@ -245,6 +261,7 @@ public interface IFileService {
      * @param video
      * @return
      */
+    @Deprecated
     public String generateVideoFolderPath(Video video);
 
     /**
@@ -254,6 +271,7 @@ public interface IFileService {
      * @param savePath 保存文件夹的绝对路径
      * @return
      */
+    @Deprecated
     public String generateNextVideoName(Video video, String savePath);
 
     /**
@@ -263,6 +281,43 @@ public interface IFileService {
      * @param index 编号，属于这个文件夹第几个文件
      * @return
      */
+    @Deprecated
     public String generateVideoFilename(Video video, int index);
+
+    /********************* - ****** - NEW GENERATE NAME API - ***** - ****************************/
+
+    /**
+     * 生成照片的块文件夹地址
+     *
+     * @param photo
+     * @return
+     */
+    public String generatePhotoSaveBlockPath(Photo photo);
+
+    /**
+     * 生成照片文件名称，需要照片id
+     *
+     * @param photo
+     * @param blockPath 块文件夹地址
+     * @return
+     */
+    public String generatePhotoFilename(Photo photo, String blockPath);
+
+    /**
+     * 生成视频的块文件夹地址
+     *
+     * @param video
+     * @return
+     */
+    public String generateVideoSaveBlockPath(Video video);
+
+    /**
+     * 生成视频文件名称，需要视频id
+     *
+     * @param video
+     * @param blockPath 块文件夹地址
+     * @return
+     */
+    public String generateVideoFilename(Video video, String blockPath);
 
 }

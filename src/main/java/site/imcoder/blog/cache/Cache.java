@@ -1,12 +1,15 @@
 package site.imcoder.blog.cache;
 
-import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.log4j.Logger;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import site.imcoder.blog.cache.sort.ArticleHotComparator;
 import site.imcoder.blog.cache.sort.ArticleTimeComparator;
+import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.common.id.IdUtil;
+import site.imcoder.blog.common.type.PermissionType;
 import site.imcoder.blog.entity.*;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
@@ -36,22 +39,22 @@ public class Cache {
     /**
      * 文章基本信息缓存Map { aid : article }
      */
-    public Map<Integer, Article> articleBuffer;
+    public Map<Long, Article> articleBuffer;
 
     /**
      * 计量数有更新的文章Set { aid }
      */
-    public Set<Integer> hasUpdateArticle;
+    public Set<Long> hasUpdateArticle;
 
     /**
      * 用户基本信息缓存Map { uid : user }
      */
-    public Map<Integer, User> userBuffer;
+    public Map<Long, User> userBuffer;
 
     /**
      * 计量数有更新的用户Set { uid }
      */
-    public Set<Integer> hasUpdateUser;
+    public Set<Long> hasUpdateUser;
 
     /**
      * user_follow表 缓存
@@ -82,6 +85,11 @@ public class Cache {
      * 映射加密的token与未加密的token
      */
     public Map<String, String> loginTokensMap;
+
+    /**
+     * 每个用户独立持有的缓存池，key为用户id
+     */
+    public Map<Long, Map<String, Object>> userHoldCachePool;
 
     /**
      * 常量 ：读操作
@@ -123,8 +131,8 @@ public class Cache {
     public void initCache() {
         logger.info("Cache 执行 初始化 ");
 
-        hasUpdateArticle = new HashSet<Integer>();
-        hasUpdateUser = new HashSet<Integer>();
+        hasUpdateArticle = new HashSet<Long>();
+        hasUpdateUser = new HashSet<Long>();
         siteBuffer = new HashMap<String, Object>();
         loginTokensMap = new HashMap<String, String>();
 
@@ -132,12 +140,16 @@ public class Cache {
         followBuffer = initTool.initFollowBuffer();
         friendBuffer = initTool.initFriendBuffer();
 
-        articleBuffer = initTool.initArticleBuffer(siteBuffer);
-        userBuffer = initTool.initUserBuffer(articleBuffer, followBuffer, siteBuffer);
+        articleBuffer = initTool.initArticleBuffer(this);
+        userBuffer = initTool.initUserBuffer(this);
 
-        tagCount = initTool.initTagCount(articleBuffer);
+        tagCount = initTool.initTagCount(this);
 
-        siteBuffer.put("totalViews", 0);
+        userHoldCachePool = new HashedMap();
+
+        siteBuffer.put("total_access_count", siteBuffer.get("article_access_count")); // 总访问量
+        siteBuffer.put("today_date_mark", Utils.formatDate(new Date(), "yyyy-MM-dd")); // 标记同一日
+        siteBuffer.put("today_access_count", 0); // 网站一天的访问量
 
         //启动 flush 定时器
         flushCacheTimer.schedule(this);
@@ -152,6 +164,8 @@ public class Cache {
     public void stop() {
         //先刷入数据
         flush();
+        // 保存今日访问量
+        logger.info("Site today_access_count in [" + (String) siteBuffer.get("today_date_mark") + "] is [" + siteBuffer.get("today_access_count") + "]");
         //停止flush定时器
         flushCacheTimer.stop();
         logger.info("Cache 停止! ");
@@ -188,6 +202,21 @@ public class Cache {
     }
 
     /**
+     * 返回该用户独享的缓存池
+     *
+     * @param user
+     * @return
+     */
+    public synchronized Map<String, Object> getUserHoldCache(User user) {
+        Map<String, Object> myselfCache = userHoldCachePool.get(user.getUid());
+        if (myselfCache == null) {
+            myselfCache = new HashedMap();
+            userHoldCachePool.put(user.getUid(), myselfCache);
+        }
+        return myselfCache;
+    }
+
+    /**
      * 填充文章的统计量为缓存中的最新数据
      *
      * @param articleList
@@ -195,12 +224,7 @@ public class Cache {
     public void fillArticleStats(List<Article> articleList) {
         if (articleList != null) {
             for (Article article : articleList) {
-                Article _article = articleBuffer.get(article.getAid());
-                if (_article != null) {
-                    article.setClick(_article.getClick());
-                    article.setComment(_article.getComment());
-                    article.setCollection(_article.getCollection());
-                }
+                fillArticleStats(article);
             }
         }
     }
@@ -214,9 +238,9 @@ public class Cache {
         if (article != null) {
             Article _article = articleBuffer.get(article.getAid());
             if (_article != null) {
-                article.setClick(_article.getClick());
-                article.setComment(_article.getComment());
-                article.setCollection(_article.getCollection());
+                article.setClick_count(_article.getClick_count());
+                article.setComment_count(_article.getComment_count());
+                article.setCollect_count(_article.getCollect_count());
             } else {
                 logger.warn("fillArticleStats error：文章 " + article.getAid() + " 未从缓存中找到数据！");
             }
@@ -236,6 +260,19 @@ public class Cache {
     /**
      * 得到用户统计信息 例：关注数，粉丝数，文章数
      *
+     * @param userList
+     */
+    public void fillUserStats(List<User> userList) {
+        if (userList != null) {
+            for (User user : userList) {
+                fillUserStats(user);
+            }
+        }
+    }
+
+    /**
+     * 得到用户统计信息 例：关注数，粉丝数，文章数
+     *
      * @param user
      * @param security 是否保护隐私信息
      * @return
@@ -244,15 +281,16 @@ public class Cache {
         if (user != null) {
             User _user = userBuffer.get(user.getUid());
             if (_user != null) {
-                UserStatus userStatus = user.getUserStatus();
+                UserStatus userStatus = user.getUserStatus(); // 状态信息
                 UserStatus _userStatus = _user.getUserStatus();
+                UserStats userStats = null; // 统计信息
+                UserStats _userStats = _user.getUserStats();
                 if (userStatus == null) {
                     userStatus = new UserStatus();
                     user.setUserStatus(userStatus);
                 }
-                userStatus.setArticleCount(_userStatus.getArticleCount());
-                userStatus.setFollowCount(_userStatus.getFollowCount());
-                userStatus.setFansCount(_userStatus.getFansCount());
+                userStats = Utils.copyBeanByJson(_userStats, UserStats.class);
+                user.setUserStats(userStats);
                 if (security == false && userStatus.getLast_login_ip() == null) {
                     userStatus.setLast_login_ip(_userStatus.getLast_login_ip());
                 }
@@ -270,7 +308,7 @@ public class Cache {
      * @param rw  目的是 读还是写{ Cache.WRITE:写 , Cache.READ:读 }
      * @return
      */
-    public Article getArticle(int aid, int rw) {
+    public Article getArticle(Long aid, int rw) {
         Article article = articleBuffer.get(aid);
         if (article != null && rw == Cache.WRITE) {
             hasUpdateArticle.add(aid);
@@ -285,27 +323,60 @@ public class Cache {
      * @param rw
      * @return
      */
-    public Map<String, Article> getAdjacentArticle(int aid, int rw) {
+    public Map<String, Article> getAdjacentArticle(Long aid, int rw) {
         Map<String, Article> map = new HashMap<>();
         int size = this.articleBuffer.size();
         if (size == 0) {
             return map;
         }
-        int index = aid;
-        int maxAid = ((Article) getTimeSortArticle(0).get(0)).getAid();
+        //    // aid使用了Long所以此方法作废
+        //    Long index = aid;
+        //    Long maxAid = ((Article) getTimeSortArticle(0).get(0)).getAid();
+        //    Article pre = null;
+        //    Article next = null;
+        //    while (--index > 0) {
+        //        pre = this.getArticle(index, rw);
+        //        if (pre != null && pre.getPermission() == PermissionType.PUBLIC.value) {
+        //            break;
+        //        }
+        //    }
+        //    index = aid;
+        //    while (++index <= maxAid) {
+        //        next = this.getArticle(index, rw);
+        //        if (next != null && next.getPermission() == PermissionType.PUBLIC.value) {
+        //            break;
+        //        }
+        //    }
+        List<Article> timeSortArticle = new ArrayList<Article>(articleBuffer.values());
+        Collections.sort(timeSortArticle, articleTimeComparator); // 倒序
         Article pre = null;
         Article next = null;
-        while (--index > 0) {
-            pre = this.getArticle(index, rw);
-            if (pre != null && pre.getPermission() == 0) {
-                break;
-            }
-        }
-        index = aid;
-        while (++index <= maxAid) {
-            next = this.getArticle(index, rw);
-            if (next != null && next.getPermission() == 0) {
-                break;
+        int feed_flow_allow_show_lowest_level = Config.getInt(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL);
+        for (int i = 0; i < timeSortArticle.size(); i++) {
+            Article queryArticle = timeSortArticle.get(i);
+            if (queryArticle.getAid().equals(aid)) {
+                int j = i;
+                while (pre == null && (j + 1) <= (timeSortArticle.size() - 1)) {
+                    pre = timeSortArticle.get(j + 1);
+                    if (pre.getPermission() != PermissionType.PUBLIC.value) {
+                        pre = null;
+                    } else if (!queryArticle.getAuthor().getUid().equals(pre.getAuthor().getUid()) &&
+                            !isFeedFlowAllowShow(true, pre.getAuthor(), null, false, false, feed_flow_allow_show_lowest_level)) {
+                        pre = null;
+                    }
+                    j++;
+                }
+                j = i;
+                while (next == null && (j - 1) >= 0) {
+                    next = timeSortArticle.get(j - 1);
+                    if (next.getPermission() != PermissionType.PUBLIC.value) {
+                        next = null;
+                    } else if (!queryArticle.getAuthor().getUid().equals(next.getAuthor().getUid()) &&
+                            !isFeedFlowAllowShow(true, next.getAuthor(), null, false, false, feed_flow_allow_show_lowest_level)) {
+                        pre = null;
+                    }
+                    j--;
+                }
             }
         }
         map.put("preArticle", pre);
@@ -322,7 +393,7 @@ public class Cache {
      *            Cache.READ 读
      * @return user 用户
      */
-    public User getUser(int uid, int rw) {
+    public User getUser(Long uid, int rw) {
         User user = userBuffer.get(uid);
         if (user != null && rw == Cache.WRITE) {
             hasUpdateUser.add(uid);
@@ -340,19 +411,17 @@ public class Cache {
         if (user != null) {
             User fullUser = getUser(user.getUid(), Cache.READ);
             if (fullUser != null) {
-                User newUser = new User();
+                User newUser = null;
                 try {
-                    PropertyUtils.copyProperties(newUser, fullUser);
+                    // PropertyUtils.copyProperties(newUser, fullUser); // 浅复制，不能复制list,array,map
+                    newUser = Utils.copyBeanByJson(fullUser, User.class);
                     newUser.setUserAuths(null);
                     newUser.setEmail(null);
                     newUser.setUserSetting(null);
-                    UserStatus userStatus = newUser.getUserStatus();
-                    userStatus.setLast_login_ip(null);
-                    userStatus.setLast_login_time(null);
-                    userStatus.setRegister_ip(null);
-                    userStatus.setRegister_time(null);
+                    newUser.setUserStatus(null);
                     return newUser;
                 } catch (Exception e) {
+                    logger.error("", e);
                 }
             }
         }
@@ -369,9 +438,10 @@ public class Cache {
         if (user != null) {
             User fullUser = getUser(user.getUid(), Cache.READ);
             if (fullUser != null) {
-                User newUser = new User();
+                User newUser = null;
                 try {
-                    PropertyUtils.copyProperties(newUser, fullUser);
+                    // PropertyUtils.copyProperties(newUser, fullUser);
+                    newUser = Utils.copyBeanByJson(fullUser, User.class);
                     newUser.setUserAuths(null);
                     return newUser;
                 } catch (Exception e) {
@@ -434,43 +504,72 @@ public class Cache {
      * @param loginUser
      * @return
      */
-    public List<Article> getVisibleArticles(int uid, User loginUser) {
+    public List<Article> getVisibleArticles(Long uid, User loginUser) {
         Collection<Article> values = articleBuffer.values();
+        boolean feed_flow_allow_following_show = Config.getBoolean(ConfigConstants.FEED_FLOW_ALLOW_FOLLOWING_SHOW);
+        int feed_flow_allow_show_lowest_level = Config.getInt(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL);
         List<Article> list = new ArrayList<>();
-        if (loginUser == null || loginUser.getUid() == 0) {
+        if (loginUser == null || !IdUtil.containValue(loginUser.getUid())) { // 未登录只返回公开的
             for (Article article : values) {
-                if (article.getPermission() != 0) {
+                if (article.getPermission() != PermissionType.PUBLIC.value) {
                     continue;
                 }
-                if (uid == 0) {
-                    list.add(article);
-                } else if (article.getAuthor().getUid() == uid) {
+                if (uid == null || uid.equals(0L)) {
+                    if (isFeedFlowAllowShow(true, article.getAuthor(), null, false, false, feed_flow_allow_show_lowest_level)) {
+                        list.add(article);
+                    }
+                } else if (article.getAuthor().getUid().equals(uid)) {
                     list.add(article);
                 }
             }
-            return list;
-        }
-        if (uid > 0) {
-            boolean isHimself = loginUser.getUid() == uid;
+        } else if (IdUtil.containValue(uid)) {
+            boolean isHimself = loginUser.getUid().equals(uid);
             boolean isFriend = containsFriend(new Friend(loginUser.getUid(), uid)) == 2;
+            boolean isFollower = containsFollow(new Follow(loginUser.getUid(), uid)) > 0;
+            boolean isFollowing = containsFollow(new Follow(uid, loginUser.getUid())) > 0;
             for (Article article : values) {
-                if (article.getAuthor().getUid() == uid) {
-                    if (isHimself || article.getPermission() == 0 || (isFriend && article.getPermission() == 1)) {
+                int permission = article.getPermission();
+                if (article.getAuthor().getUid().equals(uid)) {
+                    if (isHimself || (permission == PermissionType.PUBLIC.value)
+                            || (permission == PermissionType.LOGIN_ONLY.value)
+                            || (permission == PermissionType.FOLLOWER_ONLY.value && isFollower)
+                            || (permission == PermissionType.FOLLOWING_ONLY.value && isFollowing)
+                            || (permission == PermissionType.FRIEND_ONLY.value && isFriend)) {
                         list.add(article);
                     }
                 }
             }
         } else {
-            int loginUid = loginUser.getUid();
-            List<Integer> friendList = new ArrayList<Integer>();
+            Long loginUid = loginUser.getUid();
+            List<Long> friendList = new ArrayList<Long>();
             for (Friend f : friendBuffer) {
-                if (f.getUid() == loginUid) {
+                if (f.getUid().equals(loginUid)) {
                     friendList.add(f.getFid());
                 }
             }
+            List<Long> followerList = new ArrayList<Long>();
+            for (Follow fw : followBuffer) {
+                if (fw.getFollowingUid().equals(loginUid)) {
+                    followerList.add(fw.getFollowerUid());
+                }
+            }
+            List<Long> followingList = new ArrayList<Long>();
+            for (Follow fw : followBuffer) {
+                if (fw.getFollowerUid().equals(loginUid)) {
+                    followingList.add(fw.getFollowingUid());
+                }
+            }
             for (Article article : values) {
-                if (loginUid == article.getAuthor().getUid() || article.getPermission() == 0 || (article.getPermission() == 1 && friendList.contains(article.getAuthor().getUid()))) {
-                    list.add(article);
+                int permission = article.getPermission();
+                Long author_uid = article.getAuthor().getUid();
+                if (loginUid.equals(author_uid) || (permission == PermissionType.PUBLIC.value)
+                        || (permission == PermissionType.LOGIN_ONLY.value)
+                        || (permission == PermissionType.FOLLOWER_ONLY.value && followingList.contains(author_uid))
+                        || (permission == PermissionType.FOLLOWING_ONLY.value && followerList.contains(author_uid))
+                        || (permission == PermissionType.FRIEND_ONLY.value && friendList.contains(author_uid))) {
+                    if (isFeedFlowAllowShow(true, article.getAuthor(), loginUser, followingList.contains(author_uid), feed_flow_allow_following_show, feed_flow_allow_show_lowest_level)) {
+                        list.add(article);
+                    }
                 }
             }
         }
@@ -497,16 +596,18 @@ public class Cache {
             }
         }
 
+        int feed_flow_allow_show_lowest_level = Config.getInt(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL);
         List<Article> hotSortArticle = new ArrayList<Article>();
         for (Article article : articleBuffer.values()) {
-            //只返回公开文章
-            if (article.getPermission() == 0) {
+            // 只返回公开文章
+            if (article.getPermission() == PermissionType.PUBLIC.value &&
+                    isFeedFlowAllowShow(true, article.getAuthor(), null, false, false, feed_flow_allow_show_lowest_level)) {
                 hotSortArticle.add(article);
             }
         }
         Collections.sort(hotSortArticle, articleHotComparator);
 
-        //防止 该user 文章数 小于 num
+        // 防止 该user 文章数 小于 num
         if (hotSortArticle.size() < size) {
             size = hotSortArticle.size();
         }
@@ -531,16 +632,16 @@ public class Cache {
      * @param visibleList 如果传入文章列表则统计此列表
      * @return
      */
-    public List<Article> getHotSortArticle(int uid, int size, List<Article> visibleList) {
+    public List<Article> getHotSortArticle(Long uid, int size, List<Article> visibleList) {
         if (visibleList == null) {
-            if (uid == 0) {
+            if (!IdUtil.containValue(uid)) {
                 return getHotSortArticle(size);
             } else {
                 visibleList = getVisibleArticles(uid, null);
             }
         }
         Collections.sort(visibleList, articleHotComparator);
-        //防止 该user 文章数 小于 num
+        // 防止 该user 文章数 小于 num
         if (visibleList.size() < size) {
             size = visibleList.size();
         }
@@ -559,8 +660,8 @@ public class Cache {
      * @param loginUser 传入loginUser则鉴权，否则只返回公开文章
      * @return
      */
-    public List<Article> getHotSortArticle(int uid, int size, User loginUser) {
-        if (uid == 0 && (loginUser == null || loginUser.getUid() == 0)) {
+    public List<Article> getHotSortArticle(Long uid, int size, User loginUser) {
+        if (!IdUtil.containValue(uid) && (loginUser == null || !IdUtil.containValue(loginUser.getUid()))) {
             return getHotSortArticle(size);
         } else {
             return getHotSortArticle(uid, size, getVisibleArticles(uid, loginUser));
@@ -590,10 +691,12 @@ public class Cache {
             }
         }
 
+        int feed_flow_allow_show_lowest_level = Config.getInt(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL);
         List<Article> timeSortArticle = new ArrayList<Article>();
         for (Article article : articleBuffer.values()) {
             //只返回公开文章
-            if (article.getPermission() == 0) {
+            if (article.getPermission() == PermissionType.PUBLIC.value &&
+                    isFeedFlowAllowShow(true, article.getAuthor(), null, false, false, feed_flow_allow_show_lowest_level)) {
                 timeSortArticle.add(article);
             }
         }
@@ -625,16 +728,16 @@ public class Cache {
      * @param visibleList 如果传入文章列表则统计此列表
      * @return
      */
-    public List<Article> getTimeSortArticle(int uid, int size, List<Article> visibleList) {
+    public List<Article> getTimeSortArticle(Long uid, int size, List<Article> visibleList) {
         if (visibleList == null) {
-            if (uid == 0) {
+            if (!IdUtil.containValue(uid)) {
                 return getTimeSortArticle(size);
             } else {
                 visibleList = getVisibleArticles(uid, null);
             }
         }
         Collections.sort(visibleList, articleTimeComparator);
-        //防止 该user 文章数 小于 num
+        // 防止 该user 文章数 小于 num
         if (visibleList.size() < size) {
             size = visibleList.size();
         }
@@ -653,8 +756,8 @@ public class Cache {
      * @param loginUser 传入loginUser则鉴权，否则只返回公开文章
      * @return
      */
-    public List<Article> getTimeSortArticle(int uid, int size, User loginUser) {
-        if (uid == 0 && (loginUser == null || loginUser.getUid() == 0)) {
+    public List<Article> getTimeSortArticle(Long uid, int size, User loginUser) {
+        if (!IdUtil.containValue(uid) && (loginUser == null || !IdUtil.containValue(loginUser.getUid()))) {
             return getTimeSortArticle(size);
         } else {
             return getTimeSortArticle(uid, size, getVisibleArticles(uid, loginUser));
@@ -716,19 +819,19 @@ public class Cache {
      * @param visibleList 如果传入文章列表则统计此列表的标签
      * @return
      */
-    public List<Entry<String, Integer>> getTagCount(int uid, int size, List<Article> visibleList) {
+    public List<Entry<String, Integer>> getTagCount(Long uid, int size, List<Article> visibleList) {
 
         List<Entry<String, Integer>> tagList = tagCount;
-        Map<Integer, Article> articleMap = articleBuffer;
+        Map<Long, Article> articleMap = articleBuffer;
 
         if (visibleList != null) { // if has visibleList, calc visibleList's tags
             articleMap = new LinkedHashMap<>();
             for (Article article : visibleList) {
                 articleMap.put(article.getAid(), article);
             }
-            tagList = initTool.initTagCount(articleMap, uid, false); // get the visible article List's  tags
+            tagList = initTool.initTagCount(false, articleMap, uid, this); // get the visible article List's  tags
         } else if (uid > 0) {
-            tagList = initTool.initTagCount(articleMap, uid, true); // get the user's article tags
+            tagList = initTool.initTagCount(true, articleMap, uid, this); // get the user's article tags
         } else {
             return getTagCount(size); // 直接返回缓存
         }
@@ -745,7 +848,7 @@ public class Cache {
             list.add(tagList.get(i));
         }
         Collections.sort(list, new Comparator<Entry<String, Integer>>() {
-            //降序排序
+            // 降序排序
             public int compare(Entry<String, Integer> o1, Entry<String, Integer> o2) {
                 return -o1.getValue().compareTo(o2.getValue());
             }
@@ -761,8 +864,8 @@ public class Cache {
      * @param loginUser 传入loginUser则鉴权，否则只返回公开文章
      * @return
      */
-    public List<Entry<String, Integer>> getTagCount(int uid, int size, User loginUser) {
-        if (uid == 0 && loginUser == null) {
+    public List<Entry<String, Integer>> getTagCount(Long uid, int size, User loginUser) {
+        if (!IdUtil.containValue(uid) && loginUser == null) {
             return getTagCount(size);
         } else {
             return getTagCount(uid, size, getVisibleArticles(uid, loginUser));
@@ -771,9 +874,10 @@ public class Cache {
 
     /**
      * 刷新tagCount公开缓存
+     * todo: 此接口的调用都在Cache类内部，所以暂时没有加锁，如果以后要在外部调用，记得加锁
      */
     public void calcRefreshTagCount() {
-        tagCount = initTool.initTagCount(articleBuffer, 0, true);
+        tagCount = initTool.initTagCount(this);
         staticTagRankList = null;
     }
 
@@ -792,12 +896,16 @@ public class Cache {
      * @param article
      * @param user
      */
-    public void putArticle(Article article, User user) {
+    public synchronized void putArticle(Article article, User user) {
         articleBuffer.put(article.getAid(), article);
+        // 统计量更新
+        updateCategoryCount(article, 1);
+        updateUserArticleCount(user, 1);
+        siteBuffer.put("article_count", (Integer) siteBuffer.get("article_count") + 1);
         staticClickRankList = null;
         staticTimeRankList = null;
         staticTagRankList = null;
-        if (article.getPermission() == 0) {
+        if (article.getPermission() == PermissionType.PUBLIC.value) {
             calcRefreshTagCount();
         }
     }
@@ -808,9 +916,35 @@ public class Cache {
      * @param article
      * @param user
      */
-    public void removeArticle(Article article, User user) {
+    public synchronized void removeArticle(Article article, User user) {
         articleBuffer.remove(article.getAid());
         hasUpdateArticle.remove(article.getAid());
+
+        // 统计量更新
+        updateCategoryCount(article, -1);
+        updateUserArticleCount(user, -1);
+        siteBuffer.put("article_count", (Integer) siteBuffer.get("article_count") - 1);
+        staticClickRankList = null;
+        staticTimeRankList = null;
+        staticTagRankList = null;
+        calcRefreshTagCount();
+    }
+
+
+    /**
+     * 更新文章
+     *
+     * @param article
+     * @param user
+     */
+    public synchronized void updateArticle(Article article, User user) {
+        User author = getUser(user.getUid(), WRITE);
+        Article beforeArticle = getArticle(article.getAid(), Cache.READ);
+        fillArticleStats(article);
+        articleBuffer.put(article.getAid(), article);
+        // 统计量更新
+        updateCategoryCount(beforeArticle, -1);
+        updateCategoryCount(article, 1);
         staticClickRankList = null;
         staticTimeRankList = null;
         staticTagRankList = null;
@@ -822,7 +956,33 @@ public class Cache {
      *
      * @param user
      */
-    public void putUser(User user) {
+    public synchronized void putUser(User user) {
+        User cacheUser = getUser(user.getUid(), READ);
+        if (cacheUser != null && user.getUserSetting() == null) {
+            user.setUserSetting(cacheUser.getUserSetting());
+        }
+        userBuffer.put(user.getUid(), user);
+        siteBuffer.put("user_count", (Integer) siteBuffer.get("user_count") + 1);
+    }
+
+    /**
+     * 移除用户行
+     *
+     * @param user
+     */
+    public synchronized void removeUser(User user) {
+        userBuffer.remove(user.getUid());
+        hasUpdateUser.remove(user.getUid());
+        siteBuffer.put("user_count", (Integer) siteBuffer.get("user_count") - 1);
+    }
+
+    /**
+     * 更新用户
+     *
+     * @param user
+     */
+    public synchronized void updateUser(User user) {
+        this.fillUserStats(user, false);
         User cacheUser = getUser(user.getUid(), READ);
         if (cacheUser != null && user.getUserSetting() == null) {
             user.setUserSetting(cacheUser.getUserSetting());
@@ -831,23 +991,18 @@ public class Cache {
     }
 
     /**
-     * 移除用户行
-     *
-     * @param user
-     */
-    public void removeUser(User user) {
-        userBuffer.remove(user.getUid());
-        hasUpdateUser.remove(user.getUid());
-    }
-
-    /**
      * 添加关注行
      *
      * @param follow
      */
-    public void putFollow(Follow follow) {
+    public synchronized void putFollow(Follow follow) {
         if (containsFollow(follow) == 0) {
             this.followBuffer.add(follow);
+            // 更新统计量
+            User followerUser = new User(follow.getFollowerUid());
+            updateUserFollowingCount(followerUser, 1);
+            User followingUser = new User(follow.getFollowingUid());
+            updateUserFollowerCount(followingUser, 1);
         }
     }
 
@@ -856,14 +1011,19 @@ public class Cache {
      *
      * @param follow
      */
-    public void removeFollow(Follow follow) {
+    public synchronized void removeFollow(Follow follow) {
         Iterator<Follow> iterator = followBuffer.iterator();
         while (iterator.hasNext()) {
             Follow f = iterator.next();
-            if (f.getUid() == follow.getUid() && f.getFuid() == follow.getFuid()) {
+            if (f.getFollowerUid().equals(follow.getFollowerUid()) && f.getFollowingUid().equals(follow.getFollowingUid())) {
                 //只能用iterator.remove删除，不能用foreach + followBuffer.remove(follow)删除
                 //不然会抛java.util.ConcurrentModificationException 异常
                 iterator.remove();
+                // 更新统计量
+                User followerUser = new User(follow.getFollowerUid());
+                updateUserFollowingCount(followerUser, -1);
+                User followingUser = new User(follow.getFollowingUid());
+                updateUserFollowerCount(followingUser, -1);
             }
 
         }
@@ -878,7 +1038,7 @@ public class Cache {
     public int containsFollow(Follow follow) {
         int row = 0;
         for (Follow f : followBuffer) {
-            if (f.getUid() == follow.getUid() && f.getFuid() == follow.getFuid()) {
+            if (f.getFollowerUid().equals(follow.getFollowerUid()) && f.getFollowingUid().equals(follow.getFollowingUid())) {
                 row += 1;
                 break;
             }
@@ -891,10 +1051,19 @@ public class Cache {
      *
      * @param friend
      */
-    public void putFriend(Friend friend) {
+    public synchronized void putFriend(Friend friend) {
         if (containsFriend(friend) == 0) {
             this.friendBuffer.add(friend);
             this.friendBuffer.add(new Friend(friend.getFid(), friend.getUid()));
+            // 更新统计量
+            User user = getUser(friend.getUid(), Cache.WRITE);
+            if (user != null) {
+                user.getUserStats().setFriendCount(user.getUserStats().getFriendCount() + 1);
+            }
+            User otherUser = getUser(friend.getFid(), Cache.WRITE);
+            if (otherUser != null) {
+                otherUser.getUserStats().setFriendCount(otherUser.getUserStats().getFriendCount() + 1);
+            }
         }
     }
 
@@ -903,14 +1072,25 @@ public class Cache {
      *
      * @param friend
      */
-    public void removeFriend(Friend friend) {
+    public synchronized void removeFriend(Friend friend) {
         Iterator<Friend> iterator = friendBuffer.iterator();
         while (iterator.hasNext()) {
             Friend f = iterator.next();
-            if ((f.getUid() == friend.getUid() && f.getFid() == friend.getFid()) || (f.getUid() == friend.getFid() && f.getFid() == friend.getUid())) {
+            if (f.getUid().equals(friend.getUid()) && f.getFid().equals(friend.getFid())) {
                 //只能用iterator.remove删除，不能用foreach + friendBuffer.remove(friend)删除
                 //不然会抛java.util.ConcurrentModificationException 异常
                 iterator.remove();
+                // 更新统计量
+                User user = getUser(friend.getUid(), Cache.WRITE);
+                if (user != null) {
+                    user.getUserStats().setFriendCount(user.getUserStats().getFriendCount() - 1);
+                }
+            } else if (f.getUid().equals(friend.getFid()) && f.getFid().equals(friend.getUid())) {
+                iterator.remove();
+                User otherUser = getUser(friend.getFid(), Cache.WRITE);
+                if (otherUser != null) {
+                    otherUser.getUserStats().setFriendCount(otherUser.getUserStats().getFriendCount() - 1);
+                }
             }
         }
     }
@@ -924,40 +1104,11 @@ public class Cache {
     public int containsFriend(Friend friend) {
         int row = 0;
         for (Friend f : friendBuffer) {
-            if ((f.getUid() == friend.getUid() && f.getFid() == friend.getFid()) || (f.getUid() == friend.getFid() && f.getFid() == friend.getUid())) {
+            if ((f.getUid().equals(friend.getUid()) && f.getFid().equals(friend.getFid())) || (f.getUid().equals(friend.getFid()) && f.getFid().equals(friend.getUid()))) {
                 row += 1;
             }
         }
         return row;
-    }
-
-    /**
-     * 更新用户
-     *
-     * @param user
-     */
-    public void updateUser(User user) {
-        this.fillUserStats(user, false);
-        User cacheUser = getUser(user.getUid(), READ);
-        if (cacheUser != null && user.getUserSetting() == null) {
-            user.setUserSetting(cacheUser.getUserSetting());
-        }
-        userBuffer.put(user.getUid(), user);
-    }
-
-    /**
-     * 更新文章
-     *
-     * @param article
-     * @param user
-     */
-    public void updateArticle(Article article, User user) {
-        this.fillArticleStats(article);
-        articleBuffer.put(article.getAid(), article);
-        staticClickRankList = null;
-        staticTimeRankList = null;
-        staticTagRankList = null;
-        calcRefreshTagCount();
     }
 
 
@@ -969,10 +1120,12 @@ public class Cache {
      * @param article
      * @param step
      */
-    public void updateArticleCollection(Article article, int step) {
+    public synchronized void updateArticleCollectCount(Article article, int step) {
         Article _article = getArticle(article.getAid(), Cache.WRITE);
         if (_article != null) {
-            _article.setCollection(_article.getCollection() + step);
+            _article.setCollect_count(_article.getCollect_count() + step);
+            UserStats userStats = getUser(_article.getAuthor().getUid(), WRITE).getUserStats();
+            userStats.setArticleCollectCount(userStats.getArticleCollectCount() + step);
         }
     }
 
@@ -982,10 +1135,13 @@ public class Cache {
      * @param article
      * @param step
      */
-    public void updateArticleClick(Article article, int step) {
+    public synchronized void updateArticleClickCount(Article article, int step) {
         Article _article = getArticle(article.getAid(), Cache.WRITE);
         if (_article != null) {
-            _article.setClick(_article.getClick() + step);
+            _article.setClick_count(_article.getClick_count() + step);
+            siteBuffer.put("article_access_count", (Integer) siteBuffer.get("article_access_count") + step);
+            UserStats userStats = getUser(_article.getAuthor().getUid(), WRITE).getUserStats();
+            userStats.setArticleClickCount(userStats.getArticleClickCount() + step);
         }
     }
 
@@ -995,13 +1151,15 @@ public class Cache {
      * @param article
      * @param step
      */
-    public void updateArticleComment(Article article, int step) {
+    public synchronized void updateArticleCommentCount(Article article, int step) {
         Article _article = getArticle(article.getAid(), Cache.WRITE);
         if (_article != null) {
-            _article.setComment(_article.getComment() + step);
-            if (_article.getComment() < 0) {
-                _article.setComment(0);
+            _article.setComment_count(_article.getComment_count() + step);
+            if (_article.getComment_count() < 0) {
+                _article.setComment_count(0);
             }
+            UserStats userStats = getUser(_article.getAuthor().getUid(), WRITE).getUserStats();
+            userStats.setArticleCommentCount(userStats.getArticleCommentCount() + step);
         }
     }
 
@@ -1030,21 +1188,43 @@ public class Cache {
 
     /**
      * 更新每个分类文章数接口
+     * todo: 此接口的调用都在Cache类内部，所以暂时没有加锁，如果以后要在外部调用，记得加锁
      *
-     * @param category
+     * @param article - 需要传入aid和atid
      * @param step
      */
-    public void updateCategoryCount(Category category, int step) {
+    public void updateCategoryCount(Article article, int step) {
+        Category category = article.getCategory();
         for (Category _category : categoryCount) {
-            if (category.getAtid() == _category.getAtid()) {
+            if (_category.getAtid() == category.getAtid()) {
                 _category.setCount(_category.getCount() + step);
                 break;
+            }
+        }
+        User author = getUser(getArticle(article.getAid(), READ).getAuthor().getUid(), WRITE);
+        for (Category _category : author.getUserStats().getArticleCateCount()) {
+            if (_category.getAtid() == category.getAtid()) {
+                _category.setCount(_category.getCount() + step);
+            }
+        }
+        if (category.getAtid() != 0) { // 默认类型也跟着改变
+            for (Category _category : categoryCount) {
+                if (_category.getAtid() == 0) {
+                    _category.setCount(_category.getCount() + step);
+                    break;
+                }
+            }
+            for (Category _category : author.getUserStats().getArticleCateCount()) {
+                if (_category.getAtid() == 0) {
+                    _category.setCount(_category.getCount() + step);
+                }
             }
         }
     }
 
     /**
      * 更新用户的文章数
+     * todo: 此接口的调用都在Cache类内部，所以暂时没有加锁，如果以后要在外部调用，记得加锁
      *
      * @param user
      * @param step
@@ -1052,33 +1232,35 @@ public class Cache {
     public void updateUserArticleCount(User user, int step) {
         User _user = getUser(user.getUid(), Cache.WRITE);
         if (_user != null) {
-            _user.getUserStatus().setArticleCount(_user.getUserStatus().getArticleCount() + step);
+            _user.getUserStats().setArticleCount(_user.getUserStats().getArticleCount() + step);
         }
     }
 
     /**
      * 更新用户的关注数
+     * todo: 此接口的调用都在Cache类内部，所以暂时没有加锁，如果以后要在外部调用，记得加锁
      *
      * @param user
      * @param step
      */
-    public void updateUserFollowCount(User user, int step) {
+    public void updateUserFollowingCount(User user, int step) {
         User _user = getUser(user.getUid(), Cache.WRITE);
         if (_user != null) {
-            _user.getUserStatus().setFollowCount(_user.getUserStatus().getFollowCount() + step);
+            _user.getUserStats().setFollowingCount(_user.getUserStats().getFollowingCount() + step);
         }
     }
 
     /**
      * 更新用户的粉丝数
+     * todo: 此接口的调用都在Cache类内部，所以暂时没有加锁，如果以后要在外部调用，记得加锁
      *
      * @param user
      * @param step
      */
-    public void updateUserFansCount(User user, int step) {
+    public void updateUserFollowerCount(User user, int step) {
         User _user = getUser(user.getUid(), Cache.WRITE);
         if (_user != null) {
-            _user.getUserStatus().setFansCount(_user.getUserStatus().getFansCount() + step);
+            _user.getUserStats().setFollowerCount(_user.getUserStats().getFollowerCount() + step);
         }
     }
 
@@ -1088,7 +1270,7 @@ public class Cache {
      * @param encryptedToken 加密的token
      * @param token          提交的token
      */
-    public void putTokenEntry(String encryptedToken, String token) {
+    public synchronized void putTokenEntry(String encryptedToken, String token) {
         this.loginTokensMap.put(encryptedToken, token);
     }
 
@@ -1114,8 +1296,53 @@ public class Cache {
      *
      * @param encryptedToken
      */
-    public void removeTokenEntry(String encryptedToken) {
+    public synchronized void removeTokenEntry(String encryptedToken) {
         this.loginTokensMap.remove(encryptedToken);
+    }
+
+    /**
+     * 信息feed流设置改变
+     */
+    public synchronized void feedFlowConfigChange() {
+        staticClickRankList = null;
+        staticTimeRankList = null;
+        staticTagRankList = null;
+        calcRefreshTagCount();
+    }
+
+    /**
+     * 判断当前情况下该author的文章是否能在信息feed流中出现
+     *
+     * @param isFeedFlow
+     * @param author
+     * @param loginUser
+     * @param isFollowing
+     * @param feed_flow_allow_following_show
+     * @param feed_flow_allow_show_lowest_level
+     * @return
+     */
+    public boolean isFeedFlowAllowShow(boolean isFeedFlow, User author,
+                                       User loginUser, boolean isFollowing,
+                                       boolean feed_flow_allow_following_show, int feed_flow_allow_show_lowest_level) {
+        boolean isAllow;
+        if (isFeedFlow) {
+            switch (feed_flow_allow_show_lowest_level) {
+                case 0:
+                    isAllow = true;
+                    break;
+                case -1:
+                    isAllow = author.getUserGroup().isManager();
+                    break;
+                default:
+                    isAllow = author.getUserGroup().isManager() || author.getUserGroup().getGid() >= feed_flow_allow_show_lowest_level;
+            }
+            if (!isAllow && loginUser != null) {
+                isAllow = author.getUid().equals(loginUser.getUid()) || (feed_flow_allow_following_show && isFollowing);
+            }
+        } else {
+            isAllow = true;
+        }
+        return isAllow;
     }
 
 }

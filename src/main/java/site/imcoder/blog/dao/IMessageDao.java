@@ -53,7 +53,7 @@ public interface IMessageDao {
      * 清除私信未读状态
      *
      * @param leIdList 私信id列表, 只能清除别人发送的，自己发送的不能清除, 既loginUser.uid为r_uid
-     * @return flag - 200：成功，404：未影响到行，500: 失败
+     * @return
      */
     public int updateLetterStatus(List<Integer> leIdList, User loginUser);
 
@@ -89,6 +89,16 @@ public interface IMessageDao {
      */
     public int deleteComment(Comment comment);
 
+
+    /**
+     * 点赞评论
+     *
+     * @param comment
+     * @param step - 步长，可为负数
+     * @return
+     */
+    public int updateCommentLikeCount(Comment comment, int step);
+
     /**
      * 保存系统消息
      *
@@ -112,13 +122,14 @@ public interface IMessageDao {
      * @param smIdList
      * @return
      */
-    public int updateSystemMessageStatus(List<Integer> smIdList, User loginUser);
+    public int updateSystemMessageStatus(List<Long> smIdList, User loginUser);
 
     /**
      * 删除系统消息
      *
      * @param smIdList
-     * @return flag - 200：成功，404：未影响到行，500: 失败
+     * @return
      */
-    public int deleteSystemMessage(List<Integer> smIdList, User loginUser);
+    public int deleteSystemMessage(List<Long> smIdList, User loginUser);
+
 }

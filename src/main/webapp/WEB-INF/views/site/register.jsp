@@ -6,14 +6,16 @@
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
+    request.setAttribute("site_icp_record_code", Config.get(ConfigConstants.SITE_ICP_RECORD_CODE));
+    request.setAttribute("site_police_record_code", Config.get(ConfigConstants.SITE_POLICE_RECORD_CODE));
+    request.setAttribute("site_police_record_number", Config.get(ConfigConstants.SITE_POLICE_RECORD_NUMBER));
 %>
 <!DOCTYPE html>
 <html>
 <head>
-
-    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <base href="<%=basePath%>" target="_self">
     <title>注册 - ImCoder's 博客</title>
     <meta name="keywords" content="imcoder.site博客注册">
     <meta name="description" content="简单几步就可以创建一个imcoder.site账号.账户信息->个人资料->条款->提交">
@@ -23,12 +25,25 @@
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
-    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/iCheck/custom.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/steps/jquery.steps.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
 
     <style>
+
+        .row {
+            margin: 0 auto;
+        }
+
+        .col-sm-12 {
+            width: 100%;
+        }
+
+        .wizard > .content > .body {
+            border-width: 0px;
+        }
+
         .wizard > .content > .body label.valid {
             color: #1bb394;
         }
@@ -36,6 +51,7 @@
         .wizard-big.wizard > .content {
             min-height: 25em;
         }
+
     </style>
 
 </head>
@@ -57,7 +73,7 @@
                         <fieldset style="border-width: 0px">
                             <h2>账户信息</h2>
                             <div class="row">
-                                <div class="col-sm-8">
+                                <div class="col-sm-8 col-xs-12">
                                     <div class="form-group">
                                         <label>用户名 *</label>
                                         <input id="username" name="username" type="text" class="form-control required">
@@ -85,7 +101,7 @@
                         <fieldset style="overflow-y:auto;overflow-x:hidden;height: 25em;">
                             <h2>个人资料信息(不带*的可以不填写)</h2>
                             <div class="row">
-                                <div class="col-sm-6">
+                                <div class="col-sm-6 col-xs-12">
                                     <div class="form-group">
                                         <label>Email *</label>
                                         <input id="email" name="email" type="text" class="form-control required email">
@@ -104,7 +120,7 @@
                                         </label>
                                     </div>
                                 </div>
-                                <div class="col-sm-6">
+                                <div class="col-sm-6 col-xs-12">
                                     <div class="form-group">
                                         <label>qq</label>
                                         <input id="qq" name="qq" type="text" class="form-control">
@@ -164,6 +180,4 @@
 <script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="register"></script>
 
 </body>
-
-
 </html>

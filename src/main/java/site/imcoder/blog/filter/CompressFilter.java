@@ -1,6 +1,9 @@
 package site.imcoder.blog.filter;
 
-import javax.servlet.*;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.ServletOutputStream;
+import javax.servlet.WriteListener;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
@@ -12,30 +15,33 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.GZIPOutputStream;
 
 /**
- * 为添加了response头Content-Encoding: gzip的请求，对输出进行gzip压缩
+ * <pre>
+ * 为添加了response头Mark-Encoding: gzip（既@gzip注解）的请求，对输出进行gzip压缩
+ * <b>排除页面(不设置过期头)</b> 功能：
+ * 例子（排除所有.do的请求和排除/static开头的请求）：{@code
+ *  <init-param>
+ *      <param-name>ExcludedPages</param-name>
+ *      <param-value>*.do,/static/*</param-value>
+ *  </init-param>
+ * }</pre>
  *
  * @author Jeffrey.Deng
  * @date 2018-12-22
  */
-public class CompressFilter implements Filter {
+public class CompressFilter extends ExcludedFilter {
 
-    private final static String ACCEPT_ENCODING = "accept-encoding";
-    private final static String CONTENT_ENCODING = "Content-Encoding";
-    private final static String GZIP = "gzip";
-
-    @Override
-    public void init(FilterConfig filterConfig) throws ServletException {
-
-    }
+    private static final String ACCEPT_ENCODING = "Accept-Encoding";
+    private static final String MARK_ENCODING = "Mark-Encoding";
+    private static final String CONTENT_ENCODING = "Content-Encoding";
+    private static final String GZIP = "gzip";
 
     @Override
-    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain) throws IOException, ServletException {
-        HttpServletRequest request = (HttpServletRequest) servletRequest;
-        HttpServletResponse response = (HttpServletResponse) servletResponse;
+    public void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
         String acceptEncoding = request.getHeader(ACCEPT_ENCODING);
         if (acceptEncoding != null) {
-            //searching for 'gzip' in ACCEPT_ENCODING header
-            if (acceptEncoding.indexOf(GZIP) >= 0) {
+            // searching for 'gzip' in ACCEPT_ENCODING header
+            // 判断是否已经封装，防止多次编码
+            if (acceptEncoding.indexOf(GZIP) >= 0 && !(response instanceof GZIPResponseWrapper)) {
                 GZIPResponseWrapper gzipResponse = this.new GZIPResponseWrapper(response);
                 try {
                     chain.doFilter(request, gzipResponse);
@@ -52,11 +58,6 @@ public class CompressFilter implements Filter {
         chain.doFilter(request, response);
     }
 
-    @Override
-    public void destroy() {
-
-    }
-
     // 自定义response包装
     public class GZIPResponseWrapper extends HttpServletResponseWrapper {
 
@@ -70,8 +71,10 @@ public class CompressFilter implements Filter {
         }
 
         public ServletOutputStream createOutputStream() throws IOException {
-            if (GZIP.equals(originResponse.getHeader(CONTENT_ENCODING))) {
-                return (CompressFilter.this.new GZIPResponseStream(originResponse.getOutputStream())); // 如果指定了gzip输出编码（添加了@GZIP自定义注解），返回gzip输出流
+            // 如果header中标记了使用gzip输出编码（添加了@GZIP自定义注解）且没有已经被标注编码，返回gzip输出流
+            if (GZIP.equalsIgnoreCase(originResponse.getHeader(MARK_ENCODING)) && originResponse.getHeader(CONTENT_ENCODING) == null) {
+                originResponse.setHeader(CONTENT_ENCODING, GZIP);
+                return (CompressFilter.this.new GZIPResponseStream(originResponse.getOutputStream()));
             } else {
                 return originResponse.getOutputStream(); // 返回原生输出流
             }

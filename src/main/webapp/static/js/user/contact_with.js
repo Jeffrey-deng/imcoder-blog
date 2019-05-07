@@ -17,23 +17,26 @@
         if (login_handle.validateLogin()) {
             if ($('.follow').attr('followed') == "false") {
                 $.ajax({
-                    url: 'user.do?method=follow',
+                    url: 'user.api?method=follow',
                     type: "POST",
                     data: {'uid': hostUser},
-                    success: function (data) {
-                        if (data.flag == 200) {
-                            toastr.success('关注成功！');
-                            $('.follow').attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
-                        } else if (data.flag == 204) {
-                            toastr.success(data.info);
-                            $('.follow').attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
-                        } else if (data.flag == 201) {
-                            toastr.success('关注成功！');
-                            toastr.info('你们由于互相关注，自动成为好友！');
-                            $('.follow').attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
+                    success: function (response) {
+                        if (response.status == 200) {
+                            var data = response.data;
+                            if (data.type == 1) {
+                                toastr.success('关注成功~');
+                                $('.follow').attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
+                            } else if (data.type == 0) {
+                                toastr.success(data.info);
+                                $('.follow').attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
+                            } else if (data.type == 2) {
+                                toastr.success('关注成功~');
+                                toastr.info('你们由于互相关注，自动成为好友~');
+                                $('.follow').attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
+                            }
                         } else {
-                            toastr.error(data.info, '关注失败！');
-                            console.warn("Error Code: " + data.flag);
+                            toastr.error(response.message, '关注失败！');
+                            console.warn("Error Code: " + response.status);
                         }
 
                     },
@@ -43,20 +46,23 @@
                 });
             } else if (window.confirm("确定要取消关注吗？")) {
                 $.ajax({
-                    url: 'user.do?method=unFollow',
+                    url: 'user.api?method=removeFollow',
                     type: "POST",
                     data: {'uid': hostUser},
-                    success: function (data) {
-                        if (data.flag == 200) {
-                            toastr.success('取消关注成功！');
-                            $('.follow').attr('followed', 'false').html('<i class="fa fa-thumbs-up"></i>关注');
-                        } else if (data.flag == 201) {
-                            toastr.success('取消关注成功！');
-                            toastr.info('好友关系也自动取消！');
-                            $('.follow').attr('followed', 'false').html('<i class="fa fa-thumbs-up"></i>关注');
+                    success: function (response) {
+                        if (response.status == 200) {
+                            var data = response.data;
+                            if (data.type == 1) {
+                                toastr.success('取消关注成功~');
+                                $('.follow').attr('followed', 'false').html('<i class="fa fa-thumbs-up"></i>关注');
+                            } else if (data.type == 2) {
+                                toastr.success('取消关注成功~');
+                                toastr.info('好友关系也自动取消~');
+                                $('.follow').attr('followed', 'false').html('<i class="fa fa-thumbs-up"></i>关注');
+                            }
                         } else {
-                            toastr.error(data.info, '取消关注失败！');
-                            console.warn("Error Code: " + data.flag);
+                            toastr.error(response.message, '取消关注失败~');
+                            console.warn("Error Code: " + response.status);
                         }
 
                     },
@@ -76,10 +82,10 @@
 
     function letter(hostUser) {
         if (login_handle.validateLogin()) {
-            window.open("user.do?method=profilecenter&action=sendLetter&chatuid=" + hostUser);
+            window.open("u/center/sendLetter?chatuid=" + hostUser);
         } else {
             //弹出登陆框
-            login_handle.showLoginModal("user.do?method=profilecenter&action=sendLetter&chatuid=" + hostUser);
+            login_handle.showLoginModal("u/center/sendLetter?chatuid=" + hostUser);
         }
     }
 
@@ -89,11 +95,11 @@
     function checkFollow(hostUser) {
         if (!login_handle.equalsLoginUser(hostUser)) {
             $.ajax({
-                url: 'user.do?method=checkFollow',
+                url: 'user.api?method=checkFollow',
                 data: {'uid': hostUser},
-                success: function (data) {
-                    if (data.flag == 200) {
-                        console.log("已关注该作者");
+                success: function (reponse) {
+                    if (reponse.status == 200 && reponse.data.type == 1) {
+                        console.debug("已关注该作者");
                         $('.follow').attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
                     }
                 }
@@ -103,7 +109,7 @@
 
     domReady(function () {
 
-        var hostUser = $('#h_auid').attr('auid');
+        var hostUser = $("#first").find(".slogan_name").attr("data-user-id");
 
         $('.follow').click(function () {
             follow(hostUser);

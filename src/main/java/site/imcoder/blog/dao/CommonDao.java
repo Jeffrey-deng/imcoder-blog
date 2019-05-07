@@ -9,7 +9,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Created by Jeffrey.Deng on 2018/7/7.
+ * @author Jeffrey.Deng
+ * @date 2018/7/7
  */
 public abstract class CommonDao extends SqlSessionDaoSupport {
 
@@ -32,6 +33,10 @@ public abstract class CommonDao extends SqlSessionDaoSupport {
     public final static String replace_word_boundary_right = "@WD_BR_R"; // {>}或\\> 的替代符，防止被转换
 
     public final static String replace_number_sign = "@NUMBER_SIGN"; // {#}或\\# 的替代符，防止被转换
+
+    public final static String regexp_word_boundary_left = "[[:<:]]"; // 正则左边界符，keyword_word_boundary_left的结果值
+
+    public final static String regexp_word_boundary_right = "[[:>:]]"; // 正则右边界符，keyword_word_boundary_right的结果值
 
     @Resource
     public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
@@ -79,7 +84,7 @@ public abstract class CommonDao extends SqlSessionDaoSupport {
         if (value.indexOf('<') != -1) {
             // 替换 < 为单词头，替换 > 为单词尾，忽略被转义的 <>
             value = value.replaceAll("\\{<\\}|\\\\\\\\<", replace_word_boundary_left).replaceAll("\\{>\\}|\\\\\\\\>", replace_word_boundary_right);
-            value = value.replaceAll(keyword_word_boundary_left, "[[:<:]]").replaceAll(keyword_word_boundary_right, "[[:>:]]");
+            value = value.replaceAll(keyword_word_boundary_left, regexp_word_boundary_left).replaceAll(keyword_word_boundary_right, regexp_word_boundary_right);
             value = value.replaceAll(replace_word_boundary_left, "<").replaceAll(replace_word_boundary_right, ">"); // <>MySQL中不是关键字
         }
         if (value.indexOf('{') != -1) { // { }写法时转义MySQL特殊字符
@@ -120,6 +125,18 @@ public abstract class CommonDao extends SqlSessionDaoSupport {
             }
         }
         value = value.replaceAll(replace_number_sign, "\\\\\\\\#"); //还原
+        value = reviseEncodeResult(field, value);
+        return value;
+    }
+
+    /**
+     * 校正处理结果，可通过继承再调整结果值
+     *
+     * @param field
+     * @param value
+     * @return
+     */
+    protected String reviseEncodeResult(String field, String value) {
         return value;
     }
 
@@ -132,5 +149,6 @@ public abstract class CommonDao extends SqlSessionDaoSupport {
     protected String getFiledMultipleMatchJoiner(String filed) {
         return joiner_multiple_match.replace("${column}", filed);
     }
+
 
 }

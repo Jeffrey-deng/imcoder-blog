@@ -1,62 +1,64 @@
 package site.imcoder.blog.entity;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import site.imcoder.blog.controller.json.EscapeEmojiJsonDeserializer;
-import site.imcoder.blog.controller.propertyeditors.EmojiConvert;
+import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+import site.imcoder.blog.controller.formatter.timeformat.TimeFormat;
+import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFill;
+import site.imcoder.blog.controller.propertyeditors.annotation.EmojiConvert;
 
 import java.io.Serializable;
 import java.util.Date;
 
 /**
- * Created by Jeffrey.Deng on 2018/1/5.
  * 照片实体类
+ *
+ * @author Jeffrey.Deng
+ * @date 2018/1/5
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Photo implements Serializable {
 
     private static final long serialVersionUID = -4593648958985805003L;
 
-    public Photo() {
-    }
-
-    public Photo(int photo_id) {
-        this.photo_id = photo_id;
-    }
-
     /**
      * 照片ID
      */
-    private int photo_id;
+    @PrimaryKeyConvert
+    private Long photo_id;
 
     /**
      * 所属相册ID
      */
-    private int album_id;
+    @PrimaryKeyConvert
+    private Long album_id;
+
+    /**
+     * 照片合集
+     */
+    private PhotoTagWrapper topic;
 
     /**
      * 用户ID
      */
-    private int uid;
+    @PrimaryKeyConvert(supportLongParse = true, printShort = false)
+    private Long uid;
 
     /**
      * 照片名字
      */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
+    @EmojiConvert //转义emoji表情
     private String name;
 
     /**
-     * 照片存储路径
+     * 照片存储路径，相对路径
      */
+    @URLPrefixFill(prefixConfigKey = URLPrefixFill.DEFAULT_CLOUD_PREFIX)
     private String path;
 
     /**
      * 照片描述
      */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
+    @EmojiConvert //转义emoji表情
     private String description;
 
     /**
@@ -67,7 +69,7 @@ public class Photo implements Serializable {
     /**
      * 上传时间
      */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    @TimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date upload_time;
 
     /**
@@ -86,20 +88,19 @@ public class Photo implements Serializable {
     private int size;
 
     /**
+     * 16进制编码md5值
+     */
+    private String md5;
+
+    /**
      * 图片类型
      */
     private String image_type;
 
     /**
-     * 是否为相册封面，0：不是，1：是
-     */
-    private int iscover;
-
-    /**
      * 上传时的原始文件名
      */
-    @JsonDeserialize(using = EscapeEmojiJsonDeserializer.class) // 转义emoji表情
-    @EmojiConvert
+    @EmojiConvert //转义emoji表情
     private String originName;
 
     /**
@@ -110,34 +111,74 @@ public class Photo implements Serializable {
     /**
      * 点击量
      */
-    private int click;
+    private int click_count;
+
+    /**
+     * 点赞量
+     */
+    private int like_count;
+
+    /**
+     * 评论量
+     */
+    private int comment_count;
 
     /**
      * 排序权重
      */
-    private int sort;
+    private Long sort;
 
-    public int getPhoto_id() {
-        return photo_id;
+    /**
+     * 登录用户是否访问过该照片
+     */
+    private Boolean accessed;
+
+    /**
+     * 登录用户是否赞过该照片
+     */
+    private Boolean liked;
+
+    /**
+     * 登录用户是否评论过该照片
+     */
+    private Boolean commented;
+
+    public Photo() {
     }
 
-    public void setPhoto_id(int photo_id) {
+    public Photo(Long photo_id) {
         this.photo_id = photo_id;
     }
 
-    public int getAlbum_id() {
+    public Long getPhoto_id() {
+        return photo_id;
+    }
+
+    public void setPhoto_id(Long photo_id) {
+        this.photo_id = photo_id;
+    }
+
+    public Long getAlbum_id() {
         return album_id;
     }
 
-    public void setAlbum_id(int album_id) {
+    public void setAlbum_id(Long album_id) {
         this.album_id = album_id;
     }
 
-    public int getUid() {
+    public PhotoTagWrapper getTopic() {
+        return topic;
+    }
+
+    public void setTopic(PhotoTagWrapper topic) {
+        this.topic = topic;
+    }
+
+    public Long getUid() {
         return uid;
     }
 
-    public void setUid(int uid) {
+    public void setUid(Long uid) {
         this.uid = uid;
     }
 
@@ -163,6 +204,14 @@ public class Photo implements Serializable {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
     }
 
     public Date getUpload_time() {
@@ -197,20 +246,20 @@ public class Photo implements Serializable {
         this.size = size;
     }
 
+    public String getMd5() {
+        return md5;
+    }
+
+    public void setMd5(String md5) {
+        this.md5 = md5;
+    }
+
     public String getImage_type() {
         return image_type;
     }
 
     public void setImage_type(String image_type) {
         this.image_type = image_type;
-    }
-
-    public int getIscover() {
-        return iscover;
-    }
-
-    public void setIscover(int iscover) {
-        this.iscover = iscover;
     }
 
     public String getOriginName() {
@@ -221,14 +270,6 @@ public class Photo implements Serializable {
         this.originName = originName;
     }
 
-    public String getTags() {
-        return tags;
-    }
-
-    public void setTags(String tags) {
-        this.tags = tags;
-    }
-
     public String getRefer() {
         return refer;
     }
@@ -237,20 +278,59 @@ public class Photo implements Serializable {
         this.refer = refer;
     }
 
-    public int getClick() {
-        return click;
+    public int getClick_count() {
+        return click_count;
     }
 
-    public void setClick(int click) {
-        this.click = click;
+    public void setClick_count(int click_count) {
+        this.click_count = click_count;
     }
 
-    public int getSort() {
+    public int getLike_count() {
+        return like_count;
+    }
+
+    public void setLike_count(int like_count) {
+        this.like_count = like_count;
+    }
+
+    public int getComment_count() {
+        return comment_count;
+    }
+
+    public void setComment_count(int comment_count) {
+        this.comment_count = comment_count;
+    }
+
+    public Long getSort() {
         return sort;
     }
 
-    public void setSort(int sort) {
+    public void setSort(Long sort) {
         this.sort = sort;
     }
 
+    public Boolean getAccessed() {
+        return accessed;
+    }
+
+    public void setAccessed(Boolean accessed) {
+        this.accessed = accessed;
+    }
+
+    public Boolean getLiked() {
+        return liked;
+    }
+
+    public void setLiked(Boolean liked) {
+        this.liked = liked;
+    }
+
+    public Boolean getCommented() {
+        return commented;
+    }
+
+    public void setCommented(Boolean commented) {
+        this.commented = commented;
+    }
 }

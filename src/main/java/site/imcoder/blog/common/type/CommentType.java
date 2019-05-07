@@ -8,7 +8,8 @@ public enum CommentType {
 
     ARTICLE(0),    // 文章
     PHOTO(1), // 照片
-    VIDEO(2); // 视频
+    VIDEO(2), // 视频
+    PHOTO_TOPIC(3); // 照片合集
 
     public final int value;
 

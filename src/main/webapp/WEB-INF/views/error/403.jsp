@@ -2,19 +2,24 @@
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ page isErrorPage="true" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib prefix="s" uri="http://www.springframework.org/tags" %>
 <%
     String path = request.getContextPath();
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
+    request.setAttribute("site_icp_record_code", Config.get(ConfigConstants.SITE_ICP_RECORD_CODE));
+    request.setAttribute("site_police_record_code", Config.get(ConfigConstants.SITE_POLICE_RECORD_CODE));
+    request.setAttribute("site_police_record_number", Config.get(ConfigConstants.SITE_POLICE_RECORD_NUMBER));
 %>
 <%response.setStatus(403); %>
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="<%=basePath%>" target="_self">
     <title>403 - ImCoder's 博客</title>
     <meta name="keywords" content="403,ImCoder's 博客">
     <meta name="description" content="403,ImCoder's 博客">
@@ -23,9 +28,65 @@
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css<%=urlArgs%>">
-    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
     <style>
+        #toast-container > div {
+            opacity: 0.9;
+        }
+
+        .toast-message {
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        .toast-message a:hover {
+            color: #f8ac59;
+            text-decoration: none;
+        }
+
+        #toast-container > .toast-success-no-icon {
+            background-color: #51A351 !important;
+            padding-left: 1.428571em;
+        }
+
+        #toast-container > .toast-error-no-icon {
+            background-color: #BD362F !important;
+            padding-left: 1.428571em;
+        }
+
+        #toast-container > .toast-info-no-icon {
+            background-color: #2F96B4 !important;
+            padding-left: 1.428571em;
+        }
+
+        #toast-container > .toast-warning-no-icon {
+            background-color: #F89406 !important;
+            padding-left: 1.428571em;
+        }
+
+        .toast-message img {
+            width: 100%;
+            margin: 3px 0px;
+        }
+
+        /* only-child对text-node不生效 */
+        .toast-success-no-icon img:only-child, .toast-error-no-icon img:only-child, .toast-info-no-icon img:only-child, .toast-warning-no-icon img:only-child {
+            width: calc(100% + 1.11429em);
+            margin: 0.45714em 0 -0.28571em -0.8286em;
+        }
+
+        .toast-message img.not-only-img {
+            width: 100%;
+            margin: 5px 0;
+        }
+
+        .toast iframe, .toast video, .toast embed {
+            width: 100%;
+            margin: 3px 0px;
+        }
+
         @media (min-width: 1537px) {
             body {
                 font-size: 14.3px;
@@ -72,8 +133,7 @@
         }
     </style>
 </head>
-
-<body class="gray-bg" uid="${loginUser.uid}">
+<body class="gray-bg" uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>">
 <div class="middle-box text-center animated fadeInDown">
     <h1>403</h1>
     <h3 class="font-bold">权限不足</h3>
@@ -89,10 +149,21 @@
 <script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="403"></script>
 <!-- ######################################## -->
 <script>
+    if (window.frameElement) {
+        if (document.readyState == "complete") {
+            window.frameElement.style.height = document.body.scrollHeight + 110 + "px";
+        } else {
+            window.onload = function () {
+                setTimeout(function () {
+                    window.frameElement.style.height = document.body.scrollHeight + 110 + "px";
+                }, 500);
+            }
+        }
+    }
     var login_btn = document.getElementById('login_btn');
     if (login_btn) {
         var encoderUrl = encodeURIComponent(encodeURIComponent(window.location.href));
-        login_btn.href = "user.do?method=jumpLogin&continue=" + encoderUrl;
+        login_btn.href = "auth/login?continue=" + encoderUrl;
     }
 </script>
 </body>

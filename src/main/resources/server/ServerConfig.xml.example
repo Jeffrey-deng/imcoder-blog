@@ -7,8 +7,8 @@
         <value>EMPTY</value>
     </property>
 
-    <!-- 博客域名
-      主要用于邮件推送设置的域名 -->
+    <!-- 博客域名，以"/"结尾
+      主要用于邮件推送设置等的域名 -->
     <property>
         <param>site_addr</param>
         <value>http://localhost:8080/blog/</value>
@@ -90,21 +90,33 @@
         <value>0</value>
     </property>
 
-    <!-- 照片最大上传大小，单位字节，-1代表无限制 -->
+    <!-- 照片最大上传大小，单位字节，-1代表无限制，支持子集：@user_{uid}:{size} -->
     <property>
         <param>cloud_photo_max_uploadsize</param>
         <value>10485760</value>
     </property>
 
-    <!-- 视频最大上传大小，单位字节，-1代表无限制 -->
+    <!-- 视频最大上传大小，单位字节，-1代表无限制，支持子集：@user_{uid}:{size} -->
     <property>
         <param>cloud_video_max_uploadsize</param>
         <value>-1</value>
     </property>
 
-    <!-- 文件最大上传大小，单位字节，-1代表无限制 -->
+    <!-- 文件最大上传大小，单位字节，-1代表无限制，支持子集：@user_{uid}:{size} -->
     <property>
         <param>cloud_file_max_uploadsize</param>
+        <value>-1</value>
+    </property>
+
+    <!-- 信息feed流允许显示订阅的用户 -->
+    <property>
+        <param>feed_flow_allow_following_show</param>
+        <value>true</value>
+    </property>
+
+    <!-- 信息feed（广场）允许显示的用户组最低等级（无需订阅），值为对应用户组的Gid -->
+    <property>
+        <param>feed_flow_allow_show_lowest_level</param>
         <value>-1</value>
     </property>
 
@@ -150,6 +162,12 @@
         <value>false</value>
     </property>
 
+    <!-- 记住登录的保持时间，单位天，支持子集：@user_{uid}:{maxAge} -->
+    <property>
+        <param>user_login_remember_max_age</param>
+        <value>365</value>
+    </property>
+
     <!-- cache持久化任务 *****************************  -->
 
     <!-- 将cache的缓存持久化的最大推迟次数（由于无人访问而设计的推迟持久化） -->
@@ -188,12 +206,6 @@
     <property>
         <param>emailpush_config_location</param>
         <value>classpath:server/email.properties</value>
-    </property>
-
-    <!-- 邮件推送的显示的发件人名称 -->
-    <property>
-        <param>emailpush_account_nickname</param>
-        <value>Blog Service</value>
     </property>
 
     <!-- **********************************************  -->
@@ -242,13 +254,13 @@
 
     <!-- 默认的男生用户头像，列表，至少一个，设置时为json数组字符串，数组类型为头像地址字符串，相对于site_cdn_addr -->
     <property>
-        <param>USER_DEFAULT_MAN_HEADPHOTOS</param>
+        <param>user_default_headphotos_man</param>
         <value>["img/default_man.jpg"]</value>
     </property>
 
     <!-- 默认的女生用户头像，列表，至少一个，设置时为json数组字符串，数组类型为头像地址字符串 ，相对于site_cdn_addr -->
     <property>
-        <param>USER_DEFAULT_MISS_HEADPHOTOS</param>
+        <param>user_default_headphotos_miss</param>
         <value>["img/default_miss.jpg"]</value>
     </property>
 
@@ -264,10 +276,34 @@
         <value>false</value>
     </property>
 
+    <!-- 旧页面重定向到新页面时的http code，默认302 -->
+    <property>
+        <param>site_old_page_redirect_code</param>
+        <value>302</value>
+    </property>
+
     <!-- 用户在线时是否运行离线通知，true: 同时运行，false: 当用户在线时，不执行其他方式通知，true or false -->
     <property>
         <param>run_offline_notify_when_online</param>
         <value>false</value>
+    </property>
+
+    <!-- 访问记录器忽略的爬虫名称, json数组 -->
+    <property>
+        <param>access_record_ignore_spiders</param>
+        <value>["spider", "bot", "crawler", "Baiduspider", "Googlebot", "Sogou web spider", "YodaoBot", "Sosospider", "NaverBot", "msnbot"]</value>
+    </property>
+
+    <!-- 网站ICP备案号，例：湘ICP备XXXXXXX号 -->
+    <property>
+        <param>site_icp_record_code</param>
+        <value></value>
+    </property>
+
+    <!-- 网站公安备案号，例：湘公网安备 XXXXXXXXXXXXXXX号 -->
+    <property>
+        <param>site_police_record_code</param>
+        <value></value>
     </property>
 
 </Server>

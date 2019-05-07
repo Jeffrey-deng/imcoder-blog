@@ -16,22 +16,23 @@
     function register() {
         var data = $('#form').serialize();
         $.ajax({
-            url: 'user.do?method=register',
+            url: 'user.api?method=register',
             type: 'POST',
             data: data,
-            success: function (data) {
-                if (data.flag == 200) {
+            success: function (response) {
+                if (response.status == 200) {
+                    var data = response.data;
                     var username = $('#username').val();
-                    var a_login = "auth.do?method=jumpLogin&identity_type=1&identifier=" + username;
+                    var jumpLogin = "auth/login?identity_type=1&identifier=" + username;
                     $("#span_username").html(username);
-                    $('#a_jump').attr("href", a_login);
+                    $('#a_jump').attr("href", jumpLogin);
                     $('#TipsModal').modal();
                     setTimeout(function () {
-                        window.location.href = a_login;
+                        window.location.href = jumpLogin;
                     }, 2000);
                 } else {
-                    toastr.error(data.info, '注册错误');
-                    console.log("Error Code: " + data.flag);
+                    toastr.error(response.message, '注册错误');
+                    console.log("Error Code: " + response.status);
                 }
             },
             error: function (XMLHttpRequest, textStatus, errorThrown) {
@@ -46,21 +47,28 @@
         $.validator.addMethod("checkUsername", function (value, element, params) {
             var errormsg = '';
             var result = true;
-            var reg = /^[a-zA-Z\d][\w\.-]{0,20}$/;//正则
+            var reg = /^[a-zA-Z0-9][\w\.-]{0,20}$/;//正则
             if (value.length > 21 || value.length === 0) {
                 errormsg = "长度应在1至20个字符之间";
                 result = false;
+            } else if (/^[0-9]+$/.test(value)) {
+                errormsg = "用户名不能为纯数字";
+                result = false;
             } else if (reg.test(value)) {
                 $.ajax({
-                    url: "auth.do?method=checkUsername",
+                    url: "auth.api?method=checkUsername",
+                    type: 'POST',
                     async: false,
                     data: {"username": value},
-                    success: function (data) {
-                        if (data.flag == 200) {
-                            errormsg = "该用户名已经被使用了";
-                            result = false;
-                        } else if (data.flag == 404) {
-                            result = true;
+                    success: function (response) {
+                        if (response.status == 200) {
+                            var data = response.data;
+                            if (data.type == 1) {
+                                errormsg = "该用户名已经被使用了";
+                                result = false;
+                            } else if (data.type == 0) {
+                                result = true;
+                            }
                         } else {
                             errormsg = "参数错误~ 有bug";
                             result = false;
@@ -87,15 +95,19 @@
                 result = false;
             } else {
                 $.ajax({
-                    url: "auth.do?method=checkEmail",
+                    url: "auth.api?method=checkEmail",
+                    type: 'POST',
                     async: false,
                     data: {"email": value},
-                    success: function (data) {
-                        if (data.flag == 200) {
-                            errormsg = "该邮箱已经被使用了";
-                            result = false;
-                        } else if (data.flag == 404) {
-                            result = true;
+                    success: function (response) {
+                        if (response.status == 200) {
+                            var data = response.data;
+                            if (data.type == 1) {
+                                errormsg = "该邮箱已经被使用了";
+                                result = false;
+                            } else if (data.type == 0) {
+                                result = true;
+                            }
                         } else {
                             errormsg = "参数错误~ 有bug";
                             result = false;

@@ -1,6 +1,7 @@
 /**
- * 用户相册中心
- * Created by Jeffrey.Deng on 2018/1/11.
+ * 相册处理模块
+ * @author Jeffery.deng
+ * @date 2018/1/11
  */
 (function (factory) {
     /* global define */
@@ -35,7 +36,7 @@
             "updateCompleted": function (album) {  // 在相册更新完成后回调
                 return;
             },
-            "deleteCompleted": function (album_id) {  // 在相册删除完成后回调
+            "deleteCompleted": function (params) {  // 在相册删除完成后回调
                 return;
             },
             "beforeCreateModalOpen": function (createModal, openCreateModal_callback) {  // 创建窗口打开前回调
@@ -47,8 +48,7 @@
                     formatAlbumToModal_callback(album);
                     // 如果传入的参数为album_id，异步获取album对象
                 } else {
-                    this.loadAlbum(album, function (data) {
-                        var album = data.album;
+                    this.loadAlbum(album, function (album) {
                         formatAlbumToModal_callback(album);
                     });
                 }
@@ -64,7 +64,7 @@
     };
 
     var init = function (options) {
-        $.extend(true, config, options);
+        common_utils.extendNonNull(true, config, options);
         pointer.createModal = $(config.selector.createAlbumModal);
         pointer.updateModal = $(config.selector.updateAlbumModal);
 
@@ -73,7 +73,8 @@
             var album = {};
             album.name = pointer.createModal.find('input[name="album_name"]').val();
             album.description = pointer.createModal.find('textarea[name="album_desc"]').val();
-            album.permission = pointer.createModal.find('input[name="album_permission"]:checked').val();
+            album.mount = pointer.createModal.find('input[name="album_mount"]').val();
+            album.permission = pointer.createModal.find('select[name="album_permission"]').val();
             album.show_col = pointer.createModal.find('select[name="album_show_col"]').val();
             if (!album.name) {
                 toastr.info("输入相册的名称", "");
@@ -88,24 +89,28 @@
             album.album_id = pointer.updateModal.find('span[name="album_id"]').html();
             album.name = pointer.updateModal.find('input[name="album_name"]').val();
             album.description = pointer.updateModal.find('textarea[name="album_desc"]').val();
-            album.permission = pointer.updateModal.find('input[name="album_permission"]:checked').val();
+            album.mount = pointer.updateModal.find('input[name="album_mount"]').val();
+            album.permission = pointer.updateModal.find('select[name="album_permission"]').val();
             album.show_col = pointer.updateModal.find('select[name="album_show_col"]').val();
             var coverUrl = pointer.updateModal.find('input[name="album_cover_path"]').val().trim();
             var beforeCoverUrl = pointer.updateModal.find('input[name="album_cover_path"]').attr("data-re-cover-url");
-            var beforeCoverId = parseInt(pointer.updateModal.find('input[name="album_cover_path"]').attr("data-re-cover-id"));
+            var beforeCoverId = pointer.updateModal.find('input[name="album_cover_path"]').attr("data-re-cover-id");
             album.cover = {"photo_id": beforeCoverId};
             // 检查
             if (coverUrl) {
                 if (coverUrl != beforeCoverUrl) {   // 如果用户修改封面图片地址，则查询数据库，是否有该图片
-                    if (coverUrl.match(/^(https?:\/\/.*?\/(blog\/)?)?(user\/\d+\/album\/\d+\/\d+\/[0-9a-zA-Z_\.]+\.(gif|jpe?g|png|bmp|svg|ico))(\?[\x21-\x7e]*)?$/)) {
-                        $.get("photo.do?method=photoListByAjax", {"path": RegExp.$3}, function (data) {
-                            if (data.flag == 200 && data.photos.length > 0) {
-                                var photo = data.photos[0];
-                                album.cover.photo_id = photo.photo_id;
-                                updateAlbum(album);
-                            } else {
-                                toastr.error("你输入相册封面不存在或没有权限或格式错误", "请重新输入");
+                    if (coverUrl.match(/^(https?:\/\/[a-z0-9\.:]+\/([\x21-\x7e]*\/)?)?(user\/\w+\/photos\/\w+\/[0-9a-zA-Z_\.]+\.(gif|jpe?g|png|bmp|svg|ico))(\?[\x21-\x7e]*)?$/)) {
+                        $.get("photo.api?method=getPhotoList", {"path": RegExp.$3}, function (response) {
+                            if (response.status == 200) {
+                                var data = response.data;
+                                if (data.photos.length > 0) {
+                                    var photo = data.photos[0];
+                                    album.cover.photo_id = photo.photo_id;
+                                    updateAlbum(album);
+                                    return;
+                                }
                             }
+                            toastr.error("你输入相册封面不存在或没有权限或格式错误", "请重新输入");
                         });
                     } else {
                         toastr.error("你输入相册封面格式错误", "请重新输入");
@@ -133,104 +138,82 @@
             }
         });
 
-        // div 自适应高度
-        $.fn.autoTextarea = function (options) {
-            var defaults = {
-                maxHeight: null,//文本框是否自动撑高，默认：null，不自动撑高；如果自动撑高必须输入数值，该值作为文本框自动撑高的最大高度
-                minHeight: $(this).height(), //默认最小高度，也就是文本框最初的高度，当内容高度小于这个高度的时候，文本以这个高度显示
-                runOnce: false // false 为绑定事件 true 为 计算一次高度，不绑定事件
-            };
-            var opts = $.extend({}, defaults, options);
-            var updateHeight = function () {
-                var height, style = this.style;
-                this.style.height = opts.minHeight + 'px';
-                if (this.scrollHeight >= opts.minHeight) {
-                    if (opts.maxHeight && this.scrollHeight > opts.maxHeight) {
-                        height = opts.maxHeight;
-                        style.overflowY = 'scroll';
-                    } else {
-                        height = this.scrollHeight;
-                        style.overflowY = 'hidden';
-                    }
-                    style.height = height + 'px';
-                }
-            };
-            if (opts.runOnce) {
-                $(this).each(function () {
-                    updateHeight.call(this);
-                });
+        // 新标签打开封面
+        pointer.updateModal.find(".open-album-cover").click(function () {
+            var $input = $(this).prev();
+            var cover_id = $input.attr("data-re-cover-id");
+            if (cover_id && cover_id != "0") {
+                window.open("redirect?model=album&photo_id=" + cover_id);
             } else {
-                $(this).each(function () {
-                    $(this).bind("input paste cut keydown keyup focus blur", function () {
-                        updateHeight.call(this);
-                    });
-                });
+                window.open(config.path_params.cloudPath + $input.attr("data-re-cover-url"));
             }
-        };
+        });
 
         //  desc textArea 自适应高度
         config.textareaInputHeight = pointer.updateModal.find('textarea[name="album_desc"]').outerHeight();
-        pointer.updateModal.find('textarea[name="album_desc"]').autoTextarea({
+        pointer.updateModal.find('textarea[name="album_desc"]').autoTextareaHeight({
             maxHeight: 100,
             minHeight: config.textareaInputHeight
         });
-        pointer.createModal.find('textarea[name="album_desc"]').autoTextarea({
+        pointer.createModal.find('textarea[name="album_desc"]').autoTextareaHeight({
             maxHeight: 100,
             minHeight: config.textareaInputHeight
         });
     };
 
     var createAlbum = function (album) {
-        $.post("photo.do?method=createAlbum", album, function (data) {
-            if (data.flag == 200) {
+        $.post("photo.api?method=createAlbum", album, function (response) {
+            if (response.status == 200) {
+                var data = response.data;
                 toastr.success("创建成功 ");
                 pointer.createModal.modal('hide');
                 config.callback.createCompleted.call(context, data.album);
                 utils.triggerEvent(config.event.createCompleted, data.album);
             } else {
-                toastr.error(data.info, "创建失败");
-                console.warn("Error Code: " + data.flag);
+                toastr.error(response.message, "创建失败");
+                console.warn("Error Code: " + response.status);
             }
         });
     };
 
     var loadAlbum = function (album_id, success) {
-        $.get("photo.do?method=albumByAjax", {"id": album_id}, function (data) {
-            if (data.flag == 200) {
-                success(data);
+        $.get("photo.api?method=getAlbum", {"id": album_id}, function (response) {
+            if (response.status == 200) {
+                success(response.data.album);
             } else {
-                toastr.error(data.info, "加载相册信息失败!");
-                console.warn("Error Code: " + data.flag);
+                toastr.error(response.message, "加载相册信息失败!");
+                console.warn("Error Code: " + response.status);
             }
         });
     };
 
     var deleteAlbum = function (album_id, album_name) {
-        var allow = utils.triggerEvent(config.event.beforeDelete, album_id, album_name);
+        var postData = {
+            "album_id": album_id,
+            "name": album_name,
+            "deleteFromDisk": true
+        };
+        var allow = utils.triggerEvent(config.event.beforeDelete, postData);
         if (allow === false) {
             return;
         }
         common_utils.notify({
             "progressBar": false,
             "hideDuration": 0,
+            "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
         }).success("正在移动到回收站~", "删除中", "notify_delete_album");
-        var postData = {
-            "album_id": album_id,
-            "name": album_name,
-            "deleteFromDisk": true
-        };
-        $.post("photo.do?method=deleteAlbum", postData, function (data) {
+        $.post("photo.api?method=deleteAlbum", postData, function (response) {
             common_utils.removeNotify("notify_delete_album");
-            if (data.flag == 200) {
+            if (response.status == 200) {
                 toastr.success("已移至回收站，可请求管理员恢复~", "相册删除成功", {"timeOut": 10000});
                 pointer.updateModal.modal('hide');
-                config.callback.deleteCompleted.call(context, album_id);
-                utils.triggerEvent(config.event.deleteCompleted, album_id);
+                config.callback.deleteCompleted.call(context, postData);
+                utils.triggerEvent(config.event.deleteCompleted, postData);
             } else {
-                toastr.error(data.info, "相册删除失败!");
-                console.warn("Error Code: " + data.flag);
+                toastr.error(response.message, "相册删除失败!");
+                console.warn("Error Code: " + response.status);
             }
         });
     };
@@ -239,15 +222,16 @@
         var postAlbum = $.extend(true, {}, album);
         delete postAlbum.cover;
         postAlbum["cover.photo_id"] = album.cover.photo_id;
-        $.post("photo.do?method=updateAlbum", postAlbum, function (data) {
-            if (data.flag == 200) {
+        $.post("photo.api?method=updateAlbum", postAlbum, function (response) {
+            if (response.status == 200) {
+                var data = response.data;
                 toastr.success("更新成功 ");
                 pointer.updateModal.modal('hide');
                 config.callback.updateCompleted.call(context, data.album);
                 utils.triggerEvent(config.event.updateCompleted, data.album);
             } else {
-                toastr.error(data.info, "更新失败");
-                console.warn("Error Code: " + data.flag);
+                toastr.error(response.message, "更新失败");
+                console.warn("Error Code: " + response.status);
             }
         });
     };
@@ -258,7 +242,7 @@
             return false;
         }
         var openCreateModal_callback = function () {
-            pointer.createModal.find('input[name="album_permission"][value="2"]').prop("checked", true);
+            pointer.createModal.find('select[name="album_permission"]').val("10");
             pointer.createModal.find('select[name="album_show_col"]').val(config.album_default_col).parent().css("display", "none");
             pointer.createModal.modal();
         };
@@ -279,13 +263,11 @@
             pointer.updateModal.find('span[name="album_id"]').html(album.album_id);
             pointer.updateModal.find('input[name="album_name"]').val(album.name);
             pointer.updateModal.find('textarea[name="album_desc"]').val(album.description);
-            pointer.updateModal.find('input[name="album_permission"]').each(function () {
-                if ($(this).val() == album.permission) {
-                    $(this).prop("checked", true);
-                }
-            });
+            pointer.updateModal.find('input[name="album_mount"]').val(album.mount);
+            pointer.updateModal.find('select[name="album_permission"]').val(album.permission);
             pointer.updateModal.find('input[name="album_cover_path"]')
-                .val(album.cover.photo_id == 0 ? "" : album.cover.path).attr("data-re-cover-id", album.cover.photo_id).attr("data-re-cover-url", album.cover.path);
+                .val((album.cover.photo_id && album.cover.photo_id != "0") ? album.cover.path : "").attr("data-re-cover-id", album.cover.photo_id || 0).attr("data-re-cover-url", album.cover.path)
+                .closest(".form-group").find("label").parent().attr("href", "redirect?model=album&photo_id=" + album.cover.photo_id);
             pointer.updateModal.find('select[name="album_show_col"]').val(album.show_col);
             pointer.updateModal.find('span[name="album_size"]').html(album.size);
             pointer.updateModal.find('span[name="album_create_time"]').html(album.create_time);
@@ -296,7 +278,7 @@
 
             // 计算一次desc高度
             pointer.updateModal.unbind("shown.bs.modal").on('shown.bs.modal', function () {
-                pointer.updateModal.find('textarea[name="album_desc"]').autoTextarea({
+                pointer.updateModal.find('textarea[name="album_desc"]').autoTextareaHeight({
                     maxHeight: 100,
                     minHeight: config.textareaInputHeight,
                     runOnce: true
@@ -308,8 +290,22 @@
     };
 
     var utils = {
-        "bindEvent": function (eventName, func) {
-            $(context).bind(eventName, func);
+        "once": function (eventName, func, bindFirst) {
+            var funcWrapper = function () {
+                try {
+                    func.apply(context, arguments);
+                } finally {
+                    utils.unbindEvent(eventName, funcWrapper);
+                }
+            };
+            utils.bindEvent(eventName, funcWrapper, bindFirst);
+        },
+        "bindEvent": function (eventName, func, bindFirst) {
+            if (bindFirst == true) {
+                $(context).onfirst(eventName, func);
+            } else {
+                $(context).bind(eventName, func);
+            }
         },
         "triggerEvent": function (eventName) {
             return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));

@@ -15,7 +15,8 @@
 
     var pointer = {
         uploadModal: null,
-        updateModal: null
+        updateModal: null,
+        uploadSubtitleModal: null
     };
     var config = {
         path_params: {
@@ -26,6 +27,7 @@
         selector: {
             "uploadModal": "#uploadVideoModal",
             "updateModal": "#updateVideoModal",
+            "uploadSubtitleModal": "#uploadSubtitleModal",
             "copyVideoUrlTrigger": ".copyVideoUrl_btn"
         },
         callback: {
@@ -35,46 +37,49 @@
             "updateCompleted": function (context, video) {  // 更新完成后回调
                 return;
             },
-            "deleteCompleted": function (context, video_id) {  // 删除完成后回调
+            "deleteCompleted": function (context, params) {  // 删除完成后回调
                 return;
             },
             "beforeUploadModalOpen": function (context, uploadModal, openUploadModal_callback) {  // 上传窗口打开前回调
                 var hostUser = context.config.hostUser;
-                context.loadAlbums(hostUser, function (data) {
-                    openUploadModal_callback(data.albums);
+                context.loadAlbums(hostUser, function (albums) {
+                    openUploadModal_callback(albums);
                 });
             },
             "beforeUpdateModalOpen": function (context, updateModal, formatVideoToModal_callback, video) {  // 更新窗口打开前回调
+                var dfd = $.Deferred();
                 // 如果openUpdateVideoModal传入的参数为video对象，直接使用
                 if (typeof video == "object" && video.video_id) {
+                    dfd.resolve(video);
+                } else {    // 如果传入的参数为video_id，异步获取video对象
+                    context.loadVideo(video, function (video) {
+                        if (video) {
+                            dfd.resolve(video);
+                        } else {
+                            dfd.reject();
+                        }
+                    });
+                }
+                dfd.done(function (video) {
                     if (login_handle.equalsLoginUser(video.user.uid)) {
-                        context.loadAlbums(video.user.uid, function (data) {
-                            formatVideoToModal_callback(video, data.albums);
+                        context.loadAlbums(video.user.uid, function (albums) {
+                            formatVideoToModal_callback(video, albums);
                         });
                     } else {
                         formatVideoToModal_callback(video);
                     }
-                    // 如果传入的参数为video_id，异步获取video对象
-                } else {
-                    context.loadVideo(video, function (data) {
-                        if (data.flag == 200) {
-                            var video = data.video;
-                            if (login_handle.equalsLoginUser(video.user.uid)) {
-                                context.loadAlbums(video.user.uid, function (data) {
-                                    formatVideoToModal_callback(video, data.albums);
-                                });
-                            } else {
-                                formatVideoToModal_callback(video);
-                            }
-                        }
-                    });
-                }
+                });
             }
         },
         event: { // 以事件方式添加回调，以便支持多个回调，这时定义的是事件名
+            "beforeUpload": "video.upload.before",
             "uploadCompleted": "video.upload.completed",
+            "beforeUpdate": "video.update.before",
             "updateCompleted": "video.update.completed",
-            "deleteCompleted": "video.delete.completed"
+            "beforeDelete": "video.delete.before",
+            "deleteCompleted": "video.delete.completed",
+            "tagClick": "video.tag.click", // 标签被点击
+            "tagExtendClick": "video.tag.extendclick", // 标签按住alt被点击
         },
         hostUser: 0,
         downloadType: "url",
@@ -82,52 +87,56 @@
     };
     var init = function (options) {
 
-        $.extend(true, config, options);
+        common_utils.extendNonNull(true, config, options);
 
         pointer.uploadModal = $(config.selector.uploadModal);
         pointer.updateModal = $(config.selector.updateModal);
+        pointer.uploadSubtitleModal = $(config.selector.uploadSubtitleModal);
 
-        pointer.uploadModal.find('input[name="video_permission"][value="0"]').prop("checked", true);
-        pointer.video_permission = 0;
-        pointer.uploadModal.find('input[name="video_permission"]').click(function (e) {
-            pointer.video_permission = $(this).val();
+        pointer.remember_video_permission = "10";
+        pointer.uploadModal.find('select[name="video_permission"]').val(pointer.remember_video_permission);
+
+        pointer.uploadModal.find('select[name="video_permission"]').change(function (e) {
+            pointer.remember_video_permission = $(this).val();
         });
 
         // 切换视频上传的类型
         pointer.uploadModal.find('select[name="video_source_type"]').change(function (e) {
             var key = $(this).val();
             if (key == 0) {
-                pointer.uploadModal.find('input[name="video_file"]').parent().show(100);
-                pointer.uploadModal.find('textarea[name="video_code"]').parent().hide(100);
+                pointer.uploadModal.find('input[name="video_file"]').closest(".form-group").show(100);
+                pointer.uploadModal.find('textarea[name="video_code"]').closest(".form-group").hide(100);
             } else if (key == 1) {
-                pointer.uploadModal.find('input[name="video_file"]').parent().hide(100);
-                pointer.uploadModal.find('textarea[name="video_code"]').parent().show(100);
+                pointer.uploadModal.find('input[name="video_file"]').closest(".form-group").hide(100);
+                pointer.uploadModal.find('textarea[name="video_code"]').closest(".form-group").show(100);
             } else {
-                pointer.uploadModal.find('input[name="video_file"]').parent().hide(100);
-                pointer.uploadModal.find('textarea[name="video_code"]').parent().show(100);
+                pointer.uploadModal.find('input[name="video_file"]').closest(".form-group").hide(100);
+                pointer.uploadModal.find('textarea[name="video_code"]').closest(".form-group").show(100);
             }
         });
 
         // 定义上传视频时切换 “封面使用 相册中已上传的图片 还是 上传新的图片” 的事件，以封面ID输入框值是否为0作为判断依据
         pointer.uploadModal.find('input[name="cover_file"]').prev().find(".convert-upload-cover").click(function (e) {
-            $(this).css("font-weight", "bold").parent().find(".convert-select-cover").css("font-weight", "normal");
-            pointer.uploadModal.find('select[name="cover_album_id"]').parent().show(100);
-            pointer.uploadModal.find('input[name="cover_photo_id"]').css("display", "none");
-            pointer.uploadModal.find('input[name="cover_file"]').css("display", "block");
+            var $group = $(this).css("font-weight", "bold").closest(".form-group");
+            $group.find(".convert-select-cover").css("font-weight", "normal");
+            pointer.uploadModal.find('select[name="cover_album_id"]').closest(".form-group").show(100);
+            $group.find('input[name="cover_photo_id"]').parent().css("display", "none");
+            $group.find('input[name="cover_file"]').css("display", "block");
         });
         pointer.uploadModal.find('input[name="cover_file"]').prev().find(".convert-select-cover").click(function (e) {
-            $(this).css("font-weight", "bold").parent().find(".convert-upload-cover").css("font-weight", "normal");
-            pointer.uploadModal.find('select[name="cover_album_id"]').parent().hide(100);
-            pointer.uploadModal.find('input[name="cover_file"]').css("display", "none");
-            pointer.uploadModal.find('input[name="cover_photo_id"]').css("display", "block").val("0"); // point!
+            var $group = $(this).css("font-weight", "bold").closest(".form-group");
+            $group.find(".convert-upload-cover").css("font-weight", "normal");
+            pointer.uploadModal.find('select[name="cover_album_id"]').closest(".form-group").hide(100);
+            $group.find('input[name="cover_file"]').css("display", "none");
+            $group.find('input[name="cover_photo_id"]').val("0").parent().css("display", "table"); // point!
         });
 
         //提交上传事件
         pointer.uploadModal.find('button[name="uploadVideo_trigger"]').click(function () {
             var videoInfo = {};
             var coverInfo = {};
-            var cover_id = parseInt(pointer.uploadModal.find('input[name="cover_photo_id"]').val());
-            if (cover_id && cover_id > 0) {
+            var cover_id = pointer.uploadModal.find('input[name="cover_photo_id"]').val();
+            if (cover_id && cover_id != "0") {
                 coverInfo.photo_id = cover_id;
             } else {
                 var coverFiles = pointer.uploadModal.find('input[name="cover_file"]')[0].files;
@@ -150,20 +159,20 @@
             }
             videoInfo.name = pointer.uploadModal.find('input[name="video_name"]').val();
             videoInfo.description = pointer.uploadModal.find('textarea[name="video_desc"]').val();
-            videoInfo.permission = pointer.uploadModal.find('input[name="video_permission"]:checked').val();
+            videoInfo.permission = pointer.uploadModal.find('select[name="video_permission"]').val();
             videoInfo.refer = pointer.uploadModal.find('input[name="video_refer"]').val() || "";
             var tags = "";
             pointer.uploadModal.find(".tags-modify").find(".tag-content").each(function (i, tag) {
-                tags += "#" + tag.innerText;
+                tags += "#" + tag.innerText + "#";
             });
-            videoInfo.tags = (tags == "#" ? "" : tags);
+            videoInfo.tags = (tags == "##" ? "" : tags);
 
             coverInfo.album_id = pointer.uploadModal.find('select[name="cover_album_id"]').val();
             coverInfo.name = videoInfo.name;
             coverInfo.description = videoInfo.description;
             coverInfo.refer = videoInfo.refer;
-            if (videoInfo.tags.indexOf("#视频") == -1) {
-                coverInfo.tags = "#视频" + videoInfo.tags;
+            if (videoInfo.tags.indexOf("#视频#") == -1) {
+                coverInfo.tags = "#视频#" + videoInfo.tags;
             } else {
                 coverInfo.tags = videoInfo.tags;
             }
@@ -174,7 +183,7 @@
                 this.removeAttribute("disabled");
                 return;
             }
-            if (coverInfo.album_id == 0) {
+            if (!coverInfo.album_id || coverInfo.album_id == "0") {
                 toastr.error("未选择相册", "错误", {"progressBar": false});
                 return;
             }
@@ -190,7 +199,7 @@
             this.setAttribute("disabled", "disabled");
             login_handle.runOnLogin(function (isLogin) {
                 if (isLogin) {
-                    uploadVideo((videoInfo.source_type == 0 ? files[0] : null), ((cover_id && cover_id > 0) ? null : coverFiles[0]), videoInfo);
+                    uploadVideo((videoInfo.source_type == 0 ? files[0] : null), ((cover_id && cover_id != "0") ? null : coverFiles[0]), videoInfo);
                 } else {
                     toastr.error("登陆状态失效，请重新登录！");
                     this.removeAttribute("disabled");
@@ -198,59 +207,64 @@
             }, true);
         });
 
+        pointer.uploadModal.find(".tags-modify").prev().dblclick(function () {
+            pointer.uploadModal.find(".tags-modify .tag-single").remove();
+        });
+
         // 切换更新视频时上传的类型
         pointer.updateModal.find('select[name="video_source_type"]').change(function (e) {
             var key = $(this).val();
             if (key == 0) {
-                pointer.updateModal.find('input[name="video_file"]').parent().show(100);
-                pointer.updateModal.find('textarea[name="video_code"]').parent().hide(100);
-                var video_href_node = pointer.updateModal.find('.copy-input').parent();
-                if (video_href_node.hasClass("user-upload-video")) { // 如果该视频是用户上传的（不是引用的），则显示链接
-                    video_href_node.show(0);
+                pointer.updateModal.find('input[name="video_file"]').closest(".form-group").show(100);
+                pointer.updateModal.find('textarea[name="video_code"]').closest(".form-group").hide(100);
+                var video_href_group = pointer.updateModal.find('.copy-input').closest(".form-group");
+                if (video_href_group.hasClass("user-upload-video")) { // 如果该视频是用户上传的（不是引用的），则显示链接
+                    video_href_group.show(0);
                 } else {
-                    video_href_node.hide(0);
+                    video_href_group.hide(0);
                 }
             } else if (key == 1) {
-                pointer.updateModal.find('input[name="video_file"]').parent().hide(100);
-                pointer.updateModal.find('textarea[name="video_code"]').parent().show(100);
-                pointer.updateModal.find('.copy-input').parent().hide(0);
+                pointer.updateModal.find('input[name="video_file"]').closest(".form-group").hide(100);
+                pointer.updateModal.find('textarea[name="video_code"]').closest(".form-group").show(100);
+                pointer.updateModal.find('.copy-input').closest(".form-group").hide(0);
             } else {
-                pointer.updateModal.find('input[name="video_file"]').parent().hide(100);
-                pointer.updateModal.find('textarea[name="video_code"]').parent().show(100);
-                pointer.updateModal.find('.copy-input').parent().hide(0);
+                pointer.updateModal.find('input[name="video_file"]').closest(".form-group").hide(100);
+                pointer.updateModal.find('textarea[name="video_code"]').closest(".form-group").show(100);
+                pointer.updateModal.find('.copy-input').closest(".form-group").hide(0);
             }
         });
 
         // 定义更新视频时切换 “封面使用 相册中已上传的图片 还是 上传新的图片” 的事件，以是否选择了图片文件为判断依据
-        pointer.updateModal.find('input[name="cover_file"]').prev().find(".convert-upload-cover").click(function (e) {
-            $(this).css("font-weight", "bold").parent().find(".convert-select-cover").css("font-weight", "normal");
-            pointer.updateModal.find('select[name="cover_album_id"]').parent().show(100);
-            pointer.updateModal
-                .find('input[name="cover_photo_id"]').css("display", "none")
-                .parent().find('input[name="cover_file"]').css("display", "block").val(""); // point!
-        });
-        pointer.updateModal.find('input[name="cover_file"]').prev().find(".convert-select-cover").click(function (e) {
-            $(this).css("font-weight", "bold").parent().find(".convert-upload-cover").css("font-weight", "normal");
-            pointer.updateModal.find('select[name="cover_album_id"]').parent().hide(100);
-            pointer.updateModal
-                .find('input[name="cover_file"]').css("display", "none")
-                .parent().find('input[name="cover_photo_id"]').css("display", "block");
-        });
+        pointer.updateModal.find('input[name="cover_file"]').prev()
+            .on("click", ".convert-upload-cover", function (e) {
+                $(this).css("font-weight", "bold").closest(".form-group").find(".convert-select-cover").css("font-weight", "normal");
+                pointer.updateModal.find('select[name="cover_album_id"]').closest(".form-group").show(100);
+                pointer.updateModal
+                    .find('input[name="cover_photo_id"]').parent().css("display", "none")
+                    .closest(".form-group").find('input[name="cover_file"]').css("display", "block").val(""); // point!
+            })
+            .on("click", ".convert-select-cover", function (e) {
+                $(this).css("font-weight", "bold").closest(".form-group").find(".convert-upload-cover").css("font-weight", "normal");
+                pointer.updateModal.find('select[name="cover_album_id"]').closest(".form-group").hide(100);
+                pointer.updateModal
+                    .find('input[name="cover_file"]').css("display", "none")
+                    .closest(".form-group").find('input[name="cover_photo_id"]').parent().css("display", "table");
+            });
 
         //更新视频事件
         pointer.updateModal.find('button[name="updateVideo_trigger"]').click(function () {
             var videoInfo = {};
             var coverInfo = {};
             videoInfo.video_id = pointer.updateModal.find('span[name="video_id"]').html().trim();
-            if (!videoInfo.video_id) {
+            if (!videoInfo.video_id || videoInfo.video_id == "0") {
                 toastr.error("代码出错~");
                 return;
             }
             var coverFiles = pointer.updateModal.find('input[name="cover_file"]')[0].files;
             var uploadNewCover = false;
             if (coverFiles == null || coverFiles[0] == undefined || coverFiles[0] == null) {
-                var cover_id = parseInt(pointer.updateModal.find('input[name="cover_photo_id"]').val()) || 0;
-                if (cover_id && cover_id > 0) {
+                var cover_id = pointer.updateModal.find('input[name="cover_photo_id"]').val() || 0;
+                if (cover_id && cover_id != "0") {
                     coverInfo.photo_id = cover_id;
                 } else {
                     coverInfo.photo_id = 0;
@@ -265,7 +279,7 @@
             if (videoInfo.source_type == 0) {
                 var files = pointer.updateModal.find('input[name="video_file"]')[0].files;
                 if (files == null || files[0] == undefined || files[0] == null) {
-                    if (!pointer.updateModal.find('.copy-input').parent().hasClass("user-upload-video")) {
+                    if (!pointer.updateModal.find('.copy-input').closest(".form-group").hasClass("user-upload-video")) {
                         toastr.error("未选择视频文件呢");
                         return;
                     }
@@ -279,20 +293,20 @@
             }
             videoInfo.name = pointer.updateModal.find('input[name="video_name"]').val();
             videoInfo.description = pointer.updateModal.find('textarea[name="video_desc"]').val();
-            videoInfo.permission = pointer.updateModal.find('input[name="video_permission"]:checked').val();
+            videoInfo.permission = pointer.updateModal.find('select[name="video_permission"]').val();
             videoInfo.refer = pointer.updateModal.find('input[name="video_refer"]').val() || "";
             var tags = "";
             pointer.updateModal.find(".tags-modify").find(".tag-content").each(function (i, tag) {
-                tags += "#" + tag.innerText;
+                tags += "#" + tag.innerText + "#";
             });
-            videoInfo.tags = (tags == "#" ? "" : tags);
+            videoInfo.tags = (tags == "##" ? "" : tags);
 
-            coverInfo.album_id = parseInt(pointer.updateModal.find('select[name="cover_album_id"]').val()) || 0;
+            coverInfo.album_id = pointer.updateModal.find('select[name="cover_album_id"]').val() || 0;
             coverInfo.name = videoInfo.name;
             coverInfo.description = videoInfo.description;
             coverInfo.refer = videoInfo.refer;
-            if (videoInfo.tags.indexOf("#视频") == -1) {
-                coverInfo.tags = "#视频" + videoInfo.tags;
+            if (videoInfo.tags.indexOf("#视频#") == -1) {
+                coverInfo.tags = "#视频#" + videoInfo.tags;
             } else {
                 coverInfo.tags = videoInfo.tags;
             }
@@ -303,7 +317,7 @@
                 this.removeAttribute("disabled");
                 return;
             }
-            if (uploadNewCover && !(coverInfo.album_id > 0)) {
+            if (uploadNewCover && (!coverInfo.album_id || coverInfo.album_id == "0")) {
                 toastr.error("未选择相册", "错误", {"progressBar": false});
                 return;
             }
@@ -316,17 +330,11 @@
                 return;
             }
 
-            /*            console.log("videoInfo: ", videoInfo);
-             console.log("coverFiles: ", coverFiles);
-             console.log("files: ", files);*/
-
-            this.setAttribute("disabled", "disabled");
             login_handle.runOnLogin(function (isLogin) {
                 if (isLogin) {
                     updateVideo((uploadNewVideo ? files[0] : null), (uploadNewCover ? coverFiles[0] : null), videoInfo);
                 } else {
                     toastr.error("登陆状态失效，请重新登录！");
-                    this.removeAttribute("disabled");
                 }
             }, true);
         });
@@ -355,90 +363,267 @@
             }
         });
 
+        // 打开封面页面
+        pointer.uploadModal.find(".open-upload-video-cover").click(function () {
+            var photo_id = $(this).prev().val();
+            if (photo_id && photo_id != "0") {
+                window.open("p/detail/" + photo_id);
+            } else {
+                toastr.info("请先输入照片id呢~");
+            }
+        });
+        pointer.updateModal.find(".open-update-video-cover").click(function () {
+            var photo_id = $(this).prev().val();
+            if (photo_id && photo_id != "0") {
+                window.open("p/detail/" + photo_id);
+            } else {
+                toastr.info("请先输入照片id呢~");
+            }
+        });
+
         // upload modal tags 输入框 绑定事件
         var upload_tags_modify_dom = pointer.uploadModal.find('.tags-modify');
         pointer.uploadModal.on('shown.bs.modal', function () {
             utils.calcTagInputWidth(upload_tags_modify_dom);
         });
-        upload_tags_modify_dom.find(".tag-input").keydown(function (e) {
-            e.defaultPrevented;
-            var theEvent = e || window.event;
-            var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
-            if (code == 13) {
-                utils.addTagFromInput(upload_tags_modify_dom, $(e.currentTarget));
-                //防止触发表单提交 返回false
-                return false;
+        upload_tags_modify_dom.on("click", ".tag-close", function (e) {
+            utils.deleteTag(upload_tags_modify_dom, $(e.currentTarget.parentNode));
+        });
+        upload_tags_modify_dom.on({
+            "keydown": function (e) {
+                var theEvent = e || window.event;
+                var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
+                if (code == 13) {
+                    utils.addTagFromInput(upload_tags_modify_dom, $(e.currentTarget));
+                    upload_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").text("编辑");
+                    // 防止触发表单提交 返回false
+                    // e.preventDefault();
+                    return false;
+                }
+            },
+            "blur": function (e) {
+                var input_dom = $(e.currentTarget);
+                // upload_tags_modify_dom.find(".tag-single").length == 0
+                if (input_dom.val() != "") {
+                    utils.addTagFromInput(upload_tags_modify_dom, input_dom);
+                    upload_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").text("编辑");
+                }
             }
-        }).blur(function (e) {
-            var input_dom = $(e.currentTarget);
-            if (upload_tags_modify_dom.find(".tag-single").length == 0 && input_dom.val() != "") {
-                utils.addTagFromInput(upload_tags_modify_dom, input_dom);
+        }, ".tag-input");
+        upload_tags_modify_dom.closest(".form-group").find("label").dblclick(function () { // 双击标签全部编辑
+            upload_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").click();
+        });
+        upload_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").on("click", function (e) {
+            var $btn = $(this);
+            if ($btn.text() == '确定') {
+                upload_tags_modify_dom.find(".tag-input").blur();
+                return;
+            }
+            var tags = "";
+            upload_tags_modify_dom.find(".tag-content").each(function (i, tag) {
+                tags += "#" + tag.innerText;
+            });
+            if (tags) {
+                upload_tags_modify_dom.find(".tag-input").val(tags);
+                upload_tags_modify_dom.find(".tag-single").remove();
+                utils.calcTagInputWidth(upload_tags_modify_dom);
+                upload_tags_modify_dom.autoTextareaHeight({
+                    maxHeight: 150,
+                    minHeight: config.tagsAreaHeight,
+                    runOnce: true
+                });
+                $btn.text("确定");
             }
         });
 
-        // div 自适应高度
-        $.fn.autoTextarea = function (options) {
-            var defaults = {
-                maxHeight: null,//文本框是否自动撑高，默认：null，不自动撑高；如果自动撑高必须输入数值，该值作为文本框自动撑高的最大高度
-                minHeight: $(this).height(), //默认最小高度，也就是文本框最初的高度，当内容高度小于这个高度的时候，文本以这个高度显示
-                runOnce: false // false 为绑定事件 true 为 计算一次高度，不绑定事件
-            };
-            var opts = $.extend({}, defaults, options);
-            var updateHeight = function () {
-                var height, style = this.style;
-                this.style.height = opts.minHeight + 'px';
-                if (this.scrollHeight >= opts.minHeight) {
-                    if (opts.maxHeight && this.scrollHeight > opts.maxHeight) {
-                        height = opts.maxHeight;
-                        style.overflowY = 'scroll';
-                    } else {
-                        height = this.scrollHeight;
-                        style.overflowY = 'hidden';
-                    }
-                    style.height = height + 'px';
-                }
-            };
-            if (opts.runOnce) {
-                $(this).each(function () {
-                    updateHeight.call(this);
+        // update modal tags 输入框 绑定事件
+        var update_tags_modify_dom = pointer.updateModal.find('.tags-modify');
+        pointer.updateModal.on('shown.bs.modal', function () { // 计算输入框宽度
+            pointer.updateModal.find('textarea[name="video_desc"]').autoTextareaHeight({
+                maxHeight: 200,
+                minHeight: config.textareaInputHeight,
+                runOnce: true
+            });
+            if (update_tags_modify_dom.find(".tag-input").length > 0) {
+                pointer.updateModal.find('textarea[name="video_code"]').autoTextareaHeight({
+                    maxHeight: 200,
+                    minHeight: config.textareaInputHeight,
+                    runOnce: true
                 });
-            } else {
-                $(this).each(function () {
-                    $(this).bind("input paste cut keydown keyup focus blur", function () {
-                        updateHeight.call(this);
-                    });
+                utils.calcTagInputWidth(update_tags_modify_dom);
+                //console.log(tags_modify_dom.outerHeight(true) + "_ " + tags_modify_dom.prop("scrollHeight"));
+                update_tags_modify_dom.autoTextareaHeight({
+                    maxHeight: 150,
+                    minHeight: config.tagsAreaHeight,
+                    runOnce: true
                 });
             }
-        };
+        });
+        update_tags_modify_dom.on("click", ".tag-close", function (e) {
+            utils.deleteTag(update_tags_modify_dom, $(e.currentTarget.parentNode));
+        });
+        update_tags_modify_dom.on({
+            "keydown": function (e) {
+                var theEvent = e || window.event;
+                var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
+                if (code == 13) {
+                    utils.addTagFromInput(update_tags_modify_dom, $(e.currentTarget));
+                    update_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").text("编辑");
+                    // 防止触发表单提交 返回false
+                    // e.preventDefault();
+                    return false;
+                }
+            },
+            "blur": function (e) {
+                var input_dom = $(e.currentTarget);
+                // update_tags_modify_dom.find(".tag-single").length == 0
+                if (input_dom.val() != "") {
+                    utils.addTagFromInput(update_tags_modify_dom, input_dom);
+                    update_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").text("编辑");
+                }
+            }
+        }, ".tag-input");
+        // 可自定义事件修改标签被点击的事件
+        config.tagExtendClickEvent = null;
+        update_tags_modify_dom.on({
+            "keydown": function (e) {
+                var theEvent = e || window.event;
+                if (theEvent.altKey) {  // 按住alt点击
+                    e.preventDefault();
+                    config.tagExtendClickEvent = e;
+                } else {
+                    config.tagExtendClickEvent = null;
+                }
+            },
+            "keyup": function (e) {
+                config.tagExtendClickEvent = null;
+            },
+            "click": function (clickEvt) {
+                var _self = $(this);
+                var video_id = pointer.updateModal.find('span[name="video_id"]').html().trim();
+                var tag = _self.text();
+                if (config.tagExtendClickEvent) {  // 是否按住alt点击
+                    clickEvt.preventDefault();
+                    utils.triggerEvent(config.event.tagExtendClick, tag, video_id, clickEvt, config.tagExtendClickEvent);
+                } else {
+                    utils.triggerEvent(config.event.tagClick, tag, video_id, clickEvt);
+                }
+            }
+        }, ".tag-content");
+        update_tags_modify_dom.closest(".form-group").find("label").dblclick(function () { // 双击标签全部编辑
+            update_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").click();
+        });
+        update_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").on("click", function (e) {
+            var $btn = $(this);
+            if ($btn.text() == '确定') {
+                update_tags_modify_dom.find(".tag-input").blur();
+                return;
+            }
+            var tags = "";
+            update_tags_modify_dom.find(".tag-content").each(function (i, tag) {
+                tags += "#" + tag.innerText;
+            });
+            if (tags) {
+                update_tags_modify_dom.find(".tag-input").val(tags);
+                update_tags_modify_dom.find(".tag-single").remove();
+                utils.calcTagInputWidth(update_tags_modify_dom);
+                update_tags_modify_dom.autoTextareaHeight({
+                    maxHeight: 150,
+                    minHeight: config.tagsAreaHeight,
+                    runOnce: true
+                });
+                $btn.text("确定");
+            }
+        });
 
         //  desc textArea 自适应高度
         config.textareaInputHeight = pointer.updateModal.find('textarea[name="video_desc"]').outerHeight();
-        pointer.updateModal.find('textarea[name="video_desc"]').autoTextarea({
+        pointer.updateModal.find('textarea[name="video_desc"]').autoTextareaHeight({
             maxHeight: 200,
             minHeight: config.textareaInputHeight
         });
-        pointer.uploadModal.find('textarea[name="video_desc"]').autoTextarea({
+        pointer.uploadModal.find('textarea[name="video_desc"]').autoTextareaHeight({
             maxHeight: 200,
             minHeight: config.textareaInputHeight
         });
-        pointer.updateModal.find('textarea[name="video_code"]').autoTextarea({
+        pointer.updateModal.find('textarea[name="video_code"]').autoTextareaHeight({
             maxHeight: 200,
             minHeight: config.textareaInputHeight
         });
-        pointer.uploadModal.find('textarea[name="video_code"]').autoTextarea({
+        pointer.uploadModal.find('textarea[name="video_code"]').autoTextareaHeight({
             maxHeight: 200,
             minHeight: config.textareaInputHeight
         });
 
         // tags 输入框自适应高度
         config.tagsAreaHeight = pointer.updateModal.find('.tags-modify').eq(0).outerHeight();
-        pointer.updateModal.find('.tags-modify').autoTextarea({
-            maxHeight: 100,
+        pointer.updateModal.find('.tags-modify').autoTextareaHeight({
+            maxHeight: 150,
             minHeight: config.tagsAreaHeight
         });
-        pointer.uploadModal.find('.tags-modify').css("overflow-y", "hidden").autoTextarea({
-            maxHeight: 100,
+        pointer.uploadModal.find('.tags-modify').css("overflow-y", "hidden").autoTextareaHeight({
+            maxHeight: 150,
             minHeight: config.tagsAreaHeight
+        });
+
+        // 字幕
+        pointer.updateModal.find('.form-btn-upload-subtitle-modal-open').on("click", function (e) {
+            var modal = pointer.uploadSubtitleModal;
+            var video_id = pointer.updateModal.find('span[name="video_id"]').html().trim();
+            modal.find('.form-group-subtitle-video-id .form-subtitle-video-id').text(video_id).attr('data-video-id', video_id)
+                .closest('a').attr('href', 'video/detail/' + video_id);
+            modal.find('.form-group-subtitle-file .form-subtitle-file').val('');
+            modal.find('.form-group-subtitle-name .form-subtitle-name').val('');
+            modal.find('.form-group-subtitle-lang .form-subtitle-lang').val('');
+            modal.modal('show');
+        });
+        pointer.uploadSubtitleModal.find('.form-btn-upload-subtitle-submit').on("click", function (e) {
+            e.preventDefault();
+            var $submitBtn = $(this);
+            var modal = pointer.uploadSubtitleModal;
+            var subtitle = {};
+            subtitle.video_id = modal.find('.form-group-subtitle-video-id .form-subtitle-video-id').attr('data-video-id');
+            subtitle.name = modal.find('.form-group-subtitle-name .form-subtitle-name').val();
+            subtitle.lang = modal.find('.form-group-subtitle-lang .form-subtitle-lang').val();
+            var file = modal.find('.form-group-subtitle-file .form-subtitle-file')[0].files;
+            if (file == null || file[0] == undefined || file[0] == null) {
+                toastr.error("请选择字幕文件~");
+                return;
+            } else {
+                file = file[0];
+            }
+            if (subtitle.name.length >= 30) {
+                toastr.error("name字数" + subtitle.name.length + "过长, 应在30字内", "错误", {"progressBar": false});
+                return;
+            }
+            if (subtitle.lang.length >= 30) {
+                toastr.error("lang字数" + subtitle.lang.length + "过长, 应在30字内", "错误", {"progressBar": false});
+                return;
+            }
+            if (!subtitle.name) {
+                toastr.error("未输入name", "错误", {"progressBar": false});
+                return;
+            }
+            if (!subtitle.lang) {
+                toastr.error("未输入lang", "错误", {"progressBar": false});
+                return;
+            }
+            $submitBtn.attr("disabled", "disabled");
+            uploadSubtitle(file, subtitle).then(function (response) {
+                $submitBtn.removeAttr("disabled");
+                if (response.status == 200) {
+                    modal.find('.form-group-subtitle-file .form-subtitle-file').val('');
+                    toastr.success("字幕上传成功", "提示");
+                    modal.modal('hide');
+                } else {
+                    toastr.error(response.message, response.status);
+                    console.warn("Error Code: " + response.status);
+                }
+            }, function (XHR, TS) {
+                $submitBtn.removeAttr("disabled");
+                toastr.error(TS, "错误", {"progressBar": false});
+                console.warn("Error Code: " + TS);
+            });
         });
     };
 
@@ -465,7 +650,7 @@
         data.append("permission", videoInfo.permission);
         data.append("refer", videoInfo.refer);
         // photo
-        if (photoInfo.photo_id && photoInfo.photo_id > 0) {
+        if (photoInfo.photo_id) {
             data.append("cover.photo_id", photoInfo.photo_id);
         } else {
             data.append("coverFile", coverFile);
@@ -477,22 +662,26 @@
             data.append("cover.iscover", 0);
             data.append("cover.refer", photoInfo.refer);
         }
+        // 上传之前回调
+        utils.triggerEvent(config.event.beforeUpload, videoInfo, videoFile, coverFile, data);
         common_utils.notify({
             "progressBar": false,
             "hideDuration": 0,
+            "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
         }).success("正在上传视频", "", "notify_uploading");
         $.ajax({
-            url: "video.do?method=upload",
+            url: "video.api?method=upload",
             data: data,
             type: "POST",
             contentType: false,
             cache: false,
             processData: false,
-            success: function (data) {
+            success: function (response) {
                 pointer.uploadModal.find('input[name="cover_photo_id"]').val("0");
-                if (data.flag == 200) {
+                if (response.status == 200) {
+                    var data = response.data;
                     common_utils.removeNotify("notify_uploading");
                     toastr.success("上传完成！");
                     config.callback.uploadCompleted.call(context, context, data.video); // 回调
@@ -504,8 +693,8 @@
                 } else {
                     videoFile == null && (videoFile = {"name": "文件为空"});
                     common_utils.removeNotify("notify_uploading");
-                    toastr.error(data.info, videoFile.name + ", 上传失败", {timeOut: 0});
-                    console.log("Error Code: " + videoFile.name + " upload fail - " + data.flag);
+                    toastr.error(response.message, videoFile.name + ", 上传失败", {timeOut: 0});
+                    console.log("Error Code: " + videoFile.name + " upload fail - " + response.status);
                     pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
                 }
             },
@@ -543,7 +732,7 @@
         data.append("permission", videoInfo.permission);
         data.append("refer", videoInfo.refer);
         // photo
-        if (photoInfo.photo_id && photoInfo.photo_id > 0) {
+        if (photoInfo.photo_id) {
             data.append("cover.photo_id", photoInfo.photo_id);
         } else {
             data.append("coverFile", coverFile);
@@ -558,19 +747,24 @@
         common_utils.notify({
             "progressBar": false,
             "hideDuration": 0,
+            "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
-        }).success("正在" + ((videoFile || coverFile) ? "上传" : "更新") + "上传视频", "", "notify_updating");
+        }).success("正在" + ((videoFile || coverFile) ? "上传" : "更新") + "视频", "", "notify_updating");
+        pointer.updateModal.find('button[name="updateVideo_trigger"]').attr("disabled", "disabled");
+        // 更新之前回调
+        utils.triggerEvent(config.event.beforeUpdate, videoInfo, videoFile, coverFile, data);
         $.ajax({
-            url: "video.do?method=update",
+            url: "video.api?method=update",
             data: data,
             type: "POST",
             contentType: false,
             cache: false,
             processData: false,
-            success: function (data) {
+            success: function (response) {
                 common_utils.removeNotify("notify_updating");
-                if (data.flag == 200) {
+                if (response.status == 200) {
+                    var data = response.data;
                     toastr.success("更新完成！");
                     config.callback.updateCompleted.call(context, context, data.video); // 回调
                     utils.triggerEvent(config.event.updateCompleted, data.video);
@@ -578,8 +772,8 @@
                     pointer.updateModal.find('input[name="video_file"]').val("");
                     pointer.updateModal.find('input[name="cover_file"]').val("");
                 } else {
-                    toastr.error(data.info, "更新失败", {timeOut: 0});
-                    console.log("Error Code: " + data.flag + " update fail - " + data.info);
+                    toastr.error(response.message, "更新失败", {timeOut: 0});
+                    console.log("Error Code: " + response.status + " update fail - " + response.message);
                 }
                 pointer.updateModal.find('button[name="updateVideo_trigger"]').removeAttr("disabled");
             },
@@ -592,7 +786,55 @@
     };
 
     var deleteVideo = function (video_id) {
+        var params = {"video_id": video_id};
+        var allow = utils.triggerEvent(config.event.beforeDelete, params);
+        if (allow === false) {
+            return;
+        }
         toastr.error("删除功能开发中~");
+    };
+
+    var uploadSubtitle = function (file, subtitle, call) {
+        if (!file || !subtitle) {
+            toastr.error("提交的file或subtitle为空~");
+            return;
+        }
+        common_utils.notify({
+            "progressBar": false,
+            "hideDuration": 0,
+            "showDuration": 0,
+            "timeOut": 0,
+            "closeButton": false
+        }).success("正在上传", "", "notify_subtitle_uploading");
+        var data = new FormData();
+        data.append("file", file);
+        for (var key in subtitle) {
+            data.append(key, subtitle[key]);
+        }
+        return $.ajax({
+            url: "video.api?method=uploadSubtitle",
+            data: data,
+            type: "POST",
+            contentType: false,
+            cache: false,
+            processData: false,
+            success: function (response) {
+                common_utils.removeNotify("notify_subtitle_uploading");
+                if (response.status == 200) {
+                    call && call.call(context, response.data.subtitle, response);
+                } else if (call) {
+                    toastr.error(response.message, response.status);
+                    console.warn("Error Code: " + response.status);
+                }
+            },
+            error: function (XHR, TS) {
+                common_utils.removeNotify("notify_subtitle_uploading");
+                if (call) {
+                    toastr.error(TS, "错误", {"progressBar": false});
+                    console.warn("Error Code: " + TS);
+                }
+            }
+        });
     };
 
     var loadVideo = function (video_id, callback) {
@@ -602,22 +844,25 @@
         } else {
             video_param = {"video_id": video_id};
         }
-        $.get("video.do?method=detailByAjax", video_param, function (data) {
-            if (data.flag != 200) {
-                toastr.error(data.info, "加载视频失败");
-                console.log("Load video found error, Error Code: " + data.flag);
+        $.get("video.api?method=getVideo", video_param, function (response) {
+            if (response.status != 200) {
+                toastr.error(response.message, "加载视频失败");
+                console.log("Load video found error, Error Code: " + response.status);
+            } else {
+                callback(response.data.video);
             }
-            callback(data);
+
         });
     };
 
     var loadAlbums = function (uid, success) {
-        $.get("photo.do?method=albumListByAjax", {"user.uid": uid}, function (data) {
-            if (data.flag == 200) {
-                success(data);
+        $.get("photo.api?method=getAlbumList", {"user.uid": uid}, function (response) {
+            if (response.status == 200) {
+                success(response.data.albums);
             } else {
-                toastr.error(data.info, "加载相册列表失败");
-                console.warn("Error Code: " + data.flag);
+                success([]);
+                toastr.error(response.message, "加载相册列表失败");
+                console.warn("Error Code: " + response.status);
             }
         });
     };
@@ -640,16 +885,14 @@
                 });
                 if (album_select_dom[0].options.length > 0) {   // 记住上一次的选择
                     selectValue = album_select_dom.val();
+                } else if (pointer.remember_cover_album_id) {
+                    selectValue = pointer.remember_cover_album_id;
                 } else {
                     selectValue = albums[0].album_id + "";
                 }
             }
             album_select_dom.html(options_str).val(selectValue);
-            pointer.uploadModal.find('input[name="video_permission"]').each(function () {
-                if ($(this).val() == pointer.video_permission) {
-                    $(this).prop("checked", true);
-                }
-            });
+            pointer.uploadModal.find('select[name="video_permission"]').val(pointer.remember_video_permission);
             pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
             pointer.uploadModal.modal('show');
         };
@@ -682,39 +925,38 @@
                 album_select_dom.html(options_str).val(selectValue);
             }
             // load to modal
-            var video_url = "redirect.do?model=album&photo_id=" + video.cover.photo_id;
-            pointer.updateModal.find('span[name="video_id"]').text(video.video_id).parent().attr("href", video_url);
-            pointer.updateModal.find('input[name="video_name"]').val(video.name);
-            pointer.updateModal.find('textarea[name="video_desc"]').val(video.description);
-            pointer.updateModal.find('input[name="video_permission"]').each(function () {
-                if ($(this).val() == video.permission) {
-                    $(this).prop("checked", true);
-                }
-            });
-            pointer.updateModal.find('select[name="video_source_type"]').val(video.source_type);
+            var video_url = "video/detail/" + video.video_id;
+            pointer.updateModal.find('.form-group span[name="video_id"]').text(video.video_id).parent().attr("href", video_url);
+            pointer.updateModal.find('.form-group span[name="user_id"]').text(video.user.nickname).parent().attr("href", "u/" + video.user.uid + "/home");
+            pointer.updateModal.find('.form-group input[name="video_name"]').val(video.name);
+            pointer.updateModal.find('.form-group textarea[name="video_desc"]').val(video.description);
+            pointer.updateModal.find('.form-group select[name="video_permission"]').val(video.permission);
+            pointer.updateModal.find('.form-group select[name="video_source_type"]').val(video.source_type);
             if (video.source_type == 1) {
-                pointer.updateModal.find('.copy-input').val("").parent().removeClass("user-upload-video").hide();
-                pointer.updateModal.find('textarea[name="video_code"]').val(video.path).parent().show();
+                pointer.updateModal.find('.copy-input').val("").closest(".form-group").removeClass("user-upload-video").hide();
+                pointer.updateModal.find('.form-group textarea[name="video_code"]').val(video.path).closest(".form-group").show();
             } else if (video.source_type == 2) {
-                pointer.updateModal.find('.copy-input').val("").parent().removeClass("user-upload-video").hide();
-                pointer.updateModal.find('textarea[name="video_code"]').val(video.code).parent().show();
+                pointer.updateModal.find('.copy-input').val("").closest(".form-group").removeClass("user-upload-video").hide();
+                pointer.updateModal.find('.form-group textarea[name="video_code"]').val(video.code).closest(".form-group").show();
             } else {
-                pointer.updateModal.find('textarea[name="video_code"]').val("").parent().hide();
+                pointer.updateModal.find('.form-group textarea[name="video_code"]').val("").closest(".form-group").hide();
                 pointer.updateModal
-                    .find('.copy-input').val(config.path_params.cloudPath + video.path)
-                    .parent().addClass("user-upload-video").show().// 如果该视频是用户上传的（不是引用的），则添加标记类: .user-upload-video
-                find('a[name="video_path"]').attr("path", config.path_params.cloudPath + video.path);
+                    .find('.copy-input').val(video.path)
+                    .closest(".form-group").addClass("user-upload-video").show() // 如果该视频是用户上传的（不是引用的），则添加标记类: .user-upload-video
+                    .find('a[name="video_path"]').attr("path", video.path);
             }
-            pointer.updateModal.find('span[name="video_size"]').html(video.size + "MB（" + video.width + "×" + video.height + "）");
-            pointer.updateModal.find('span[name="video_upload_time"]').html(video.upload_time);
-            pointer.updateModal.find('input[name="video_refer"]').val(video.refer);
-            pointer.updateModal.find('select[name="cover_album_id"]').parent().hide(0);
+            pointer.updateModal.find('.form-group span[name="video_size"]').html(video.size + "MB（" + video.width + "×" + video.height + "）");
+            pointer.updateModal.find('.form-group span[name="video_upload_time"]').html(video.upload_time);
+            pointer.updateModal.find('.form-group input[name="video_refer"]').val(video.refer);
+            pointer.updateModal.find('.form-group select[name="cover_album_id"]').closest(".form-group").hide(0);
             pointer.updateModal
-                .find('input[name="cover_file"]').css("display", "none")
-                .parent().css("display", (isAuthor ? "block" : "none")).find('input[name="cover_photo_id"]').css("display", "block").val(video.cover.photo_id)
-                .parent().find(".convert-select-cover").click();
+                .find('.form-group input[name="cover_file"]').css("display", "none")
+                .closest(".form-group").css("display", (isAuthor ? "block" : "none")).find('input[name="cover_photo_id"]').val(video.cover.photo_id).parent().css("display", "table")
+                .closest(".form-group").find(".convert-select-cover").click();
             if (isAuthor && video.source_type == 0) {
-                pointer.updateModal.find('.copy-input').prev().attr("title", "原始文件名：" + video.originName)
+                pointer.updateModal.find('.copy-input').prev().attr("title", "原始文件名：" + video.originName).attr("data-origin-name", video.originName);
+            } else {
+                pointer.updateModal.find('.copy-input').prev().attr("title", "").attr("data-origin-name", "");
             }
 
             // css
@@ -724,95 +966,55 @@
             // define btn by user type
             var fileStyle = isAuthor && (video.source_type == 0) ? "block" : "none";
             var btnStyle = isAuthor ? "inline-block" : "none";
-            pointer.updateModal.find('input[name="video_file"]').val("").parent().css("display", fileStyle);
+            pointer.updateModal.find('.form-group input[name="video_file"]').val("").closest(".form-group").css("display", fileStyle);
             pointer.updateModal.find('button[name="deleteVideo_trigger"]').css("display", btnStyle);
             pointer.updateModal.find('button[name="updateVideo_trigger"]').css("display", btnStyle);
+            pointer.updateModal.find('.form-btn-upload-subtitle-modal-open').css("display", btnStyle);
 
             // 视频标签
             video.tags = video.tags || "";
-            var tags_modify_dom = pointer.updateModal.find('.tags-modify').eq(0);
+            var tags_modify_dom = pointer.updateModal.find('.tags-modify').eq(0).css("height", "");
             if (isAuthor) {
                 // show
-                tags_modify_dom.parent().show();
+                tags_modify_dom.closest(".form-group").show().find(".tags-edit-btn").show();
                 // css
                 tags_modify_dom.addClass("form-control");
-                tags_modify_dom.css("overflow-y", "hidden").parent().css("padding-top", "").next().css("padding-top", "7px");
+                tags_modify_dom.css("overflow-y", "hidden").closest(".form-group").css("padding-top", "").next().css("padding-top", "7px");
                 // html
                 var tags_str = '';
                 $.each(video.tags.split('#'), function (i, tag) {
                     if (tag) {
-                        tags_str += '<span class="tag-single"><a class="tag-content" target="_blank" href="video.do?method=dashboard&model=video&tags=' + tag + '">' + tag + '</a>' +
-                            '<span class="tag-close">X</span></span>';
+                        tags_str += '<span class="tag-single"><a class="tag-content" target="_blank" href="video/dashboard?tags=&lt;' + tag + '&gt;">' + tag + '</a>' +
+                            '<span class="tag-close">&times</span></span>';
                     }
                 });
-                tags_str += '<input type="text" class="tag-input" name="tag_input"/>';
-                //tags_modify_dom.prop("outerHTML", "");
-                //tags_modify_dom.replaceWith(tags_str);
+                tags_str += '<input type="text" class="tag-input" name="tag_input" title="回车完成输入" placeholder="回车完成输入"/>';
+                // tags_modify_dom.prop("outerHTML", "");
+                // tags_modify_dom.replaceWith(tags_str);
                 tags_modify_dom.html(tags_str);
-                // 事件
-                tags_modify_dom.find(".tag-close").click(function (e) {
-                    utils.deleteTag(tags_modify_dom, $(e.currentTarget.parentNode));
-                });
-                tags_modify_dom.find(".tag-input").keydown(function (e) {
-                    e.defaultPrevented;
-                    var theEvent = e || window.event;
-                    var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
-                    if (code == 13) {
-                        utils.addTagFromInput(tags_modify_dom, $(e.currentTarget));
-                        //防止触发表单提交 返回false
-                        return false;
-                    }
-                }).blur(function (e) {
-                    var input_dom = $(e.currentTarget);
-                    if (tags_modify_dom.find(".tag-single").length == 0 && input_dom.val() != "") {
-                        utils.addTagFromInput(tags_modify_dom, input_dom);
-                    }
-                });
+                pointer.updateModal.find('.tags-edit-btn').text("编辑");
             } else if (!isAuthor && video.tags) {
                 // show
-                tags_modify_dom.parent().show();
+                tags_modify_dom.closest(".form-group").show().find(".tags-edit-btn").hide();
                 // css
                 tags_modify_dom.removeClass("form-control");
-                tags_modify_dom.css("overflow-y", "").parent().css("padding-top", "7px").next().css("padding-top", "");
+                tags_modify_dom.css("overflow-y", "").closest(".form-group").css("padding-top", "7px").next().css("padding-top", "");
                 // html
                 var tags_str = '';
                 $.each(video.tags.split('#'), function (i, tag) {
                     if (tag) {
-                        tags_str += '<span class="tag-single" style="margin-right: 6px;"><a class="tag-content"  target="_blank" href="video.do?method=dashboard&model=video&tags=' + tag + '">' + tag + '</a></span>';
+                        tags_str += '<span class="tag-single" style="margin-right: 6px;"><a class="tag-content"  target="_blank" href="video/dashboard?tags=&lt;' + tag + '&gt;">' + tag + '</a></span>';
                     }
                 });
                 tags_modify_dom.html(tags_str);
             } else {
                 // hide
-                tags_modify_dom.parent().hide();
+                tags_modify_dom.closest(".form-group").hide();
                 // html
                 tags_modify_dom.find(".tag-single").remove();
                 // css
-                tags_modify_dom.css("overflow-y", "").parent().next().css("padding-top", "7px");
+                tags_modify_dom.css("overflow-y", "").closest(".form-group").next().css("padding-top", "7px");
             }
-            // 计算输入框宽度
-            pointer.updateModal.unbind("shown.bs.modal");
-            pointer.updateModal.on('shown.bs.modal', function () {
-                pointer.updateModal.find('textarea[name="video_desc"]').autoTextarea({
-                    maxHeight: 200,
-                    minHeight: config.textareaInputHeight,
-                    runOnce: true
-                });
-                if (isAuthor) {
-                    pointer.updateModal.find('textarea[name="video_code"]').autoTextarea({
-                        maxHeight: 200,
-                        minHeight: config.textareaInputHeight,
-                        runOnce: true
-                    });
-                    utils.calcTagInputWidth(tags_modify_dom);
-                    //console.log(tags_modify_dom.outerHeight(true) + "_ " + tags_modify_dom.prop("scrollHeight"));
-                    tags_modify_dom.autoTextarea({
-                        maxHeight: 100,
-                        minHeight: config.tagsAreaHeight,
-                        runOnce: true
-                    });
-                }
-            });
             pointer.updateModal.modal('show');
         };
         config.callback.beforeUpdateModalOpen.call(context, context, pointer.updateModal, formatVideoToModal_callback, video); // 回调
@@ -824,16 +1026,14 @@
         var clipboard = new Clipboard(bindElementSelector, {
             container: $(containerId).get(0) //html所在模态框ID
         });
-
-        /*if(!clipboard.isSupported()) {
-         console.error('该浏览器不支持Clipboard复制');
-         }*/
+        // if (!clipboard.isSupported()) {
+        //     console.error('该浏览器不支持Clipboard复制');
+        // }
         clipboard.on('success', function (e) {
             toastr.success("视频地址复制成功！", "提示", {"progressBar": false});
             console.info('已复制Text:', e.text);
             e.clearSelection();
         });
-
         clipboard.on('error', function (e) {
             console.error('复制错误', "提示", {"progressBar": false});
             console.error('Action:', e.action);
@@ -841,8 +1041,22 @@
         });
     };
     var utils = {
-        "bindEvent": function (eventName, func) {
-            $(context).bind(eventName, func);
+        "once": function (eventName, func, bindFirst) {
+            var funcWrapper = function () {
+                try {
+                    func.apply(context, arguments);
+                } finally {
+                    utils.unbindEvent(eventName, funcWrapper);
+                }
+            };
+            utils.bindEvent(eventName, funcWrapper, bindFirst);
+        },
+        "bindEvent": function (eventName, func, bindFirst) {
+            if (bindFirst == true) {
+                $(context).onfirst(eventName, func);
+            } else {
+                $(context).bind(eventName, func);
+            }
         },
         "triggerEvent": function (eventName) {
             return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
@@ -860,13 +1074,18 @@
             });
             var total_width = tags_modify_dom.width();
             var left_width = 0;
+            var tag_other_width = null;
             tag_single_nodes.each(function (i, tag_single) {
+                if (tag_other_width == null) {
+                    var computedStyle = window.getComputedStyle(tag_single);
+                    tag_other_width = parseInt(computedStyle.borderLeftWidth) + parseInt(computedStyle.borderLeftWidth) + parseInt(computedStyle.marginLeft) + parseInt(computedStyle.marginRight);
+                }
                 if (tag_single.offsetTop == maxOffset) {
-                    left_width += $(tag_single).width();
+                    left_width += tag_single.clientWidth + tag_other_width; // 需要加上padding宽度和borderWidth和marginWidth
                 }
             });
-            var width = total_width - left_width - 70;
-            tags_modify_dom.find(".tag-input").width(width > 20 ? width : total_width);
+            var width = total_width - left_width - 1;
+            tags_modify_dom.find(".tag-input").width(width > 50 ? width : total_width);
         },
         "addTagFromInput": function (tags_modify_dom, input_dom) {
             var tag = input_dom.val();
@@ -874,25 +1093,32 @@
                 // 如果要使用分割字符, 用 ""、{}、${} 包裹
                 var elMap = {};
                 tag = common_utils.replaceByEL(tag, function (index, key) {
-                    var replaceFlag = "replaceEL_" + index;
-                    elMap[replaceFlag] = key;
-                    return replaceFlag;
+                    var replaceMark = "replaceEL_" + index;
+                    elMap[replaceMark] = key;
+                    return replaceMark;
                 });
                 var insert_text = "";
-                $.each(tag.split(/[#,，;；X]/), function (i, value) {
+                $.each(tag.split(/[#×✖,，;；]/), function (i, value) {
                     if (value) {
                         // 标记处还原原始值
                         var match = value.match(/replaceEL_[\d]{1}/);
                         match && (value = value.replace(match[0], elMap[match[0]]));
-                        insert_text += '<span class="tag-single"><a class="tag-content"  target="_blank" href="video.do?method=dashboard&model=video&tags=' + value + '">' + value + '</a><span class="tag-close"">X</span></span>';
+                        if (value.indexOf("#") == -1) {
+                            insert_text += '<span class="tag-single"><a class="tag-content"  target="_blank" href="video/dashboard?tags=&lt;' + value + '&gt;">' + value + '</a><span class="tag-close"">&times</span></span>';
+                        }
                     }
                 });
                 if (insert_text) {
                     input_dom.before(insert_text);
                     utils.calcTagInputWidth(tags_modify_dom);
-                    input_dom.prevAll().find(".tag-close").unbind("click").click(function (e) {
-                        utils.deleteTag(tags_modify_dom, $(e.currentTarget.parentNode));
+                    tags_modify_dom.autoTextareaHeight({
+                        maxHeight: 150,
+                        minHeight: config.tagsAreaHeight,
+                        runOnce: true
                     });
+                    // input_dom.prevAll().find(".tag-close").unbind("click").click(function (e) {
+                    //     utils.deleteTag(tags_modify_dom, $(e.currentTarget.parentNode));
+                    // });
                 }
                 input_dom.val("");
             } else {
@@ -902,8 +1128,8 @@
         "deleteTag": function (tags_modify_dom, tag_single) {
             tag_single.remove();
             utils.calcTagInputWidth(tags_modify_dom);
-            tags_modify_dom.autoTextarea({
-                maxHeight: 100,
+            tags_modify_dom.autoTextareaHeight({
+                maxHeight: 150,
                 minHeight: config.tagsAreaHeight,
                 runOnce: true
             });

@@ -1,4 +1,8 @@
 /**
+ * WebSocket工具类
+ * 实现
+ *      1、WebSocket心跳重连
+ *      2、只需根据mapping名注册事件就可接收后台对应的推送消息
  * @author Jeffrey.Deng
  * @date 2018-01-25
  */
@@ -18,11 +22,12 @@
      *
      * @param {Object} opts
      * {
-     *  url websocket链接地址
-     *  pingTimeout 未收到消息多少秒之后发送ping请求，默认15000毫秒
-     *  pongTimeout  发送ping之后，未收到消息超时时间，默认10000毫秒
-     *  reconnectInterval
-     *  pingMsg
+     *  {String} url - websocket链接地址
+     *  {Number} pingTimeout - 未收到消息多少秒之后发送ping请求，默认15000毫秒
+     *  {Number} pongTimeout - 发送ping之后，未收到消息超时时间，默认10000毫秒
+     *  {Number} reconnectInterval - 重连间隔
+     *  {Number} inactiveInterval - 检查页面活跃状态间隔
+     *  {String|Function} pingMsg - ping消息字符串，可用方法 function(isAvailable,isPageActive) 生成，
      * }
      */
     function WebsocketHeartbeatJs(options) {
@@ -32,11 +37,13 @@
             pingTimeout: options.pingTimeout || 15000,
             pongTimeout: options.pongTimeout || 10000,
             reconnectInterval: options.reconnectInterval || 2000,
-            pingMsg: options.pingMsg || 'ping'
+            inactiveInterval: options.inactiveInterval || 300000,
+            pingMsg: options.pingMsg || 'ping',
         };
         this.ws = null;//websocket实例
-
-        //override hook function
+        this.isAvailable = false;  // 链接是否可用
+        this.isPageActive = !document.hidden;   // 页面是否活跃
+        // override hook function
         this.onclose = function (event) {
         };
         this.onerror = function (e) {
@@ -47,9 +54,7 @@
         };
         this.onreconnect = function (textStatus) {
         };
-
         this.createWebSocket();
-
         WebsocketHeartbeatJs.instance = this;
     }
 
@@ -57,7 +62,7 @@
     WebsocketHeartbeatJs.prototype.createWebSocket = function () {
         var _self = this;
         try {
-            _self.isAvailable = false;
+            _self.isAvailable = false;  // 链接是否可用
             // 判断当前浏览器是否支持WebSocket
             if ('WebSocket' in window) {
                 _self.ws = new WebSocket(_self.opts.url);
@@ -120,24 +125,53 @@
             visibilityChange = "msvisibilitychange";
             state = "msVisibilityState";
         }
+        _self.visibilityHiddenKey = hidden;
         _self.visibilityStateKey = state;
         _self.visibilityChangeKey = visibilityChange;
         // 添加标签激活状态改变监听器
         document.removeEventListener(visibilityChange, wakeUp);
         document.addEventListener(visibilityChange, wakeUp, false);
+
+        // 监控页面是否活跃事件
+        _self.resetInActiveTimer = function (interval) {
+            _self.inactive_timer && window.clearInterval(_self.inactive_timer);
+            _self.inactive_timer = window.setInterval(function () {  // 定时器隐藏控制条
+                _self.isPageActive = false;
+            }, interval || _self.opts.inactiveInterval);
+            return _self.inactive_timer;
+        };
+        _self.resetInActiveTimer();
+        $(document).on("mouseover", function (e) {
+            if (!_self.inactive_timer) {
+                _self.resetInActiveTimer();
+            }
+            _self.isPageActive = true;
+        }).on("click", function (e) {
+            if (!_self.inactive_timer) {
+                _self.resetInActiveTimer();
+            }
+            _self.isPageActive = true;
+        }).on("scroll", function (e) {
+            if (!_self.inactive_timer) {
+                _self.resetInActiveTimer();
+            }
+            _self.isPageActive = true;
+        });
     };
     // 重新连接
-    WebsocketHeartbeatJs.prototype.reconnect = function (textStatus) {
+    WebsocketHeartbeatJs.prototype.reconnect = function (textStatus, force) {
         var _self = this;
-        if (_self.lockReconnect || _self.forbidReconnect) return;
+        if (!force && (_self.lockReconnect || _self.forbidReconnect)) return;
         _self.lockReconnect = true;
         _self.close();
+        _self.forbidReconnect = false;
         _self.onreconnect(textStatus);
         // 一般在断网后，浏览器会触发onclose或onerror方法，从而触发reconnect，没连接上会循环重连，
         // 为避免请求过多，设置延迟
-        setTimeout(function () {
+        _self.reconnectTimeoutId && clearTimeout(_self.reconnectTimeoutId);
+        _self.reconnectTimeoutId = setTimeout(function () {
+            _self.reconnectTimeoutId = null;
             _self.lockReconnect = false;
-            _self.forbidReconnect = false;
             _self.createWebSocket();
         }, _self.opts.reconnectInterval);
     };
@@ -145,7 +179,7 @@
     WebsocketHeartbeatJs.prototype.send = function (msg) {
         this.ws.send(msg);
     };
-    //心跳检测
+    // 心跳检测
     WebsocketHeartbeatJs.prototype.heartCheck = function () {
         try {
             this.heartReset();
@@ -160,7 +194,11 @@
         _self.pingTimeoutId = setTimeout(function () {
             // 这里发送一个心跳，后端收到后，返回一个心跳消息，
             // onmessage拿到返回的心跳就说明连接正常，断网则发送不成功，浏览器会触发ws.onclose,从而触发reconnect
-            _self.ws.send(_self.opts.pingMsg);
+            if (typeof _self.opts.pingMsg == "function") {
+                _self.ws.send(_self.opts.pingMsg.call(_self, _self.isAvailable, _self.isPageActive));
+            } else {
+                _self.ws.send(_self.opts.pingMsg);
+            }
             // 如果超过一定时间还没重置，说明后端主动断开了
             _self.pongTimeoutId = setTimeout(function () {
                 // 如果onclose会执行reconnect，我们执行ws.close()就行了.如果直接执行reconnect 会触发onclose导致重连两次
@@ -177,9 +215,21 @@
     var wakeUp = function () {
         var _self = WebsocketHeartbeatJs.instance;
         // 当连接不可用，且标签被激活时
-        if (_self != null && !_self.isAvailable && document[_self.visibilityStateKey] == "visible") {
+        if (_self != null && !_self.isAvailable && document[_self.visibilityStateKey] == "visible" && !_self.forbidReconnect) {
             // 重新连接
-            _self.reconnect("wakeUp");
+            _self.reconnect("wakeUp", true);
+        }
+        if (document[_self.visibilityHiddenKey]) {
+            _self.isPageActive = false;
+            if (_self.inactive_timer) {
+                clearInterval(_self.inactive_timer);
+                _self.inactive_timer = null;
+            }
+        } else {
+            _self.isPageActive = true;
+            if (!_self.inactive_timer) {
+                _self.resetInActiveTimer();
+            }
         }
     };
     // 关闭连接
@@ -188,7 +238,6 @@
         this.forbidReconnect = true;
         this.heartReset();
         this.ws.close();
-        document.removeEventListener(this.visibilityChangeKey, wakeUp);
     };
 
     /* -------------------------------------------------------------------------- */
@@ -198,12 +247,21 @@
     };
 
     var config = {
-        wsUrl: "ws://localhost:8080/blog/socketServer.do",
+        wsUrl: "ws://localhost:8080/blog/subscribe",
         heartbeat: {
             pingTimeout: 15000,
             pongTimeout: 10000,
             reconnectInterval: 7000,
-            pingMsg: JSON.stringify({"mapping": "ping"})
+            inactiveInterval: 300000,
+            pingPageActiveMsg: JSON.stringify({"mapping": "ping", "text": "active"}),
+            pingPageInActiveMsg: JSON.stringify({"mapping": "ping", "text": "inactive"}),
+            pingMsg: function (isAvailable, isPageActive) {
+                if (isPageActive) {
+                    return config.heartbeat.pingPageActiveMsg;
+                } else {
+                    return config.heartbeat.pingPageInActiveMsg;
+                }
+            }
         },
         event: {
             connectionOpen: "connection.open",
@@ -215,12 +273,18 @@
     };
 
     var init = function (options) {
-        $.extend(true, config, options);
-        var basePath = document.location.origin + document.location.pathname.replace(/[^\/]*?\.do$/, "");
+        common_utils.extendNonNull(true, config, options);
+        var basePath = $("head").find("base").attr("href");
+        if (!basePath) {
+            basePath = document.location.origin + document.location.pathname.replace(/[^\/]*?$/, "");
+        }
+        if (!basePath.match(/\/$/)) {
+            basePath = basePath + "/";
+        }
         if (basePath.indexOf("https") == 0) {
-            config.wsUrl = basePath.replace(/^https/, "wss") + "socketServer.do";
+            config.wsUrl = basePath.replace(/^https/, "wss") + "subscribe";
         } else {
-            config.wsUrl = basePath.replace(/^http/, "ws") + "socketServer.do";
+            config.wsUrl = basePath.replace(/^http/, "ws") + "subscribe";
         }
         createWebSocket();   //连接ws
     };
@@ -232,6 +296,7 @@
                 pingTimeout: config.heartbeat.pingTimeout,
                 pongTimeout: config.heartbeat.pongTimeout,
                 reconnectInterval: config.heartbeat.reconnectInterval,
+                inactiveInterval: config.heartbeat.inactiveInterval,
                 pingMsg: config.heartbeat.pingMsg
             });
             initEventHandle();
@@ -314,13 +379,19 @@
     // 绑定事件
     // 收到消息事件可以绑定 （websocket_util.config.event.messageReceive + "." + mapping） 为事件名
     // 或者直接使用 onPush(mapping, call)
-    var on = function (eventName, func) {
-        utils.bindEvent(eventName, func);
+    // bindFirst: 该事件是否插入到队列的第一个位置
+    var on = function (eventName, func, bindFirst) {
+        utils.bindEvent(eventName, func, bindFirst);
         return this;
     };
 
-    var bind = function (eventName, func) {
-        utils.bindEvent(eventName, func);
+    var off = function (eventName, func) {
+        utils.unbindEvent(eventName, func);
+        return this;
+    };
+
+    var bind = function (eventName, func, bindFirst) {
+        utils.bindEvent(eventName, func, bindFirst);
         return this;
     };
 
@@ -330,11 +401,11 @@
     };
 
     // onXXX方法命名时on后面接的字符不能为事件名前缀，不然会让jquery在触发事件时调用
-    var onPush = function (mapping, func) {
+    var onPush = function (mapping, func, bindFirst) {
         if (typeof mapping == "function") {
-            on(config.event.messageReceive, mapping);
+            on(config.event.messageReceive, mapping, func);
         } else {
-            on(config.event.messageReceive + "." + mapping, func);
+            on(config.event.messageReceive + "." + mapping, func, bindFirst);
         }
         return this;
     };
@@ -357,8 +428,22 @@
     };
 
     var utils = {
-        "bindEvent": function (eventName, func) {
-            $(context).bind(eventName, func);
+        "once": function (eventName, func, bindFirst) {
+            var funcWrapper = function () {
+                try {
+                    func.apply(context, arguments);
+                } finally {
+                    utils.unbindEvent(eventName, funcWrapper);
+                }
+            };
+            utils.bindEvent(eventName, funcWrapper, bindFirst);
+        },
+        "bindEvent": function (eventName, func, bindFirst) {
+            if (bindFirst == true) {
+                $(context).onfirst(eventName, func);
+            } else {
+                $(context).bind(eventName, func);
+            }
         },
         "triggerEvent": function (eventName) {
             return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
@@ -368,6 +453,14 @@
         },
         "isWsAvailable": function () {
             return pointer.webSocket && pointer.webSocket.isAvailable;
+        },
+        "isPageActive": function () {
+            return pointer.webSocket && pointer.webSocket.isPageActive;
+        },
+        "setPageActive": function (isPageActive) {
+            if (pointer.webSocket) {
+                pointer.webSocket.isPageActive = (!!isPageActive);
+            }
         }
     };
 
@@ -377,6 +470,7 @@
         "init": init,
         "utils": utils,
         "on": on,
+        "off": off,
         "bind": bind,
         "unbind": unbind,
         "onPush": onPush,

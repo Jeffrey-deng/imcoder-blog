@@ -1,21 +1,22 @@
 package site.imcoder.blog.service.impl;
 
-import org.apache.commons.collections.map.HashedMap;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.common.PageUtil;
+import site.imcoder.blog.common.Utils;
+import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.common.type.UserGroupType;
 import site.imcoder.blog.dao.IArticleDao;
+import site.imcoder.blog.dao.IUserDao;
+import site.imcoder.blog.entity.AccessRecord;
 import site.imcoder.blog.entity.Article;
-import site.imcoder.blog.entity.Category;
-import site.imcoder.blog.entity.Friend;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.event.IEventTrigger;
-import site.imcoder.blog.service.IArticleService;
-import site.imcoder.blog.service.IFileService;
-import site.imcoder.blog.service.INotifyService;
+import site.imcoder.blog.service.*;
+import site.imcoder.blog.service.message.IRequest;
+import site.imcoder.blog.service.message.IResponse;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
 
@@ -29,7 +30,7 @@ import java.util.Map.Entry;
  * @author dengchao
  */
 @Service("articleService")
-public class ArticleServiceImpl implements IArticleService {
+public class ArticleServiceImpl extends BaseService implements IArticleService {
 
     private static Logger logger = Logger.getLogger(ArticleServiceImpl.class);
 
@@ -38,10 +39,16 @@ public class ArticleServiceImpl implements IArticleService {
     private IArticleDao articleDao;
 
     @Resource
+    private IUserDao userDao;
+
+    @Resource
     private INotifyService notifyService;
 
     @Resource(name = "fileService")
     private IFileService fileService;
+
+    @Resource
+    private IAuthService authService;
 
     @Resource
     private Cache cache;
@@ -55,22 +62,31 @@ public class ArticleServiceImpl implements IArticleService {
     /**
      * 得到文章上传的配置信息
      *
-     * @param loginUser
-     * @return
+     * @param iRequest
+     * @return IResponse:
+     * <pre>
+     * allowCreateLowestLevel
+     * isAllowCreate
+     * uploadArgs
+     *   mode
+     *   maxPhotoUploadSize
+     *   maxVideoUploadSize
+     * </pre>
      */
     @Override
-    public Map<String, Object> getCreateConfigInfo(User loginUser) {
-        Map<String, Object> createConfig = new HashedMap();
-        createConfig.put("allowCreateLowestLevel", Config.getInt(ConfigConstants.ARTICLE_ALLOW_CREATE_LOWEST_LEVEL));
-        createConfig.put("isAllowCreate", isAllowCreate(loginUser));
+    public IResponse getCreateConfigInfo(IRequest iRequest) {
+        User loginUser = iRequest.getLoginUser();
+        IResponse createConfig = new IResponse();
+        createConfig.putAttr("allowCreateLowestLevel", Config.getInt(ConfigConstants.ARTICLE_ALLOW_CREATE_LOWEST_LEVEL));
+        createConfig.putAttr("isAllowCreate", isAllowCreate(loginUser));
         // uploadArgs
-        Map<String, Object> uploadArgs = new HashedMap();
+        Map<String, Object> uploadArgs = new HashMap();
         uploadArgs.put("mode", site.imcoder.blog.service.IFileService.Mode.LOCAL.value);
-        uploadArgs.put("maxPhotoUploadSize", Config.getInt(ConfigConstants.CLOUD_PHOTO_MAX_UPLOADSIZE));
-        uploadArgs.put("maxVideoUploadSize", Config.getInt(ConfigConstants.CLOUD_VIDEO_MAX_UPLOADSIZE));
-        createConfig.put("uploadArgs", uploadArgs);
+        uploadArgs.put("maxPhotoUploadSize", Integer.parseInt(Config.getChild(ConfigConstants.CLOUD_PHOTO_MAX_UPLOADSIZE, "@user_", loginUser.getUid() + "", ":")));
+        uploadArgs.put("maxVideoUploadSize", Integer.parseInt(Config.getChild(ConfigConstants.CLOUD_VIDEO_MAX_UPLOADSIZE, "@user_", loginUser.getUid() + "", ":")));
+        createConfig.putAttr("uploadArgs", uploadArgs);
         //
-        createConfig.put("flag", 200);
+        createConfig.setStatus(STATUS_SUCCESS);
         return createConfig;
     }
 
@@ -98,112 +114,187 @@ public class ArticleServiceImpl implements IArticleService {
      * description:保存文章
      *
      * @param article
-     * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，500: 失败
+     * @param iRequest
+     * @return IResponse:
+     * article: 文章
+     * status - 200：成功，400: 参数错误，401：需要登录，500: 失败
      */
-    public int save(Article article, User loginUser) {
-        if (loginUser == null) {
-            return 401;
+    @Override
+    public IResponse saveArticle(Article article, IRequest iRequest) {
+        User loginUser = iRequest.getLoginUser();
+        IResponse response = new IResponse();
+        int flag = STATUS_SUCCESS;
+        if (iRequest.isHasNotLoggedIn()) {
+            flag = STATUS_NOT_LOGIN;
+        } else if (!isAllowCreate(loginUser)) {
+            flag = STATUS_FORBIDDEN;
+        } else if (article == null || article.getCategory() == null) {
+            flag = STATUS_PARAM_ERROR;
+        } else {
+            article.setAuthor(iRequest.getLoginUser());
+            article.setAid(IdUtil.generatePrimaryKey()); // 主键
+            Date date = new Date();
+            article.setCreate_time(date);
+            article.setUpdate_time(date);
+            flag = convertRowToHttpCode(articleDao.save(article));
         }
-        if (!isAllowCreate(loginUser)) {
-            return 403;
+        response.setStatus(flag);
+        if (response.isSuccess()) {
+            Article newArticle = articleDao.find(article.getAid());
+            trigger.newArticle(newArticle, newArticle.getAuthor());
+            response.putAttr("article", newArticle).putAttr("aid", newArticle.getAid());
         }
-        if (article == null || article.getAuthor() == null || article.getCategory() == null) {
-            return 400;
-        }
-        Date date = new Date();
-        article.setCreate_time(date);
-        article.setUpdate_time(date);
-        int row = articleDao.save(article);
-        trigger.newArticle(article, article.getAuthor());
-        return row == 1 ? 200 : 500;
+        return response;
     }
 
     /**
      * 更新文章
      *
      * @param article
-     * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此文章，500: 失败
+     * @param iRequest
+     * @return IResponse:
+     * article：文章
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此文章，500: 失败
      */
     @Override
-    public int update(Article article, User loginUser) {
-        if (loginUser == null) {
-            return 401;
-        }
-        if (article == null || article.getCategory() == null) {
-            return 400;
-        }
-        Article cacheArticle = cache.getArticle(article.getAid(), Cache.READ);
-        if (cacheArticle == null) {
-            return 404;
-        }
-        User author = cacheArticle.getAuthor();
-        article.setAuthor(author);
-        if (author.getUid() == loginUser.getUid() || loginUser.getUserGroup().isManager()) {
-            Date date = new Date();
-            article.setUpdate_time(date);
-            int row = articleDao.update(article);
-            if (row > 0) {
-                //更新缓存中文章
-                Article newArticle = articleDao.find(article.getAid());
-                trigger.updateArticle(newArticle, newArticle.getAuthor());
-            }
-            return convertRowToHttpCode(row);
+    public IResponse updateArticle(Article article, IRequest iRequest) {
+        User loginUser = iRequest.getLoginUser();
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            response.setStatus(STATUS_NOT_LOGIN);
+        } else if (article == null || article.getCategory() == null) {
+            response.setStatus(STATUS_PARAM_ERROR, "缺少参数");
         } else {
-            return 403;
+            Article cacheArticle = cache.getArticle(article.getAid(), Cache.READ);
+            if (cacheArticle == null) {
+                response.setStatus(STATUS_NOT_FOUND, "无此文章");
+            } else {
+                User author = cacheArticle.getAuthor();
+                article.setAuthor(author);
+                if (author.getUid().equals(loginUser.getUid()) || loginUser.getUserGroup().isManager()) {
+                    Date date = new Date();
+                    article.setUpdate_time(date);
+                    int row = articleDao.update(article);
+                    response.setStatus(convertRowToHttpCode(row));
+                    if (response.isSuccess()) {
+                        // 更新缓存中文章
+                        Article newArticle = articleDao.find(article.getAid());
+                        trigger.updateArticle(newArticle, newArticle.getAuthor());
+                        response.putAttr("article", newArticle);
+                    }
+                } else {
+                    response.setStatus(STATUS_FORBIDDEN);
+                }
+            }
         }
+        return response;
     }
 
     /**
      * 打开文章
      *
-     * @param aid
-     * @param loginUser (to check AUTH)
-     * @return map (article:文章，flag：{200, 401, 403：无权限，404：无此文章})
+     * @param article
+     * @param isNeedAdjacentArticle 是否一起返回文章的相邻文章信息
+     * @param iRequest              (to check AUTH)
+     * @return IResponse:
+     * article:文章
      */
-    public Map<String, Object> detail(int aid, User loginUser) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        Article article = articleDao.find(aid);
-        int flag = checkUserHasPermission(article, loginUser);
-        map.put("flag", flag);
-        if (flag == 200) {
-            //填充缓存中的统计信息
-            cache.fillArticleStats(article);
-            cache.fillUserStats(article.getAuthor());
-            map.put("article", article);
-            Map<String, Article> adjacentArticle = cache.getAdjacentArticle(article.getAid(), Cache.READ);
-            map.put("preArticle", adjacentArticle.get("preArticle"));
-            map.put("nextArticle", adjacentArticle.get("nextArticle"));
+    @Override
+    public IResponse findArticle(Article article, boolean isNeedAdjacentArticle, IRequest iRequest) {
+        boolean loadAccessRecord = iRequest.getAttr("loadAccessRecord", true);
+        IResponse response = new IResponse();
+        Article db_article = null;
+        if (article == null || !IdUtil.containValue(article.getAid())) {
+            response.setStatus(STATUS_PARAM_ERROR);
         } else {
-            map.put("article", null);
+            db_article = articleDao.find(article.getAid());
+            if (db_article == null) {
+                response.setStatus(STATUS_NOT_FOUND, "该文章不存在：" + article.getAid());
+            } else {
+                response.setStatus(authService.validateUserPermissionUtil(db_article.getAuthor(), db_article.getPermission(), iRequest));
+            }
         }
-        return map;
+        if (response.isSuccess()) {
+            // 填充缓存中的统计信息
+            cache.fillArticleStats(db_article);
+            cache.fillUserStats(db_article.getAuthor());
+            response.putAttr("article", db_article);
+            if (isNeedAdjacentArticle) {
+                Map<String, Article> adjacentArticle = cache.getAdjacentArticle(db_article.getAid(), Cache.READ);
+                response.putAttr("preArticle", adjacentArticle.get("preArticle"));
+                response.putAttr("nextArticle", adjacentArticle.get("nextArticle"));
+            }
+            if (loadAccessRecord) {
+                AccessRecord queryAccessRecord = new AccessRecord();
+                queryAccessRecord.setBean(new Article(db_article.getAid()));
+                queryAccessRecord.setUser(iRequest.getLoginUser());
+                queryAccessRecord.setLast_access_ip(iRequest.getAccessIp());
+                AccessRecord<Article> articleAccessRecord = userDao.findArticleAccessRecord(queryAccessRecord);
+                if (articleAccessRecord != null) {
+                    Article accessArticle = articleAccessRecord.getBean();
+                    db_article.setAccessed(accessArticle.getAccessed());
+                    db_article.setCollected(accessArticle.getCollected());
+                    db_article.setCommented(accessArticle.getCommented());
+                } else {
+                    db_article.setAccessed(false);
+                    db_article.setCollected(false);
+                    db_article.setCommented(false);
+                }
+            }
+        } else {
+            response.putAttr("article", null);
+            if (isNeedAdjacentArticle) {
+                response.putAttr("preArticle", null).putAttr("nextArticle", null);
+            }
+        }
+        return response;
+    }
+
+    /**
+     * 打开文章
+     *
+     * @param article
+     * @param iRequest (to check AUTH) attr:
+     *                 <p>{Boolean} isNeedAdjacentArticle - 是否一起返回文章的相邻文章信息</p>
+     * @return IResponse:
+     * article:文章
+     */
+    @Override
+    public IResponse findArticle(Article article, IRequest iRequest) {
+        boolean isNeedAdjacentArticle = iRequest.getAttr("isNeedAdjacentArticle", false);
+        return findArticle(article, isNeedAdjacentArticle, iRequest);
     }
 
     /**
      * 查找文章列表，分页
      *
-     * @param pageSize  每页篇数
-     * @param jumpPage  跳转页
      * @param condition article查找条件
-     * @param loginUser 发送请求的用户 用来判断权限
-     * @return 文章列表, 分页bean
+     * @param pageSize  每页篇数
+     * @param pageNum   跳转页
+     * @param iRequest  发送请求的用户 用来判断权限
+     * @return IResponse:
+     * status - 200: 成功, 404:该条件未找到用户
+     * articles 文章列表,
+     * page 分页bean
      */
-    public Map<String, Object> list(int pageSize, int jumpPage, Article condition, User loginUser) {
-        Map<String, Object> map = new HashMap<String, Object>();
+    @Override
+    public IResponse findArticleList(Article condition, int pageSize, int pageNum, IRequest iRequest) {
+        User loginUser = iRequest.getLoginUser();
+        IResponse response = new IResponse();
         int rows = articleDao.findCount(condition, loginUser);
         if (rows > 0) {
-            PageUtil page = new PageUtil(rows, pageSize, jumpPage);
+            PageUtil page = new PageUtil(rows, pageSize, pageNum);
             //想查出符合条件的LIST
             List<Article> articleList = articleDao.findList(page, condition, loginUser);
             //填充统计数据
             cache.fillArticleStats(articleList);
-            map.put("articleList", articleList);
-            map.put("page", page);
-            return map;
+            response.putAttr("articles", articleList);
+            response.putAttr("page", page);
+            response.setStatus(STATUS_SUCCESS);
+            return response;
         } else {
-            return null;
+            response.setStatus(STATUS_NOT_FOUND, "该条件未找到文章~");
+            return response;
         }
     }
 
@@ -211,112 +302,147 @@ public class ArticleServiceImpl implements IArticleService {
      * 查找文章列表, 不分页
      *
      * @param condition
-     * @param loginUser
-     * @return
+     * @param iRequest
+     * @return IResponse:
+     * articles 文章列表
      */
-    public List<Article> list(Article condition, User loginUser) {
+    @Override
+    public IResponse findArticleList(Article condition, IRequest iRequest) {
+        User loginUser = iRequest.getLoginUser();
+        IResponse response = new IResponse();
         int rows = articleDao.findCount(condition, loginUser);
         if (rows > 0) {
             PageUtil page = new PageUtil(rows, rows, 1);
-            //想查出符合条件的LIST
+            // 想查出符合条件的LIST
             List<Article> articleList = articleDao.findList(page, condition, loginUser);
-            //填充统计数据
+            // 填充统计数据
             cache.fillArticleStats(articleList);
-            return articleList;
+            response.putAttr("articles", articleList);
+            response.setStatus(STATUS_SUCCESS);
         } else {
-            return new ArrayList<>();
+            response.putAttr("articles", new ArrayList<>());
+            response.setStatus(STATUS_SUCCESS, "该条件未找到文章~");
         }
+        return response;
     }
 
     /**
      * 删除文章
      *
      * @param article
-     * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此文章，500: 失败
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此文章，500: 失败
      */
-    public int delete(Article article, User loginUser) {
-        if (loginUser == null) {
-            return 401;
-        }
-        if (article != null && article.getAid() > 0) {
-            Article memArticle = cache.getArticle(article.getAid(), Cache.READ);
-            if (memArticle.getAuthor().getUid() == loginUser.getUid()) {
+    @Override
+    public IResponse deleteArticle(Article article, IRequest iRequest) {
+        User loginUser = iRequest.getLoginUser();
+        IResponse response = new IResponse();
+        int flag = STATUS_SUCCESS;
+        if (iRequest.isHasNotLoggedIn()) {
+            flag = STATUS_NOT_LOGIN;
+        } else if (article != null && IdUtil.containValue(article.getAid())) {
+            Article cacheArticle = cache.getArticle(article.getAid(), Cache.READ);
+            if (cacheArticle == null) {
+                response.setStatus(STATUS_NOT_FOUND, "删除的文章不存在~");
+            } else if (cacheArticle.getAuthor().getUid().equals(loginUser.getUid())) {
                 trigger.deleteArticle(article, loginUser);
-                return convertRowToHttpCode(articleDao.delete(article));
+                flag = convertRowToHttpCode(articleDao.delete(article));
             } else {
-                return 403;
+                flag = STATUS_FORBIDDEN;
             }
         } else {
-            return 400;
+            flag = STATUS_PARAM_ERROR;
         }
+        response.setStatus(flag);
+        return response;
     }
 
     /**
      * 得到每种分类的数量
      *
-     * @return
+     * @param iRequest
+     * @return IResponse:
+     * categories
      */
-    public List<Category> getCategoryCount() {
-        return cache.getCategoryCount();
+    @Override
+    public IResponse findCategoryCount(IRequest iRequest) {
+        return new IResponse().putAttr("categories", cache.getCategoryCount()).setStatus(STATUS_SUCCESS);
     }
 
     /**
      * description: 获得置顶列表
      *
-     * @param size 列表数量
-     * @return List<Article>
+     * @param size     列表数量
+     * @param iRequest
+     * @return IResponse:
+     * articles
      */
-    public List<Article> listTops(int size) {
-        return articleDao.findTopsList(size);
+    @Override
+    public IResponse findTopArticles(int size, IRequest iRequest) {
+        if (size == 0) {
+            size = Config.getInt(ConfigConstants.ARTICLE_HOME_SIZE_TOP);
+        }
+        return new IResponse().putAttr("articles", articleDao.findTopsList(size, iRequest.getLoginUser())).setStatus(STATUS_SUCCESS);
     }
 
     /**
      * description:获得排行榜列表
      *
-     * @param uid  是否查询所有还是单个用户 uid=0 为查询所有
-     * @param size list长度 默认5
-     * @return Map<String,List>
+     * @param uid      是否查询所有还是单个用户 uid=0 为查询所有
+     * @param size     list长度 默认5
+     * @param iRequest
+     * @return IResponse:
+     * clickRankList
+     * newestList
+     * hotTagList
      */
-    public Map<String, Object> listRanking(int uid, int size, User loginUser) {
-        //原从数据库查
-        //Map<String, Object> findRankList = articleDao.findRankList(uid,num);
-
-        //改为从Cache中查
+    @Override
+    public IResponse findRankingList(Long uid, int size, IRequest iRequest) {
+        if (size == 0) {
+            size = Config.getInt(ConfigConstants.ARTICLE_HOME_SIZE_RANK);
+        }
+        // 原从数据库查
+        // Map<String, Object> findRankList = articleDao.findRankList(uid,num);
+        // 改为从Cache中查
         List<Article> clickRankList = null;
         List<Article> newestList = null;
         List<Entry<String, Integer>> hotTagList = null;
-        if (uid == 0 && (loginUser == null || loginUser.getUid() == 0)) {
+        if ((uid == null || uid.equals(0L)) && iRequest.isHasNotLoggedIn()) {   // 查看主页且没有登录
             clickRankList = cache.getHotSortArticle(size);
             newestList = cache.getTimeSortArticle(size);
             hotTagList = cache.getTagCount(size);
         } else {
-            List<Article> visibleArticles = cache.getVisibleArticles(uid, loginUser);
+            List<Article> visibleArticles = cache.getVisibleArticles(uid, iRequest.getLoginUser());
             clickRankList = cache.getHotSortArticle(uid, size, visibleArticles);
             newestList = cache.getTimeSortArticle(uid, size, visibleArticles);
             hotTagList = cache.getTagCount(uid, size, visibleArticles);
         }
-
-        Map<String, Object> map = new HashMap<String, Object>();
-        map.put("clickRankList", clickRankList);
-        map.put("newestList", newestList);
-        map.put("hotTagList", hotTagList);
-        return map;
+        IResponse response = new IResponse();
+        response.putAttr("clickRankList", clickRankList);
+        response.putAttr("newestList", newestList);
+        response.putAttr("hotTagList", hotTagList);
+        return response.setStatus(STATUS_SUCCESS);
     }
 
     /**
      * 获取文章标签列表，按文章数量降序排序
      *
-     * @param hostUser  文章作者，为null,查询所有
-     * @param size      列表长度，为0返回全部
-     * @param loginUser
-     * @return
+     * @param hostUser 文章作者，为null,查询所有
+     * @param size     列表长度，为0返回全部
+     * @param iRequest
+     * @return IResponse:
+     * {List<Entry<String, Integer>>} tags
      */
-    public List<Entry<String, Integer>> findTagList(User hostUser, int size, User loginUser) {
-        int uid = (hostUser == null ? 0 : hostUser.getUid());
-        if (loginUser != null) { // 登录了时，从数据库查询该登录用户可见的文章
+    @Override
+    public IResponse findTagList(User hostUser, int size, IRequest iRequest) {
+        User loginUser = iRequest.getLoginUser();
+        IResponse response = new IResponse();
+        Long uid = ((hostUser == null || !IdUtil.containValue(hostUser.getUid())) ? 0L : hostUser.getUid());
+        List<Entry<String, Integer>> tagList = null;
+        if (iRequest.isHasLoggedIn()) { // 登录了时，从数据库查询该登录用户可见的文章
             Article condition = null;
-            if (hostUser != null) {
+            if (hostUser != null && IdUtil.containValue(hostUser.getUid())) {
                 condition = new Article();
                 condition.setAuthor(hostUser);
             }
@@ -324,135 +450,172 @@ public class ArticleServiceImpl implements IArticleService {
             if (rows > 0) {
                 PageUtil page = new PageUtil(rows, rows, 1);
                 List<Article> visibleList = articleDao.findList(page, condition, loginUser);
-                return cache.getTagCount(uid, size, visibleList);
+                tagList = cache.getTagCount(uid, size, visibleList);
             } else {
-                return new ArrayList<>();
+                tagList = new ArrayList<>();
             }
         } else {
             User user = null;
-            return cache.getTagCount(uid, size, user);
+            tagList = cache.getTagCount(uid, size, user);
         }
+        response.putAttr("tags", tagList);
+        return response.setStatus(STATUS_SUCCESS);
     }
 
     /**
      * 图片或附件上传
      *
      * @param file
-     * @param fileName  重命名名字
-     * @param isImage   是否是图片
-     * @param loginUser
-     * @return flag - 200：成功，400: 参数错误，401：需要登录，500: 失败
-     * info - 提示
+     * @param originName 源文件名
+     * @param isImage    是否是图片
+     * @param iRequest
+     * @return IResponse:
+     * image_url:
+     * width:
+     * height:
+     * file_url:
      */
-
-    public Map<String, Object> uploadAttachment(MultipartFile file, String fileName, String isImage, User loginUser) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        if (loginUser == null) {
-            map.put("flag", 401);
-        } else if (file != null) {
+    @Override
+    public IResponse uploadAttachment(MultipartFile file, String originName, String isImage, IRequest iRequest) {
+        User loginUser = iRequest.getLoginUser();
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            response.setStatus(STATUS_NOT_LOGIN);
+        } else if (file != null && !file.isEmpty()) {
             boolean isSave = false;
-            if (isImage.equalsIgnoreCase("true")) {
-                isSave = fileService.saveArticleAttachment(file, Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/article/", fileName, true, map);
-            } else {
-                int uid = loginUser.getUid();
-                isSave = fileService.saveArticleAttachment(file, Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + uid + "/attachment/", fileName, false, map);
+            Map<String, Object> map = new HashMap();
+            String saveName = null;
+            if (Utils.isEmpty(originName) || originName.indexOf('.') == -1) {
+                originName = "upload.jpg";
             }
-            map.put("flag", isSave ? 200 : 500);
+            if (isImage.equalsIgnoreCase("true")) {
+                saveName = IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis()) + "_" + IdUtil.convertToShortPrimaryKey(loginUser.getUid()) + "_article" + originName.substring(originName.lastIndexOf('.'));
+                isSave = fileService.saveArticleAttachment(file, Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/article/", saveName, true, map);
+            } else {
+                String shortUid = IdUtil.convertToShortPrimaryKey(loginUser.getUid());
+                saveName = shortUid + "_" + IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis()) + originName.substring(originName.lastIndexOf('.'));
+                isSave = fileService.saveArticleAttachment(file, Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + shortUid + "/attachment/", saveName, false, map);
+            }
+            if (isSave) {
+                response.putAttr(map).setStatus(STATUS_SUCCESS);
+            } else {
+                response.setStatus(STATUS_SERVER_ERROR, "保存附件失败~");
+            }
         } else {
-            map.put("flag", 400);
+            response.setStatus(STATUS_PARAM_ERROR, "未上传文件~");
         }
-        return map;
+        return response;
     }
 
     /**
      * 互联网图片本地化
      *
      * @param url
-     * @param fileName
-     * @param loginUser
-     * @return
+     * @param originName
+     * @param iRequest
+     * @return IResponse:
+     * image_url:
+     * width:
+     * height:
+     * file_url:
      */
-    public Map<String, Object> localImage(String url, String fileName, User loginUser) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        if (loginUser == null) {
-            map.put("flag", 401);
-        } else if (url == null || url.length() == 0) {
-            map.put("flag", 400);
+    @Override
+    public IResponse uploadImageFromURL(String url, String originName, IRequest iRequest) {
+        User loginUser = iRequest.getLoginUser();
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            response.setStatus(STATUS_NOT_LOGIN);
+        } else if (Utils.isEmpty(url)) {
+            response.setStatus(STATUS_PARAM_ERROR, "请输入链接");
         } else {
-            boolean isDownload = fileService.downloadInternetImage(url, Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/article/", fileName, map);
-            map.put("flag", isDownload ? 200 : 500);
+            boolean isSave = false;
+            Map<String, Object> map = new HashMap();
+            if (Utils.isEmpty(originName) || originName.indexOf('.') == -1) {
+                originName = "upload.jpg";
+            }
+            String saveName = IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis()) + "_" + IdUtil.convertToShortPrimaryKey(loginUser.getUid()) + "_article" + originName.substring(originName.lastIndexOf('.'));
+            isSave = fileService.downloadInternetImage(url, Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/article/", saveName, map);
+            if (isSave) {
+                response.putAttr(map).setStatus(STATUS_SUCCESS);
+            } else {
+                response.setStatus(STATUS_SERVER_ERROR, "保存图片件失败~");
+            }
         }
-        return map;
+        return response;
     }
 
     /**
      * 删除文件
      *
      * @param file_url
-     * @param isImage   是否时图片
-     * @param loginUser
-     * @return flag: [200:服务器删除成功] [404:文章插入的图片为链接，不需要删除，返回成功] [500:图片删除失败]
+     * @param isImage  是否时图片
+     * @param iRequest
+     * @return IResponse:
+     * status: [200:服务器删除成功] [404:文章插入的图片为链接，不需要删除，返回成功] [500:图片删除失败]
      */
-    public Map<String, Object> deleteAttachment(String file_url, String isImage, User loginUser) {
-        //String contextPath = request.getContextPath() ;
-        //int index = file_url.indexOf( contextPath ) + contextPath.length();
-        Map<String, Object> map = new HashMap<String, Object>();
-        if (loginUser == null) {
-            map.put("flag", 401);
-        } else if (file_url == null || file_url.length() == 0) {
-            map.put("flag", 400);
+    @Override
+    public IResponse deleteAttachment(String file_url, String isImage, IRequest iRequest) {
+        User loginUser = iRequest.getLoginUser();
+        // String contextPath = request.getContextPath() ;
+        // int index = file_url.indexOf( contextPath ) + contextPath.length();
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            response.setStatus(STATUS_NOT_LOGIN);
+        } else if (Utils.isEmpty(file_url)) {
+            response.setStatus(STATUS_PARAM_ERROR, "请输入链接");
         } else {
             int flag = 0;
             if (isImage.equalsIgnoreCase("true")) {
                 flag = fileService.deleteFileByUrl(file_url, Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/article/", null);
             } else {
-                flag = fileService.deleteFileByUrl(file_url, Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + loginUser.getUid() + "/attachment/", null);
+                flag = fileService.deleteFileByUrl(file_url, Config.get(ConfigConstants.CLOUD_FILE_RELATIVEPATH) + IdUtil.convertToShortPrimaryKey(loginUser.getUid()) + "/posts/attachment/", null);
             }
-            map.put("flag", flag);
+            if (flag == STATUS_SUCCESS) {
+                response.setStatus(flag, "服务器删除成功~");
+            } else if (flag == STATUS_NOT_FOUND) {
+                response.setStatus(flag, "链接文件不存在或该链接不属于本站~");
+            } else {
+                response.setStatus(flag, "图片删除失败~");
+            }
         }
-        return map;
+        return response;
     }
 
-    // 检查该用户是否对该文章有查看权限
-    private int checkUserHasPermission(Article article, User loginUser) {
-        int flag = 200;
-        // 文章为空时info返回404
-        if (article != null) {
-            // 需要权限
-            int permission = article.getPermission();
-            if (permission > 0) {
-                // 需要权限却没登录直接返回401
-                if (loginUser != null) {
-                    //权限--仅好友可见时
-                    if (permission == 1 && article.getAuthor().getUid() != loginUser.getUid()) {
-                        // userDao.checkFriendRelationship(new Friend(loginUser.getUid(),article.getAuthor().getUid()));
-                        if (cache.containsFriend(new Friend(loginUser.getUid(), article.getAuthor().getUid())) != 2) {
-                            flag = 403;
-                        }
-                        // 权限--为私有时
-                    } else if (permission == 2) {
-                        if (article.getAuthor().getUid() != loginUser.getUid()) {
-                            flag = 403;
-                        }
-                    }
-                } else {
-                    flag = 401;
-                }
-            }
+    /**
+     * 查询文章的历史用户访问记录
+     *
+     * @param article
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     */
+    @Override
+    public IResponse findArticleAccessRecordList(Article article, IRequest iRequest) {
+        User loginUser = iRequest.getLoginUser();
+        IResponse response = new IResponse();
+        if (article == null) {
+            response.setStatus(STATUS_PARAM_ERROR);
+        } else if (iRequest.isHasNotLoggedIn()) {
+            response.setStatus(STATUS_NOT_LOGIN);
         } else {
-            flag = 404;
+            IResponse articleResp = findArticle(article, iRequest);
+            if (articleResp.isSuccess()) {
+                Article db_article = articleResp.getAttr("article");
+                if (db_article.getAuthor().getUid().equals(loginUser.getUid())) {
+                    AccessRecord<Article> queryAccessRecord = new AccessRecord();
+                    queryAccessRecord.setBean(new Article(db_article.getAid()));
+                    List<AccessRecord<Article>> articleAccessRecordList = userDao.findArticleAccessRecordList(queryAccessRecord, iRequest.getLoginUser());
+                    response.putAttr("articleAccessRecords", articleAccessRecordList);
+                    response.putAttr("article_access_record_count", articleAccessRecordList.size());
+                    response.putAttr(articleResp.getAttr());
+                } else {
+                    response.setStatus(STATUS_FORBIDDEN, "访问记录只能作者本人查看~");
+                }
+            } else {
+                response.setStatus(articleResp);
+            }
         }
-        return flag;
-    }
-
-    private int convertRowToHttpCode(int row) {
-        int httpCode = 200;
-        if (row == 0) {
-            httpCode = 404;
-        } else if (row == -1) {
-            httpCode = 500;
-        }
-        return httpCode;
+        return response;
     }
 
 }

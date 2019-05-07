@@ -2,12 +2,16 @@
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
+<%@ taglib prefix="s" uri="http://www.springframework.org/tags" %>
 <%
     String path = request.getContextPath();
     String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
+    request.setAttribute("site_icp_record_code", Config.get(ConfigConstants.SITE_ICP_RECORD_CODE));
+    request.setAttribute("site_police_record_code", Config.get(ConfigConstants.SITE_POLICE_RECORD_CODE));
+    request.setAttribute("site_police_record_number", Config.get(ConfigConstants.SITE_POLICE_RECORD_NUMBER));
 %>
 <!DOCTYPE html>
 <html class="no-js">
@@ -15,6 +19,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
+    <base href="<%=basePath%>" target="_self">
     <title>用户管理 - Website Administer System</title>
     <meta name="description" content="用户管理 - 博客后台管理中心">
     <meta name="keywords" content="用户管理 - 博客后台管理中心">
@@ -25,11 +30,11 @@
     <link rel="icon" href="<%=staticPath%>img/favicon.ico">
     <link rel="stylesheet" href="<%=staticPath%>lib/bootstrap/bootstrap.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/animate/animate.min.css<%=urlArgs%>">
-    <link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.css<%=urlArgs%>">
+    <%--<link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.min.css<%=urlArgs%>">--%>
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
 </head>
-<body uid="${loginUser.uid}">
+<body uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>">
 <!-- <body background="../../img/bg-site.png"> -->
 <!-- START THE COVER  background-image: url(img/bg-site.png);" -->
 <div id="first" class="" style="z-index:1000;background-image: url(<%=staticPath%>img/bg-site.png);">
@@ -69,28 +74,28 @@
                                 <div class="coldesc">分类</div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=0" target="_blank">默认</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=0" target="_blank">默认</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=1" target="_blank">开发</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=1" target="_blank">开发</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=2" target="_blank">折腾</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=2" target="_blank">折腾</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=3" target="_blank">资源</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=3" target="_blank">资源</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=4" target="_blank">科技</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=4" target="_blank">科技</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=5" target="_blank">游戏</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=5" target="_blank">游戏</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=6" target="_blank">段子</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=6" target="_blank">段子</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a href="article.do?method=list&category.atid=7" target="_blank">杂谈</a></div>
+                                <div class="coldesc"><a href="a/list?category.atid=7" target="_blank">杂谈</a></div>
                             </div>
                         </div>
                         <div class="row">
@@ -104,20 +109,23 @@
                                 <div class="coldesc"><a class="toolbar_jump_paste_code" href="http://paste.ubuntu.com" target="_blank">贴代码</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_albums" href="<%=basePath%>photo.do?method=user_albums" target="_blank">相册</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_albums" href="<%=basePath%>p/dashboard" target="_blank">相册</a></div>
                             </div>
                             <div class="col-sm-1" style="padding-left: 5px">
                                 <div class="coldesc"><a class="toolbar_jump_cloud" href="<%=cloudPath%>" target="_blank">cloud</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_archives" href="<%=basePath%>article.do?method=archives" target="_blank">归档</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_archives" href="<%=basePath%>a/archives" target="_blank">归档</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>article.do?method=tags" target="_blank">标签</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>a/tags" target="_blank">标签</a></div>
+                            </div>
+                            <div class="col-sm-1">
+                                <div class="coldesc"><a class="toolbar_jump_user_history" href="<%=basePath%>u/history" target="_blank">历史</a></div>
                             </div>
                             <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
                                 <div class="col-sm-1">
-                                    <div class="coldesc"><a class="toolbar_jump_manager" href="manager.do?method=backstage" target="_blank">管理</a></div>
+                                    <div class="coldesc"><a class="toolbar_jump_manager" href="manager/backstage" target="_blank">管理</a></div>
                                 </div>
                             </c:if>
                         </div>
@@ -129,16 +137,16 @@
                                 <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_register" href="user.do?method=toregister" target="_blank">注册</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_register" href="auth/register" target="_blank">注册</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_notice" target="_blank" href="site.do?method=list">公告</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_notice" target="_blank" href="notices">公告</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_help" target="_blank" href="#">帮助</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_help" target="_blank" href="help">帮助</a></div>
                             </div>
                             <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_about" target="_blank" href="<%=basePath%>site.do?method=about">关于</a></div>
+                                <div class="coldesc"><a class="toolbar_jump_about" target="_blank" href="<%=basePath%>about">关于</a></div>
                             </div>
                         </div>
                     </ul>
@@ -156,14 +164,14 @@
                 <c:if test="${ !empty loginUser }">
                     <li class="dropdown user">
                         <a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                            <img src="<%=staticPath%>${loginUser.head_photo}"/><span class="caret"></span>
+                            <img src="<s:eval expression="loginUser.head_photo"/>"/><span class="caret"></span>
                         </a>
                         <ul class="dropdown-menu">
-                            <h4><a class="anav-menu_user toolbar_user_profilecenter" href="<%=basePath%>user.do?method=profilecenter" target="_blank">个人中心</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_userhome" href="<%=basePath%>user.do?method=home&uid=${loginUser.uid}" target="_blank">我的博客</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_albums" href="<%=basePath%>photo.do?method=user_albums&uid=${loginUser.uid}" target="_blank">我的相册</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_messages" href="<%=basePath%>user.do?method=profilecenter&action=messages" target="_blank">我的消息</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_setting" href="<%=basePath%>user.do?method=profilecenter&action=settings" target="_blank">修改设置</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_profilecenter" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center" target="_blank">个人中心</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_userhome" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/home" target="_blank">我的博客</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_albums" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/albums" target="_blank">我的相册</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_messages" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center/messages" target="_blank">我的消息</a></h4>
+                            <h4><a class="anav-menu_user toolbar_user_setting" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center/settings" target="_blank">修改设置</a></h4>
                             <h4><a class="anav-menu_user toolbar_user_logout" title="点击退出登录">安全退出</a></h4>
                         </ul>
                     </li>
@@ -202,17 +210,17 @@
                             </thead>
                             <c:forEach items="${userList}" var="user">
                                 <tbody>
-                                <tr style="height: 50px;" uid="${user.uid}">
-                                    <td><img src="<%=staticPath%>${user.head_photo}" style="width: 43px;height: 43px;"></td>
-                                    <td><b>${user.uid}</b></td>
-                                    <td>${user.nickname}</td>
-                                    <td>${user.userGroup.group_name}</td>
-                                    <td><fmt:formatDate value='${user.userStatus.last_login_time}' pattern='yyyy-MM-dd HH:mm'/></td>
-                                    <td>
+                                <tr class="user-tr" style="height: 50px;" data-uid="<s:eval expression="user.uid"/>">
+                                    <td class="user-head-photo"><img src="<s:eval expression="user.head_photo"/>" style="width: 43px;height: 43px;"></td>
+                                    <td class="user-uid"><b><s:eval expression="user.uid"/></b></td>
+                                    <td class="user-nickname"><a target="_blank" href="u/<s:eval expression="user.uid"/>/home">${user.nickname}</a></td>
+                                    <td class="user-group-name">${user.userGroup.group_name}</td>
+                                    <td class="user-status-last-login-time"><s:eval expression="user.userStatus.last_login_time"/></td>
+                                    <td class="user-status-last-login-ip">
                                         <c:if test="${empty  user.userStatus.last_login_ip}">暂无IP</c:if>
                                         <c:if test="${not empty user.userStatus.last_login_ip}">${user.userStatus.last_login_ip}</c:if>
                                     </td>
-                                    <td>
+                                    <td class="user-status-lock">
                                         <c:if test="${user.userStatus.lock_status == 0}">可用</c:if>
                                         <c:if test="${user.userStatus.lock_status == 1}">
                                             <div style="color:red;">冻结</div>
@@ -245,11 +253,6 @@
             </div>
             <div class="modal-body" style="padding-bottom: 10px;">
                 <form class="form-horizontal">
-                    <style>
-                        #userInfoModal span {
-                            text-align: left
-                        }
-                    </style>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label"><img name="head_photo" style="height: 50px;"></label>
                         <span class="col-sm-7 col-xs-7 control-label" name="nickname" style="height: 50px;line-height:50px;vertical-align:middle;"></span>
@@ -260,7 +263,13 @@
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">用户组:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="usergroup"></span>
+                        <div class="col-sm-4 col-xs-5">
+                            <select class="form-control" name="usergroup">
+                                <option value="-1">管理员</option>
+                                <option value="0">初级会员</option>
+                                <option value="1">高级会员</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">邮箱:</label>
@@ -308,11 +317,11 @@
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">关注数:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="followCount"></span>
+                        <span class="col-sm-7 col-xs-7 control-label" name="followingCount"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">粉丝数:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="fansCount"></span>
+                        <span class="col-sm-7 col-xs-7 control-label" name="followerCount"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">签名:</label>
@@ -328,11 +337,17 @@
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">账号状态:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="lock_status"></span>
+                        <div class="col-sm-4 col-xs-5">
+                            <select class="form-control" name="lock_status">
+                                <option value="0">可用</option>
+                                <option value="1">冻结</option>
+                            </select>
+                        </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
+                <button class="btn btn-primary" name="updateUser_trigger" style="display: inline-block;">更改</button>
                 <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
             </div>
         </div>
@@ -362,14 +377,19 @@
     <div class="stick"></div>
 </div>
 
-<footer id="footer" role="contentinfo" class="card">
-    <span>© 2016 </span><a href="https://imcoder.site" target="_blank">ImCoder</a>
-    <span>博客 ，基于 </span><a>Java</a><span> 语言开发</span>
-    <span>，ICP备案：</span><a href="http://www.miibeian.gov.cn" target="__blank">湘ICP备17002133号</a>
+<footer id="footer" role="contentinfo" class="card site-footer">
+    <span>© 2016 </span><a href="https://imcoder.site" target="_blank">ImCoder</a><span> 博客 ，基于 </span><a>Java</a><span> 语言开发</span>
+    <c:if test="${not empty site_icp_record_code}">
+        <span>，ICP备案：</span><a href="http://beian.miit.gov.cn/" target="_blank">${site_icp_record_code}</a>
+    </c:if>
+    <c:if test="${not empty site_police_record_code}">
+        <span>，公安备案：</span><img class="police-record-icon" src="<%=staticPath%>img/police_record_icon.png"><a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=${site_police_record_number}" target="_blank">${site_police_record_code}</a>
+    </c:if>
 </footer>
 
-<a id="basePath" href="<%=basePath%>" style="display:none;"></a>
-<a id="staticPath" href="<%=staticPath%>" style="display:none;"></a>
+<a id="basePath" class="site-path-prefix" href="<%=basePath%>" style="display:none;"></a>
+<a id="staticPath" class="site-path-prefix" href="<%=staticPath%>" style="display:none;"></a>
+<a id="cloudPath" class="site-path-prefix" href="<%=cloudPath%>" style="display:none;"></a>
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
