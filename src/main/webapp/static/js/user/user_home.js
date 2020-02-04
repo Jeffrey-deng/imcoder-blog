@@ -1,5 +1,7 @@
 /**
- * Created by Jeffrey.Deng on 2018/4/9.
+ * 用户主页
+ * @author Jeffrey.Deng
+ * @date 2018/4/9
  */
 (function (factory) {
     /* global define */

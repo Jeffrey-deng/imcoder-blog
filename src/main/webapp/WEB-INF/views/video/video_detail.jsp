@@ -69,7 +69,7 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center;">
-                    <h2 class="slogan_name video-name" hostUid="<s:eval expression="video.user.uid"/>" albumId="<s:eval expression="video.cover.album_id"/>">${video.name}</h2>
+                    <h2 class="slogan_name video-name" hostUid="<s:eval expression="video.user.uid"/>" albumId="<s:eval expression="video.cover.album_id"/>">${videoTitle}</h2>
                     <h3 class="slogan_desc album_name">${video.user.nickname}</h3>
                 </div>
             </div>
@@ -234,7 +234,7 @@
                                         <div class="video-detail-set-area">
                                             <div class="video-detail-click-count" title="点击量"><span class="glyphicon glyphicon-eye-open"></span><em class="video-detail-click-count-value">${video.click_count}</em></div>
                                             <div class="video-detail-show-size">
-                                                显示：<a data-show-size="default">默认⬇</a>
+                                                显示：<a data-show-size="fit" title="点击切换为`填充`显示">适应⬇</a>
                                             </div>
                                             <div class="video-detail-user-nickname">
                                                 上传者：

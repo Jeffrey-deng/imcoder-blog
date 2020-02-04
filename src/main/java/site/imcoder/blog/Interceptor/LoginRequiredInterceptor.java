@@ -7,13 +7,14 @@ import site.imcoder.blog.Interceptor.annotation.LoginRequired;
 import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.common.type.UserAuthType;
-import site.imcoder.blog.entity.User;
-import site.imcoder.blog.entity.UserAuth;
+import site.imcoder.blog.entity.*;
+import site.imcoder.blog.entity.rewrite.GuestUser;
 import site.imcoder.blog.service.IAuthService;
 import site.imcoder.blog.service.message.IRequest;
 import site.imcoder.blog.service.message.IResponse;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
+import site.imcoder.blog.setting.GlobalConstants;
 
 import javax.annotation.Resource;
 import javax.servlet.ServletException;
@@ -24,6 +25,7 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
+import java.util.Date;
 
 /**
  * 登录权限过滤器
@@ -46,7 +48,7 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
     @Override
     public boolean preRunHandler(HttpServletRequest request, HttpServletResponse response, Object handler) {
         HttpSession session = request.getSession();
-        User loginUser = (User) session.getAttribute("loginUser");
+        User loginUser = (User) session.getAttribute(GlobalConstants.KEY_LOGIN_USER);
         if (loginUser == null && !tryToLogin(request, response, session)) {
             permissionDeniedResponse(request, response, handler);
             return false;
@@ -104,7 +106,7 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
                     IResponse loginResp = authService.login(userAuth, iRequest.putAttr("remember", false));
                     if (loginResp.isSuccess()) {
                         // 存储标记
-                        session.setAttribute("loginUser", loginResp.getAttr("user"));
+                        session.setAttribute(GlobalConstants.KEY_LOGIN_USER, loginResp.getAttr("user"));
                         // 登录成功cookie标记
                         Cookie responseCookie = new Cookie("login_status", "true");
                         responseCookie.setPath(request.getContextPath().length() == 0 ? "/" : request.getContextPath());
@@ -132,6 +134,7 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
                             if (cookie == null) {
                                 continue;
                             }
+                            // "guest_identifier".equalsIgnoreCase(cookie.getName()) 为了用户体验，这里游客uid不刷新
                             if ("uid".equalsIgnoreCase(cookie.getName()) || "token".equalsIgnoreCase(cookie.getName())) {
                                 cookie.setValue(null);
                                 cookie.setMaxAge(0);// 立即销毁cookie
@@ -211,11 +214,54 @@ public class LoginRequiredInterceptor extends BaseInterceptor {
     public boolean preOtherHandler(HttpServletRequest request, HttpServletResponse response, Object handler) {
         if (handler.getClass().isAssignableFrom(HandlerMethod.class)) {
             HttpSession session = request.getSession();
-            User loginUser = (User) session.getAttribute("loginUser");
-            if (loginUser == null) {
-                tryToLogin(request, response, session);
+            User loginUser = (User) session.getAttribute(GlobalConstants.KEY_LOGIN_USER);
+            User guestUser = (User) session.getAttribute(GlobalConstants.KEY_GUEST_USER);
+            // 不需要登录的页面执行一下步骤：
+            // 1、当没有登录时尝试登录
+            // 2、登录失败且没有设置游客用户对象时，设置游客用户对象
+            if (loginUser == null && !tryToLogin(request, response, session) && guestUser == null) {
+                    Long guestIdentifier = findGuestIdentifier(request);
+                    if (guestIdentifier == null) {
+                        guestIdentifier = IdUtil.generatePrimaryKey();
+                        String cookie_path = (request.getContextPath().length() == 0 ? "/" : request.getContextPath());
+                        boolean cookie_secure = request.getScheme().equalsIgnoreCase("https");
+                        int max_age = 3600 * 24 * Integer.parseInt(Config.getChildDefault(ConfigConstants.USER_LOGIN_REMEMBER_MAX_AGE, "@user_"));
+                        Cookie guest_identifier_cookie = new Cookie("guest_identifier", String.valueOf(guestIdentifier));
+                        guest_identifier_cookie.setPath(cookie_path);
+                        guest_identifier_cookie.setSecure(cookie_secure);
+                        guest_identifier_cookie.setMaxAge(max_age);
+                        response.addCookie(guest_identifier_cookie);
+                    }
+                    guestUser = new GuestUser(guestIdentifier, "游客");
+                    UserStatus userStatus = new UserStatus();
+                    userStatus.setLast_login_ip(Utils.getRemoteAddr(request));
+                    userStatus.setLast_login_time(new Date());
+                    guestUser.setUserStatus(userStatus);
+                    guestUser.setUserSetting(new UserSetting());
+                    guestUser.setUserStats(new UserStats());
+                    session.setAttribute(GlobalConstants.KEY_GUEST_USER, guestUser);
             }
         }
         return true;
+    }
+
+    private Long findGuestIdentifier (HttpServletRequest request)  {
+        Long guestIdentifier = null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (cookie == null) {
+                    continue;
+                }
+                if ("guest_identifier".equalsIgnoreCase(cookie.getName())) {
+                    try {
+                        guestIdentifier = Long.valueOf(cookie.getValue());
+                    } catch (NumberFormatException e) {
+                        guestIdentifier = null;
+                    }
+                }
+            }
+        }
+        return guestIdentifier;
     }
 }

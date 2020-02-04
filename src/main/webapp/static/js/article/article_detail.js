@@ -472,6 +472,12 @@
 
     /* ********** main ************* */
 
+    comment_plugin.on(comment_plugin.config.event.commentHtmlBuildCompleted, function (e, list, pageIndex, buildReason) {
+        if (list.length < 50 && (buildReason == 'init' || buildReason == 'refresh')) {
+            $(comment_plugin.config.selector.commentListArea).find('.comment-list').removeClass('animated bounceInLeft bounceInRight').addClass('animated bounceInLeft');
+        }
+    });
+
     // 评论模块初始化
     comment_plugin.init({
         mainType: 0,    //0代表文章评论

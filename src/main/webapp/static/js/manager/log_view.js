@@ -29,16 +29,16 @@
                         var data = XHR.responseText;
                         if (data) {
                             common_utils.getNotify("notify_log_loading").find(".toast-message").text("加载成功, 计算中~");
-                            //创建节点
+                            // 创建节点
                             var pre = document.createElement('pre');
                             pre.setAttribute('class', "user-defined-code");
                             pre.setAttribute('style', 'word-wrap:normal');
                             var code = document.createElement('code');
                             code.setAttribute('style', 'white-space:pre;overflow-x:auto;word-wrap:normal');
-                            //得到编辑区的值 并转义
+                            // 得到编辑区的值 并转义
                             code.innerHTML = common_utils.encodeHTML(data);
                             pre.appendChild(code);
-                            //插入节点
+                            // 插入节点
                             $('#log_area').summernote('code', pre.outerHTML);
                         } else {
                             toastr.info("日志为空~");

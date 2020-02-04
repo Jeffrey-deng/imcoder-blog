@@ -109,7 +109,7 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
         }
         // 云盘允许上传文件的用户组最低等级，值为对应用户组的Gid
         int lowestLevel = Config.getInt(ConfigConstants.CLOUD_ALLOW_UPLOAD_LOWEST_LEVEL);
-        switch (UserGroupType.valueOfName(lowestLevel)) {
+        switch (UserGroupType.valueOf(lowestLevel)) {
             case NOVICE_USER:
                 return true;
             case SENIOR_USER:
@@ -589,7 +589,7 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
      * video - 相关视频
      */
     private IResponse findPhoto(Photo photo, boolean loadAlbum, boolean loadUser, boolean loadTopic, boolean loadVideo, IRequest iRequest) {
-        boolean loadAccessRecord = iRequest.getAttr("loadAccessRecord", true);
+        boolean loadActionRecord = iRequest.getAttr("loadActionRecord", true);
         // 查找图片
         IResponse response = new IResponse();
         if (photo == null || !IdUtil.containValue(photo.getPhoto_id())) {
@@ -606,20 +606,16 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
             if (isNotLoadOriginName) {
                 photo.setOriginName(null);
             }
-            if (loadAccessRecord) {
-                AccessRecord<Photo> queryAccessRecord = new AccessRecord();
-                queryAccessRecord.setBean(new Photo(photo.getPhoto_id()));
-                queryAccessRecord.setUser(iRequest.getLoginUser());
-                queryAccessRecord.setLast_access_ip(iRequest.getAccessIp());
-                AccessRecord<Photo> photoAccessRecord = userDao.findPhotoAccessRecord(queryAccessRecord);
-                if (photoAccessRecord != null) {
-                    Photo accessPhoto = photoAccessRecord.getBean();
-                    if (isNotLoadOriginName) {
-                        accessPhoto.setOriginName(null);
-                    }
-                    photo.setAccessed(accessPhoto.getAccessed());
-                    photo.setLiked(accessPhoto.getLiked());
-                    photo.setCommented(accessPhoto.getCommented());
+            if (loadActionRecord) {
+                ActionRecord<Photo> queryActionRecord = new ActionRecord<>();
+                queryActionRecord.setCreation(photo);
+                queryActionRecord.setUser(iRequest.getLoginUser());
+                queryActionRecord.setIp(iRequest.getAccessIp());
+                ActionRecord<Photo> photoActionRecord = userDao.findPhotoActionRecord(queryActionRecord);
+                if (photoActionRecord != null) {
+                    photo.setAccessed(photoActionRecord.getAccessed());
+                    photo.setLiked(photoActionRecord.getLiked());
+                    photo.setCommented(photoActionRecord.getCommented());
                 } else {
                     photo.setAccessed(false);
                     photo.setLiked(false);
@@ -1089,18 +1085,61 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
     /**
      * 点赞照片
      *
-     * @param photo    - 只需传photo_id
+     * @param photo    - 只需传video_id
+     * @param undo     - 是否取消赞
      * @param iRequest
      * @return IResponse:
      * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
      */
     @Override
-    public IResponse likePhoto(Photo photo, IRequest iRequest) {
+    public IResponse likePhoto(Photo photo, boolean undo, IRequest iRequest) {
         IResponse response = new IResponse();
-        if (albumDao.updatePhotoLikeCount(photo, 1) > 0) {
-            response.setStatus(STATUS_SUCCESS);
+        if (photo == null || !IdUtil.containValue(photo.getPhoto_id())) {
+            response.setStatus(STATUS_PARAM_ERROR);
         } else {
-            response.setStatus(STATUS_NOT_FOUND, "无此照片");
+            IResponse photoResp = findPhoto(photo, iRequest);
+            if (photoResp.isSuccess()) {
+                Boolean saveLikeValue = null;
+                Photo db_photo = photoResp.getAttr("photo");
+                if (!undo) {    // 赞
+                    if (db_photo.getLiked() != null && db_photo.getLiked()) {
+                        response.setMessage("你已经赞过该照片了~");
+                    } else {
+                        saveLikeValue = true;
+                    }
+                } else {    // 取消赞
+                    if (db_photo.getLiked() != null && db_photo.getLiked()) {
+                        saveLikeValue = false;
+                    } else {
+                        response.setMessage("你并没有赞过该照片~");
+                    }
+                }
+                if (saveLikeValue != null) {
+                    ActionRecord<Photo> actionRecord = new ActionRecord<>();
+                    actionRecord.setCreation(photo);
+                    if (iRequest.isHasLoggedIn()) {
+                        actionRecord.setUser(iRequest.getLoginUser());
+                    } else {
+                        actionRecord.setIp(iRequest.getAccessIp());
+                    }
+                    actionRecord.setLiked(saveLikeValue);
+                    response.setStatus(convertRowToHttpCode(userDao.savePhotoActionRecord(actionRecord)));
+                    if (response.isSuccess()) {
+                        response.putAttr("type", 1);
+                        if (saveLikeValue) {
+                            db_photo.setLike_count(db_photo.getLike_count() + 1);
+                        } else {
+                            db_photo.setLike_count(db_photo.getLike_count() > 0 ? db_photo.getLike_count() - 1 : 0);
+                        }
+                        albumDao.updatePhotoLikeCount(photo, saveLikeValue ? 1 : -1);
+                    }
+                } else {
+                    response.putAttr("type", 0);
+                }
+                response.putAttr("photo", db_photo);
+            } else {
+                response.setStatus(photoResp);
+            }
         }
         return response;
     }
@@ -1402,7 +1441,6 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
      */
     @Override
     public IResponse findPhotoTagWrapper(PhotoTagWrapper tagWrapper, IRequest iRequest) {
-        User loginUser = iRequest.getLoginUser();
         IResponse response = new IResponse();
         if (tagWrapper != null && ((IdUtil.containValue(tagWrapper.getPtwid())) || (Utils.isNotEmpty(tagWrapper.getName()) && IdUtil.containValue(tagWrapper.getUid())))) {
             PhotoTagWrapper dbTagWrapper = albumDao.findPhotoTagWrapper(tagWrapper);
@@ -1742,15 +1780,17 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
     }
 
     /**
-     * 查询照片的历史用户访问记录
+     * 查询照片的历史用户动作记录
      *
      * @param photo
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * photoActionRecords
+     * photo_action_record_count
      */
     @Override
-    public IResponse findPhotoAccessRecordList(Photo photo, IRequest iRequest) {
+    public IResponse findPhotoActionRecordList(Photo photo, IRequest iRequest) {
         User loginUser = iRequest.getLoginUser();
         IResponse response = new IResponse();
         if (photo == null) {
@@ -1762,11 +1802,11 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
             if (photoResp.isSuccess()) {
                 Photo db_photo = photoResp.getAttr("photo");
                 if (db_photo.getUid().equals(loginUser.getUid())) {
-                    AccessRecord<Photo> queryAccessRecord = new AccessRecord();
-                    queryAccessRecord.setBean(new Photo(db_photo.getPhoto_id()));
-                    List<AccessRecord<Photo>> photoAccessRecordList = userDao.findPhotoAccessRecordList(queryAccessRecord, iRequest.getLoginUser());
-                    response.putAttr("photoAccessRecords", photoAccessRecordList);
-                    response.putAttr("photo_access_record_count", photoAccessRecordList.size());
+                    ActionRecord<Photo> queryActionRecord = new ActionRecord<>();
+                    queryActionRecord.setCreation(new Photo(db_photo.getPhoto_id()));
+                    List<ActionRecord<Photo>> photoActionRecordList = userDao.findPhotoActionRecordList(queryActionRecord, iRequest.getLoginUser());
+                    response.putAttr("photoActionRecords", photoActionRecordList);
+                    response.putAttr("photo_action_record_count", photoActionRecordList.size());
                     response.putAttr(photoResp.getAttr());
                 } else {
                     response.setStatus(STATUS_FORBIDDEN, "访问记录只能作者本人查看~");

@@ -91,24 +91,24 @@
     domReady(function () {
         pointer.managerHandleForm = $(config.selector.managerHandleForm);
         pointer.inputCDNHostModal = $(config.selector.inputCDNHostModal);
-        edit_handle.utils.bindEvent(edit_handle.config.event.articleFormInitCompleted, function (e) {
+        edit_handle.on(edit_handle.config.event.articleFormInitCompleted, function (e) {
             pointer.edit_handle = this.pointer;
             config.edit_handle = this.config;
             pointer.managerHandleForm.find(config.selector.queryArticleInput).val(config.edit_handle.updateAid);
         });
-        edit_handle.utils.bindEvent(edit_handle.config.event.articleLoadCompleted, function (e, article) {
+        edit_handle.on(edit_handle.config.event.articleLoadCompleted, function (e, article) {
             pointer.currArticle = article;
         });
-        edit_handle.utils.bindEvent(edit_handle.config.event.articleSaveCompleted, function (e, article, mark) {
+        edit_handle.on(edit_handle.config.event.articleSaveCompleted, function (e, article, mark) {
 
         });
-        edit_handle.request.saveArticle = function (article, mark, call) {
+        edit_handle.request.saveArticle = function (article, mark, success) {
             var postData = article;
             postData.mark = mark;
             return $.post("manager.api?method=modify_article_content", postData, function (response) {
                 if (response.status == 200) {
-                    call && call.call(response, response.data.article);
-                } else if (call) {
+                    success && success.call(response, response.data.article);
+                } else if (success) {
                     toastr.error(response.message, (mark == "new" ? "保存" : "更新") + "文章失败");
                     console.warn("Error Code: " + response.status);
                 }

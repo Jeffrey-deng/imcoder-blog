@@ -14,7 +14,6 @@ import site.imcoder.blog.controller.BaseController;
 import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
 import site.imcoder.blog.controller.resolver.annotation.BindNullIfEmpty;
 import site.imcoder.blog.entity.Article;
-import site.imcoder.blog.entity.Category;
 import site.imcoder.blog.service.IArticleService;
 import site.imcoder.blog.service.message.IRequest;
 import site.imcoder.blog.service.message.IResponse;
@@ -237,19 +236,22 @@ public class ArticleApiController extends BaseController {
     }
 
     /**
-     * 查询文章的历史用户访问记录
+     * 查询文章的用户动作记录
      *
      * @param article
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * articleActionRecords
+     * article_action_record_count
+     * article
      */
     @LoginRequired
-    @RequestMapping(params = "method=getArticleAccessRecordList")
+    @RequestMapping(params = "method=getArticleActionRecordList")
     @ResponseBody
     @GZIP
-    public IResponse getArticleAccessRecordList(Article article, IRequest iRequest) {
-        return articleService.findArticleAccessRecordList(article, iRequest);
+    public IResponse getArticleActionRecordList(Article article, IRequest iRequest) {
+        return articleService.findArticleActionRecordList(article, iRequest);
     }
 
 }

@@ -91,7 +91,7 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
         }
         // 云盘允许上传文件的用户组最低等级，值为对应用户组的Gid
         int lowestLevel = Config.getInt(ConfigConstants.CLOUD_ALLOW_UPLOAD_LOWEST_LEVEL);
-        switch (UserGroupType.valueOfName(lowestLevel)) {
+        switch (UserGroupType.valueOf(lowestLevel)) {
             case NOVICE_USER:
                 return true;
             case SENIOR_USER:
@@ -226,7 +226,7 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
      */
     @Override
     public IResponse findVideo(Video video, IRequest iRequest) {
-        boolean loadAccessRecord = iRequest.getAttr("loadAccessRecord", true);
+        boolean loadAccessRecord = iRequest.getAttr("loadActionRecord", true);
         IResponse response = new IResponse();
         if (video == null || (!IdUtil.containValue(video.getVideo_id()) && (video.getCover() == null || !IdUtil.containValue(video.getCover().getPhoto_id())))) {
             return response.setStatus(STATUS_PARAM_ERROR);
@@ -241,16 +241,15 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
                 db_video.setOriginName(null);
             }
             if (loadAccessRecord) {
-                AccessRecord queryAccessRecord = new AccessRecord();
-                queryAccessRecord.setBean(new Video(db_video.getVideo_id()));
-                queryAccessRecord.setUser(iRequest.getLoginUser());
-                queryAccessRecord.setLast_access_ip(iRequest.getAccessIp());
-                AccessRecord<Video> videoAccessRecord = userDao.findVideoAccessRecord(queryAccessRecord);
-                if (videoAccessRecord != null) {
-                    Video accessVideo = videoAccessRecord.getBean();
-                    db_video.setAccessed(accessVideo.getAccessed());
-                    db_video.setLiked(accessVideo.getLiked());
-                    db_video.setCommented(accessVideo.getCommented());
+                ActionRecord<Video> queryActionRecord = new ActionRecord<>();
+                queryActionRecord.setCreation(db_video);
+                queryActionRecord.setUser(iRequest.getLoginUser());
+                queryActionRecord.setIp(iRequest.getAccessIp());
+                ActionRecord<Video> videoActionRecord = userDao.findVideoActionRecord(queryActionRecord);
+                if (videoActionRecord != null) {
+                    db_video.setAccessed(videoActionRecord.getAccessed());
+                    db_video.setLiked(videoActionRecord.getLiked());
+                    db_video.setCommented(videoActionRecord.getCommented());
                 } else {
                     db_video.setAccessed(false);
                     db_video.setLiked(false);
@@ -505,31 +504,76 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
      * 点赞视频
      *
      * @param video    - 只需传video_id
+     * @param undo     - 是否取消赞
      * @param iRequest
      * @return IResponse:
      * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
      */
     @Override
-    public IResponse likeVideo(Video video, IRequest iRequest) {
+    public IResponse likeVideo(Video video, boolean undo, IRequest iRequest) {
         IResponse response = new IResponse();
-        if (videoDao.updateVideoLikeCount(video, 1) > 0) {
-            response.setStatus(STATUS_SUCCESS);
+        if (video == null || !IdUtil.containValue(video.getVideo_id())) {
+            response.setStatus(STATUS_PARAM_ERROR);
         } else {
-            response.setStatus(STATUS_NOT_FOUND, "无此视频");
+            IResponse videoResp = findVideo(video, iRequest);
+            if (videoResp.isSuccess()) {
+                Boolean saveLikeValue = null;
+                Video db_video = videoResp.getAttr("video");
+                if (!undo) {    // 赞
+                    if (db_video.getLiked() != null && db_video.getLiked()) {
+                        response.setMessage("你已经赞过该视频了~");
+                    } else {
+                        saveLikeValue = true;
+                    }
+                } else {    // 取消赞
+                    if (db_video.getLiked() != null && db_video.getLiked()) {
+                        saveLikeValue = false;
+                    } else {
+                        response.setMessage("你并没有赞过该视频~");
+                    }
+                }
+                if (saveLikeValue != null) {
+                    ActionRecord<Video> actionRecord = new ActionRecord<>();
+                    actionRecord.setCreation(video);
+                    if (iRequest.isHasLoggedIn()) {
+                        actionRecord.setUser(iRequest.getLoginUser());
+                    } else {
+                        actionRecord.setIp(iRequest.getAccessIp());
+                    }
+                    actionRecord.setLiked(saveLikeValue);
+                    response.setStatus(convertRowToHttpCode(userDao.saveVideoActionRecord(actionRecord)));
+                    if (response.isSuccess()) {
+                        response.putAttr("type", 1);
+                        if (saveLikeValue) {
+                            db_video.setLike_count(db_video.getLike_count() + 1);
+                        } else {
+                            db_video.setLike_count(db_video.getLike_count() > 0 ? db_video.getLike_count() - 1 : 0);
+                        }
+                        videoDao.updateVideoLikeCount(video, saveLikeValue ? 1 : -1);
+                    }
+                } else {
+                    response.putAttr("type", 0);
+                }
+                response.putAttr("video", db_video);
+            } else {
+                response.setStatus(videoResp);
+            }
         }
         return response;
     }
 
     /**
-     * 查询视频的历史用户访问记录
+     * 查询视频的历史用户动作记录
      *
      * @param video
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * videoActionRecords
+     * video_action_record_count
      */
     @Override
-    public IResponse findVideoAccessRecordList(Video video, IRequest iRequest) {
+    public IResponse findVideoActionRecordList(Video video, IRequest iRequest) {
         IResponse response = new IResponse();
         if (video == null) {
             response.setStatus(STATUS_PARAM_ERROR);
@@ -540,11 +584,11 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             if (videoResp.isSuccess()) {
                 Video db_video = videoResp.getAttr("video");
                 if (db_video.getUser().getUid().equals(iRequest.getLoginUser().getUid())) {
-                    AccessRecord<Video> queryAccessRecord = new AccessRecord();
-                    queryAccessRecord.setBean(new Video(db_video.getVideo_id()));
-                    List<AccessRecord<Video>> videoAccessRecordList = userDao.findVideoAccessRecordList(queryAccessRecord, iRequest.getLoginUser());
-                    response.putAttr("videoAccessRecords", videoAccessRecordList);
-                    response.putAttr("video_access_record_count", videoAccessRecordList.size());
+                    ActionRecord<Video> queryActionRecord = new ActionRecord<>();
+                    queryActionRecord.setCreation(new Video(db_video.getVideo_id()));
+                    List<ActionRecord<Video>> videoActionRecordList = userDao.findVideoActionRecordList(queryActionRecord, iRequest.getLoginUser());
+                    response.putAttr("videoActionRecords", videoActionRecordList);
+                    response.putAttr("video_action_record_count", videoActionRecordList.size());
                     response.putAttr(videoResp.getAttr());
                 } else {
                     response.setStatus(STATUS_FORBIDDEN, "访问记录只能作者本人查看~");

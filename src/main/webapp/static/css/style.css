@@ -5797,8 +5797,51 @@ button.mfp-arrow {
     opacity: 0;
 }
 
+/* overlay at start */
+.mfp-fade.mfp-bg {
+    opacity: 0;
+
+    -webkit-transition: all 0.15s ease-out;
+    -moz-transition: all 0.15s ease-out;
+    transition: all 0.15s ease-out;
+}
+
+/* overlay animate in */
+.mfp-fade.mfp-bg.mfp-ready {
+    opacity: 0.8;
+}
+
+/* overlay animate out */
+.mfp-fade.mfp-bg.mfp-removing {
+    opacity: 0;
+}
+
+/* content at start */
+.mfp-fade.mfp-wrap .mfp-content {
+    opacity: 0;
+
+    -webkit-transition: all 0.15s ease-out;
+    -moz-transition: all 0.15s ease-out;
+    transition: all 0.15s ease-out;
+}
+
+/* content animate it */
+.mfp-fade.mfp-wrap.mfp-ready .mfp-content {
+    opacity: 1;
+}
+
+/* content animate out */
+.mfp-fade.mfp-wrap.mfp-removing .mfp-content {
+    opacity: 0;
+}
+
 .mfp-bottom-bar {
     margin-top: -2.5714285em;
+}
+
+.mfp-bottom-bar a {
+    color: white;
+    cursor: pointer;
 }
 
 .mfp-title {
@@ -5806,13 +5849,21 @@ button.mfp-arrow {
     padding-right: 0em;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: calc(100% - 7.3em);
+    width: calc(100% - 9.1em);
     overflow: hidden;
 }
 
 .mfp-counter {
     font-size: 0.857143em;
     line-height: 1.5em;
+}
+
+.mfp-counter a {
+    margin-right: 5px;
+}
+
+.mfp-counter a:last-child {
+    margin-right: unset;
 }
 
 .mfp-figure small {
@@ -6170,6 +6221,7 @@ img.mfp-img {
     border-width: 0px 0px 4px 0px;
     border-bottom-color: #ddd;
     border-style: solid;
+    overflow-x: auto;
 }
 
 .photo-detail-img img {

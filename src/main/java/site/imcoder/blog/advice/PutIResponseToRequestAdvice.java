@@ -10,6 +10,7 @@ import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import site.imcoder.blog.service.message.IResponse;
+import site.imcoder.blog.setting.GlobalConstants;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -66,7 +67,7 @@ public class PutIResponseToRequestAdvice implements ResponseBodyAdvice<Object> {
 
             }
         }
-        servletRequest.setAttribute("responseBodyReturnValue", putObject);
+        servletRequest.setAttribute(GlobalConstants.RESPONSE_BODY_RETURN_VALUE, putObject);
         return body;
     }
 

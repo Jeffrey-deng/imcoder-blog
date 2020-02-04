@@ -36,37 +36,52 @@
             "pageLoadCompleted": "page.load.completed",
             "actionForEditVideo": "video.edit"
         },
-        callback: {
-            "loadVideoByCover": function (cover_id, callback) {
-                $.get("video.api?method=getVideo", {"cover_id": cover_id}, function (response) {
-                    if (response.status != 200) {
-                        common_utils.notify({"progressBar": false}).error(response.message, "打开视频失败~", "notify_open_video_fail");
-                        console.log("Load video found error, Error Code: " + response.status);
-                        callback(null);
+        callback: {}
+    };
+
+    var request = {
+        "loadVideoByCover": function (cover_id, callback) {
+            $.get("video.api?method=getVideo", {"cover_id": cover_id}, function (response) {
+                if (response.status != 200) {
+                    common_utils.notify({"progressBar": false}).error(response.message, "打开视频失败~", "notify_open_video_fail");
+                    console.log("Load video found error, Error Code: " + response.status);
+                    callback(null);
+                } else {
+                    callback(response.data.video);
+                }
+            });
+        },
+        "loadVideosByCovers": function (array, callback) {
+            $.ajax({
+                type: "GET",
+                url: "video.api?method=getVideoListByCovers",
+                data: {"covers": array.join()},
+                dataType: "json",
+                //contentType: "application/json",
+                success: function (response) {
+                    if (response.status == 200) {
+                        callback(response.data.videos);
                     } else {
-                        callback(response.data.video);
+                        toastr.error(response.message, "加载视频列表失败~");
                     }
-                });
-            },
-            "loadVideosByCovers": function (array, callback) {
-                $.ajax({
-                    type: "GET",
-                    url: "video.api?method=getVideoListByCovers",
-                    data: {"covers": array.join()},
-                    dataType: "json",
-                    //contentType: "application/json",
-                    success: function (response) {
-                        if (response.status == 200) {
-                            callback(response.data.videos);
-                        } else {
-                            toastr.error(response.message, "加载视频列表失败~");
-                        }
-                    },
-                    error: function (xhr, ts) {
-                        console.log("Load video found error, Error Code: " + ts);
-                    }
-                });
-            }
+                },
+                error: function (xhr, ts) {
+                    console.log("Load video found error, Error Code: " + ts);
+                }
+            });
+        },
+        "likeVideo": function (video_id, undo, call) {
+            var post_param = {};
+            post_param.video_id = video_id;
+            post_param.undo = undo;
+            return $.post("video.api?method=likeVideo", post_param, function (response) {
+                if (response.status == 200) {
+                    call && call(response.data.video, response.data.type, response);
+                } else if (call) {
+                    toastr.error(response.message, "点赞失败");
+                    console.warn("Error Code: " + response.status);
+                }
+            });
         }
     };
 
@@ -77,8 +92,8 @@
         }
         config.path_params = album_photo_page_handle.config.path_params;
         pointer.hasOpenCheckPhoto = false;
-        config.album_photo_page_handle.utils.unbindEvent(config.event.pageJumpCompleted, convertPhotoToVideo);
-        config.album_photo_page_handle.utils.bindEvent(config.event.pageJumpCompleted, convertPhotoToVideo);
+        config.album_photo_page_handle.off(config.event.pageJumpCompleted, convertPhotoToVideo);
+        config.album_photo_page_handle.on(config.event.pageJumpCompleted, convertPhotoToVideo);
     };
 
     var convertPhotoToVideo = function (e, pageNum) {
@@ -105,13 +120,15 @@
             return;
         }
         if (config.load_mode == "preLoad") { //预加载，这种方式视频未播放时会有噪音
-            config.callback.loadVideosByCovers.call(context, videoCovers, function (videos) {
+            request.loadVideosByCovers.call(context, videoCovers, function (videos) {
                 if (videos) {
                     pointer.videos = videos;
                     $.each(videos, function (i, video) {
-                        var currentNode = page_handle.utils.getPhotoImageDom(video.cover.photo_id);
+                        var $photoNode = page_handle.utils.getPhotoImageDom(video.cover.photo_id);
+                        $photoNode.data('video', video);
                         var videoNode = makeupVideoNode(video);
-                        insertVideoNode(currentNode, videoNode, video);
+                        insertVideoNode($photoNode, videoNode, video);
+                        $photoNode.find('> .photo-detail-link').attr('href', 'video/detail/' + video.video_id);
                     });
                 }
             });
@@ -119,7 +136,7 @@
             $.each(videoCovers, function (i, cover_id) {
                 var photoDom = page_handle.utils.getPhotoImageDom(cover_id);
                 photoDom.attr("title", "视频: " + photoDom.attr("title"));
-                photoDom.find("img").click(function () {
+                photoDom.find("img").off("click").on("click", function () {
                     common_utils.removeNotify("notify_load_video");
                     common_utils.notify({
                         "progressBar": false,
@@ -128,16 +145,20 @@
                         "timeOut": 0,
                         "closeButton": false
                     }).success("正在加载视频Meta", "", "notify_load_video");
-                    config.callback.loadVideoByCover.call(context, cover_id, function (video) {
+                    request.loadVideoByCover.call(context, cover_id, function (video) {
                         if (video) {
-                            var currentNode = page_handle.utils.getPhotoImageDom(video.cover.photo_id);
+                            var $photoNode = page_handle.utils.getPhotoImageDom(video.cover.photo_id);
+                            $photoNode.data('video', video);
                             var videoNode = makeupVideoNode(video);
-                            insertVideoNode(currentNode, videoNode, video);
-                            if (currentNode.find(".video-play-button")) {
-                                currentNode.find(".video-play-button").remove();
+                            insertVideoNode($photoNode, videoNode, video);
+                            if ($photoNode.find(".video-play-button")) {
+                                $photoNode.find(".video-play-button").remove();
                             }
-                            currentNode.unbind("mouseenter");
-                            currentNode.unbind("mouseleave");
+                            if (page_handle.config.photoNodeLinkUsePhotoDetail) {
+                                $photoNode.find('> .photo-detail-link').attr('href', 'video/detail/' + video.video_id);
+                            }
+                            $photoNode.off("mouseenter");
+                            $photoNode.off("mouseleave");
                         }
                         common_utils.removeNotify("notify_load_video");
                     });
@@ -146,10 +167,11 @@
             });
             addVideoBtnToCover(videoCovers);
         } else { // popupLoad
-            //common_utils.addStyle(".mfp-inline-holder .mfp-content {max-width: 1100px;} .mfp-content video {border: 0px;width:100%;}");
+            // common_utils.addStyle(".mfp-inline-holder .mfp-content {max-width: 1100px;} .mfp-content video {border: 0px;width:100%;}");
             if (!pointer.hasOpenCheckPhoto) { // 当用户指定要查看某个视频时，先插入一个点击事件以阻止打开图片的默认事件
                 var stopOpenImage = function (e) {
                     $(e.currentTarget).unbind("click", stopOpenImage);
+                    e.stopImmediatePropagation();
                     return false;
                 };
                 // 此时page_handle.utils.openPhotoPopup未被替换，因为是异步的
@@ -158,7 +180,7 @@
             }
             var className = config.popup_trigger_class_name;
             var popupTriggerSelector = "#" + page_handle.config.selector.photosContainer_id + " " + page_handle.config.selector.photo_node + " ." + className;
-            config.callback.loadVideosByCovers.call(context, videoCovers, function (videos) {
+            request.loadVideosByCovers.call(context, videoCovers, function (videos) {
                 videos = videos || [];
                 pointer.videos = videos;
                 if (config.popup_url_check_id_use_by == "video") {  // 此时check为video_id
@@ -166,23 +188,21 @@
                 }
                 if (videos.length > 0) {
                     $.each(videos, function (i, video) {
-                        var photoDom = page_handle.utils.getPhotoImageDom(video.cover.photo_id);
-                        var refer = photoDom.attr("title").match(/^视频: (Refer@\w+: )/) ? RegExp.$1 : "";
-                        var $imageNode = photoDom.attr("title", "视频: " + refer + video.name).find("img");
+                        var $photoNode = page_handle.utils.getPhotoImageDom(video.cover.photo_id);
+                        $photoNode.data('video', video);
+                        var refer = $photoNode.attr("title").match(/^视频: (Refer@\w+: )/) ? RegExp.$1 : "";
+                        $photoNode.attr("title", "视频: " + refer + video.name);
+                        if (page_handle.config.photoNodeLinkUsePhotoDetail) {
+                            var $link = $photoNode.find('> .photo-detail-link');
+                            $link.attr('href', 'video/detail/' + video.video_id);
+                        }
+                        var $imageNode = $photoNode.find("img");
                         $imageNode.attr("data-video-id", video.video_id);
                     });
-                    makePopupAction(videos, (popupTriggerSelector + "[data-video-id]"));
+                    makePopupAction(videos, popupTriggerSelector);
                 }
-                var openFailFunc = function () {
-                    common_utils.notify({"progressBar": false}).error("没有权限~", "打开视频失败~", "notify_open_video_fail");
-                };
-                $(popupTriggerSelector).each(function (i, img) {
-                    if (!img.hasAttribute("data-video-id")) {
-                        $(img)
-                            .click(openFailFunc)
-                            .closest(page_handle.config.selector.photo_node).find('.video-play-button').hide();
-                    }
-                });
+                // 隐藏没有权限的视频的播放按钮
+                $(popupTriggerSelector + ':not([data-video-id])').closest(page_handle.config.selector.photo_node).find('.video-play-button').hide();
                 if (!pointer.hasOpenCheckPhoto) {  // 当用户指定要查看某个视频时，触发之
                     // pointer.checkPhotoImageDom.click(); // 但是为了优雅，不这样直接触发
                     if (config.popup_url_check_id_use_by == "video") {  // 此时checkPhotoId为video_id
@@ -236,7 +256,7 @@
         $.each(coverIds, function (i, photo_id) {
             var div = page_handle.utils.getPhotoImageDom(photo_id);
             div.addClass("video-cover");
-            div.append(btn.cloneNode(true));
+            div.find('> .photo-detail-link').append(btn.cloneNode(true));
         });
         // 绑定事件
         $("#" + page_handle.config.selector.photosContainer_id + " .video-cover").mouseenter(function (e) { // 鼠标进入节点，加红
@@ -244,17 +264,18 @@
         }).mouseleave(function (e) { // 鼠标离开节点，还原灰色
             e.currentTarget.querySelector("svg > path.video-play-button-bg").setAttribute("class", "video-play-button-bg video-play-button-bg-leave");
         }).find(".video-play-button").click(function (e) {
-            $(e.currentTarget).parent().find("img").click(); // 点击，触发播放
+            $(e.currentTarget).closest('.video-cover').find("img").trigger("click"); // 点击，触发播放
         });
     };
 
     // 当视频打开方式为弹出Modal时，构建Modal
     var makePopupAction = function (videos, selector) {
-        $(selector).magnificPopup({
+        var popupOptions = {
             //items: video,
             type: 'inline',
             fixedBgPos: true,
-            mainClass: 'mfp-with-zoom',
+            mainClass: 'mfp-fade',
+            removalDelay: 300,
             inline: {
                 markup: '<div class="mfp-iframe-scaler">' +
                 '<div title="Edit video" class="mfp-video-edit mfp-video-edit-inline"><span aria-hidden="true" class="glyphicon glyphicon-edit"></span></div>' +
@@ -270,28 +291,29 @@
                     // Function will fire for each target element
                     // "item.el" is a target DOM element (if present)
                     // "item.src" is a source that you may modify
-                    var id = item.el[0].getAttribute("data-video-id");
-                    item.video = videos.filter(function (v) {
-                        return v.video_id == id;
-                    })[0];
+                    var $el = item.$el = $(item.el[0]), $photoNode = $el.closest('.video-cover');
+                    item.video = $photoNode.data('video');
+                    if (!item.video) {
+                        var id = $el.attr("data-video-id");
+                        item.video = videos.filter(function (v) {
+                            return v.video_id == id;
+                        })[0];
+                        $photoNode.data('video', item.video);
+                    }
                 },
                 markupParse: function (template, values, item) {
                     // optionally apply your own logic - modify "template" element based on data in "values"
                     // console.log('Parsing:', template, values, item);
                     if (template.hasClass("video-set-ready")) { // the bug, markupParse run twice
-                        template.removeClass("video-set-ready");
+                        template.removeClass("video-set-ready"); // 此bug已修复，当同时使用事件和委托事件，该插件关闭不了事件，使得执行两次，第二次只调用了updateItemHTML()
                         return;
                     }
-                    var magnificPopup = this; // $.magnificPopup.instance
+                    var mfp = this; // $.magnificPopup.instance
                     var video = item.video;
-                    var height_scale = null; // 容器高度占浏览器高度比
-                    var scale = null; // 播放器宽高缩放比例
-                    var isNotInline = config.popup_btn_display != "inline"; // 控件显示方式
-                    var block_padding = (window.innerWidth >= 1750 ? 81.25 : (window.innerWidth >= 1600 ? 73.822 : 65));
-                    var usableHeight = null;    // 可用实际高度
-
-                    if (isNotInline) {
-                        magnificPopup.wrap.find(".mfp-container").removeClass("mfp-inline-holder").addClass("mfp-image-holder");
+                    var isAuthor = login_handle.equalsLoginUser(video.user.uid);
+                    var isBlockStyle = config.popup_btn_display != "inline"; // 控件显示方式
+                    if (isBlockStyle) {
+                        mfp.wrap.find(".mfp-container").removeClass("mfp-inline-holder").addClass("mfp-image-holder");
                         // 添加mfp-figure类可以设置未加载完成时背景颜色
                         template.addClass("mfp-figure").find(".include-iframe")
                             .addClass("video-popup-block")
@@ -300,45 +322,18 @@
                         var video_url = "video/detail/" + video.video_id;
                         template.find(".mfp-title").html('<a href="' + video_url + '" title="' + common_utils.encodeHTML(video.description) + '" target="_blank">' + common_utils.encodeHTML(video.name) + '</a>');
                         var videoHandleBtnHtml =
+                            '<a class="mfp-video-like' + (video.liked ? ' video-has-liked' : '') + '" title="添加到喜欢" style="margin-right: 7px;" target="_blank" href="u/likes/videos">' + (video.liked ? '已赞' : '赞') + '</a>' +
                             '<a class="mfp-video-open-detail" title="点击打开视频详情页" style="margin-right: 7px;" target="_blank" href="video/detail/' + video.video_id + '#addComment">评论</a>' +
-                            '<a class="mfp-video-edit" title="点击编辑视频信息">编辑</a>';
+                            '<a class="mfp-video-edit" title="点击编辑视频信息" target="_blank" href="video/detail/' + (video.video_id) + '?mark=' + (isAuthor ? 'edit' : 'meta') + '">编辑</a>';
                         template.find(".mfp-counter").html(videoHandleBtnHtml);
-                        height_scale = 1;
-                        usableHeight = window.innerHeight - block_padding;
-                        scale = usableHeight / video.height; // 设定为固定的height，width按视频变化
                     } else {
                         template.find(".mfp-bottom-bar").remove();
-                        height_scale = config.popup_height_scale;
-                        usableHeight = window.innerHeight * height_scale;
-                        scale = usableHeight / video.height; // 设定为固定的height，width按视频变化
                     }
-                    var vd = template.find(".include-iframe");
-                    var generalWidth = usableHeight / 9 * 16;
-                    if (generalWidth < window.innerWidth) {
-                        magnificPopup.contentContainer.css("max-width", generalWidth + "px");
-                    }
-                    var need_width = scale * video.width; // 设定width的值
+                    var $playerWrap = template.find(".include-iframe");
                     if (config.use_site_iframe || video.source_type == 2) {
-                        vd.parent().removeClass("mfp-video-scaler").addClass("mfp-iframe-scaler");
-                        vd.html(video.code || ('<iframe src="video/embed/' + video.video_id + '"></iframe>'));
-                        vd.children().eq(0).addClass("mfp-iframe");
-                        if (window.innerWidth < need_width) { // 如果width大于窗口的宽度，则取消设置
-                            magnificPopup.contentContainer.css("width", "");
-                            magnificPopup.contentContainer.css("height", "");
-                            // 宽度不够时，设置最大宽度，同时寻找合适高度
-                            var need_height = ((window.innerWidth - 12) / video.width) * video.height;
-                            if (isNotInline && need_height <= usableHeight) {
-                                magnificPopup.contentContainer.css("height", (need_height + block_padding) + "px");
-                            } else if (!isNotInline && need_height <= usableHeight) {
-                                magnificPopup.contentContainer.css("height", need_height + "px");
-                            }
-                        } else if (config.popup_iframe_border) {
-                            magnificPopup.contentContainer.css("height", (height_scale * 100) + "%");
-                            magnificPopup.contentContainer.css("width", "");
-                        } else { // IFrame设置宽度去除黑边
-                            magnificPopup.contentContainer.css("height", (height_scale * 100) + "%");
-                            magnificPopup.contentContainer.css("width", need_width + "px");
-                        }
+                        $playerWrap.parent().removeClass("mfp-video-scaler").addClass("mfp-iframe-scaler");
+                        $playerWrap.html(video.code || ('<iframe src="video/embed/' + video.video_id + '"></iframe>'));
+                        $playerWrap.children().eq(0).addClass("mfp-iframe");
                         // 未加载时背景色改为通过 .mfp-figure:after 解决
                         // if (false && isNotInline) {
                         //     // 此方法还可解决mousemove遇到iframe不生效问题 config.popup_hide_btn，z-index: 700;opacity: 0;
@@ -348,39 +343,37 @@
                         // }
                     } else {
                         // mfp-iframe-scaler这个类未指定高度时会使div向下偏移
-                        vd.parent().removeClass("mfp-iframe-scaler").addClass("mfp-video-scaler");
+                        $playerWrap.parent().removeClass("mfp-iframe-scaler").addClass("mfp-video-scaler");
                         var sourceNode = makeupVideoNode(video);
-                        vd.html(sourceNode);
-                        magnificPopup.contentContainer.css("height", ""); // 不指定就会居中
-                        if (window.innerWidth < need_width) {
-                            magnificPopup.contentContainer.css("width", "");
-                        } else if (config.popup_video_border) { // 添加黑边
-                            magnificPopup.contentContainer.css("width", "");
-                            sourceNode.style.width = need_width + "px";
-                            if (!isNotInline) {
-                                vd.parent().addClass("mfp-figure mfp-figure-inline");
-                            }
-                        } else {
-                            magnificPopup.contentContainer.css("width", need_width + "px");
-                        }
+                        $playerWrap.html(sourceNode);
                     }
-
                     var video_edit_node = template.find(".mfp-video-edit");
-                    var video_edit_inline_node = template.find(".mfp-video-edit-inline").css("opacity", "0.65");
-                    if (!login_handle.equalsLoginUser(video.user.uid)) {
+                    if (!isAuthor) { // 非作者访问时
                         video_edit_node.attr("title", "View video info");
-                        if (isNotInline) {
+                        if (isBlockStyle) {
                             video_edit_node.text("信息");
                         }
+                        var video_edit_inline_node = template.find(".mfp-video-edit-inline").css("opacity", "0.65");
                         video_edit_inline_node.css("padding-top", "2px").find("span").attr("class", "glyphicon glyphicon-info-sign");
                     }
-                    video_edit_node.click(function (e) {
-                        utils.triggerEvent(context, config.event.actionForEditVideo, video); // 触发编辑事件
+                    template.addClass("video-set-ready");
+                },
+                change: function () {   // mfp-container: 只有打开时才会重新创建，mfp-content: 更新时也会删除重建
+                    if (!this.content.hasClass("video-set-ready")) {
+                        return;
+                    }
+                    var mfp = this;
+                    var video = mfp.currItem.video;
+                    if (config.popup_btn_display != "inline") {
+                        mfp.content.find(".mfp-close").toggleClass("video-popup-block-close", true);
+                    }
+                    mfp.content.on('click', '.mfp-video-edit', function (e) {
+                        context.trigger(config.event.actionForEditVideo, video); // 触发编辑事件
                         try {
                             var events = $._data(context, "events"); // 如果未绑定 video.edit 事件，则打开一个网页显示video信息
                             var isSet = false;
-                            if (events && events.video && events.video.length > 0) {
-                                var set = events.video.filter(function (e) {
+                            if (events && events['video'] && events['video'].length > 0) {
+                                var set = events['video'].filter(function (e) {
                                     return e.namespace == "edit";
                                 });
                                 if (set && set.length > 0) {
@@ -395,18 +388,74 @@
                         }
                         e.preventDefault();
                         return false;
+                    }).on('click', '.mfp-video-like', function (e) {
+                        e.preventDefault();
+                        var $likeBtn = $(this);
+                        var video = mfp.currItem.video;
+                        var undo = $likeBtn.hasClass("video-has-liked");
+                        request.likeVideo(video.video_id, undo, function (newVideo, type, response) {
+                            var newValue = newVideo.like_count;
+                            if (type == 1) {
+                                if (undo) {
+                                    toastr.success("已移除赞~");
+                                } else {
+                                    if (login_handle.validateLogin()) {
+                                        toastr.success("点击查看赞过的列表", "已添加到赞", {
+                                            "timeOut": 12000,
+                                            "onclick": function () {
+                                                window.open("u/likes/videos");
+                                            }
+                                        });
+                                    }
+                                }
+                            } else {
+                                toastr.success(response.message);
+                            }
+                            $likeBtn.toggleClass('video-has-liked', !undo).text(!undo ? "已赞" : "赞");
+                            video.like_count = newValue;
+                            video.liked = !undo;
+                        });
                     });
-                    template.addClass("video-set-ready");
+                    // 修改地址栏, 改变check, 在切换图片的时候
+                    var page_handle = config.album_photo_page_handle;
+                    if (page_handle.config.isMagnificPopupOpen) { // 灯箱打开的时候不替换，切换的时候替换, 回调markupParse,change在open之前运行
+                        var params = common_utils.parseURL(document.location.href).params;
+                        var search = "";
+                        $.each(params, function (key, value) {
+                            if (key != "method" && key != "check") {
+                                search += "&" + key + "=" + value;
+                            }
+                        });
+                        search += "&check=" + (config.popup_url_check_id_use_by == "video" ? video.video_id : video.cover.photo_id);
+                        search = (search ? ("?" + search.substring(1)) : "");
+                        history.replaceState(
+                            {"mark": "check"},
+                            document.title,
+                            location.pathname + search
+                        );
+                    }
+                    page_handle.trigger(page_handle.config.event.popupChanged, video.cover.photo_id, video.video_id);
                 },
-                change: function () {
+                afterChange: function () {  // 组件在事件change之后才会添加到body中，所以需要计算渲染属性的须在事件afterChange中执行
                     if (!this.content.hasClass("video-set-ready")) {
                         return;
                     }
-                    var video = this.currItem.video;
-                    if (config.popup_btn_display != "inline") {
-                        this.content.find(".mfp-close").removeClass("video-popup-block-close").addClass("video-popup-block-close");
+                    // 注意，在打开的情况下（不是切换），mfp.wrap没有添加到body
+                    // 从关闭到打开时，运行afterChange的时候，this.isOpen值为false
+                    if (this.isOpen) {
+                        this.st.callbacks['calcWidthStyle'].call(this);
                     }
-                    // 鼠标不动一段时间后隐藏视频弹窗的控件
+                    this.updateStatus('ready', 'The video ready...');
+                },
+                open: function () {
+                    // Will fire when this exact popup is opened
+                    // this - is Magnific Popup object
+                    this.st.callbacks['calcWidthStyle'].call(this); // open回调只会在打开时运行
+                    var video = this.currItem.video;
+                    var page_handle = config.album_photo_page_handle;
+                    page_handle.config.isMagnificPopupOpen = true;
+                    // 鼠标不动一段时间后隐藏视频弹窗的控件，
+                    // 弹窗组件会在打开时重新创建，切换时不变，所以此事件放在这里比较合适
                     if (config.popup_hide_btn) {
                         // 暴露设置变量方法的引用，让子类iframe调用，解决子类iframe中移动不触发mousemove问题
                         if (config.use_site_iframe && video.source_type != 2) {
@@ -414,7 +463,7 @@
                                 var searchFuncInter = window.setInterval(function () {
                                     if (childWindow.onActivityChange) {
                                         searchFuncInter && window.clearInterval(searchFuncInter);
-                                        childWindow.onActivityChange(function (isActive, currentVideo) {
+                                        childWindow.onActivityChange(function (isActive, player) {
                                             if (isActive) {
                                                 !config.isControlBarShow && utils.showPopupControlBar();
                                                 config.isMouseMove = true;
@@ -484,34 +533,7 @@
                             config.isControlBarShow && utils.hidePopupControlBar();
                         });
                     }
-                    this.updateStatus('ready', 'The video ready...');
-                    // 修改地址栏, 改变check, 在切换图片的时候
-                    var page_handle = config.album_photo_page_handle;
-                    if (page_handle.config.isMagnificPopupOpen) { // 灯箱打开的时候不替换，切换的时候替换, 回调markupParse,change在open之前运行
-                        var params = common_utils.parseURL(document.location.href).params;
-                        var search = "";
-                        $.each(params, function (key, value) {
-                            if (key != "method" && key != "check") {
-                                search += "&" + key + "=" + value;
-                            }
-                        });
-                        search += "&check=" + (config.popup_url_check_id_use_by == "video" ? video.video_id : video.cover.photo_id);
-                        search = (search ? ("?" + search.substring(1)) : "");
-                        history.replaceState(
-                            {"mark": "check"},
-                            document.title,
-                            location.pathname + search
-                        );
-                    }
-                    page_handle.utils.triggerEvent(page_handle.config.event.popupChanged, video.cover.photo_id, video.video_id);
-                },
-                open: function () {
-                    // Will fire when this exact popup is opened
-                    // this - is Magnific Popup object
                     // 修改地址栏, 增加check, 在打开的时候
-                    var video = this.currItem.video;
-                    var page_handle = config.album_photo_page_handle;
-                    page_handle.config.isMagnificPopupOpen = true;
                     var params = common_utils.parseURL(document.location.href).params;
                     var check = params.check;
                     if (!check) { // 当已经到详情页，就不运行
@@ -530,7 +552,78 @@
                             location.pathname + search
                         );
                     }
-                    page_handle.utils.triggerEvent(page_handle.config.event.popupOpened, video.cover.photo_id, video.video_id);
+                    page_handle.trigger(page_handle.config.event.popupOpened, video.cover.photo_id, video.video_id);
+                },
+                resize: function (winHeight) {
+                    if (this.isOpen && !winHeight) {
+                        this.st.callbacks['calcWidthStyle'].call(this);
+                    }
+                },
+                calcWidthStyle: function () {
+                    var mfp = this; // $.magnificPopup.instance
+                    var video = this.currItem.video;
+                    var $playerWrap = this.content.find(".include-iframe");
+                    var $player = $playerWrap.children().eq(0);
+                    var isBlockStyle = config.popup_btn_display == "block"; // 控件显示方式
+                    var usableHeight = null;    // 可用实际高度
+                    var usableWidth = this.container.width();   // 可用实际宽度
+                    var height_scale = null; // 容器高度占浏览器高度比
+                    var scale = null; // 播放器宽高缩放比例
+                    var block_padding = null;
+                    if (isBlockStyle) {
+                        height_scale = 1;
+                        var computedStyle = getComputedStyle($player[0]);
+                        block_padding = parseFloat(computedStyle.paddingTop) + parseFloat(computedStyle.paddingBottom);
+                        usableHeight = window.innerHeight - block_padding;
+                        scale = usableHeight / video.height; // 设定为固定的height，width按视频变化
+                    } else {
+                        height_scale = config.popup_height_scale;
+                        block_padding = 0;
+                        usableHeight = window.innerHeight * height_scale;
+                        scale = usableHeight / video.height; // 设定为固定的height，width按视频变化
+                    }
+                    var need_width = scale * video.width; // 设定width的值
+                    // 通用比例宽度（16:9）
+                    var generalWidth = usableHeight / 9 * 16;
+                    var setMaxWidth = null;
+                    if (need_width <= usableWidth && (need_width > generalWidth || generalWidth > usableWidth)) {
+                        setMaxWidth = need_width;
+                    } else if (generalWidth >= need_width && generalWidth < usableWidth) {
+                        setMaxWidth = generalWidth;
+                    } else {
+                        setMaxWidth = usableWidth > 1000 ? (usableWidth - 175) : usableWidth;
+                    }
+                    mfp.contentContainer.css("max-width", setMaxWidth + "px");
+                    if (config.use_site_iframe || video.source_type == 2) {
+                        if (need_width > usableWidth) { // 如果width大于窗口的宽度，则取消设置
+                            mfp.contentContainer.css("width", "");
+                            mfp.contentContainer.css("height", "");
+                            // 宽度不够时，设置最大宽度，同时寻找合适高度
+                            var need_height = ((setMaxWidth) / video.width) * video.height;
+                            if (need_height <= usableHeight) {
+                                mfp.contentContainer.css("height", (need_height + block_padding) + "px");
+                            }
+                        } else if (config.popup_iframe_border) { // 添加黑边
+                            mfp.contentContainer.css("height", (height_scale * 100) + "%");
+                            mfp.contentContainer.css("width", "");
+                        } else { // IFrame设置宽度去除黑边
+                            mfp.contentContainer.css("height", (height_scale * 100) + "%");
+                            mfp.contentContainer.css("width", need_width + "px");
+                        }
+                    } else {
+                        mfp.contentContainer.css("height", ""); // 不指定就会居中
+                        if (need_width > usableWidth) {
+                            mfp.contentContainer.css("width", "");
+                        } else if (config.popup_video_border) { // 添加黑边
+                            mfp.contentContainer.css("width", "");
+                            $player.get(0).style.width = need_width + "px";
+                            if (!isBlockStyle) {
+                                $playerWrap.parent().addClass("mfp-figure mfp-figure-inline");
+                            }
+                        } else { // 取除黑边
+                            mfp.contentContainer.css("width", need_width + "px");
+                        }
+                    }
                 },
                 beforeClose: function () {
                     // Callback available since v0.9.0
@@ -559,7 +652,7 @@
                     if (check) { // 当已经到列表页就不运行
                         history.back();
                     }
-                    page_handle.utils.triggerEvent(page_handle.config.event.popupClosed, video.cover.photo_id, video.video_id);
+                    page_handle.trigger(page_handle.config.event.popupClosed, video.cover.photo_id, video.video_id);
                     var $checkOriginNode = page_handle.utils.getPhotoImageDom(video.cover.photo_id);
                     if ($checkOriginNode.length > 0 && !common_utils.isOnScreen($checkOriginNode.get(0), 150, 150)) {
                         $('html, body').animate({
@@ -568,7 +661,19 @@
                     }
                 },
             }
-        });
+        };
+        popupOptions.isObj = false;
+        popupOptions.mainEl = popupOptions.items = $(selector).onfirst('click', function (e) {
+            var $el = $(this);
+            if ($el.attr('data-video-id')) {
+                popupOptions.el = $el;
+                $.magnificPopup.instance.open(popupOptions);
+                e.stopImmediatePropagation(); // 禁止绑定的照片弹窗打开
+                e.preventDefault(); // 由于禁止了冒泡，所以这里仍然需要处理一次禁止默认行为
+            } else {
+                common_utils.notify({"progressBar": false}).error("没有权限~", "打开视频失败~", "notify_open_video_fail");
+            }
+        }).data('magnificPopup', popupOptions);
     };
 
     // ------ After clicking video to open, make up the video node. ------
@@ -579,7 +684,7 @@
         node.id = "video_" + video.video_id;
         node.setAttribute("data-video-id", video.video_id);
         if (video.source_type == 0 || video.source_type == 1) {
-            node.src = video.path
+            node.src = video.path;
             node.controls = "controls";
             node.poster = video.cover.path;
             node.setAttribute("type", video.video_type);
@@ -599,36 +704,13 @@
                 .css("width", "100%")
                 //.height(video.height * scale);
                 // jquery赋值时会加上border宽度，但是由于该节点还没有实际渲染，jquery识别不到border，所以手动需要加上边框宽度
-                // .height(video.height * scale + borderWidth*2); // 既这样等同于原始的写法：
+                // .height(video.height * scale + borderWidth * 2); // 既这样等同于原始的写法：
                 .css("height", (video.height * scale + borderWidth * 2) + "px"); // 原始css赋值的宽度会包含border宽度在内
         }
-        photoDom.html(videoNode);
+        photoDom.find('> .photo-detail-link').html(videoNode);
     };
 
     var utils = {
-        "once": function (object, eventName, func, bindFirst) {
-            var funcWrapper = function () {
-                try {
-                    func.apply(object, arguments);
-                } finally {
-                    utils.unbindEvent(object, eventName, funcWrapper);
-                }
-            };
-            utils.bindEvent(object, eventName, funcWrapper, bindFirst);
-        },
-        "bindEvent": function (object, eventName, func, bindFirst) {
-            if (bindFirst == true) {
-                $(object).onfirst(eventName, func);
-            } else {
-                $(object).bind(eventName, func);
-            }
-        },
-        "triggerEvent": function (object, eventName) {
-            return $(object).triggerHandler(eventName, Array.prototype.slice.call(arguments, 2));
-        },
-        "unbindEvent": function (object, eventName, func) {
-            $(object).unbind(eventName, func);
-        },
         "getVideoByCache": function (video_id) {
             var video = null;
             pointer.videos && $.each(pointer.videos, function (i, value) {
@@ -679,7 +761,12 @@
     var context = {
         "reInit": init,
         "config": config,
-        "utils": utils
+        "request": request,
+        "utils": utils,
+        "on": common_utils.on,
+        "once": common_utils.once,
+        "trigger": common_utils.trigger,
+        "off": common_utils.off
     };
 
     return context;

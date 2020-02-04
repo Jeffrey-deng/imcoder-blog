@@ -1,5 +1,7 @@
 package site.imcoder.blog.Interceptor.annotation;
 
+import site.imcoder.blog.entity.AccessDetail;
+
 import java.lang.annotation.*;
 
 /**
@@ -12,7 +14,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-public @interface AccessRecorder {
+public @interface AccessRecord {
 
     public static enum Types {
 
@@ -27,7 +29,7 @@ public @interface AccessRecorder {
 
     public static enum Actions {
 
-        SAVE(0), LIKE(1), DELETE(-1);
+        SAVE(0), DELETE(-1);
 
         private int value;
 
@@ -35,6 +37,8 @@ public @interface AccessRecorder {
             this.value = value;
         }
     }
+
+    public static String DEFAULT_RECORD_REWRITE_KEY = "recordRewriteKey";
 
     /**
      * 记录的对象类型, 由 {@link Types} 枚举
@@ -66,17 +70,17 @@ public @interface AccessRecorder {
      * 访问图片可分为 只点击放大查看了、点开详情页也查看了
      * 注意：此值在同个主体多个记录中取最大值
      *
-     * @return 用来指定当前请求的status，如需在controller方法体内修改status的值，使用 {@link #recordRewriteKey}
+     * @return 用来指定当前请求的deep，如需在controller方法体内修改deep的值，使用 {@link #recordRewriteKey}
      */
     public int deep() default 0;
 
     /**
-     * 当需要在controller方法体内修改请求的 {@link site.imcoder.blog.entity.AccessRecord} 的值
-     * 需要在controller方法的model或IResponse中储存返回一个status
+     * 当需要在controller方法体内修改请求的 {@link AccessDetail} 的值
+     * 需要在controller方法的model或IResponse中储存返回一个deep
      * 而此字段用来指明存储时使用的key
      *
      * @return
      */
-    public String recordRewriteKey() default "recordRewriteKey";
+    public String recordRewriteKey() default DEFAULT_RECORD_REWRITE_KEY;
 
 }

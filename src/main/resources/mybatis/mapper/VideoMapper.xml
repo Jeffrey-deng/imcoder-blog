@@ -96,12 +96,13 @@
         </if>
         st.st_id, st.uid as st_uid, st.video_id as st_video_id, st.name as st_name, st.lang as st_lang, st.mime_type as st_mime_type, st.path as st_path, st.upload_time as st_upload_time
         <if test="is_login">
-            , (case when (vah.vah_id is not null) then true else false end) as accessed
-            , (case when (vah.is_like is not null and vah.is_like != 0) then true else false end) as liked
+            , (case when (ar.liked is not null and ar.liked > 0) then true else false end) as liked
+            , (case when (ar.commented is not null and ar.commented > 0) then true else false end) as commented
+            , (case when (ad.var_id is not null) then true else false end) as accessed
         </if>
         from ((( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id) left join video_subtitle st on v.video_id = st.video_id)
         <if test="is_login">
-            left join video_access_history vah on (v.video_id = vah.video_id and vah.uid = #{loginUser.uid})
+            left join video_action_record ar on (ar.video_id = v.video_id and ar.uid = #{loginUser.uid}) left join video_access_detail ad on ar.var_id = ad.var_id
         </if>
         <where>
             <choose>
@@ -142,15 +143,15 @@
 
     <select id="findVideoList" parameterType="hashMap" resultMap="videoResultMap">
         <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
-        <bind name="is_base_user_videos"
-              value="base != null and base == 'user_videos' and video != null and video.user != null and video.user.uid != null and video.user.uid > 0"/>
-        <bind name="is_base_album_detail"
-              value="base != null and base == 'album_detail' and video != null and video.cover != null and video.cover.album_id != null and video.cover.album_id > 0"/>
+        <bind name="is_base_user_videos" value="base != null and base == 'user_videos' and video != null and video.user != null and video.user.uid != null and video.user.uid > 0"/>
+        <bind name="is_base_album_detail" value="base != null and base == 'album_detail' and video != null and video.cover != null and video.cover.album_id != null and video.cover.album_id > 0"/>
         <bind name="is_base_user_likes" value="is_login and base != null and base == 'user_likes' and video != null and video.liked"/>
+        <bind name="is_base_user_comments" value="is_login and base != null and base == 'user_comments' and video != null and video.commented"/>
         <bind name="is_base_user_history" value="is_login and base != null and base == 'user_history' and video != null and video.accessed"/>
         <bind name="is_base_video_tag" value="base != null and base == 'video_tag' and video != null and video.tags != null and video.tags != ''"/>
         <bind name="is_and_logic_conn" value="logic_conn == null or logic_conn == 'and'"/>
         <bind name="is_as_user_likes_query" value="is_base_user_likes or (is_login and is_and_logic_conn and video != null and video.liked)"/>
+        <bind name="is_as_user_comments_query" value="is_base_user_comments or (is_login and is_and_logic_conn and video != null and video.commented)"/>
         <bind name="is_as_user_history_query" value="is_base_user_history or (is_login and is_and_logic_conn and video != null and video.accessed)"/>
         select v.video_id, v.uid , u.nickname, u.sex, u.head_photo, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
@@ -160,12 +161,13 @@
         </if>
         st.st_id, st.uid as st_uid, st.video_id as st_video_id, st.name as st_name, st.lang as st_lang, st.mime_type as st_mime_type, st.path as st_path, st.upload_time as st_upload_time
         <if test="is_login">
-            , (case when (vah.vah_id is not null) then true else false end) as accessed
-            , (case when (vah.is_like is not null and vah.is_like > 0) then true else false end) as liked
+            , (case when (ar.liked is not null and ar.liked > 0) then true else false end) as liked
+            , (case when (ar.commented is not null and ar.commented > 0) then true else false end) as commented
+            , (case when (ad.var_id is not null) then true else false end) as accessed
         </if>
         from (((video v left join user u on v.uid = u.uid) left join photo p on v.cover_id = p.photo_id) left join video_subtitle st on v.video_id = st.video_id)
         <if test="is_login">
-            left join video_access_history vah on (v.video_id = vah.video_id and vah.uid = #{loginUser.uid})
+            left join video_action_record ar on (ar.video_id = v.video_id and ar.uid = #{loginUser.uid}) left join video_access_detail ad on ar.var_id = ad.var_id
         </if>
         <where>
             <if test="video == null">
@@ -202,10 +204,13 @@
                     )
                 </if>
                 <if test="is_base_user_likes">
-                    and (vah.is_like is not null and vah.is_like > 0)
+                    and (ar.liked is not null and ar.liked > 0)
+                </if>
+                <if test="is_base_user_comments">
+                    and (ar.commented is not null and ar.commented > 0)
                 </if>
                 <if test="is_base_user_history">
-                    and (vah.vah_id is not null)
+                    and (ad.var_id is not null)
                 </if>
                 <if test="is_base_video_tag">
                     and (v.tags rlike '${video.tags}')
@@ -265,7 +270,7 @@
                         </if>
                         <if test="is_login and video.originName != null and video.originName != ''">
                             <bind name="search_like_video_video_originName" value="'%' + video.originName  + '%'"/>
-                            or (v.uid = #{loginUser.uid} and v.originName #{search_like_video_video_originName})
+                            or (v.uid = #{loginUser.uid} and v.originName like #{search_like_video_video_originName})
                         </if>
                         <if test="video.refer != null and video.refer != ''">
                             <bind name="search_like_video_video_refer" value="'%' + video.refer  + '%'"/>
@@ -274,12 +279,15 @@
                         <if test="video.rotate != null">
                             or v.rotate = #{video.rotate}
                         </if>
-                        <if test="loginUser != null and loginUser.uid != null">
+                        <if test="is_login">
                             <if test="!is_base_user_likes and video.liked">
-                                or (vah.is_like is not null and vah.is_like > 0)
+                                or (ar.liked is not null and ar.liked > 0)
+                            </if>
+                            <if test="!is_base_user_comments and video.commented">
+                                or (ar.commented is not null and ar.commented > 0)
                             </if>
                             <if test="!is_base_user_history and video.accessed">
-                                or (vah.vah_id is not null)
+                                or (ad.var_id is not null)
                             </if>
                         </if>
                         )
@@ -337,7 +345,7 @@
                         </if>
                         <if test="is_login and video.originName != null and video.originName != ''">
                             <bind name="search_like_video_video_originName" value="'%' + video.originName  + '%'"/>
-                            and (v.uid = #{loginUser.uid} and v.originName #{search_like_video_video_originName})
+                            and (v.uid = #{loginUser.uid} and v.originName like #{search_like_video_video_originName})
                         </if>
                         <if test="video.refer != null and video.refer != ''">
                             <bind name="search_like_video_video_refer" value="'%' + video.refer  + '%'"/>
@@ -346,12 +354,15 @@
                         <if test="video.rotate != null">
                             and v.rotate = #{video.rotate}
                         </if>
-                        <if test="loginUser != null and loginUser.uid != null">
+                        <if test="is_login">
                             <if test="!is_base_user_likes and video.liked">
-                                and (vah.is_like is not null and vah.is_like > 0)
+                                and (ar.liked is not null and ar.liked > 0)
+                            </if>
+                            <if test="!is_base_user_comments and video.commented">
+                                and (ar.commented is not null and ar.commented > 0)
                             </if>
                             <if test="!is_base_user_history and video.accessed">
-                                and (vah.vah_id is not null)
+                                and (ad.var_id is not null)
                             </if>
                         </if>
                         )
@@ -364,7 +375,7 @@
             <choose>
                 <when test="is_login">
                     <choose>
-                        <when test="is_as_user_likes_query or is_as_user_history_query">
+                        <when test="is_as_user_likes_query or is_as_user_comments_query or is_as_user_history_query">
                             and (
                             v.uid = #{loginUser.uid}
                             or
@@ -409,13 +420,18 @@
                 </otherwise>
             </choose>
         </where>
-        order by
         <choose>
-            <when test="is_base_user_likes or is_base_user_history">
-                vah.last_access_time
+            <when test="is_as_user_likes_query">
+                order by ar.like_at
+            </when>
+            <when test="is_as_user_comments_query">
+                order by ar.comment_at
+            </when>
+            <when test="is_as_user_history_query">
+                order by ad.last_access_time
             </when>
             <otherwise>
-                v.video_id
+                order by v.video_id
             </otherwise>
         </choose>
         <choose>

@@ -1,7 +1,8 @@
 /**
- * Created by Jeffrey.Deng on 2018/4/1.
  * 将按队列执行任务
  * 可以队列ajax和普通任务
+ * @author Jeffrey.deng
+ * @date 2018/4/1
  */
 (function (factory) {
     /* global define */
@@ -20,6 +21,7 @@
      *      handler should return Deferred object(not Promise), if not it will run immediately;
      *  methods: append
      *      appends a task to the Queue. Queue will only call a task when the previous task has finished
+     *  @author Jeffrey.deng
      */
     var TaskQueue = function (handler) {
         var tasks = [];
@@ -38,9 +40,12 @@
                 if (!(deferred && deferred.promise)) {
                     deferred = $.when();
                 }
-                // if we have tasks left then handle the next one when the current one
-                // is done.
+                // if we have tasks left then handle the next one when the current one is done.
                 if (tasks.length >= 0) {
+                    deferred.fail(function () {
+                        tasks = [];
+                        return;
+                    });
                     deferred.done(handleNextTask);
                 }
             }

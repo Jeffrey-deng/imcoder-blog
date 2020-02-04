@@ -95,29 +95,39 @@
         #{like_count})
     </insert>
 
-    <!-- 根据文章id查询评论列表 -->
-    <select id="findCommentList" parameterType="article" resultMap="commentMap">
-        select cid,main_type,main_id,r_cid,content,send_time,anonymous,like_count,u.uid,u.nickname,u.head_photo,u.sex
-        from comment c left join user u on c.uid=u.uid
-        where c.main_id=#{mainId} and c.main_type = #{mainType}
+    <!-- 根据条件查询评论列表 -->
+    <select id="findCommentList" parameterType="hashMap" resultMap="commentMap">
+        <bind name="is_login" value="loginUser != null and loginUser.isHasLoggedIn()"/>
+        select c.cid, c.main_type, c.main_id, c.r_cid, c.content, c.send_time, c.anonymous, c.like_count,
+        cu.uid as comment_user_uid, cu.nickname as comment_user_nickname, cu.head_photo as comment_user_head_photo, cu.sex as comment_user_sex
+        , (case when (ar.liked is not null and ar.liked > 0) then true else false end) as liked
+        from (comment c left join user cu on c.uid = cu.uid)
+        <if test="is_login">
+            left join comment_action_record ar on (ar.cid = c.cid and ar.uid = #{loginUser.uid})
+        </if>
+        <if test="not is_login">
+            left join comment_action_record ar on (ar.cid = c.cid and ar.uid = 0 and ar.ip = #{loginUser.userStatus.last_login_ip})
+        </if>
+        where c.main_id = #{condition.mainId} and c.main_type = #{condition.mainType}
     </select>
 
-    <!-- 根据文章id查询评论列表 -->
+    <!-- 根据cid查询评论 -->
     <select id="findComment" parameterType="comment" resultMap="commentMap">
-        select cid,main_type,main_id,r_cid,content,send_time,anonymous,like_count,u.uid,u.nickname,u.head_photo,u.sex
-        from comment c left join user u on c.uid=u.uid
-        where c.cid=#{cid}
+        select c.cid, c.main_type, c.main_id, c.r_cid, c.content, c.send_time, c.anonymous, c.like_count,
+        cu.uid as comment_user_uid, cu.nickname as comment_user_nickname, cu.head_photo as comment_user_head_photo, cu.sex as comment_user_sex
+        from comment c left join user cu on c.uid = cu.uid
+        where c.cid = #{cid}
     </select>
 
     <!-- 删除评论 -->
     <update id="deleteComment_1" parameterType="comment">
-        update comment set content='*已删除*' where cid=#{cid}
+        update comment set content='*已删除*' where cid = #{cid}
     </update>
     <delete id="deleteComment_2" parameterType="comment">
-        delete from comment where cid=#{cid}
+        delete from comment where cid = #{cid}
     </delete>
     <select id="selectCmtChildCount" parameterType="comment" resultType="int">
-        select count(*) as rows from comment where r_cid=#{cid}
+        select count(*) as rows from comment where r_cid = #{cid}
     </select>
 
     <!-- 点赞评论 -->
@@ -135,14 +145,14 @@
         <result column="send_time" property="send_time"/>
         <result column="anonymous" property="anonymous"/>
         <result column="like_count" property="like_count"/>
+        <result column="liked" property="liked"/>
         <association property="user" javaType="user">
-            <result column="uid" property="uid"/>
-            <result column="nickname" property="nickname"/>
-            <result column="head_photo" property="head_photo"/>
-            <result column="sex" property="sex"/>
+            <result column="comment_user_uid" property="uid"/>
+            <result column="comment_user_nickname" property="nickname"/>
+            <result column="comment_user_head_photo" property="head_photo"/>
+            <result column="comment_user_sex" property="sex"/>
         </association>
     </resultMap>
-
     <!-- Comment handle end -->
 
     <!-- SysMsg handle start -->

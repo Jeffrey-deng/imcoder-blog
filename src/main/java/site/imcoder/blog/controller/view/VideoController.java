@@ -5,7 +5,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import site.imcoder.blog.Interceptor.annotation.AccessRecorder;
+import site.imcoder.blog.Interceptor.annotation.AccessRecord;
 import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.controller.BaseController;
 import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
@@ -70,12 +70,15 @@ public class VideoController extends BaseController {
      * @param iRequest
      * @return
      */
-    @AccessRecorder(type = AccessRecorder.Types.VIDEO, key = "video", deep = 0)
+    @AccessRecord(type = AccessRecord.Types.VIDEO, key = "video", deep = 0)
     @RequestMapping(value = "/video/embed/{id}")
-    public String embed(@PathVariable @PrimaryKeyConvert Long id, Model model, IRequest iRequest) {
+    public String embed(@PathVariable @PrimaryKeyConvert Long id, @RequestParam(defaultValue = "true") boolean save_access_record, Model model, IRequest iRequest) {
         IResponse videoResp = videoService.findVideo(new Video(id), iRequest);
         if (videoResp.isSuccess()) {
             model.addAttribute("video", videoResp.getAttr("video"));
+            if (!save_access_record) { // 拒绝保存访问记录
+                model.addAttribute(AccessRecord.DEFAULT_RECORD_REWRITE_KEY, false);
+            }
         }
         return getViewPage(videoResp, "/video/video_embed");
     }
@@ -89,7 +92,7 @@ public class VideoController extends BaseController {
      * @param iRequest
      * @return
      */
-    @AccessRecorder(type = AccessRecorder.Types.VIDEO, key = "video", deep = 2)
+    @AccessRecord(type = AccessRecord.Types.VIDEO, key = "video", deep = 2)
     @RequestMapping(value = {"/video/detail/{id}", "/video/detail"})
     public String openVideoDetail(@PathVariable(required = false) @PrimaryKeyConvert Long id,
                                   @RequestParam(defaultValue = "0") @PrimaryKeyConvert Long cover_id,

@@ -103,14 +103,15 @@
         u.uid as auid, u.nickname, u.sex, u.head_photo,
         u.gid, ug.group_name
         <if test="is_login">
-            , (case when (aah.aah_id is not null) then true else false end) as accessed
-            , (case when (aah.is_like is not null and aah.is_like > 0) then true else false end) as liked
+            , (case when (ar.liked is not null and ar.liked > 0) then true else false end) as liked
+            , (case when (ar.commented is not null and ar.commented > 0) then true else false end) as commented
+            , (case when (ad.aar_id is not null) then true else false end) as accessed
         </if>
         from ((article a left join article_type at on a.atid = at.atid)
         left join (user u left join user_group ug on u.gid = ug.gid)
         on a.uid = u.uid)
         <if test="is_login">
-            left join article_access_history aah on (a.aid = aah.aid and aah.uid = #{loginUser.uid})
+            left join article_action_record ar on (a.aid = ar.aid and ar.uid = #{loginUser.uid}) left join article_access_detail ad on ar.aar_id = ad.aar_id
         </if>
         <where>
             <if test="condition == null">
@@ -180,10 +181,13 @@
                 </if>
                 <if test="loginUser != null and loginUser.uid != null">
                     <if test="condition.collected">
-                        and (aah.is_like is not null and aah.is_like > 0)
+                        and (ar.liked is not null and ar.liked > 0)
+                    </if>
+                    <if test="condition.commented">
+                        and (ar.commented is not null and ar.commented > 0)
                     </if>
                     <if test="condition.accessed">
-                        and (aah.aah_id is not null)
+                        and (ad.aar_id is not null)
                     </if>
                 </if>
                 )
@@ -194,7 +198,7 @@
                         <when test="condition != null and condition.permission > 0">
                             and (a.uid = #{loginUser.uid} and a.permission = #{condition.permission})
                         </when>
-                        <when test="condition != null and (condition.collected || condition.accessed)">
+                        <when test="condition != null and (condition.collected or condition.commented or condition.accessed)">
                             and (
                             a.uid = #{loginUser.uid}
                             or
@@ -249,8 +253,16 @@
                     asc,
                 </if>
             </if>
-            <if test="is_login and condition != null and (condition.collected || condition.accessed)">
-                aah.last_access_time desc,
+            <if test="is_login and condition != null">
+                <if test="condition.collected">
+                    ar.like_at desc
+                </if>
+                <if test="condition.commented">
+                    ar.comment_at desc
+                </if>
+                <if test="condition.accessed">
+                    ad.last_access_time desc,
+                </if>
             </if>
         </if>
         a.aid desc
@@ -338,7 +350,7 @@
         select count(*) as count
         from (article a left join user u on a.uid = u.uid)
         <if test="is_login">
-            left join article_access_history aah on (a.aid = aah.aid and aah.uid = #{loginUser.uid})
+            left join article_action_record ar on (a.aid = ar.aid and ar.uid = #{loginUser.uid}) left join article_access_detail ad on ar.aar_id = ad.aar_id
         </if>
         <where>
             <if test="condition == null">
@@ -408,10 +420,13 @@
                 </if>
                 <if test="loginUser != null and loginUser.uid != null">
                     <if test="condition.collected">
-                        and (aah.is_like is not null and aah.is_like > 0)
+                        and (ar.liked is not null and ar.liked > 0)
+                    </if>
+                    <if test="condition.commented">
+                        and (ar.commented is not null and ar.commented > 0)
                     </if>
                     <if test="condition.accessed">
-                        and (aah.is_like is not null)
+                        and (ad.aar_id is not null)
                     </if>
                 </if>
                 )
@@ -421,6 +436,26 @@
                     <choose>
                         <when test="condition != null and condition.permission > 0">
                             and (a.uid = #{loginUser.uid} and a.permission = #{condition.permission})
+                        </when>
+                        <when test="condition != null and (condition.collected or condition.commented or condition.accessed)">
+                            and (
+                            a.uid = #{loginUser.uid}
+                            or
+                            (
+                            (a.permission = 0 or a.permission = 1)
+                            or
+                            (a.permission = 2 or a.permission = 3)
+                            or
+                            ((a.permission = 4 or a.permission = 5) and a.uid in (select following.fuid from user_follow following where following.uid
+                            = #{loginUser.uid}))
+                            or
+                            ((a.permission = 6 or a.permission = 7) and a.uid in (select follower.uid from user_follow follower where follower.fuid =
+                            #{loginUser.uid}))
+                            or
+                            ((a.permission = 8 or a.permission = 9) and a.uid in (select friend.uid from friends friend where friend.fid =
+                            #{loginUser.uid}))
+                            )
+                            )
                         </when>
                         <otherwise>
                             and (
@@ -450,22 +485,20 @@
 
     <!-- article rank manager start -->
     <!-- 评论数量 -->
-    <update id="raiseCommentCnt" parameterType="comment">
-        update article set comment_count=comment_count+1 where aid=#{aid}
+    <!-- 点击量加1 -->
+    <update id="updateArticleClickCount" parameterType="hashMap">
+        update article set click_count = (case when ((click_count + #{step}) > 0) then (click_count + #{step}) else 0 end)
+        where aid = #{a.aid}
     </update>
-    <update id="reduceCommentCnt" parameterType="comment">
-        update article set comment_count=comment_count-1 where aid=#{aid}
+    <!-- 收藏数量加1 -->
+    <update id="updateArticleCollectCount" parameterType="hashMap">
+        update article set collect_count = (case when ((collect_count + #{step}) > 0) then (collect_count + #{step}) else 0 end)
+        where aid = #{article.aid}
     </update>
-    <!-- 收藏数量 -->
-    <update id="raiseCollectCnt" parameterType="article">
-        update article set collect_count=collect_count+1 where aid=#{aid}
-    </update>
-    <update id="reduceCollectCnt" parameterType="comment">
-        update article set collect_count=collect_count-1 where aid=#{aid}
-    </update>
-    <!-- 点击数量 -->
-    <update id="raiseClickCnt" parameterType="article">
-        update article set click_count=click_count+1 where aid=#{aid}
+    <!-- 评论量 -->
+    <update id="updateArticleCommentCount" parameterType="hashMap">
+        update article set comment_count = (case when ((comment_count + #{step}) > 0) then (comment_count + #{step}) else 0 end)
+        where aid = #{article.aid}
     </update>
     <!-- article rank manager end -->
 

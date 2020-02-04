@@ -8,7 +8,6 @@ import site.imcoder.blog.common.PageUtil;
 import site.imcoder.blog.dao.CommonDao;
 import site.imcoder.blog.dao.IArticleDao;
 import site.imcoder.blog.entity.Article;
-import site.imcoder.blog.entity.Comment;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
@@ -187,68 +186,65 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
     /** --------article dml end----------------- */
 
     /** ---------- article rank manager start ------------------- */
-
     /**
-     * 增加评论数
+     * 点击量加1
+     *
+     * @param article
+     * @param step    - 步长，可为负数
+     * @return
      */
-    public int raiseCommentCnt(Comment comment) {
+    @Override
+    public int updateArticleClickCount(Article article, int step) {
         try {
-            return this.getSqlSession().update("article.raiseCommentCnt", comment);
+            Map<String, Object> map = new HashMap<>();
+            map.put("article", article);
+            map.put("step", step);
+            return this.getSqlSession().update("article.updateArticleClickCount", map);
         } catch (Exception e) {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            logger.error("raiseCommentCnt fail", e);
+            logger.warn("updateArticleClickCount fail", e);
             return -1;
         }
     }
 
     /**
-     * 减少评论数
+     * 收藏量量加1
+     *
+     * @param article
+     * @param step    - 步长，可为负数
+     * @return
      */
-    public int reduceCommentCnt(Comment comment) {
+    @Override
+    public int updateArticleCollectCount(Article article, int step) {
         try {
-            return this.getSqlSession().update("article.reduceCommentCnt", comment);
+            Map<String, Object> map = new HashMap<>();
+            map.put("article", article);
+            map.put("step", step);
+            return this.getSqlSession().update("article.updateArticleCollectCount", map);
         } catch (Exception e) {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            logger.error("reduceCommentCnt fail", e);
+            logger.warn("updateArticleCollectCount fail", e);
             return -1;
         }
     }
 
     /**
-     * 增加收藏数
+     * 评论量加1
+     *
+     * @param article
+     * @param step    - 步长，可为负数
+     * @return
      */
-    public int raiseCollectCnt(Article article) {
+    @Override
+    public int updateArticleCommentCount(Article article, int step) {
         try {
-            return this.getSqlSession().update("article.raiseCollectCnt", article);
+            Map<String, Object> map = new HashMap<>();
+            map.put("article", article);
+            map.put("step", step);
+            return this.getSqlSession().update("article.updateArticleCommentCount", map);
         } catch (Exception e) {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            logger.error("raiseCollectCnt fail", e);
-            return -1;
-        }
-    }
-
-    /**
-     * 减少收藏数
-     */
-    public int reduceCollectCnt(Article article) {
-        try {
-            return this.getSqlSession().update("article.reduceCollectCnt", article);
-        } catch (Exception e) {
-            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            logger.error("reduceCollectCnt fail", e);
-            return -1;
-        }
-    }
-
-    /**
-     * 增加点击数
-     */
-    public int raiseClickCnt(Article article) {
-        try {
-            return this.getSqlSession().update("article.raiseClickCnt", article);
-        } catch (Exception e) {
-            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            logger.error("raiseClickCnt fail", e);
+            logger.warn("updateArticleCommentCount fail", e);
             return -1;
         }
     }

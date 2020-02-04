@@ -1,8 +1,6 @@
 package site.imcoder.blog.entity;
 
 import site.imcoder.blog.common.type.CommentType;
-import site.imcoder.blog.controller.formatter.general.GeneralConvert;
-import site.imcoder.blog.controller.formatter.general.impl.EscapeEmojiConverter;
 import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
 import site.imcoder.blog.controller.formatter.timeformat.TimeFormat;
 import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFill;

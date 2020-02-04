@@ -108,7 +108,7 @@
     };
 
     var bindEvent = function () {
-        pointer.login_form.find('.login_submit').click(function () {
+        pointer.login_form.find('.login_submit').on('click', function () {
             var form = {};
             form.identifier = pointer.login_form.find('input[name="identifier"]').val();
             form.credential = pointer.login_form.find('input[name="credential"]').val();
@@ -116,7 +116,7 @@
             form.remember === undefined && (form.remember = true);
             login(form);
         });
-        pointer.login_form.keydown(function (e) {
+        pointer.login_form.on('keydown', function (e) {
             var theEvent = e || window.event;
             var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
             if (code == 13) {//keyCode=13是回车键

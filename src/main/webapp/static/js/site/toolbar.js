@@ -269,23 +269,23 @@
             });
         }
         // bind search btn
-        _self.find('.toolbar_search_trigger').click(function (e) {
+        _self.find('.toolbar_search_trigger').on('click', function (e) {
             var key = _self.find('.toolbar_search_input').val();
             config.callback.action_search.call(context, key);
             e.preventDefault();
         });
-        searchInputBox.parent().parent().keydown(function (e) {
+        searchInputBox.parent().parent().on('keydown', function (e) {
             var theEvent = e || window.event;
             var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
             if (code == 13) {// keyCode=13是回车键
-                _self.find('.toolbar_search_trigger').click();
+                _self.find('.toolbar_search_trigger').trigger('click');
                 // 防止触发表单提交 返回false
                 // e.preventDefault();
                 return false;
             }
         });
         // quickly search
-        $(document).keyup(searchHotKey_event);
+        $(document).on('keyup', searchHotKey_event);
     };
 
     // 按 s 或 f 搜索
@@ -293,7 +293,7 @@
         var theEvent = e || window.event;
         var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
         var tagName = e.target.tagName;
-        if ((code == 83 || code == 70) && !e.target.isContentEditable && tagName != "INPUT" && tagName != "TEXTAREA") { // S键或F键
+        if ((code == 83 || code == 70) && !e.target.isContentEditable && tagName !== "INPUT" && tagName !== "TEXTAREA") { // S键或F键
             _self.find('.toolbar_search_input').focus(); // 将焦点定位到输入框
         }
     };

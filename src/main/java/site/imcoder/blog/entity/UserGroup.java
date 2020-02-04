@@ -21,8 +21,14 @@ public class UserGroup implements Serializable {
     }
 
     public UserGroup(int gid) {
-        super();
+        this();
         this.gid = gid;
+    }
+
+    public UserGroup(int gid, String group_name) {
+        this();
+        this.gid = gid;
+        this.group_name = group_name;
     }
 
     public Long getUid() {
@@ -42,6 +48,12 @@ public class UserGroup implements Serializable {
     }
 
     public String getGroup_name() {
+        if (group_name == null) {
+            UserGroupType userGroupType = UserGroupType.valueOf(gid);
+            if (userGroupType != null) {
+                return userGroupType.name;
+            }
+        }
         return group_name;
     }
 
@@ -56,7 +68,7 @@ public class UserGroup implements Serializable {
      */
     @JsonIgnore
     public boolean isManager() {
-        return this.gid == UserGroupType.MANAGER.value;
+        return gid == UserGroupType.MANAGER.value;
     }
 
     /**
@@ -67,6 +79,16 @@ public class UserGroup implements Serializable {
     @JsonIgnore
     public boolean isGeneralUser() {
         return !isManager();
+    }
+
+    /**
+     * 是否为游客
+     *
+     * @return
+     */
+    @JsonIgnore
+    public boolean isGuestUser() {
+        return gid == UserGroupType.GUEST_USER.value;
     }
 
 }

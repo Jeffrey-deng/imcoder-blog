@@ -168,6 +168,7 @@
         <result column="refer" property="refer"/>
         <result column="click_count" property="click_count"/>
         <result column="like_count" property="like_count"/>
+        <result column="comment_count" property="comment_count"/>
         <association column="ptwid" property="topic" javaType="photoTagWrapper">
             <result column="ptwid" property="ptwid"/>
             <result column="tname" property="name"/>
@@ -196,6 +197,7 @@
         <result column="rotate" property="rotate"/>
         <result column="click_count" property="click_count"/>
         <result column="like_count" property="like_count"/>
+        <result column="comment_count" property="comment_count"/>
         <association column="uid" property="user" javaType="user">
             <result column="uid" property="uid"/>
             <result column="nickname" property="nickname"/>
@@ -223,7 +225,7 @@
 
     <select id="findPhotoList" parameterType="album" resultMap="photoResultMap">
         select p.photo_id, p.uid, p.album_id, p.name, p.path, p.description, p.tags, p.upload_time, p.width, p.height,
-        p.size, p.image_type, p.originName, p.refer, p.click_count, p.like_count,
+        p.size, p.image_type, p.originName, p.refer, p.click_count, p.like_count, p.comment_count
         t.ptwid, t.name as tname, t.permission as tpermission, t.scope, t.description as tdescription
         from photo p left join photo_tag_wrapper t on p.topic = t.ptwid
         <where>
@@ -238,7 +240,7 @@
         select v.video_id, v.uid , u.nickname, v.cover_id, p.path as p_path, p.album_id, p.width as p_width, p.height as
         p_height,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
-        v.upload_time, v.originName, v.permission, v.rotate, v.click_count, v.like_count
+        v.upload_time, v.originName, v.permission, v.rotate, v.click_count, v.like_count, v.comment_count
         from ( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id
         <where>
             <if test="_parameter != null and uid > 0">

@@ -193,9 +193,9 @@ public class InitCacheTool {
     /**
      * 统计每个tag的数量
      *
-     * @param checkPermission    是否只统计公开文章的标签
+     * @param checkPermission 是否只统计公开文章的标签
      * @param articleBuffer
-     * @param uid           大于0时只统计该用户的文章
+     * @param uid             大于0时只统计该用户的文章
      * @param cache
      * @return
      */

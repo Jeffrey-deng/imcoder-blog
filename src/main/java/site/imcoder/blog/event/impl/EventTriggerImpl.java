@@ -2,10 +2,11 @@ package site.imcoder.blog.event.impl;
 
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
-import site.imcoder.blog.Interceptor.annotation.AccessRecorder;
+import site.imcoder.blog.Interceptor.annotation.AccessRecord;
 import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.common.id.IdUtil;
+import site.imcoder.blog.common.type.CommentType;
 import site.imcoder.blog.dao.IAlbumDao;
 import site.imcoder.blog.dao.IUserDao;
 import site.imcoder.blog.dao.IVideoDao;
@@ -39,28 +40,27 @@ public class EventTriggerImpl implements IEventTrigger {
     @Resource
     private IVideoDao videoDao;
 
-
     /**
      * 文章被浏览事件
      *
+     * @param accessDetail
      * @param accessRecord
-     * @param accessRecorder
      */
     @Override
-    public void accessArticle(AccessRecord<Article> accessRecord, AccessRecorder accessRecorder) {
-        Article article = accessRecord.getBean();
-        if (article != null) {
-            switch (accessRecorder.action()) {
+    public void accessArticle(AccessDetail accessDetail, AccessRecord accessRecord) {
+        Long aid = accessDetail.getCreation_id();
+        if (IdUtil.containValue(aid)) {
+            Article article = new Article(aid);
+            switch (accessRecord.action()) {
                 case SAVE:
-                    cache.updateArticleClickCount(article, 1);
-                case LIKE:
-                    if (accessRecorder.action() == AccessRecorder.Actions.LIKE) {
-
+                    if (userDao.saveArticleAccessDetail(accessDetail) > 0) {
+                        cache.updateArticleClickCount(article, 1);
                     }
-                    userDao.saveArticleAccessRecord(accessRecord);
                     break;
                 case DELETE:
-                    cache.updateArticleClickCount(article, -1);
+                    if (userDao.deleteArticleAccessDetail(accessDetail) > 0) {
+                        cache.updateArticleClickCount(article, -1);
+                    }
                     break;
             }
         }
@@ -69,30 +69,23 @@ public class EventTriggerImpl implements IEventTrigger {
     /**
      * 视频被浏览事件
      *
+     * @param accessDetail
      * @param accessRecord
-     * @param accessRecorder
      */
     @Override
-    public void accessVideo(AccessRecord<Video> accessRecord, AccessRecorder accessRecorder) {
-        Video video = accessRecord.getBean();
-        if (video != null) {
-            switch (accessRecorder.action()) {
+    public void accessVideo(AccessDetail accessDetail, AccessRecord accessRecord) {
+        Long video_id = accessDetail.getCreation_id();
+        if (video_id != null) {
+            Video video = new Video(video_id);
+            switch (accessRecord.action()) {
                 case SAVE:
-                    videoDao.updateVideoClickCount(video, 1);
-                case LIKE:
-                    if (accessRecorder.action() == AccessRecorder.Actions.LIKE) {
-                        if (accessRecord.getIs_like() > 0) {
-                            videoDao.updateVideoLikeCount(video, 1);
-                        } else {
-                            videoDao.updateVideoLikeCount(video, -1);
-                        }
+                    if (userDao.saveVideoAccessDetail(accessDetail) > 0) {
+                        videoDao.updateVideoClickCount(video, 1);
                     }
-                    userDao.saveVideoAccessRecord(accessRecord);
                     break;
                 case DELETE:
-                    videoDao.updateVideoClickCount(video, -1);
-                    if (accessRecord.getIs_like() != null && accessRecord.getIs_like() > 0) {
-                        videoDao.updateVideoLikeCount(video, -1);
+                    if (userDao.deleteVideoAccessDetail(accessDetail) > 0) {
+                        videoDao.updateVideoClickCount(video, -1);
                     }
                     break;
             }
@@ -102,30 +95,23 @@ public class EventTriggerImpl implements IEventTrigger {
     /**
      * 照片被浏览事件
      *
+     * @param accessDetail
      * @param accessRecord
-     * @param accessRecorder
      */
     @Override
-    public void accessPhoto(AccessRecord<Photo> accessRecord, AccessRecorder accessRecorder) {
-        Photo photo = accessRecord.getBean();
-        if (photo != null) {
-            switch (accessRecorder.action()) {
+    public void accessPhoto(AccessDetail accessDetail, AccessRecord accessRecord) {
+        Long photo_id = accessDetail.getCreation_id();
+        if (photo_id != null) {
+            Photo photo = new Photo(photo_id);
+            switch (accessRecord.action()) {
                 case SAVE:
-                    albumDao.updatePhotoClickCount(photo, 1);
-                case LIKE:
-                    if (accessRecorder.action() == AccessRecorder.Actions.LIKE) {
-                        if (accessRecord.getIs_like() > 0) {
-                            albumDao.updatePhotoLikeCount(photo, 1);
-                        } else {
-                            albumDao.updatePhotoLikeCount(photo, -1);
-                        }
+                    if (userDao.savePhotoAccessDetail(accessDetail) > 0) {
+                        albumDao.updatePhotoClickCount(photo, 1);
                     }
-                    userDao.savePhotoAccessRecord(accessRecord);
                     break;
                 case DELETE:
-                    albumDao.updatePhotoClickCount(photo, -1);
-                    if (accessRecord.getIs_like() != null && accessRecord.getIs_like() > 0) {
-                        albumDao.updatePhotoLikeCount(photo, -1);
+                    if (userDao.deletePhotoAccessDetail(accessDetail) > 0) {
+                        albumDao.updatePhotoClickCount(photo, -1);
                     }
                     break;
             }
@@ -135,36 +121,32 @@ public class EventTriggerImpl implements IEventTrigger {
     /**
      * 相册被浏览事件
      *
+     * @param accessDetail
      * @param accessRecord
-     * @param accessRecorder
      */
     @Override
-    public void accessAlbum(AccessRecord<Album> accessRecord, AccessRecorder accessRecorder) {
+    public void accessAlbum(AccessDetail accessDetail, AccessRecord accessRecord) {
 
     }
 
     /**
      * 用户个人空间被浏览事件
      *
+     * @param accessDetail
      * @param accessRecord
-     * @param accessRecorder
      */
     @Override
-    public void accessUserHome(AccessRecord<User> accessRecord, AccessRecorder accessRecorder) {
+    public void accessUserHome(AccessDetail accessDetail, AccessRecord accessRecord) {
 
     }
 
     /**
      * 网站被浏览事件
      *
-     * @param accessRecord
-     * @param accessRecorder - 可能为null
+     * @param accessDetail
      */
     @Override
-    public void accessSite(AccessRecord accessRecord, AccessRecorder accessRecorder) {
-        if (accessRecorder != null && accessRecorder.action() != AccessRecorder.Actions.SAVE) {
-            return;
-        }
+    public void accessSite(AccessDetail accessDetail) {
         int today_access_count = (int) cache.siteBuffer.get("today_access_count");
         String today_date_mark = Utils.formatDate(new Date(), "yyyy-MM-dd");
         String yesterday_date_mark = (String) cache.siteBuffer.get("today_date_mark");
@@ -182,12 +164,49 @@ public class EventTriggerImpl implements IEventTrigger {
      * 添加评论事件
      *
      * @param comment
+     * @param creation
      */
     @Override
-    public void addComment(Comment comment) {
+    public void addComment(Comment comment, Object creation) {
         if (comment != null) {
-            Article article = new Article(comment.getMainId());
-            cache.updateArticleCommentCount(article, 1);
+            CommentType commentType = CommentType.valueOf(comment.getMainType());
+            switch (commentType) {
+                case ARTICLE:   // 文章
+                    Article article = creation != null ? (Article) creation : new Article(comment.getMainId());
+                    if (!comment.typeOfAnonymous() && (article.getCommented() == null || !article.getCommented())) {
+                        ActionRecord<Article> actionRecord = new ActionRecord<>();
+                        actionRecord.setCreation(article);
+                        actionRecord.setUser(comment.getUser());
+                        actionRecord.setCommented(true);
+                        userDao.saveArticleActionRecord(actionRecord);
+                    }
+                    cache.updateArticleCommentCount(article, 1);
+                    break;
+                case PHOTO: // 照片
+                    Photo photo = creation != null ? (Photo) creation : new Photo(comment.getMainId());
+                    if (!comment.typeOfAnonymous() && (photo.getCommented() == null || !photo.getCommented())) {
+                        ActionRecord<Photo> actionRecord = new ActionRecord<>();
+                        actionRecord.setCreation(photo);
+                        actionRecord.setUser(comment.getUser());
+                        actionRecord.setCommented(true);
+                        userDao.savePhotoActionRecord(actionRecord);
+                    }
+                    albumDao.updatePhotoCommentCount(photo, 1);
+                    break;
+                case VIDEO: // 视频
+                    Video video = creation != null ? (Video) creation : new Video(comment.getMainId());
+                    if (!comment.typeOfAnonymous() && (video.getCommented() == null || !video.getCommented())) {
+                        ActionRecord<Video> actionRecord = new ActionRecord<>();
+                        actionRecord.setCreation(video);
+                        actionRecord.setUser(comment.getUser());
+                        actionRecord.setCommented(true);
+                        userDao.saveVideoActionRecord(actionRecord);
+                    }
+                    videoDao.updateVideoCommentCount(video, 1);
+                    break;
+                case PHOTO_TOPIC: // 照片合集
+                    break;
+            }
         }
     }
 
@@ -195,12 +214,28 @@ public class EventTriggerImpl implements IEventTrigger {
      * 删除评论事件
      *
      * @param comment
+     * @param creation
      */
     @Override
-    public void deleteComment(Comment comment) {
+    public void deleteComment(Comment comment, Object creation) {
         if (comment != null) {
-            Article article = new Article(comment.getMainId());
-            cache.updateArticleCommentCount(article, -1);
+            CommentType commentType = CommentType.valueOf(comment.getMainType());
+            switch (commentType) {
+                case ARTICLE:   // 文章
+                    Article article = creation != null ? (Article) creation : new Article(comment.getMainId());
+                    cache.updateArticleCommentCount(article, -1);
+                    break;
+                case PHOTO: // 照片
+                    Photo photo = creation != null ? (Photo) creation : new Photo(comment.getMainId());
+                    albumDao.updatePhotoCommentCount(photo, -1);
+                    break;
+                case VIDEO: // 视频
+                    Video video = creation != null ? (Video) creation : new Video(comment.getMainId());
+                    videoDao.updateVideoCommentCount(video, -1);
+                    break;
+                case PHOTO_TOPIC: // 照片合集
+                    break;
+            }
         }
     }
 

@@ -10,7 +10,7 @@ import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.common.type.UserGroupType;
 import site.imcoder.blog.dao.IArticleDao;
 import site.imcoder.blog.dao.IUserDao;
-import site.imcoder.blog.entity.AccessRecord;
+import site.imcoder.blog.entity.ActionRecord;
 import site.imcoder.blog.entity.Article;
 import site.imcoder.blog.entity.User;
 import site.imcoder.blog.event.IEventTrigger;
@@ -97,7 +97,7 @@ public class ArticleServiceImpl extends BaseService implements IArticleService {
         }
         // 允许发表文章的用户组最低等级，值为对应用户组的Gid
         int lowestLevel = Config.getInt(ConfigConstants.ARTICLE_ALLOW_CREATE_LOWEST_LEVEL);
-        switch (UserGroupType.valueOfName(lowestLevel)) {
+        switch (UserGroupType.valueOf(lowestLevel)) {
             case NOVICE_USER:
                 return true;
             case SENIOR_USER:
@@ -201,7 +201,7 @@ public class ArticleServiceImpl extends BaseService implements IArticleService {
      */
     @Override
     public IResponse findArticle(Article article, boolean isNeedAdjacentArticle, IRequest iRequest) {
-        boolean loadAccessRecord = iRequest.getAttr("loadAccessRecord", true);
+        boolean loadAccessRecord = iRequest.getAttr("loadActionRecord", true);
         IResponse response = new IResponse();
         Article db_article = null;
         if (article == null || !IdUtil.containValue(article.getAid())) {
@@ -225,16 +225,15 @@ public class ArticleServiceImpl extends BaseService implements IArticleService {
                 response.putAttr("nextArticle", adjacentArticle.get("nextArticle"));
             }
             if (loadAccessRecord) {
-                AccessRecord queryAccessRecord = new AccessRecord();
-                queryAccessRecord.setBean(new Article(db_article.getAid()));
-                queryAccessRecord.setUser(iRequest.getLoginUser());
-                queryAccessRecord.setLast_access_ip(iRequest.getAccessIp());
-                AccessRecord<Article> articleAccessRecord = userDao.findArticleAccessRecord(queryAccessRecord);
-                if (articleAccessRecord != null) {
-                    Article accessArticle = articleAccessRecord.getBean();
-                    db_article.setAccessed(accessArticle.getAccessed());
-                    db_article.setCollected(accessArticle.getCollected());
-                    db_article.setCommented(accessArticle.getCommented());
+                ActionRecord<Article> queryActionRecord = new ActionRecord<>();
+                queryActionRecord.setCreation(db_article);
+                queryActionRecord.setUser(iRequest.getLoginUser());
+                queryActionRecord.setIp(iRequest.getAccessIp());
+                ActionRecord<Article> articleActionRecord = userDao.findArticleActionRecord(queryActionRecord);
+                if (articleActionRecord != null) {
+                    db_article.setAccessed(articleActionRecord.getAccessed());
+                    db_article.setCollected(articleActionRecord.getLiked());
+                    db_article.setCommented(articleActionRecord.getCommented());
                 } else {
                     db_article.setAccessed(false);
                     db_article.setCollected(false);
@@ -355,6 +354,68 @@ public class ArticleServiceImpl extends BaseService implements IArticleService {
             flag = STATUS_PARAM_ERROR;
         }
         response.setStatus(flag);
+        return response;
+    }
+
+    /**
+     * 点赞文章
+     *
+     * @param article  - 只需传aid
+     * @param undo     - 是否取消赞
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
+     */
+    @Override
+    public IResponse likeArticle(Article article, boolean undo, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (article == null || !IdUtil.containValue(article.getAid())) {
+            response.setStatus(STATUS_PARAM_ERROR);
+        } else {
+            IResponse articleResp = findArticle(article, iRequest);
+            if (articleResp.isSuccess()) {
+                Boolean saveLikeValue = null;
+                Article db_article = articleResp.getAttr("article");
+                if (!undo) {    // 赞
+                    if (db_article.getCollected() != null && db_article.getCollected()) {
+                        response.setMessage("你已经赞过该文章了~");
+                    } else {
+                        saveLikeValue = true;
+                    }
+                } else {    // 取消赞
+                    if (db_article.getCollected() != null && db_article.getCollected()) {
+                        saveLikeValue = false;
+                    } else {
+                        response.setMessage("你并没有赞过该文章~");
+                    }
+                }
+                if (saveLikeValue != null) {
+                    ActionRecord<Article> actionRecord = new ActionRecord<>();
+                    actionRecord.setCreation(article);
+                    if (iRequest.isHasLoggedIn()) {
+                        actionRecord.setUser(iRequest.getLoginUser());
+                    } else {
+                        actionRecord.setIp(iRequest.getAccessIp());
+                    }
+                    actionRecord.setLiked(saveLikeValue);
+                    response.setStatus(convertRowToHttpCode(userDao.saveArticleActionRecord(actionRecord)));
+                    if (response.isSuccess()) {
+                        response.putAttr("type", 1);
+                        if (saveLikeValue) {
+                            db_article.setCollect_count(db_article.getCollect_count() + 1);
+                        } else {
+                            db_article.setCollect_count(db_article.getCollect_count() > 0 ? db_article.getCollect_count() - 1 : 0);
+                        }
+                        articleDao.updateArticleCollectCount(article, saveLikeValue ? 1 : -1);
+                    }
+                } else {
+                    response.putAttr("type", 0);
+                }
+                response.putAttr("article", db_article);
+            } else {
+                response.setStatus(articleResp);
+            }
+        }
         return response;
     }
 
@@ -582,15 +643,18 @@ public class ArticleServiceImpl extends BaseService implements IArticleService {
     }
 
     /**
-     * 查询文章的历史用户访问记录
+     * 查询文章的历史用户动作记录
      *
      * @param article
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * articleActionRecords
+     * article_action_record_count
+     * article
      */
     @Override
-    public IResponse findArticleAccessRecordList(Article article, IRequest iRequest) {
+    public IResponse findArticleActionRecordList(Article article, IRequest iRequest) {
         User loginUser = iRequest.getLoginUser();
         IResponse response = new IResponse();
         if (article == null) {
@@ -602,11 +666,11 @@ public class ArticleServiceImpl extends BaseService implements IArticleService {
             if (articleResp.isSuccess()) {
                 Article db_article = articleResp.getAttr("article");
                 if (db_article.getAuthor().getUid().equals(loginUser.getUid())) {
-                    AccessRecord<Article> queryAccessRecord = new AccessRecord();
-                    queryAccessRecord.setBean(new Article(db_article.getAid()));
-                    List<AccessRecord<Article>> articleAccessRecordList = userDao.findArticleAccessRecordList(queryAccessRecord, iRequest.getLoginUser());
-                    response.putAttr("articleAccessRecords", articleAccessRecordList);
-                    response.putAttr("article_access_record_count", articleAccessRecordList.size());
+                    ActionRecord<Article> queryActionRecord = new ActionRecord<>();
+                    queryActionRecord.setCreation(new Article(db_article.getAid()));
+                    List<ActionRecord<Article>> articleActionRecordList = userDao.findArticleActionRecordList(queryActionRecord, iRequest.getLoginUser());
+                    response.putAttr("articleActionRecords", articleActionRecordList);
+                    response.putAttr("article_action_record_count", articleActionRecordList.size());
                     response.putAttr(articleResp.getAttr());
                 } else {
                     response.setStatus(STATUS_FORBIDDEN, "访问记录只能作者本人查看~");

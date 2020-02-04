@@ -23,7 +23,7 @@ public enum TagWrapperType {
      * @param value
      * @return
      */
-    public static TagWrapperType valueOfName(int value) {
+    public static TagWrapperType valueOf(int value) {
         for (TagWrapperType type : values()) {
             if (type.value == value) {
                 return type;

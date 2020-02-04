@@ -38,7 +38,7 @@ public enum UserAuthType {
      * @param value
      * @return
      */
-    public static UserAuthType valueOfName(int value) {
+    public static UserAuthType valueOf(int value) {
         for (UserAuthType type : values()) {
             if (type.value == value) {
                 return type;

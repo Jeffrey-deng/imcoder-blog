@@ -103,6 +103,17 @@ public interface IArticleService {
     public IResponse deleteArticle(Article article, IRequest iRequest);
 
     /**
+     * 点赞文章
+     *
+     * @param article  - 只需传aid
+     * @param undo     - 是否取消赞
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
+     */
+    public IResponse likeArticle(Article article, boolean undo, IRequest iRequest);
+
+    /**
      * 得到每种分类的数量
      *
      * @param iRequest:
@@ -186,13 +197,16 @@ public interface IArticleService {
     public IResponse deleteAttachment(String file_url, String isImage, IRequest iRequest);
 
     /**
-     * 查询文章的历史用户访问记录
+     * 查询文章的历史用户动作记录
      *
      * @param article
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * articleActionRecords
+     * article_action_record_count
+     * article
      */
-    public IResponse findArticleAccessRecordList(Article article, IRequest iRequest);
+    public IResponse findArticleActionRecordList(Article article, IRequest iRequest);
 
 }

@@ -309,7 +309,7 @@
 
         //连接成功建立的回调方法
         pointer.webSocket.onopen = function (event) {
-            utils.triggerEvent(config.event.connectionOpen, event);
+            context.trigger(config.event.connectionOpen, event);
         };
 
         //接收到消息的回调方法
@@ -328,7 +328,7 @@
                     console.log("websocket connection 强制下线 at " + time);
                 } else if (message.mapping && message.mapping != "pong") { // 过滤掉ping消息的返回消息pong
                     // 调用绑定该mapping的事件
-                    utils.triggerEvent(config.event.messageReceive + "." + message.mapping, message, wsEvent);
+                    context.trigger(config.event.messageReceive + "." + message.mapping, message, wsEvent);
                 }
             } catch (e) {
                 console.warn("handle message of server pushing find exception", e);
@@ -339,14 +339,14 @@
         pointer.webSocket.onerror = function (e) {
             var time = common_utils.formatDate(new Date(), "hh:mm:ss");
             console.log("websocket an error occurred at " + time);
-            utils.triggerEvent(config.event.connectionError, e);
+            context.trigger(config.event.connectionError, e);
         };
 
         //连接关闭的回调方法
         pointer.webSocket.onclose = function (event) {
             var time = common_utils.formatDate(new Date(), "hh:mm:ss");
             console.log("websocket connection disconnect from server at " + time);
-            utils.triggerEvent(config.event.connectionClose, event);
+            context.trigger(config.event.connectionClose, event);
         };
 
         //连接重连的回调方法
@@ -369,7 +369,7 @@
     // 当连接ready之后才可以使用post方法
     var post = function (wsMessage) {
         ready(function () {
-            utils.triggerEvent(config.event.messagePost, wsMessage);
+            context.on(config.event.messagePost, wsMessage);
             pointer.webSocket.send(JSON.stringify(wsMessage));
             wsMessage = null;
         });
@@ -380,32 +380,12 @@
     // 收到消息事件可以绑定 （websocket_util.config.event.messageReceive + "." + mapping） 为事件名
     // 或者直接使用 onPush(mapping, call)
     // bindFirst: 该事件是否插入到队列的第一个位置
-    var on = function (eventName, func, bindFirst) {
-        utils.bindEvent(eventName, func, bindFirst);
-        return this;
-    };
-
-    var off = function (eventName, func) {
-        utils.unbindEvent(eventName, func);
-        return this;
-    };
-
-    var bind = function (eventName, func, bindFirst) {
-        utils.bindEvent(eventName, func, bindFirst);
-        return this;
-    };
-
-    var unbind = function (eventName, func) {
-        utils.unbindEvent(eventName, func);
-        return this;
-    };
-
     // onXXX方法命名时on后面接的字符不能为事件名前缀，不然会让jquery在触发事件时调用
     var onPush = function (mapping, func, bindFirst) {
         if (typeof mapping == "function") {
-            on(config.event.messageReceive, mapping, func);
+            context.on(config.event.messageReceive, mapping, func);
         } else {
-            on(config.event.messageReceive + "." + mapping, func, bindFirst);
+            context.on(config.event.messageReceive + "." + mapping, func, bindFirst);
         }
         return this;
     };
@@ -413,44 +393,14 @@
     // 当连接ready之后才可以使用post方法
     var ready = function (func) {
         if (utils.isWsAvailable()) {
-            func();
+            func.call(context);
         } else {
-            var call = function () {
-                try {
-                    func();
-                } finally {
-                    utils.unbindEvent(config.event.connectionOpen, call);
-                }
-            };
-            utils.bindEvent(config.event.connectionOpen, call);
+            context.once(config.event.connectionOpen, func);
         }
         return this;
     };
 
     var utils = {
-        "once": function (eventName, func, bindFirst) {
-            var funcWrapper = function () {
-                try {
-                    func.apply(context, arguments);
-                } finally {
-                    utils.unbindEvent(eventName, funcWrapper);
-                }
-            };
-            utils.bindEvent(eventName, funcWrapper, bindFirst);
-        },
-        "bindEvent": function (eventName, func, bindFirst) {
-            if (bindFirst == true) {
-                $(context).onfirst(eventName, func);
-            } else {
-                $(context).bind(eventName, func);
-            }
-        },
-        "triggerEvent": function (eventName) {
-            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
-        },
-        "unbindEvent": function (eventName, func) {
-            $(context).unbind(eventName, func);
-        },
         "isWsAvailable": function () {
             return pointer.webSocket && pointer.webSocket.isAvailable;
         },
@@ -469,10 +419,10 @@
         "pointer": pointer,
         "init": init,
         "utils": utils,
-        "on": on,
-        "off": off,
-        "bind": bind,
-        "unbind": unbind,
+        "on": common_utils.on,
+        "once": common_utils.once,
+        "trigger": common_utils.trigger,
+        "off": common_utils.off,
         "onPush": onPush,
         "ready": ready,
         "post": post

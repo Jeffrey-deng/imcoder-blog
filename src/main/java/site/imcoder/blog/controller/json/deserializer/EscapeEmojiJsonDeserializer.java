@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.github.binarywang.java.emoji.EmojiConverter;
 import site.imcoder.blog.controller.propertyeditors.converter.EscapeEmojiPropertyFieldConverter;
 
 import java.io.IOException;

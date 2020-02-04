@@ -57,7 +57,7 @@ public abstract class BaseController implements GlobalConstants {
      * 200 ： 是管理员
      */
     protected int isAdmin(User loginUser) {
-        if (loginUser == null) {
+        if (loginUser == null || !loginUser.isHasLoggedIn()) {
             return STATUS_NOT_LOGIN;
         } else if (loginUser.getUserGroup().isGeneralUser()) {
             return STATUS_FORBIDDEN;

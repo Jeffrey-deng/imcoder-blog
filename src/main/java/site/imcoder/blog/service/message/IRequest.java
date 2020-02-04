@@ -1,6 +1,7 @@
 package site.imcoder.blog.service.message;
 
 import site.imcoder.blog.entity.User;
+import site.imcoder.blog.entity.rewrite.GuestUser;
 import site.imcoder.blog.setting.GlobalConstants;
 
 import java.io.Serializable;
@@ -164,7 +165,7 @@ public class IRequest implements GlobalConstants, Serializable {
      * @return
      */
     public boolean isHasLoggedIn() {
-        return loginUser != null && loginUser.getUid() != null && loginUser.getUid() > 0;
+        return loginUser != null && loginUser.isHasLoggedIn();
     }
 
     /**

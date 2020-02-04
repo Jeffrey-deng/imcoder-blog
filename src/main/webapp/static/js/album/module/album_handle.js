@@ -168,7 +168,7 @@
                 toastr.success("创建成功 ");
                 pointer.createModal.modal('hide');
                 config.callback.createCompleted.call(context, data.album);
-                utils.triggerEvent(config.event.createCompleted, data.album);
+                context.trigger(config.event.createCompleted, data.album);
             } else {
                 toastr.error(response.message, "创建失败");
                 console.warn("Error Code: " + response.status);
@@ -193,7 +193,7 @@
             "name": album_name,
             "deleteFromDisk": true
         };
-        var allow = utils.triggerEvent(config.event.beforeDelete, postData);
+        var allow = context.trigger(config.event.beforeDelete, postData);
         if (allow === false) {
             return;
         }
@@ -210,7 +210,7 @@
                 toastr.success("已移至回收站，可请求管理员恢复~", "相册删除成功", {"timeOut": 10000});
                 pointer.updateModal.modal('hide');
                 config.callback.deleteCompleted.call(context, postData);
-                utils.triggerEvent(config.event.deleteCompleted, postData);
+                context.trigger(config.event.deleteCompleted, postData);
             } else {
                 toastr.error(response.message, "相册删除失败!");
                 console.warn("Error Code: " + response.status);
@@ -228,13 +228,14 @@
                 toastr.success("更新成功 ");
                 pointer.updateModal.modal('hide');
                 config.callback.updateCompleted.call(context, data.album);
-                utils.triggerEvent(config.event.updateCompleted, data.album);
+                context.trigger(config.event.updateCompleted, data.album);
             } else {
                 toastr.error(response.message, "更新失败");
                 console.warn("Error Code: " + response.status);
             }
         });
     };
+
     var openCreateAlbumModal = function () {
         if (!login_handle.validateLogin()) {
             toastr.error("你没有登录！");
@@ -290,29 +291,6 @@
     };
 
     var utils = {
-        "once": function (eventName, func, bindFirst) {
-            var funcWrapper = function () {
-                try {
-                    func.apply(context, arguments);
-                } finally {
-                    utils.unbindEvent(eventName, funcWrapper);
-                }
-            };
-            utils.bindEvent(eventName, funcWrapper, bindFirst);
-        },
-        "bindEvent": function (eventName, func, bindFirst) {
-            if (bindFirst == true) {
-                $(context).onfirst(eventName, func);
-            } else {
-                $(context).bind(eventName, func);
-            }
-        },
-        "triggerEvent": function (eventName) {
-            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
-        },
-        "unbindEvent": function (eventName, func) {
-            $(context).unbind(eventName, func);
-        }
     };
 
     var context = {
@@ -325,7 +303,11 @@
         "deleteAlbum": deleteAlbum,
         "updateAlbum": updateAlbum,
         "openCreateAlbumModal": openCreateAlbumModal,
-        "openUpdateAlbumModal": openUpdateAlbumModal
+        "openUpdateAlbumModal": openUpdateAlbumModal,
+        "on": common_utils.on,
+        "once": common_utils.once,
+        "trigger": common_utils.trigger,
+        "off": common_utils.off
     };
     return context;
 });

@@ -95,6 +95,7 @@
                     "720": 2
                 },
                 "default_size": 0,
+                "photo_node_link_use_by": 'photo_detail',
                 "preview_compress": true
             }
         });
@@ -168,7 +169,7 @@
             $("head").find("title").text(title_prefix + " - " + title_suffix);
         }
 
-        album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupChanged, function (e, checkCover, checkVideo) {
+        album_photo_page_handle.on(album_photo_page_handle.config.event.popupChanged, function (e, checkCover, checkVideo) {
             checkVideo && setTimeout(function () { // 要设置一个延迟地址栏与历史才会生效
                 if (title_prefix) {
                     document.title = "视频_" + checkVideo + " of " + title_prefix + " - " + title_suffix;
@@ -177,7 +178,7 @@
                 }
             }, 50);
         });
-        album_photo_page_handle.utils.bindEvent(album_photo_page_handle.config.event.popupClosed, function (e, checkCover, checkVideo) {
+        album_photo_page_handle.on(album_photo_page_handle.config.event.popupClosed, function (e, checkCover, checkVideo) {
             setTimeout(function () { // 要设置一个延迟地址栏与历史才会生效
                 if (title_prefix) {
                     document.title = title_prefix + " - " + title_suffix;
@@ -209,6 +210,7 @@
             load_condition: load_condition,
             query_size: query_size,
             query_start: query_start,
+            photoNodeLinkUsePhotoDetail: albumConfig.photo_page.photo_node_link_use_by == 'photo_detail',
             callback: {
                 "requestPhotoList": function (condition, call) {
                     var context = this;
@@ -414,7 +416,7 @@
             "hostUser": load_condition["user.uid"] || login_handle.getCurrentUserId() || 0
         });
 
-        // video_handle.utils.bindEvent(video_handle.config.event.tagClick, function (_e, tag, video_id, clickEvt) {
+        // video_handle.on(video_handle.config.event.tagClick, function (_e, tag, video_id, clickEvt) {
         //     clickEvt.preventDefault();
         //     window.open("u/" + load_condition["user.uid"] + "/videos?tags=<" + tag + ">");
         // });
@@ -427,12 +429,12 @@
         }
 
         // 重写插件中的请求方法
-        album_video_plugin.config.callback.loadVideoByCover = request.loadVideoByCoverOverride;
-        album_video_plugin.config.callback.loadVideosByCovers = request.loadVideosByCoversOverride;
+        album_video_plugin.request.loadVideoByCover = request.loadVideoByCoverOverride;
+        album_video_plugin.request.loadVideosByCovers = request.loadVideosByCoversOverride;
         // 视频插件设置为纯视频模式
         album_video_plugin.config.popup_url_check_id_use_by = "video";
         // 绑定视频插件中编辑按钮事件
-        album_video_plugin.utils.bindEvent(album_video_plugin, album_video_plugin.config.event.actionForEditVideo, function (e, video) {
+        album_video_plugin.on(album_video_plugin, album_video_plugin.config.event.actionForEditVideo, function (e, video) {
             this.utils.closeVideoPopup();
             video_handle.openUpdateVideoModal(video); // 打开视频更新窗口
         });
@@ -440,24 +442,37 @@
         // 删除历史记录按钮
         if (isClearUserHistoryPage || isClearUserLikesPage) {
             var $deleteAccessRecordBtn = $($.parseHTML('<button class="btn btn-danger btn-delete-access-record" ' +
-                'name="deleteVideoAccessRecord_trigger" title="删除访问记录">删除记录</button>')[0]);
+                'name="deleteVideoAccessRecord_trigger" title="' + (isClearUserHistoryPage ? '删除访问记录' : '从喜欢中移除') + '">'
+                + (isClearUserHistoryPage ? '删除记录' : '取消点赞') + '</button>')[0]);
             video_handle.pointer.updateModal.find('.modal-footer').prepend($deleteAccessRecordBtn);
             $deleteAccessRecordBtn.on("click", function () {
                 var video_id = video_handle.pointer.updateModal.find('span[name="video_id"]').html().trim();
-                $.post("user.api?method=deleteUserVideoAccessRecord", {"bean.video_id": video_id}, function (response) {
-                    if (response.status == 200) {
-                        toastr.success("已删除此访问记录~");
-                        video_handle.pointer.updateModal.modal('hide');
-                    } else {
-                        toastr.error(response.message, response.status);
-                        console.warn("Error Code: " + response.status);
-                    }
-                });
+                if (isClearUserHistoryPage) {
+                    $.post("user.api?method=deleteUserVideoAccessDetail", {"video_id": video_id}, function (response) {
+                        if (response.status == 200) {
+                            toastr.success("已删除此访问记录~");
+                            video_handle.pointer.updateModal.modal('hide');
+                        } else {
+                            toastr.error(response.message, response.status);
+                            console.warn("Error Code: " + response.status);
+                        }
+                    });
+                } else {
+                    $.post("video.api?method=likeVideo", {"video_id": video_id, "undo": true}, function (response) {
+                        if (response.status == 200) {
+                            toastr.success("已取消赞~");
+                            video_handle.pointer.updateModal.modal('hide');
+                        } else {
+                            toastr.error(response.message, response.status);
+                            console.warn("Error Code: " + response.status);
+                        }
+                    });
+                }
             });
         }
 
         // 鼠标悬浮于照片显示作者
-        var regexHasSetUserName = /^.*\n上传者@[^@]+$/;
+        var regexHasSetUserName = /^[\s\S]*\n上传者@[^@]+$/;
         $("#" + album_photo_page_handle.config.selector.photosContainer_id).on("mouseenter", album_photo_page_handle.config.selector.photo_node, function (e) {
             var $photoNode = $(this);
             var beforeTitle = $photoNode.attr("title");

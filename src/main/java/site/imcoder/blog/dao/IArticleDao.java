@@ -2,7 +2,6 @@ package site.imcoder.blog.dao;
 
 import site.imcoder.blog.common.PageUtil;
 import site.imcoder.blog.entity.Article;
-import site.imcoder.blog.entity.Comment;
 import site.imcoder.blog.entity.User;
 
 import java.util.List;
@@ -68,29 +67,31 @@ public interface IArticleDao {
     public int delete(Article article);
 
     /**
-     * 增加评论数
+     * 点击量加1
+     *
+     * @param article
+     * @param step    - 步长，可为负数
+     * @return
      */
-    public int raiseCommentCnt(Comment comment);
+    public int updateArticleClickCount(Article article, int step);
 
     /**
-     * 减少评论数
+     * 收藏量量加1
+     *
+     * @param article
+     * @param step    - 步长，可为负数
+     * @return
      */
-    public int reduceCommentCnt(Comment comment);
+    public int updateArticleCollectCount(Article article, int step);
 
     /**
-     * 增加收藏数
+     * 评论量加1
+     *
+     * @param article
+     * @param step    - 步长，可为负数
+     * @return
      */
-    public int raiseCollectCnt(Article article);
-
-    /**
-     * 减少收藏数
-     */
-    public int reduceCollectCnt(Article article);
-
-    /**
-     * 增加点击数
-     */
-    public int raiseClickCnt(Article article);
+    public int updateArticleCommentCount(Article article, int step);
 
     /**
      * 获得置顶列表

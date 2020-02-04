@@ -27,6 +27,7 @@
         autoScrollOnPageOpen: true, // 开启在页面打开时根据url的#hash值自动滚到对应位置
         commentSortBy: "hot", // 评论排序by，time: 按时间，hot: 按点赞
         commentSortType: "desc", // 评论排序方式，asc: 升序，desc: 降序
+        commentLikeRecordSaveByServer: true,
         selector: {
             "commentListArea": "#comments",
             "commentEditor": "#comment_form_content",
@@ -124,19 +125,20 @@
             /**
              * 用户定义点赞评论请求回调
              * @param postComment - 要点赞的评论
+             * @param undo - true: 取消赞，false: 赞
              * @param {Function} call - 请求完后执行此回调：
              *  提交正确，将新comment作为参数传入此方法，
              *  提交错误，将null作为参数传入此方法，
              */
-            "userDefinedLikeComment": function (comment, call) {
-                var postData = {"cid": comment.cid};
+            "userDefinedLikeComment": function (comment, undo, call) {
+                var postData = {"cid": comment.cid, "undo": undo};
                 $.ajax({
                     data: postData,
                     type: "POST",
                     url: "message.api?method=likeComment",
                     success: function (response) {
                         if (response.status == 200) {
-                            call(response.data.comment);
+                            call(response.data.comment, response.data.type);
                         } else {
                             call(null);
                             toastr.error(response.message, "点赞评论失败");
@@ -180,13 +182,13 @@
         pointer.editor = $(config.selector.commentEditor);
 
         // 评论贴图按钮
-        $(config.selector.commentOpenInsertImageModal).click(function () {
+        $(config.selector.commentOpenInsertImageModal).on('click', function () {
             $(config.selector.commentInsertImageModal).modal();
             return false;
         });
 
         // 提交贴图按钮
-        $(config.selector.commentInsertImageModal).find(".message-image-submit-btn").click(function () {
+        $(config.selector.commentInsertImageModal).find(".message-image-submit-btn").on('click', function () {
             var modal = $(config.selector.commentInsertImageModal);
             var imageFiles = modal.find(".message-image-input")[0].files;
             var imageUrl = modal.find(".message-image-url").val();
@@ -222,7 +224,7 @@
         });
 
         // 提交评论按钮绑定事件
-        $(config.selector.commentSubmit).click(function () {
+        $(config.selector.commentSubmit).on('click', function () {
             if (login_handle.validateLogin()) {
                 var postComment = {};
                 postComment.parentId = $(config.selector.commentParentId).val() || 0;
@@ -235,7 +237,7 @@
             } else {
                 // 弹出登陆框
                 login_handle.showLoginModal(config.selector.commentListArea, function () {
-                    $(config.selector.commentSubmit).click();
+                    $(config.selector.commentSubmit).trigger('click');
                 });
             }
         });
@@ -277,9 +279,8 @@
                                 break;
                         }
                     }, 100);
-                    utils.unbindEvent(config.event.loadCommentListCompleted, auto_scroll_func);
                 };
-                utils.bindEvent(config.event.loadCommentListCompleted, auto_scroll_func);
+                context.once(config.event.loadCommentListCompleted, auto_scroll_func);
             }
         }
 
@@ -295,8 +296,8 @@
         // 从服务器加载评论
         loadCommentList(function (comments) {
             pointer.comments = comments || [];
-            buildCommentAreaHtml(pointer.comments, 1);
-            utils.triggerEvent(config.event.loadCommentListCompleted, pointer.comments);
+            buildCommentAreaHtml(pointer.comments, 1, 'init');
+            context.trigger(config.event.loadCommentListCompleted, pointer.comments);
         });
     };
 
@@ -358,10 +359,10 @@
             + (building + '栋/' + floor + '层/' + room + '间') + '</a></div></div>';
         html += '<div class="comment-content" itemprop="commentText">' + common_utils.convertLinkToHtmlTag(comment.content) + '</div>';
         html += '<ul class="comment-reply">';
-        // 匿名的评论每个人都显示删除按钮，是否能删除到服务器再验证
-        html += '<li> <span class="comment-like">' +
+        html += '<li><span class="comment-like' + (comment.liked ? ' comment-has-liked' : '') + '">' +
             '<svg class="comment-like-btn" viewBox="0 0 24 24"><use class="comment-like-btn-ref" xlink:href="#' + config.selector.commentLikeBtnSvgSymbolId + '" x="0" y="0"/></svg>' +
             '<em class="comment-like-counts-value">' + (comment.like_count || "") + '</em></span></li>';
+        // 匿名的评论每个人都显示删除按钮，是否能删除到服务器再验证
         html += ((loginUserId && (comment.anonymous != 0 || loginUserId == comment.user.uid)) ? '<li><a data-action-type="delete">删除</a></li>' : '' );
         html += '<li><a data-action-type="reply" onclick="">回复</a></li></ul>';
         if (comment.replies != null && comment.replies.length > 0) {
@@ -379,8 +380,9 @@
      * 构建评论列表HTML
      * @param list
      * @param pageIndex
+     * @param buildReason 构建原因（init、append、delete、sort）
      */
-    function buildCommentAreaHtml(list, pageIndex) {
+    function buildCommentAreaHtml(list, pageIndex, buildReason) {
         list = list || pointer.comments;
         pageIndex = 1;
         // 排序
@@ -408,20 +410,20 @@
             .find('a[href^="#"]').each(function (i, node) { // hash锚点设置前缀
             node.href = prefix + node.getAttribute("href");
         });
-        utils.triggerEvent(config.event.commentHtmlBuildCompleted, list, pageIndex);
+        context.trigger(config.event.commentHtmlBuildCompleted, list, pageIndex, buildReason || 'refresh');
     }
 
     // 绑定评论区各按钮事件
     function bindCommentHandleBtnEvent() {
         $(config.selector.commentListArea).on("click", "a", function () {
-            var _self = $(this);
+            var $self = $(this);
+            var actionType = $self.attr("data-action-type");
+            if (!actionType) {
+                return;
+            }
             if (login_handle.validateLogin()) {
-                var actionType = _self.attr("data-action-type");
-                if (!actionType) {
-                    return;
-                }
                 var action = actionType.match(/#?(.*)$/) ? RegExp.$1 : ""; // 结果无#符号
-                var commentId = _self.closest(".comment-body").attr("data-cid");
+                var commentId = $self.closest(".comment-body").attr("data-cid");
                 var setHash = false;
                 switch (true) {
                     case action == "reply":
@@ -459,7 +461,7 @@
                 toastr.info("先登录才能评论~");
                 //弹出登陆框
                 login_handle.showLoginModal(function () {
-                    _self.click();
+                    $self.trigger('click');
                 });
             }
         }).on("click", ".comment-anonymous-user-name", function () { // 匿名用户点击事件
@@ -470,15 +472,15 @@
         }).on("click", ".comment-sort-by-hot-desc", function () {    // 评论按热门降序排序事件
             config.commentSortBy = "hot";
             config.commentSortType = "desc";
-            buildCommentAreaHtml(pointer.comments, 1);
+            buildCommentAreaHtml(pointer.comments, 1, 'sort');
         }).on("click", ".comment-sort-by-time-asc", function () {   // 评论按时间升序排序事件
             config.commentSortBy = "time";
             config.commentSortType = "asc";
-            buildCommentAreaHtml(pointer.comments, 1);
+            buildCommentAreaHtml(pointer.comments, 1, 'sort');
         }).on("click", ".comment-sort-by-time-desc", function () {   // 评论按时间降序排序事件
             config.commentSortBy = "time";
             config.commentSortType = "desc";
-            buildCommentAreaHtml(pointer.comments, 1);
+            buildCommentAreaHtml(pointer.comments, 1, 'sort');
         }).on("click", 'img', function () {
             var $img = $(this);
             if ($img.closest('a').length == 0) {
@@ -541,7 +543,7 @@
                     } else if (type == "fill") {
                         utils.deleteCommentInPage(comment.cid, "fill");
                     }
-                    utils.triggerEvent(config.event.commentDeleteCompleted, comment, type);
+                    context.trigger(config.event.commentDeleteCompleted, comment, type);
                 }
             });
         }
@@ -560,7 +562,7 @@
                     utils.appendCommentInPage(saveComment);
                     pointer.editor.val("");
                     utils.scrollToSpecialComment(saveComment);
-                    utils.triggerEvent(config.event.commentSubmitCompleted, saveComment);
+                    context.trigger(config.event.commentSubmitCompleted, saveComment);
                 }
             });
         }
@@ -616,7 +618,7 @@
             // 转义标签
             textContent = $("<div/>").text(textContent).html();
             // 将图片链接转化为img标签
-            textContent = textContent.replace(/(https?:\/\/[a-z0-9\.:]+\/[\x21-\x7e]*\.(gif|jpe?g|png|bmp|svg|ico)(\?[\x21-\x7e]*)?)/gi, function (match, url) {
+            textContent = textContent.replace(/(https?:\/\/[a-z0-9\.:]+\/[\x21-\x3b\x3d\x3f-\x7e]*\.(gif|jpe?g|png|bmp|svg|ico)(\?[\x21-\x3b\x3d\x3f-\x7e]*)?)/gi, function (match, url) {
                 if (textContent != url) {
                     return '<img class="not-only-img" src="' + match + '">';
                 } else {
@@ -660,50 +662,48 @@
         if (comment) {
             var $comment_body = utils.getCommentNode(comment.cid);
             var $comment_like = $comment_body.find("> .comment-reply .comment-like");
-            if (!$comment_like.hasClass("comment-has-liked")) {
-                var hasLikedInRecord = utils.containCommentLikeRecordInLocal(comment);
-                if (!hasLikedInRecord) {
-                    config.callback.userDefinedLikeComment.call(context, comment, function (newestComment) {
-                        if (newestComment && newestComment.cid) {
-                            comment.like_count = newestComment.like_count;
-                            $comment_body.find("> .comment-reply .comment-like-counts-value").text(comment.like_count);
-                            $comment_like.addClass("comment-has-liked");
-                            utils.putCommentLikeRecordToLocal(comment);
-                            utils.triggerEvent(config.event.commentLikeCompleted, comment);
+            var undo = $comment_like.hasClass("comment-has-liked");
+            if (config.commentLikeRecordSaveByServer) {
+                config.callback.userDefinedLikeComment.call(context, comment, undo, function (newestComment, type) {
+                    if (newestComment && newestComment.cid) {
+                        comment.like_count = newestComment.like_count;
+                        comment.liked = !undo;
+                        $comment_body.find("> .comment-reply .comment-like-counts-value").text(comment.like_count);
+                        $comment_like.toggleClass("comment-has-liked", comment.liked);
+                        context.trigger(config.event.commentLikeCompleted, comment, undo);
+                        if (type == 1) {
+                            if (undo) {
+                                toastr.success("已移除赞~");
+                            }
+                        } else {
+                            toastr.success(undo ? "你并没有赞过该评论~" : "你已经赞过该评论了~");
                         }
-                    });
-                } else {
-                    $comment_like.addClass("comment-has-liked");
-                    toastr.success("该评论你之前已经赞过了~");
+                    }
+                });
+            } else {
+                if (!undo) {
+                    var hasLikedInRecord = utils.containCommentLikeRecordInLocal(comment);
+                    if (!hasLikedInRecord) {
+                        config.callback.userDefinedLikeComment.call(context, comment, undo, function (newestComment, type) {
+                            if (newestComment && newestComment.cid) {
+                                comment.like_count = newestComment.like_count;
+                                comment.liked = true;
+                                $comment_body.find("> .comment-reply .comment-like-counts-value").text(comment.like_count);
+                                $comment_like.toggleClass("comment-has-liked", comment.liked);
+                                utils.putCommentLikeRecordToLocal(comment);
+                                context.trigger(config.event.commentLikeCompleted, comment, undo);
+                            }
+                        });
+                    } else {
+                        $comment_like.addClass("comment-has-liked");
+                        toastr.success("该评论你之前已经赞过了~");
+                    }
                 }
             }
         }
     }
 
     var utils = {
-        "once": function (eventName, func, bindFirst) {
-            var funcWrapper = function () {
-                try {
-                    func.apply(context, arguments);
-                } finally {
-                    utils.unbindEvent(eventName, funcWrapper);
-                }
-            };
-            utils.bindEvent(eventName, funcWrapper, bindFirst);
-        },
-        "bindEvent": function (eventName, func, bindFirst) {
-            if (bindFirst == true) {
-                $(context).onfirst(eventName, func);
-            } else {
-                $(context).bind(eventName, func);
-            }
-        },
-        "triggerEvent": function (eventName) {
-            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
-        },
-        "unbindEvent": function (eventName, func) {
-            $(context).unbind(eventName, func);
-        },
         "getCommentNode": function (commentId) {
             return $("#" + config.selector.commentNodeIdPrefix + commentId);
         },
@@ -711,7 +711,7 @@
             if (comment) {
                 if (!getComment(comment.cid)) {
                     pointer.comments.push(comment);
-                    buildCommentAreaHtml(pointer.comments, 1);
+                    buildCommentAreaHtml(pointer.comments, 1, 'append');
                 }
             }
         },
@@ -731,7 +731,7 @@
                     comment.content = "*已删除*";
                     // $("#" + config.selector.commentNodeIdPrefix + commentId).find('.comment-content').eq(0).find('p').eq(0).html('*已删除*');
                 }
-                buildCommentAreaHtml(pointer.comments, 1);
+                buildCommentAreaHtml(pointer.comments, 1, 'delete');
             }
         },
         /**
@@ -918,11 +918,16 @@
         "getItemHtml": getItemHtml,
         "buildCommentAreaHtml": buildCommentAreaHtml,
         "bindCommentHandleBtnEvent": bindCommentHandleBtnEvent,
+        "sortCommentList": sortCommentList,
         "getComment": getComment,
         "deleteComment": deleteComment,
         "submitComment": submitComment,
         "revisePostComment": revisePostComment,
-        "utils": utils
+        "utils": utils,
+        "on": common_utils.on,
+        "once": common_utils.once,
+        "trigger": common_utils.trigger,
+        "off": common_utils.off
     };
 
     return context;

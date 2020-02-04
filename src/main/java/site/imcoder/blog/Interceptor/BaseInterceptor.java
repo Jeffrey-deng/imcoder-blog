@@ -60,7 +60,8 @@ public abstract class BaseInterceptor extends HandlerInterceptorAdapter {
         }
     }
 
-    // 在业务处理器处理请求执行完成后,生成视图之前执行的动作
+    // 在业务处理器处理请求执行完成后, 内容输出完毕，流关闭前（浏览器生成视图之前）执行的动作
+    // 注意此处不能修改返回值，只能追加返回值，要修改用aop
     @Override
     public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
         // 如果不是映射到方法直接通过
@@ -105,7 +106,8 @@ public abstract class BaseInterceptor extends HandlerInterceptorAdapter {
     }
 
     /**
-     * 请求处理之后，返回客户端之前，执行
+     * 在业务处理器处理请求执行完成后, 内容输出完毕，流关闭前（浏览器生成视图之前）执行的动作
+     * 注意此处不能修改返回值，只能追加返回值，要修改用aop
      *
      * @param request
      * @param response

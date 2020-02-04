@@ -53,9 +53,9 @@ public interface INotifyService {
      *
      * @param comment
      * @param replyUid 父类评论的用户id(parentId为0时设置主体对象的作者id)
-     * @param object   评论主体的对象（article?photo?video?）
+     * @param creation 评论主体的对象（article?photo?video?）
      */
-    public void receivedComment(Comment comment, Long replyUid, Object object);
+    public void receivedComment(Comment comment, Long replyUid, Object creation);
 
     /**
      * 新的关注者提醒

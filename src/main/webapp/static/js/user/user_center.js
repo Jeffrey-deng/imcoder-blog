@@ -1858,7 +1858,7 @@
                 }
             };
             // 收到新私信，unbind取消login.js中的默认处理
-            websocket_util.unbind(eventPrefix + "receive_letter").bind(eventPrefix + "receive_letter", function (e, wsMessage, wsEvent) {
+            websocket_util.off(eventPrefix + "receive_letter").on(eventPrefix + "receive_letter", function (e, wsMessage, wsEvent) {
                 var user = wsMessage.metadata.user;
                 var letter = wsMessage.metadata.letter; // 新私信
                 if (!letter) {
@@ -1915,7 +1915,7 @@
                 }
                 $('#newestMsgTime').html(letter.send_time);
                 $("#messages").find(".folder-list li.active-li a").trigger("click");
-            }).unbind(eventPrefix + "withdraw_letter").onPush("withdraw_letter", function (e, wsMessage, wsEvent) { // 当别的用户撤回消息
+            }).off(eventPrefix + "withdraw_letter").onPush("withdraw_letter", function (e, wsMessage, wsEvent) { // 当别的用户撤回消息
                 var user = wsMessage.metadata.user;
                 var letter = wsMessage.metadata.letter; // 被撤回的私信
                 if (letter) {
@@ -2005,8 +2005,8 @@
                     "popup_hide_btn": true
                 },
                 "blow_up": {
-                    "width": 500,
-                    "height": 500,
+                    "width": 600,
+                    "height": 600,
                     "scale": 1.6
                 },
                 "preview_compress": true

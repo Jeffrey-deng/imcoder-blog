@@ -61,7 +61,7 @@ public interface IVideoDao {
      * 点击量加1
      *
      * @param video
-     * @param step - 步长，可为负数
+     * @param step  - 步长，可为负数
      * @return
      */
     public int updateVideoClickCount(Video video, int step);
@@ -70,10 +70,19 @@ public interface IVideoDao {
      * 点赞量加1
      *
      * @param video
-     * @param step - 步长，可为负数
+     * @param step  - 步长，可为负数
      * @return
      */
     public int updateVideoLikeCount(Video video, int step);
+
+    /**
+     * 评论量加1
+     *
+     * @param video
+     * @param step  - 步长，可为负数
+     * @return
+     */
+    public int updateVideoCommentCount(Video video, int step);
 
     /**
      * 更新封面图片的image_type

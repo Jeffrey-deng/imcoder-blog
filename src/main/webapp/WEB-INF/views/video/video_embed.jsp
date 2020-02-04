@@ -21,7 +21,7 @@
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <base href="<%=basePath%>" target="_self">
-    <title>${videoTitle} - ${video.user.nickname} | ImCoder博客's 视频</title>
+    <title>${video.name} - ${video.user.nickname} | ImCoder博客's 视频</title>
     <meta name="description" content="${fn:escapeXml(video.description)}">
     <meta name="keywords" content="${video.tags},ImCoder's 博客,视频">
     <!-- 使用url函数转换相关路径 -->

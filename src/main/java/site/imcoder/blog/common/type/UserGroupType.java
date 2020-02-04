@@ -8,14 +8,18 @@ package site.imcoder.blog.common.type;
  */
 public enum UserGroupType {
 
-    MANAGER(-1),    // 管理员
-    NOVICE_USER(0), // 初级用户
-    SENIOR_USER(1); // 高级用户
+    GUEST_USER(-4, "游客"), // 游客
+    ANONYMOUS_USER(-2, "匿名用户"), // 匿名用户
+    MANAGER(-1, "管理员"),    // 管理员
+    NOVICE_USER(0, "会员"), // 初级用户
+    SENIOR_USER(1, "高级会员"); // 高级用户
 
     public final int value;
+    public final String name;
 
-    private UserGroupType(int value) {
+    private UserGroupType(int value, String name) {
         this.value = value;
+        this.name = name;
     }
 
     /**
@@ -24,7 +28,7 @@ public enum UserGroupType {
      * @param value
      * @return
      */
-    public static UserGroupType valueOfName(int value) {
+    public static UserGroupType valueOf(int value) {
         for (UserGroupType type : values()) {
             if (type.value == value) {
                 return type;

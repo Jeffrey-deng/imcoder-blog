@@ -157,8 +157,7 @@
         image_type, originName, refer, click_count, like_count, comment_count, topic)
         values (#{photo_id}, #{uid},#{album_id},#{name},#{path},#{description},#{tags},
 		#{upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler},
-        #{width},#{height},#{size},#{image_type}, #{originName}, #{refer}, #{click_count}, #{like_count}, #{comment_count},
-        #{topic.ptwid})
+        #{width},#{height},#{size},#{image_type}, #{originName}, #{refer}, #{click_count}, #{like_count}, #{comment_count},#{topic.ptwid})
 	</insert>
 
     <!-- 删除照片 -->
@@ -180,23 +179,21 @@
     <update id="batchReplacePhotoTag" parameterType="hashMap">
         <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
         <bind name="is_base_user_photos" value="base != null and base == 'user_photos' and photo != null and photo.uid != null and photo.uid > 0"/>
-        <bind name="is_base_album_detail"
-              value="base != null and base == 'album_detail' and photo != null and photo.album_id != null and photo.album_id > 0"/>
+        <bind name="is_base_album_detail" value="base != null and base == 'album_detail' and photo != null and photo.album_id != null and photo.album_id > 0"/>
         <bind name="is_base_user_likes" value="is_login and base != null and base == 'user_likes' and photo != null and photo.liked"/>
+        <bind name="is_base_user_comments" value="is_login and base != null and base == 'user_comments' and photo != null and photo.commented"/>
         <bind name="is_base_user_history" value="is_login and base != null and base == 'user_history' and photo != null and photo.accessed"/>
         <bind name="is_base_photo_tag" value="base != null and base == 'photo_tag' and photo != null and photo.tags != null and photo.tags != ''"/>
-        <bind name="is_base_photo_topic"
-              value="base != null and base == 'photo_topic' and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0"/>
+        <bind name="is_base_photo_topic" value="base != null and base == 'photo_topic' and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0"/>
         <bind name="is_and_logic_conn" value="logic_conn == null or logic_conn == 'and'"/>
-        <bind name="is_as_album_query"
-              value="is_base_album_detail or (is_and_logic_conn and photo != null and photo.album_id != null and photo.album_id > 0)"/>
+        <bind name="is_as_album_query" value="is_base_album_detail or (is_and_logic_conn and photo != null and photo.album_id != null and photo.album_id > 0)"/>
         <bind name="is_as_user_likes_query" value="is_base_user_likes or (is_login and is_and_logic_conn and photo != null and photo.liked)"/>
+        <bind name="is_as_user_comments_query" value="is_base_user_comments or (is_login and is_and_logic_conn and photo != null and photo.commented)"/>
         <bind name="is_as_user_history_query" value="is_base_user_history or (is_login and is_and_logic_conn and photo != null and photo.accessed)"/>
-        <bind name="is_as_topic_query"
-              value="is_base_photo_topic or (is_and_logic_conn and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0)"/>
+        <bind name="is_as_topic_query" value="is_base_photo_topic or (is_and_logic_conn and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0)"/>
         update (photo p left join photo_tag_wrapper t on p.topic = t.ptwid)
         <if test="is_login">
-            left join photo_access_history pah on (p.photo_id = pah.photo_id and pah.uid = #{loginUser.uid})
+            left join photo_action_record ar on (ar.photo_id = p.photo_id and ar.uid = #{loginUser.uid}) left join photo_access_detail ad on ar.par_id = ad.par_id
         </if>
         set p.tags = replace(p.tags, #{replacedTag}, #{newTag})
         <where>
@@ -213,10 +210,13 @@
                     )
                 </if>
                 <if test="is_base_user_likes">
-                    and (pah.is_like is not null and pah.is_like > 0)
+                    and (ar.liked is not null and ar.liked > 0)
+                </if>
+                <if test="is_base_user_comments">
+                    and (ar.commented is not null and ar.commented > 0)
                 </if>
                 <if test="is_base_user_history">
-                    and (pah.pah_id is not null)
+                    and (ad.par_id is not null)
                 </if>
                 <if test="is_base_photo_tag">
                     and (p.tags rlike '${photo.tags}')
@@ -284,12 +284,15 @@
                             <bind name="search_like_photo_refer" value="'%' + photo.refer  + '%'"/>
                             or p.refer like #{search_like_photo_refer}
                         </if>
-                        <if test="loginUser != null and loginUser.uid != null">
+                        <if test="is_login">
                             <if test="!is_base_user_likes and photo.liked">
-                                or (pah.is_like is not null and pah.is_like > 0)
+                                or (ar.liked is not null and ar.liked > 0)
+                            </if>
+                            <if test="!is_base_user_comments and photo.commented">
+                                or (ar.commented is not null and ar.commented > 0)
                             </if>
                             <if test="!is_base_user_history and photo.accessed">
-                                or (pah.pah_id is not null)
+                                or (ad.par_id is not null)
                             </if>
                         </if>
                         )
@@ -353,12 +356,15 @@
                             <bind name="search_like_photo_refer" value="'%' + photo.refer  + '%'"/>
                             and p.refer like #{search_like_photo_refer}
                         </if>
-                        <if test="loginUser != null and loginUser.uid != null">
+                        <if test="is_login">
                             <if test="!is_base_user_likes and photo.liked">
-                                and (pah.is_like is not null and pah.is_like > 0)
+                                and (ar.liked is not null and ar.liked > 0)
+                            </if>
+                            <if test="!is_base_user_comments and photo.commented">
+                                and (ar.commented is not null and ar.commented > 0)
                             </if>
                             <if test="!is_base_user_history and photo.accessed">
-                                and (pah.pah_id is not null)
+                                and (ad.par_id is not null)
                             </if>
                         </if>
                         )
@@ -394,23 +400,21 @@
     <update id="batchSetPhotoTag" parameterType="hashMap">
         <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
         <bind name="is_base_user_photos" value="base != null and base == 'user_photos' and photo != null and photo.uid != null and photo.uid > 0"/>
-        <bind name="is_base_album_detail"
-              value="base != null and base == 'album_detail' and photo != null and photo.album_id != null and photo.album_id > 0"/>
+        <bind name="is_base_album_detail" value="base != null and base == 'album_detail' and photo != null and photo.album_id != null and photo.album_id > 0"/>
         <bind name="is_base_user_likes" value="is_login and base != null and base == 'user_likes' and photo != null and photo.liked"/>
+        <bind name="is_base_user_comments" value="is_login and base != null and base == 'user_comments' and photo != null and photo.commented"/>
         <bind name="is_base_user_history" value="is_login and base != null and base == 'user_history' and photo != null and photo.accessed"/>
         <bind name="is_base_photo_tag" value="base != null and base == 'photo_tag' and photo != null and photo.tags != null and photo.tags != ''"/>
-        <bind name="is_base_photo_topic"
-              value="base != null and base == 'photo_topic' and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0"/>
+        <bind name="is_base_photo_topic" value="base != null and base == 'photo_topic' and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0"/>
         <bind name="is_and_logic_conn" value="logic_conn == null or logic_conn == 'and'"/>
-        <bind name="is_as_album_query"
-              value="is_base_album_detail or (is_and_logic_conn and photo != null and photo.album_id != null and photo.album_id > 0)"/>
+        <bind name="is_as_album_query" value="is_base_album_detail or (is_and_logic_conn and photo != null and photo.album_id != null and photo.album_id > 0)"/>
         <bind name="is_as_user_likes_query" value="is_base_user_likes or (is_login and is_and_logic_conn and photo != null and photo.liked)"/>
+        <bind name="is_as_user_comments_query" value="is_base_user_comments or (is_login and is_and_logic_conn and photo != null and photo.commented)"/>
         <bind name="is_as_user_history_query" value="is_base_user_history or (is_login and is_and_logic_conn and photo != null and photo.accessed)"/>
-        <bind name="is_as_topic_query"
-              value="is_base_photo_topic or (is_and_logic_conn and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0)"/>
+        <bind name="is_as_topic_query" value="is_base_photo_topic or (is_and_logic_conn and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0)"/>
         update (photo p left join photo_tag_wrapper t on p.topic = t.ptwid)
         <if test="is_login">
-            left join photo_access_history pah on (p.photo_id = pah.photo_id and pah.uid = #{loginUser.uid})
+            left join photo_action_record ar on (ar.photo_id = p.photo_id and ar.uid = #{loginUser.uid}) left join photo_access_detail ad on ar.par_id = ad.par_id
         </if>
         set p.tags = concat(p.tags, #{addTag})
         <where>
@@ -427,10 +431,13 @@
                     )
                 </if>
                 <if test="is_base_user_likes">
-                    and (pah.is_like is not null and pah.is_like > 0)
+                    and (ar.liked is not null and ar.liked > 0)
+                </if>
+                <if test="is_base_user_comments">
+                    and (ar.commented is not null and ar.commented > 0)
                 </if>
                 <if test="is_base_user_history">
-                    and (pah.pah_id is not null)
+                    and (ad.par_id is not null)
                 </if>
                 <if test="is_base_photo_tag">
                     and (p.tags rlike '${photo.tags}')
@@ -498,12 +505,15 @@
                             <bind name="search_like_photo_refer" value="'%' + photo.refer  + '%'"/>
                             or p.refer like #{search_like_photo_refer}
                         </if>
-                        <if test="loginUser != null and loginUser.uid != null">
+                        <if test="is_login">
                             <if test="!is_base_user_likes and photo.liked">
-                                or (pah.is_like is not null and pah.is_like > 0)
+                                or (ar.liked is not null and ar.liked > 0)
+                            </if>
+                            <if test="!is_base_user_comments and photo.commented">
+                                or (ar.commented is not null and ar.commented > 0)
                             </if>
                             <if test="!is_base_user_history and photo.accessed">
-                                or (pah.pah_id is not null)
+                                or (ad.par_id is not null)
                             </if>
                         </if>
                         )
@@ -567,12 +577,15 @@
                             <bind name="search_like_photo_refer" value="'%' + photo.refer  + '%'"/>
                             and p.refer like #{search_like_photo_refer}
                         </if>
-                        <if test="loginUser != null and loginUser.uid != null">
+                        <if test="is_login">
                             <if test="!is_base_user_likes and photo.liked">
-                                and (pah.is_like is not null and pah.is_like > 0)
+                                and (ar.liked is not null and ar.liked > 0)
+                            </if>
+                            <if test="!is_base_user_comments and photo.commented">
+                                and (ar.commented is not null and ar.commented > 0)
                             </if>
                             <if test="!is_base_user_history and photo.accessed">
-                                and (pah.pah_id is not null)
+                                and (ad.par_id is not null)
                             </if>
                         </if>
                         )
@@ -648,7 +661,7 @@
     <!-- 查找一个相册下的照片集合 -->
     <select id="findPhotosFromAlbum" parameterType="album" resultMap="photoResultMap">
         select p.photo_id, p.uid, p.album_id, p.name, p.path, p.description, p.tags, p.upload_time, p.width, p.height,
-        p.size, p.image_type, p.originName, p.refer, p.click_count, p.like_count,
+        p.size, p.image_type, p.originName, p.refer, p.click_count, p.like_count, p.comment_count,
         t.ptwid, t.name as tname, t.permission as tpermission, t.scope, t.description as tdescription
         from photo p left join photo_tag_wrapper t on p.topic = t.ptwid
         where album_id = #{album_id}
@@ -658,20 +671,18 @@
     <select id="findPhotoList" parameterType="hashMap" resultMap="photoResultMap">
         <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
         <bind name="is_base_user_photos" value="base != null and base == 'user_photos' and photo != null and photo.uid != null and photo.uid > 0"/>
-        <bind name="is_base_album_detail"
-              value="base != null and base == 'album_detail' and photo != null and photo.album_id != null and photo.album_id > 0"/>
+        <bind name="is_base_album_detail" value="base != null and base == 'album_detail' and photo != null and photo.album_id != null and photo.album_id > 0"/>
         <bind name="is_base_user_likes" value="is_login and base != null and base == 'user_likes' and photo != null and photo.liked"/>
+        <bind name="is_base_user_comments" value="is_login and base != null and base == 'user_comments' and photo != null and photo.commented"/>
         <bind name="is_base_user_history" value="is_login and base != null and base == 'user_history' and photo != null and photo.accessed"/>
         <bind name="is_base_photo_tag" value="base != null and base == 'photo_tag' and photo != null and photo.tags != null and photo.tags != ''"/>
-        <bind name="is_base_photo_topic"
-              value="base != null and base == 'photo_topic' and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0"/>
+        <bind name="is_base_photo_topic" value="base != null and base == 'photo_topic' and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0"/>
         <bind name="is_and_logic_conn" value="logic_conn == null or logic_conn == 'and'"/>
-        <bind name="is_as_album_query"
-              value="is_base_album_detail or (is_and_logic_conn and photo != null and photo.album_id != null and photo.album_id > 0)"/>
+        <bind name="is_as_album_query" value="is_base_album_detail or (is_and_logic_conn and photo != null and photo.album_id != null and photo.album_id > 0)"/>
         <bind name="is_as_user_likes_query" value="is_base_user_likes or (is_login and is_and_logic_conn and photo != null and photo.liked)"/>
+        <bind name="is_as_user_comments_query" value="is_base_user_comments or (is_login and is_and_logic_conn and photo != null and photo.commented)"/>
         <bind name="is_as_user_history_query" value="is_base_user_history or (is_login and is_and_logic_conn and photo != null and photo.accessed)"/>
-        <bind name="is_as_topic_query"
-              value="is_base_photo_topic or (is_and_logic_conn and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0)"/>
+        <bind name="is_as_topic_query" value="is_base_photo_topic or (is_and_logic_conn and photo != null and photo.topic != null and photo.topic.ptwid != null and photo.topic.ptwid > 0)"/>
         select p.photo_id, p.uid, p.album_id, p.name, p.path, p.description, p.tags, p.upload_time, p.width, p.height,
         p.size, p.image_type, p.refer, p.click_count, p.like_count, p.comment_count,
         <if test="is_login">
@@ -682,8 +693,9 @@
             , (case when apr.sort is NULL then p.photo_id else apr.sort end) as sort
         </if>
         <if test="is_login">
-            , (case when (pah.pah_id is not null) then true else false end) as accessed
-            , (case when (pah.is_like is not null and pah.is_like > 0) then true else false end) as liked
+            , (case when (ar.liked is not null and ar.liked > 0) then true else false end) as liked
+            , (case when (ar.commented is not null and ar.commented > 0) then true else false end) as commented
+            , (case when (ad.par_id is not null) then true else false end) as accessed
         </if>
         from (((photo p left join (album a left join user u on a.uid = u.uid) on p.album_id = a.album_id)
         <if test="is_as_album_query">
@@ -691,7 +703,7 @@
         </if>
         ) left join photo_tag_wrapper t on p.topic = t.ptwid)
         <if test="is_login">
-            left join photo_access_history pah on (p.photo_id = pah.photo_id and pah.uid = #{loginUser.uid})
+            left join photo_action_record ar on (ar.photo_id = p.photo_id and ar.uid = #{loginUser.uid}) left join photo_access_detail ad on ar.par_id = ad.par_id
         </if>
         <where>
             <if test="photo == null">
@@ -728,10 +740,13 @@
                     )
                 </if>
                 <if test="is_base_user_likes">
-                    and (pah.is_like is not null and pah.is_like > 0)
+                    and (ar.liked is not null and ar.liked > 0)
+                </if>
+                <if test="is_base_user_comments">
+                    and (ar.commented is not null and ar.commented > 0)
                 </if>
                 <if test="is_base_user_history">
-                    and (pah.pah_id is not null)
+                    and (ad.par_id is not null)
                 </if>
                 <if test="is_base_photo_tag">
                     and (p.tags rlike '${photo.tags}')
@@ -799,12 +814,15 @@
                             <bind name="search_like_photo_refer" value="'%' + photo.refer  + '%'"/>
                             or p.refer like #{search_like_photo_refer}
                         </if>
-                        <if test="loginUser != null and loginUser.uid != null">
+                        <if test="is_login">
                             <if test="!is_base_user_likes and photo.liked">
-                                or (pah.is_like is not null and pah.is_like > 0)
+                                or (ar.liked is not null and ar.liked > 0)
+                            </if>
+                            <if test="!is_base_user_comments and photo.commented">
+                                or (ar.commented is not null and ar.commented > 0)
                             </if>
                             <if test="!is_base_user_history and photo.accessed">
-                                or (pah.pah_id is not null)
+                                or (ad.par_id is not null)
                             </if>
                         </if>
                         )
@@ -868,12 +886,15 @@
                             <bind name="search_like_photo_refer" value="'%' + photo.refer  + '%'"/>
                             and p.refer like #{search_like_photo_refer}
                         </if>
-                        <if test="loginUser != null and loginUser.uid != null">
+                        <if test="is_login">
                             <if test="!is_base_user_likes and photo.liked">
-                                and (pah.is_like is not null and pah.is_like > 0)
+                                and (ar.liked is not null and ar.liked > 0)
+                            </if>
+                            <if test="!is_base_user_comments and photo.commented">
+                                and (ar.commented is not null and ar.commented > 0)
                             </if>
                             <if test="!is_base_user_history and photo.accessed">
-                                and (pah.pah_id is not null)
+                                and (ad.par_id is not null)
                             </if>
                         </if>
                         )
@@ -883,7 +904,7 @@
             <choose>
                 <when test="is_login">
                     <choose>
-                        <when test="is_as_album_query or is_as_user_likes_query or is_as_user_history_query">
+                        <when test="is_as_album_query or is_as_user_likes_query or is_as_user_comments_query or is_as_user_history_query">
                             and (
                             a.uid = #{loginUser.uid}
                             or
@@ -962,8 +983,14 @@
             </choose>
         </where>
         <choose>
-            <when test="is_as_user_likes_query or is_as_user_history_query">
-                order by pah.last_access_time
+            <when test="is_as_user_likes_query">
+                order by ar.like_at
+            </when>
+            <when test="is_as_user_comments_query">
+                order by ar.comment_at
+            </when>
+            <when test="is_as_user_history_query">
+                order by ad.last_access_time
             </when>
             <when test="is_as_album_query">
                 order by sort

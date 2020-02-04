@@ -160,7 +160,7 @@ public interface IAlbumDao {
      * 点击量加1
      *
      * @param photo
-     * @param step - 步长，可为负数
+     * @param step  - 步长，可为负数
      * @return
      */
     public int updatePhotoClickCount(Photo photo, int step);
@@ -170,10 +170,19 @@ public interface IAlbumDao {
      * 点赞量加1
      *
      * @param photo
-     * @param step - 步长，可为负数
+     * @param step  - 步长，可为负数
      * @return
      */
     public int updatePhotoLikeCount(Photo photo, int step);
+
+    /**
+     * 评论量加1
+     *
+     * @param photo
+     * @param step  - 步长，可为负数
+     * @return
+     */
+    public int updatePhotoCommentCount(Photo photo, int step);
 
     /**
      * 查询出用户设置的特殊标签列表

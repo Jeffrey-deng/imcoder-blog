@@ -193,12 +193,13 @@ public interface IAlbumService {
     /**
      * 点赞照片
      *
-     * @param photo    - 只需传photo_id
+     * @param photo    - 只需传video_id
+     * @param undo     - 是否取消赞
      * @param iRequest
      * @return IResponse:
      * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
      */
-    public IResponse likePhoto(Photo photo, IRequest iRequest);
+    public IResponse likePhoto(Photo photo, boolean undo, IRequest iRequest);
 
     /**
      * 查询出用户设置的特殊标签
@@ -222,7 +223,7 @@ public interface IAlbumService {
     public IResponse findPhotoTagWrappers(Photo photo, IRequest iRequest);
 
     /**
-     *  查找一个照片中的tags匹配的由用户设置的特殊配置标签
+     * 查找一个照片中的tags匹配的由用户设置的特殊配置标签
      *
      * @param tagWrapper 需要ptwid或name
      * @param iRequest
@@ -284,13 +285,15 @@ public interface IAlbumService {
     public IResponse deleteAlbumPhotoRelation(AlbumPhotoRelation albumPhotoRelation, IRequest iRequest);
 
     /**
-     * 查询照片的历史用户访问记录
+     * 查询照片的历史用户动作记录
      *
      * @param photo
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * photoActionRecords
+     * photo_action_record_count
      */
-    public IResponse findPhotoAccessRecordList(Photo photo, IRequest iRequest);
+    public IResponse findPhotoActionRecordList(Photo photo, IRequest iRequest);
 
 }

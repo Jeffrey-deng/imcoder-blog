@@ -1,6 +1,6 @@
 package site.imcoder.blog.entity.rewrite;
 
-import site.imcoder.blog.entity.AccessRecord;
+import site.imcoder.blog.entity.ActionRecord;
 import site.imcoder.blog.entity.Photo;
 
 import java.io.Serializable;
@@ -11,7 +11,7 @@ import java.io.Serializable;
  * @author Jeffrey.Deng
  * @date 2018-12-31
  */
-public class PhotoAccessRecord extends AccessRecord<Photo> implements Serializable {
+public class PhotoActionRecord extends ActionRecord<Photo> implements Serializable {
 
     private static final long serialVersionUID = 3494987975175699083L;
 

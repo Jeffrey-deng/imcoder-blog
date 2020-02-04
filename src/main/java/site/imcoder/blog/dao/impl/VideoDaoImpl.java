@@ -146,7 +146,7 @@ public class VideoDaoImpl extends CommonDao implements IVideoDao {
      * 点击量加1
      *
      * @param video
-     * @param step - 步长，可为负数
+     * @param step  - 步长，可为负数
      * @return
      */
     @Override
@@ -167,7 +167,7 @@ public class VideoDaoImpl extends CommonDao implements IVideoDao {
      * 点赞量加1
      *
      * @param video
-     * @param step - 步长，可为负数
+     * @param step  - 步长，可为负数
      * @return
      */
     @Override
@@ -180,6 +180,27 @@ public class VideoDaoImpl extends CommonDao implements IVideoDao {
         } catch (Exception e) {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.warn("updateVideoLikeCount fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 评论量加1
+     *
+     * @param video
+     * @param step  - 步长，可为负数
+     * @return
+     */
+    @Override
+    public int updateVideoCommentCount(Video video, int step) {
+        try {
+            Map<String, Object> map = new HashMap<>();
+            map.put("video", video);
+            map.put("step", step);
+            return this.getSqlSession().update("video.updateVideoCommentCount", map);
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.warn("updateVideoCommentCount fail", e);
             return -1;
         }
     }

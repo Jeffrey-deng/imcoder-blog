@@ -7,6 +7,7 @@ import site.imcoder.blog.common.Callable;
 import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.common.type.CommentType;
 import site.imcoder.blog.dao.IMessageDao;
+import site.imcoder.blog.dao.IUserDao;
 import site.imcoder.blog.entity.*;
 import site.imcoder.blog.event.IEventTrigger;
 import site.imcoder.blog.service.*;
@@ -32,6 +33,9 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
     //依赖注入DAO
     @Resource
     private IMessageDao messageDao;
+
+    @Resource
+    private IUserDao userDao;
 
     @Resource
     private IAlbumService albumService;
@@ -221,7 +225,7 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
             return response.setStatus(STATUS_PARAM_ERROR, "需要mainId");
         }
         // 根据评论主体类型mainType进行分别操作
-        CommentType commentType = CommentType.valueOfName(comment.getMainType());
+        CommentType commentType = CommentType.valueOf(comment.getMainType());
         switch (commentType) {
             case ARTICLE:   // 文章
                 Article cacheArticle = cache.getArticle(comment.getMainId(), Cache.READ);
@@ -241,7 +245,7 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
                 break;
         }
         if (response.isSuccess()) {
-            List<Comment> comments = messageDao.findCommentList(comment);
+            List<Comment> comments = messageDao.findCommentList(comment, iRequest.getLoginUser());
             if (comments != null) {
                 for (Comment cmt : comments) {
                     if (cmt.typeOfAnonymous()) {
@@ -265,7 +269,7 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
      */
     @Override
     public IResponse addComment(Comment comment, IRequest iRequest) {
-        iRequest.putAttr("loadAccessRecord", false);
+        iRequest.putAttr("loadActionRecord", false);
         IResponse response = new IResponse();
         if (iRequest.isHasNotLoggedIn()) {
             return response.setStatus(STATUS_NOT_LOGIN);
@@ -273,40 +277,40 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
             return response.setStatus(STATUS_PARAM_ERROR);
         }
         // 根据评论主体类型mainType进行分别操作
-        CommentType commentType = CommentType.valueOfName(comment.getMainType());
-        Object mainTypeObject = null;
-        Long mainObjectHostUserId = 0L;
+        CommentType commentType = CommentType.valueOf(comment.getMainType());
+        Object mainTypeCreation = null;
+        Long mainCreationHostUserId = 0L;
         switch (commentType) {
             case ARTICLE:   // 文章
                 Article cacheArticle = cache.getArticle(comment.getMainId(), Cache.READ);
                 response.setStatus(authService.validateUserPermissionUtil(cacheArticle.getAuthor(), cacheArticle.getPermission(), iRequest));
                 if (response.isSuccess()) {
-                    mainTypeObject = cacheArticle;
-                    mainObjectHostUserId = cacheArticle.getAuthor().getUid();
+                    mainTypeCreation = cacheArticle;
+                    mainCreationHostUserId = cacheArticle.getAuthor().getUid();
                 }
                 break;
             case PHOTO: // 照片
                 IResponse photoResp = albumService.findPhoto(new Photo(comment.getMainId()), iRequest);
                 response.setStatus(photoResp);
                 if (photoResp.isSuccess()) {
-                    mainTypeObject = photoResp.getAttr("photo");
-                    mainObjectHostUserId = ((Photo) mainTypeObject).getUid();
+                    mainTypeCreation = photoResp.getAttr("photo");
+                    mainCreationHostUserId = ((Photo) mainTypeCreation).getUid();
                 }
                 break;
             case VIDEO: // 视频
                 IResponse videoResp = videoService.findVideo(new Video(comment.getMainId()), iRequest);
                 response.setStatus(videoResp);
                 if (videoResp.isSuccess()) {
-                    mainTypeObject = videoResp.getAttr("video");
-                    mainObjectHostUserId = ((Video) mainTypeObject).getUser().getUid();
+                    mainTypeCreation = videoResp.getAttr("video");
+                    mainCreationHostUserId = ((Video) mainTypeCreation).getUser().getUid();
                 }
                 break;
             case PHOTO_TOPIC: // 照片合集
                 IResponse tagWrapperResp = albumService.findPhotoTagWrapper(new PhotoTagWrapper(comment.getMainId()), iRequest);
                 response.setStatus(tagWrapperResp);
                 if (tagWrapperResp.isSuccess()) {
-                    mainTypeObject = tagWrapperResp.getAttr("tagWrapper");
-                    mainObjectHostUserId = ((PhotoTagWrapper) mainTypeObject).getUid();
+                    mainTypeCreation = tagWrapperResp.getAttr("tagWrapper");
+                    mainCreationHostUserId = ((PhotoTagWrapper) mainTypeCreation).getUid();
                 }
                 break;
             default:
@@ -327,7 +331,7 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
                     replyUid = parentComment.getUser().getUid();
                 }
             } else {
-                replyUid = mainObjectHostUserId;
+                replyUid = mainCreationHostUserId;
             }
             if (response.isSuccess()) {
                 comment.setUser(iRequest.getLoginUser());
@@ -339,26 +343,13 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
                         comment.setUser(getAnonymousUser(comment.getUser()));
                     }
                     // 触发发送新评论通知
-                    notifyService.receivedComment(comment, replyUid, mainTypeObject);
+                    notifyService.receivedComment(comment, replyUid, mainTypeCreation);
                 }
                 response.setStatus(convertRowToHttpCode(index));
             }
         }
         if (response.isSuccess()) {
-            switch (commentType) {
-                case ARTICLE:   // 文章
-                    // 增加评论数
-                    // articleDao.raiseCommentCnt(comment);
-                    trigger.addComment(comment);
-                    break;
-                case PHOTO: // 照片
-                    break;
-                case VIDEO: // 视频
-                    break;
-                case PHOTO_TOPIC: // 照片合集
-                    break;
-                default:
-            }
+            trigger.addComment(comment, mainTypeCreation);
             response.putAttr("comment", comment);
         }
         return response;
@@ -389,10 +380,7 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
         } else if (db_comment.getUser().getUid().equals(loginUser.getUid()) || loginUser.getUserGroup().isManager()) {
             int index = messageDao.deleteComment(comment);
             if (index == 2) {
-                if (db_comment.getMainType() == CommentType.ARTICLE.value) {
-                    // articleDao.reduceCommentCnt(comment);
-                    trigger.deleteComment(db_comment); // 减少评论数
-                }
+                trigger.deleteComment(db_comment, null); // 减少评论数
                 response.setStatus(STATUS_SUCCESS, "已删除评论~").putAttr("type", 2);
             } else if (index == 1) {
                 response.setStatus(STATUS_SUCCESS, "已将评论清空，填充为‘已删除’~").putAttr("type", 1);
@@ -411,25 +399,103 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
      * 点赞评论
      *
      * @param comment  - 只需传cid
+     * @param undo     - 是否取消赞
      * @param iRequest
      * @return IResponse:
      * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
      */
     @Override
-    public IResponse likeComment(Comment comment, IRequest iRequest) {
+    public IResponse likeComment(Comment comment, boolean undo, IRequest iRequest) {
         IResponse response = new IResponse();
         if (comment == null || !IdUtil.containValue(comment.getCid())) {
             return response.setStatus(STATUS_PARAM_ERROR);
-        }
-        Comment db_comment = messageDao.findComment(comment);
-        if (db_comment == null) {
-            response.setStatus(STATUS_NOT_FOUND, "该评论不存在~");
         } else {
-            db_comment.setLike_count(db_comment.getLike_count() + 1);
-            response.setStatus(convertRowToHttpCode(messageDao.updateCommentLikeCount(db_comment, 1)));
-            comment.setLike_count(db_comment.getLike_count());
-            // 没验证就不能返回内容，防止空手套白狼
-            response.putAttr("comment", comment);
+            Comment db_comment = messageDao.findComment(comment);
+            if (db_comment != null) {
+                Boolean saveLikeValue = null;
+                ActionRecord<Comment> actionRecord = new ActionRecord<>();
+                actionRecord.setCreation(comment);
+                if (iRequest.isHasLoggedIn()) {
+                    actionRecord.setUser(iRequest.getLoginUser());
+                } else {
+                    actionRecord.setIp(iRequest.getAccessIp());
+                }
+                ActionRecord<Comment> lastActionRecord = userDao.findCommentActionRecord(actionRecord);
+                if (!undo) {    // 赞
+                    if (lastActionRecord != null && lastActionRecord.getLiked() != null && lastActionRecord.getLiked()) {
+                        response.setMessage("你已经赞过该评论了~");
+                    } else {
+                        saveLikeValue = true;
+                    }
+                } else {    // 取消赞
+                    if (lastActionRecord != null && lastActionRecord.getLiked() != null && lastActionRecord.getLiked()) {
+                        saveLikeValue = false;
+                    } else {
+                        response.setMessage("你并没有赞过该评论~");
+                    }
+                }
+                if (saveLikeValue != null) {
+                    if (lastActionRecord != null) {
+                        actionRecord.setAr_id(lastActionRecord.getAr_id());
+                    }
+                    actionRecord.setLiked(saveLikeValue);
+                    response.setStatus(convertRowToHttpCode(userDao.saveCommentActionRecord(actionRecord)));
+                    if (response.isSuccess()) {
+                        response.putAttr("type", 1);
+                        if (saveLikeValue) {
+                            db_comment.setLike_count(db_comment.getLike_count() + 1);
+                        } else {
+                            db_comment.setLike_count(db_comment.getLike_count() > 0 ? db_comment.getLike_count() - 1 : 0);
+                        }
+                        messageDao.updateCommentLikeCount(comment, saveLikeValue ? 1 : -1);
+                    }
+                } else {
+                    response.putAttr("type", 0);
+                }
+                comment.setLike_count(db_comment.getLike_count());
+                response.putAttr("comment", comment); // 没验证就不能返回内容，防止空手套白狼
+            } else {
+                response.setStatus(STATUS_NOT_FOUND, "该评论不存在~");
+            }
+        }
+        return response;
+    }
+
+    /**
+     * 查询用户对评论的动作记录
+     *
+     * @param comment
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * commentActionRecords
+     * comment_action_record_count
+     */
+    @Override
+    public IResponse findCommentActionRecordList(Comment comment, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (comment == null || !IdUtil.containValue(comment.getCid())) {
+            response.setStatus(STATUS_PARAM_ERROR);
+        } else if (iRequest.isHasNotLoggedIn()) {
+            response.setStatus(STATUS_NOT_LOGIN);
+        } else {
+            Comment db_comment = messageDao.findComment(comment);
+            if (db_comment != null) {
+                if (db_comment.getUser().getUid().equals(iRequest.getLoginUser().getUid())) {
+                    ActionRecord<Comment> queryActionRecord = new ActionRecord<>();
+                    queryActionRecord.setCreation(new Comment(comment.getCid()));
+                    // 只返回赞的
+                    queryActionRecord.setLiked(true);
+                    List<ActionRecord<Comment>> commentActionRecordList = userDao.findCommentActionRecordList(queryActionRecord, iRequest.getLoginUser());
+                    response.putAttr("commentActionRecords", commentActionRecordList);
+                    response.putAttr("comment_action_record_count", commentActionRecordList.size());
+                    response.putAttr("comment", db_comment);
+                } else {
+                    response.setStatus(STATUS_FORBIDDEN, "访问记录只能作者本人查看~");
+                }
+            } else {
+                response.setStatus(STATUS_NOT_FOUND, "该评论不存在~");
+            }
         }
         return response;
     }

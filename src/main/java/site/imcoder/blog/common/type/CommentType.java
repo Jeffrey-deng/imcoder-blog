@@ -23,7 +23,7 @@ public enum CommentType {
      * @param value
      * @return
      */
-    public static CommentType valueOfName(int value) {
+    public static CommentType valueOf(int value) {
         for (CommentType type : values()) {
             if (type.value == value) {
                 return type;

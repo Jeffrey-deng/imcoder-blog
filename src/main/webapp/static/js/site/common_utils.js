@@ -399,42 +399,35 @@
     var cookieUtil = {
         // get the cookie of the key is name
         get: function (name) {
-            var cookieName = encodeURIComponent(name) + "=", cookieStart = document.cookie
-                .indexOf(cookieName), cookieValue = null;
+            var cookies = "; " + document.cookie, cookieName = "; " + encodeURIComponent(name) + "=",
+                cookieStart = cookies.indexOf(cookieName), cookieValue = null;
             if (cookieStart > -1) {
-                var cookieEnd = document.cookie.indexOf(";", cookieStart);
+                var cookieEnd = cookies.indexOf(";", cookieStart + cookieName.length - 1);
                 if (cookieEnd == -1) {
-                    cookieEnd = document.cookie.length;
+                    cookieEnd = cookies.length;
                 }
-                cookieValue = decodeURIComponent(document.cookie.substring(
-                    cookieStart + cookieName.length, cookieEnd));
+                cookieValue = decodeURIComponent(cookies.substring(cookieStart + cookieName.length, cookieEnd));
             }
             return cookieValue;
         },
         // set the name/value pair to browser cookie
         set: function (name, value, expires, path, domain, secure) {
-            var cookieText = encodeURIComponent(name) + "="
-                + encodeURIComponent(value);
-
+            var cookieText = encodeURIComponent(name) + "=" + encodeURIComponent(value);
             if (expires) {
                 // set the expires time , then the browser will save it to disk
                 var expiresTime = new Date();
                 expiresTime.setTime(expires);
-                cookieText += ";expires=" + expiresTime.toGMTString();
+                cookieText += "; expires=" + expiresTime.toGMTString();
             }
-
             if (path) {
-                cookieText += ";path=" + path;
+                cookieText += "; path=" + path;
             }
-
             if (domain) {
-                cookieText += ";domain=" + domain;
+                cookieText += "; domain=" + domain;
             }
-
             if (secure) {
-                cookieText += ";secure";
+                cookieText += "; secure";
             }
-
             document.cookie = cookieText;
         },
         delete: function (name) {
@@ -627,12 +620,13 @@
         // 将链接转化为a标签
         var reMap = {};
         var replacementIndex = 0;
-        content = content.replace(/<script[\s\S]*?>[\s\S]*?<\/script>|<(a|img|iframe|embed|video|audio)[\s\S]*?>/gi, function (match) {
+        content = content.replace(/<script[\s\S]*?>[\s\S]*?<\/script>|<(a|img|iframe|embed|video|audio)[\s\S]*?>([^<]*?<\/\1>)?/gi, function (match) {
             var key = "【$RE_(*&$_MATCH_^_REPACEMENT_%$_" + (replacementIndex++) + "】"; // 首尾中文符号，避开[\x21-\x7e]更合适
             reMap[key] = match;
             return key;
         });
-        content = content.replace(/(https?:\/\/[a-z0-9\.:]+(\/[\x21-\x7e]*)?(\?[\x21-\x7e]*)?)/gi, function (match, url) {
+        // \x为16进制的ascii码，\x21-\x7e代码所有非控制字符（33到126），这里为!到`间除了<>，既除了标签
+        content = content.replace(/(https?:\/\/[a-z0-9\.:]+(\/[\x21-\x3b\x3d\x3f-\x7e]*)?(\?[\x21-\x3b\x3d\x3f-\x7e]*)?)/gi, function (match, url) {
             return '<a' + (className ? (' class="' + className + '"') : '') + ' target="_blank" href="' + url + '">' + url + '</a>';
         });
         for (var reKey in reMap) {
@@ -661,12 +655,13 @@
         // 将图片链接转化为img标签
         var reMap = {};
         var replacementIndex = 0;
-        content = content.replace(/<script[\s\S]*?>[\s\S]*?<\/script>|<(a|img|iframe|embed|video|audio)[\s\S]*?>/gi, function (match) {
+        content = content.replace(/<script[\s\S]*?>[\s\S]*?<\/script>|<(a|img|iframe|embed|video|audio)[\s\S]*?>([^<]*?<\/\1>)?/gi, function (match) {
             var key = "【$RE_(*&$_MATCH_^_REPACEMENT_%$_" + (replacementIndex++) + "】"; // 首尾中文符号，避开[\x21-\x7e]更合适
             reMap[key] = match;
             return key;
         });
-        content = content.replace(/(https?:\/\/[a-z0-9\.:]+\/[\x21-\x7e]*\.(gif|jpe?g|png|bmp|svg|ico)(\?[\x21-\x7e]*)?)/gi, function (match, url) {
+        // \x为16进制的ascii码，\x21-\x7e代码所有非控制字符（33到126），这里为!到`间除了<>，既除了标签
+        content = content.replace(/(https?:\/\/[a-z0-9\.:]+\/[\x21-\x3b\x3d\x3f-\x7e]*\.(gif|jpe?g|png|bmp|svg|ico)(\?[\x21-\x3b\x3d\x3f-\x7e]*)?)/gi, function (match, url) {
             if (setNotOnlyImgClass && content != url) {
                 return '<img class="' + (className ? (className + ' ') : '') + 'not-only-img" src="' + match + '">';
             } else {
@@ -808,7 +803,6 @@
         });
     };
 
-
     /**
      * 判断元素是否在出现在可见区域内
      *
@@ -848,6 +842,82 @@
         var leftBoundingOnScreen = elementLeftToWindowRight >= onScreenWidth;
 
         return bottomBoundingOnScreen && topBoundingOnScreen && rightBoundingOnScreen && leftBoundingOnScreen;
+    };
+
+    /**
+     * 计算出element旋转特定角度后的css值
+     * 如果元素本来就是左右居中显示，那么请删除返回值的·margin-left·
+     *
+     * @param {Number} angle - 旋转角度，为90的倍数
+     * @param {Number} raw_width - 不旋转时的原始宽度
+     * @param {Number} raw_height - 不旋转时的原始高度
+     * @param {Number=} box_width - 最大宽度，不填默认为raw_width，取值-1标识不限制宽度
+     * @param {Number=} box_height - 最大高度，不填默认为raw_height，取值-1标识不限制高度
+     * @param {Boolean=}  fill - 是否填充，设为true则将尽量填满box
+     * @param {String=} before_css_transform_value - 该element原来的css-transform值，为了防止其他的transform被覆盖，可传入该值
+     * @returns {transform: (string), width: (string), height: (string), margin-top: (string), margin-left: (string)} css
+     */
+    var calcElementRotateStyle = function (angle, raw_width, raw_height, box_width, box_height, fill, before_css_transform_value) {
+        angle = parseInt(angle) % 360;
+        box_width = box_width || raw_width;
+        box_height = box_height || raw_height;
+        fill = fill || false;
+        before_css_transform_value = before_css_transform_value === 'none' ? '' : before_css_transform_value;
+        before_css_transform_value = before_css_transform_value && before_css_transform_value.replace(/\s*rotate\([^)]*\)\s*/g, "");
+        var transform_value, width_value, height_value, max_width_value, max_height_value, margin_top_value, margin_left_value,
+            eyeRawWidth, eyeRawHeight; // 用户实际看到的宽高比
+        switch (angle) {
+            case 0:
+            case 180:
+                eyeRawWidth = raw_width;
+                eyeRawHeight = raw_height;
+                width_value = "";
+                height_value = "";
+                max_width_value = "";
+                max_height_value = "";
+                margin_top_value = "";
+                margin_left_value = "";
+                break;
+            case 90:
+            case 270:
+                eyeRawWidth = raw_height;
+                eyeRawHeight = raw_width;
+                var newHeight = (box_height == -1 || (!fill && eyeRawHeight < box_height)) ? eyeRawHeight : box_height,
+                    newWidth = eyeRawWidth / eyeRawHeight * newHeight;
+                if (fill && box_height == -1 && box_width != -1) {
+                    newWidth = box_width;
+                    newHeight = eyeRawHeight / eyeRawWidth * newWidth;
+                }
+                var newMarginTop;
+                var newMarginLeft;
+                if (box_width != -1 && newWidth > box_width) {
+                    newWidth = box_width;
+                    newHeight = eyeRawHeight / eyeRawWidth * newWidth;
+                }
+                newMarginTop = 0 - ((newWidth - newHeight) / 2);
+                newMarginLeft = (newWidth - newHeight) / 2;
+                //
+                width_value = newHeight + "px";
+                height_value = newWidth + "px";
+                max_width_value = "unset";
+                max_height_value = "unset";
+                margin_top_value = newMarginTop + "px";
+                margin_left_value = newMarginLeft + "px";
+                break;
+        }
+        transform_value = (angle == 0 ? "" : ("rotate(" + angle + "deg)"));
+        if (before_css_transform_value) {
+            transform_value = (transform_value ? (transform_value + " ") : "") + before_css_transform_value;
+        }
+        return {
+            "transform": transform_value,
+            "width": width_value,
+            "height": height_value,
+            "max-width": max_width_value,
+            "max-height": max_height_value,
+            "margin-top": margin_top_value,
+            "margin-left": margin_left_value
+        };
     };
 
     /**
@@ -926,8 +996,7 @@
                 if (!(deferred && deferred.promise)) {
                     deferred = $.when();
                 }
-                // if we have tasks left then handle the next one when the current one
-                // is done.
+                // if we have tasks left then handle the next one when the current one is done.
                 if (tasks.length >= 0) {
                     deferred.fail(function () {
                         tasks = [];
@@ -1397,6 +1466,91 @@
         }
     };
 
+    /**
+     * 接受异步返回结果，参数接在方法名后
+     * 兼容异步返回和直接返回
+     *
+     * @param {Function} func
+     * @returns {Function} asyncFunc
+     */
+    var wrapAsyncResult = function (func) {
+        var context = this;
+        return function () {
+            var deferred = func.apply(context, arguments);
+            if (!(deferred && deferred.promise)) {
+                deferred = $.when(deferred);
+            }
+            return $.Deferred(function (dfd) {
+                deferred.done(function () {
+                    dfd.resolveWith(this === deferred.promise() ? context : this, arguments);
+                }).fail(function () {
+                    dfd.rejectWith(this === deferred.promise() ? context : this, arguments);
+                });
+            });
+        };
+    };
+
+    /**
+     * 绑定事件
+     *
+     * @param {String} eventName
+     * @param {Function} func
+     * @param {Boolean} bindFirst - 调整执行顺序，添加到队列的第一个位置
+     */
+    var on = function (eventName, func, bindFirst) {
+        const context = this;
+        if (bindFirst == true) {
+            $(context).onfirst(eventName, func);
+        } else {
+            $(context).on(eventName, func);
+        }
+        return context;
+    };
+
+    /**
+     * 绑定事件，仅执行一次
+     *
+     * @param {String} eventName
+     * @param {Function} func
+     * @param {Boolean} bindFirst - 调整执行顺序，添加到队列的第一个位置
+     */
+    var once = function (eventName, func, bindFirst) {
+        const context = this;
+        const funcWrapper = function () {
+            try {
+                func.apply(this, arguments);
+            } finally {
+                off.call(context, eventName, funcWrapper);
+            }
+        };
+        on.call(context, eventName, funcWrapper, bindFirst);
+        return context;
+    };
+
+    /**
+     * 触发事件，参数接在事件名后
+     *
+     * @param {String} eventName
+     * @returns 事件返回值
+     */
+    var trigger = function (eventName) {
+        const context = this;
+        return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
+    };
+
+    /**
+     * 取消事件绑定
+     *
+     * @param {String} eventName
+     * @param {Function} func
+     */
+    var off = function (eventName, func) {
+        const context = this;
+        $(context).off(eventName, func);
+        return context;
+    };
+
+
     var context = {
         "extendNonNull": extendNonNull,
         "cookieUtil": cookieUtil,
@@ -1416,6 +1570,7 @@
         "convertImageLinkToHtmlTag": convertImageLinkToHtmlTag,
         "formatJson": formatJson,
         "isOnScreen": isOnScreen,
+        "calcElementRotateStyle": calcElementRotateStyle,
         "replaceByEL": replaceByEL,
         "TaskQueue": TaskQueue,
         "ajaxDownload": ajaxDownload,
@@ -1428,7 +1583,12 @@
         "removeNotify": removeNotify,
         "getNotify": getNotify,
         "getLocalConfig": getLocalConfig,
-        "setLocalConfig": setLocalConfig
+        "setLocalConfig": setLocalConfig,
+        "wrapAsyncResult": wrapAsyncResult,
+        "on": on,
+        "once": once,
+        "trigger": trigger,
+        "off": off
     };
 
 

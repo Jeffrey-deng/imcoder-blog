@@ -140,7 +140,7 @@ public class AuthServiceImpl extends BaseService implements IAuthService {
                 response.setStatus(STATUS_FORBIDDEN, "该账号已被冻结~");
             } else {
                 UserAuth userAuthToken = null;
-                UserAuthType userAuthType = UserAuthType.valueOfName(userAuth.getIdentity_type());
+                UserAuthType userAuthType = UserAuthType.valueOf(userAuth.getIdentity_type());
                 switch (userAuthType) {
                     case UID:
                     case USERNAME:
@@ -476,17 +476,17 @@ public class AuthServiceImpl extends BaseService implements IAuthService {
      */
     @Override
     public IResponse validateUserPermissionUtil(User author, int permission, IRequest iRequest) {
-        User loginUser = iRequest.getLoginUser();
         IResponse response = new IResponse();
         if (author == null) {
             return response.setStatus(STATUS_PARAM_ERROR);
         }
-        PermissionType permissionType = PermissionType.valueOfName(permission);
+        PermissionType permissionType = PermissionType.valueOf(permission);
         // 公开权限直接返回
         if (permissionType == PermissionType.PUBLIC || permissionType == PermissionType.NOT_PUBLIC) {
             return response.setStatus(STATUS_SUCCESS);
         }
-        if (loginUser != null) {
+        if (iRequest.isHasLoggedIn()) {
+            User loginUser = iRequest.getLoginUser();
             // 作者本人查看时直接返回
             if (loginUser.getUid().equals(author.getUid())) {
                 response.setStatus(STATUS_SUCCESS);

@@ -219,7 +219,7 @@
             }
         });
         // 要删除的相册中包含视频时提示用户
-        album_handle.utils.bindEvent(album_handle.config.event.beforeDelete, function (e, params) {
+        album_handle.on(album_handle.config.event.beforeDelete, function (e, params) {
             var albumSizeInfo = PeriodCache.utils.getCacheValue(album_size_cache_conn.groupConfig.groupName, params.album_id);
             if (albumSizeInfo.videoCount) {
                 if (!window.confirm("你删除的相册包含" + albumSizeInfo.videoCount + "个视频，确定要继续吗？（建议先删除视频）")) {

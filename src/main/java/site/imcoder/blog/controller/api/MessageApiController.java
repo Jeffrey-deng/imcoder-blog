@@ -9,11 +9,14 @@ import site.imcoder.blog.Interceptor.annotation.LoginRequired;
 import site.imcoder.blog.controller.BaseController;
 import site.imcoder.blog.entity.Comment;
 import site.imcoder.blog.entity.Letter;
+import site.imcoder.blog.entity.User;
+import site.imcoder.blog.entity.rewrite.CommentActionRecord;
 import site.imcoder.blog.service.IMessageService;
 import site.imcoder.blog.service.message.IRequest;
 import site.imcoder.blog.service.message.IResponse;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpSession;
 import java.util.ArrayList;
 
 /**
@@ -123,7 +126,11 @@ public class MessageApiController extends BaseController {
      */
     @RequestMapping(params = "method=getCommentList")
     @ResponseBody
-    public IResponse getCommentList(Comment comment, IRequest iRequest) {
+    public IResponse getCommentList(Comment comment, IRequest iRequest, HttpSession session) {
+        // todo：以后再优化
+        if (!iRequest.isHasLoggedIn()) {
+            iRequest.setLoginUser((User) session.getAttribute(KEY_GUEST_USER));
+        }
         return messageService.findCommentList(comment, iRequest);
     }
 
@@ -147,14 +154,32 @@ public class MessageApiController extends BaseController {
      * 点赞评论
      *
      * @param comment  - 只需传cid
+     * @param undo     - true: 取消赞，false: 赞
      * @param iRequest
      * @return IResponse:
      * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
      */
     @RequestMapping(params = "method=likeComment")
     @ResponseBody
-    public IResponse likeComment(Comment comment, IRequest iRequest) {
-        return messageService.likeComment(comment, iRequest);
+    public IResponse likeComment(Comment comment, @RequestParam(defaultValue = "false") boolean undo, IRequest iRequest) {
+        return messageService.likeComment(comment, undo, iRequest);
+    }
+
+    /**
+     * 查询评论的用户动作记录
+     *
+     * @param comment
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * commentActionRecords
+     * comment_action_record_count
+     */
+    @RequestMapping(params = "method=getCommentActionRecordList")
+    @ResponseBody
+    @GZIP
+    public IResponse getCommentActionRecordList(Comment comment, IRequest iRequest) {
+        return messageService.findCommentActionRecordList(comment, iRequest);
     }
 
     /**     ----------   comment end    ----------------    */

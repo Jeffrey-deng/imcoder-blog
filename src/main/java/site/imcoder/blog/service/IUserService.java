@@ -205,63 +205,51 @@ public interface IUserService {
     public IResponse saveHeadPhoto(MultipartFile imageFile, MultipartFile imageRawFile, String head_photo_path, IRequest iRequest);
 
     /**
-     * 查询用户访问文章的历史记录
+     * 查询用户对文章的动作记录
      *
-     * @param queryAccessRecord
+     * @param queryActionRecord
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * articleActionRecords
+     * article_action_record_count
      */
-    public IResponse findUserArticleAccessRecordList(AccessRecord<Article> queryAccessRecord, IRequest iRequest);
+    public IResponse findUserArticleActionRecordList(ActionRecord<Article> queryActionRecord, IRequest iRequest);
 
     /**
-     * 删除用户访问文章的历史记录
+     * 查询用户对视频的动作记录
      *
-     * @param queryAccessRecord
+     * @param queryActionRecord
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * videoActionRecords
+     * video_action_record_count
      */
-    public IResponse deleteUserArticleAccessRecord(AccessRecord<Article> queryAccessRecord, IRequest iRequest);
+    public IResponse findUserVideoActionRecordList(ActionRecord<Video> queryActionRecord, IRequest iRequest);
 
     /**
-     * 查询用户访问视频的历史记录
+     * 查询用户对照片的动作记录
      *
-     * @param queryAccessRecord
+     * @param queryActionRecord
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * photoActionRecords
+     * photo_action_record_count
      */
-    public IResponse findUserVideoAccessRecordList(AccessRecord<Video> queryAccessRecord, IRequest iRequest);
+    public IResponse findUserPhotoActionRecordList(ActionRecord<Photo> queryActionRecord, IRequest iRequest);
 
     /**
-     * 删除用户访问视频的历史记录
+     * 查询用户对评论的动作记录
      *
-     * @param queryAccessRecord
+     * @param queryActionRecord
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * commentActionRecords
+     * comment_action_record_count
      */
-    public IResponse deleteUserVideoAccessRecord(AccessRecord<Video> queryAccessRecord, IRequest iRequest);
-
-    /**
-     * 查询用户访问照片的历史记录
-     *
-     * @param queryAccessRecord
-     * @param iRequest
-     * @return IResponse:
-     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
-     */
-    public IResponse findUserPhotoAccessRecordList(AccessRecord<Photo> queryAccessRecord, IRequest iRequest);
-
-    /**
-     * 删除用户访问照片的历史记录
-     *
-     * @param queryAccessRecord
-     * @param iRequest
-     * @return IResponse:
-     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
-     */
-    public IResponse deleteUserPhotoAccessRecord(AccessRecord<Photo> queryAccessRecord, IRequest iRequest);
+    public IResponse findUserCommentActionRecordList(ActionRecord<Comment> queryActionRecord, IRequest iRequest);
 
 }

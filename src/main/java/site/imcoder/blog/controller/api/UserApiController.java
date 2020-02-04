@@ -4,15 +4,16 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
-import site.imcoder.blog.Interceptor.annotation.AccessRecorder;
+import site.imcoder.blog.Interceptor.annotation.AccessRecord;
 import site.imcoder.blog.Interceptor.annotation.GZIP;
 import site.imcoder.blog.Interceptor.annotation.LoginRequired;
 import site.imcoder.blog.common.type.UserAuthType;
 import site.imcoder.blog.controller.BaseController;
 import site.imcoder.blog.entity.*;
-import site.imcoder.blog.entity.rewrite.ArticleAccessRecord;
-import site.imcoder.blog.entity.rewrite.PhotoAccessRecord;
-import site.imcoder.blog.entity.rewrite.VideoAccessRecord;
+import site.imcoder.blog.entity.rewrite.ArticleActionRecord;
+import site.imcoder.blog.entity.rewrite.CommentActionRecord;
+import site.imcoder.blog.entity.rewrite.PhotoActionRecord;
+import site.imcoder.blog.entity.rewrite.VideoActionRecord;
 import site.imcoder.blog.service.IArticleService;
 import site.imcoder.blog.service.IUserService;
 import site.imcoder.blog.service.message.IRequest;
@@ -310,130 +311,154 @@ public class UserApiController extends BaseController {
     }
 
     /**
-     * 查询用户访问文章的历史记录
+     * 查询用户对文章的动作记录
      *
      * @param accessRecord
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * articleActionRecords
+     * article_action_record_count
      */
-    @RequestMapping(params = "method=getUserArticleAccessRecordList")
+    @RequestMapping(params = "method=getUserArticleActionRecordList")
     @ResponseBody
     @GZIP
-    public IResponse getUserArticleAccessRecordList(ArticleAccessRecord accessRecord, IRequest iRequest) {
-        return userService.findUserArticleAccessRecordList(accessRecord, iRequest);
+    public IResponse getUserArticleActionRecordList(ArticleActionRecord accessRecord, IRequest iRequest) {
+        return userService.findUserArticleActionRecordList(accessRecord, iRequest);
+    }
+
+    /**
+     * 查询用户对视频的动作记录
+     *
+     * @param accessRecord
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * videoActionRecords
+     * video_action_record_count
+     */
+    @RequestMapping(params = "method=getUserVideoActionRecordList")
+    @ResponseBody
+    @GZIP
+    public IResponse getUserVideoActionRecordList(VideoActionRecord accessRecord, IRequest iRequest) {
+        return userService.findUserVideoActionRecordList(accessRecord, iRequest);
+    }
+
+    /**
+     * 查询用户对照片的动作记录
+     *
+     * @param accessRecord
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * photoActionRecords
+     * photo_action_record_count
+     */
+    @RequestMapping(params = "method=getUserPhotoActionRecordList")
+    @ResponseBody
+    @GZIP
+    public IResponse getUserPhotoActionRecordList(PhotoActionRecord accessRecord, IRequest iRequest) {
+        return userService.findUserPhotoActionRecordList(accessRecord, iRequest);
+    }
+
+    /**
+     * 查询用户对评论的动作记录
+     *
+     * @param accessRecord
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * commentActionRecords
+     * comment_action_record_count
+     */
+    @RequestMapping(params = "method=getUserCommentActionRecordList")
+    @ResponseBody
+    @GZIP
+    public IResponse getUserCommentActionRecordList(CommentActionRecord accessRecord, IRequest iRequest) {
+        return userService.findUserCommentActionRecordList(accessRecord, iRequest);
+    }
+
+    /**
+     * 查询用户所有的动作记录
+     *
+     * @param accessRecord
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * articleActionRecords
+     * article_action_record_count
+     * photoActionRecords
+     * photo_action_record_count
+     * videoActionRecords
+     * video_action_record_count
+     */
+    @RequestMapping(params = "method=getUserActionRecordList")
+    @ResponseBody
+    @GZIP
+    public IResponse getUserActionRecordList(ActionRecord accessRecord, IRequest iRequest) {
+        if (accessRecord != null) {
+            accessRecord.setCreation(null);
+        }
+        IResponse response = new IResponse();
+        IResponse articleResp = userService.findUserArticleActionRecordList(accessRecord, iRequest);
+        response.setStatus(articleResp);
+        if (response.isSuccess()) {
+            response.putAttr(articleResp.getAttr());
+            response.putAttr(userService.findUserVideoActionRecordList(accessRecord, iRequest).getAttr());
+            response.putAttr(userService.findUserPhotoActionRecordList(accessRecord, iRequest).getAttr());
+        }
+        return response;
     }
 
     /**
      * 删除用户访问文章的历史记录
      *
-     * @param accessRecord
+     * @param article
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
      */
-    @AccessRecorder(type = AccessRecorder.Types.ARTICLE, key = "article", action = AccessRecorder.Actions.DELETE)
-    @RequestMapping(params = "method=deleteUserArticleAccessRecord")
+    @AccessRecord(type = AccessRecord.Types.ARTICLE, key = "article", action = AccessRecord.Actions.DELETE)
+    @RequestMapping(params = "method=deleteUserArticleAccessDetail")
     @ResponseBody
-    public IResponse deleteUserArticleAccessRecord(ArticleAccessRecord accessRecord, IRequest iRequest) {
-        IResponse response = userService.deleteUserArticleAccessRecord(accessRecord, iRequest);
-        if (response.isSuccess()) {
-            response.putAttr("article", ((AccessRecord) response.getAttr("accessRecord")).getBean());
-        }
+    public IResponse deleteUserArticleAccessDetail(Article article, IRequest iRequest) {
+        IResponse response = new IResponse();
+        response.putAttr("article", article);
         return response;
-    }
-
-    /**
-     * 查询用户访问视频的历史记录
-     *
-     * @param accessRecord
-     * @param iRequest
-     * @return IResponse:
-     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
-     */
-    @RequestMapping(params = "method=getUserVideoAccessRecordList")
-    @ResponseBody
-    @GZIP
-    public IResponse getUserVideoAccessRecordList(VideoAccessRecord accessRecord, IRequest iRequest) {
-        return userService.findUserVideoAccessRecordList(accessRecord, iRequest);
     }
 
     /**
      * 删除用户访问视频的历史记录
      *
-     * @param accessRecord
+     * @param video
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
      */
-    @AccessRecorder(type = AccessRecorder.Types.VIDEO, key = "video", action = AccessRecorder.Actions.DELETE)
-    @RequestMapping(params = "method=deleteUserVideoAccessRecord")
+    @AccessRecord(type = AccessRecord.Types.VIDEO, key = "video", action = AccessRecord.Actions.DELETE)
+    @RequestMapping(params = "method=deleteUserVideoAccessDetail")
     @ResponseBody
-    public IResponse deleteUserVideoAccessRecord(VideoAccessRecord accessRecord, IRequest iRequest) {
-        IResponse response = userService.deleteUserVideoAccessRecord(accessRecord, iRequest);
-        if (response.isSuccess()) {
-            response.putAttr("video", ((AccessRecord) response.getAttr("accessRecord")).getBean());
-        }
+    public IResponse deleteUserVideoAccessDetail(Video video, IRequest iRequest) {
+        IResponse response = new IResponse();
+        response.putAttr("video", video);
         return response;
-    }
-
-    /**
-     * 查询用户访问照片的历史记录
-     *
-     * @param accessRecord
-     * @param iRequest
-     * @return IResponse:
-     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
-     */
-    @RequestMapping(params = "method=getUserPhotoAccessRecordList")
-    @ResponseBody
-    @GZIP
-    public IResponse getUserPhotoAccessRecordList(PhotoAccessRecord accessRecord, IRequest iRequest) {
-        return userService.findUserPhotoAccessRecordList(accessRecord, iRequest);
     }
 
     /**
      * 删除用户访问照片的历史记录
      *
-     * @param accessRecord
+     * @param photo
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
      */
-    @AccessRecorder(type = AccessRecorder.Types.PHOTO, key = "photo", action = AccessRecorder.Actions.DELETE)
-    @RequestMapping(params = "method=deleteUserPhotoAccessRecord")
+    @AccessRecord(type = AccessRecord.Types.PHOTO, key = "photo", action = AccessRecord.Actions.DELETE)
+    @RequestMapping(params = "method=deleteUserPhotoAccessDetail")
     @ResponseBody
-    public IResponse deleteUserPhotoAccessRecord(PhotoAccessRecord accessRecord, IRequest iRequest) {
-        IResponse response = userService.deleteUserPhotoAccessRecord(accessRecord, iRequest);
-        if (response.isSuccess()) {
-            response.putAttr("photo", ((AccessRecord) response.getAttr("accessRecord")).getBean());
-        }
+    public IResponse deleteUserPhotoAccessDetail(Photo photo, IRequest iRequest) {
+        IResponse response = new IResponse();
+        response.putAttr("photo", photo);
         return response;
     }
 
-    /**
-     * 查询用户所有访问的历史记录
-     *
-     * @param accessRecord
-     * @param iRequest
-     * @return IResponse:
-     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
-     */
-    @RequestMapping(params = "method=getUserAccessRecordList")
-    @ResponseBody
-    @GZIP
-    public IResponse getUserAccessRecordList(AccessRecord accessRecord, IRequest iRequest) {
-        if (accessRecord != null) {
-            accessRecord.setBean(null);
-        }
-        IResponse response = new IResponse();
-        IResponse articleResp = userService.findUserArticleAccessRecordList(accessRecord, iRequest);
-        response.setStatus(articleResp);
-        if (response.isSuccess()) {
-            response.putAttr(articleResp.getAttr());
-            response.putAttr(userService.findUserVideoAccessRecordList(accessRecord, iRequest).getAttr());
-            response.putAttr(userService.findUserPhotoAccessRecordList(accessRecord, iRequest).getAttr());
-        }
-        return response;
-    }
 }

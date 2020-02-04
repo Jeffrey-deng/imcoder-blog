@@ -5,7 +5,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import site.imcoder.blog.Interceptor.annotation.AccessRecorder;
+import site.imcoder.blog.Interceptor.annotation.AccessRecord;
 import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.common.type.TagWrapperType;
@@ -147,7 +147,7 @@ public class PhotoController extends BaseController {
      * @param iRequest
      * @return
      */
-    @AccessRecorder(type = AccessRecorder.Types.PHOTO, key = "photo", deep = 1)
+    @AccessRecord(type = AccessRecord.Types.PHOTO, key = "photo", deep = 1)
     @RequestMapping(value = "/p/detail/{id}")
     public String openPhotoDetail(@PathVariable @PrimaryKeyConvert Long id, String path, Model model, IRequest iRequest) {
         Photo photo = null;
@@ -302,6 +302,31 @@ public class PhotoController extends BaseController {
         } else {
             return PAGE_LOGIN;
         }
+    }
+
+    /**
+     * 打开用户的主题列表页面
+     *
+     * @param uid
+     * @param model
+     * @param iRequest
+     * @return
+     */
+    @RequestMapping(value = {"/u/topics", "/u/{uid}/topics"})
+    public String userTopics(@PathVariable(required = false) @PrimaryKeyConvert(supportLongParse = true, printShort = false) Long uid, Model model, IRequest iRequest) {
+        if (!IdUtil.containValue(uid)) {
+            if (iRequest.isHasNotLoggedIn())
+                return PAGE_LOGIN;
+            else
+                return "redirect:/u/" + iRequest.getLoginUser().getUid() + "/topics" + appendQueryString(iRequest.getQueryString());
+        }
+        User queryUser = new User(uid);
+        IResponse userResp = userService.findUser(queryUser, iRequest);
+        if (userResp.isSuccess()) {
+            model.addAttribute("hostUser", userResp.getAttr("user"));
+            model.addAttribute("clear_model", "topics");
+        }
+        return getViewPage(userResp, "/album/photo_tag_wrappers");
     }
 
     /**

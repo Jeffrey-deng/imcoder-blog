@@ -122,13 +122,13 @@
                 if (config.mark == "update") {
                     postArticle.aid = pointer.currArticle.aid;
                 }
-                utils.triggerEvent(config.event.beforeArticleSave, postArticle, config.mark);
+                context.trigger(config.event.beforeArticleSave, postArticle, config.mark);
                 request.saveArticle(postArticle, config.mark).then(function (response) {
                     if (response.status == 200) {
                         pointer.isSaveFlag = true;
                         pointer.currArticle = response.data.article;
                         toastr.success("文章" + (config.mark == "new" ? "保存" : "更新") + "成功!", "提示");
-                        utils.triggerEvent(config.event.articleSaveCompleted, pointer.currArticle, config.mark);
+                        context.trigger(config.event.articleSaveCompleted, pointer.currArticle, config.mark);
                     } else if (response.status == 401) {
                         submitBtn.removeAttr("disabled");
                         toastr.error('由于您编辑时间过长导致Session过期了，\n您可以点击下面链接进行登录后，\n再返回此页面进行保存操作！\n<a>点击这里登录</a>.', "保存失败", {
@@ -159,7 +159,7 @@
         // 初始化更新表单
         if (config.mark == "update" && config.updateAid) {
             request.loadArticle(config.updateAid, function (article) {
-                utils.triggerEvent(config.event.articleLoadCompleted, article);
+                context.trigger(config.event.articleLoadCompleted, article);
                 initArticleUpdateForm(article);
             }).fail(function (xhr, ts) {
                 toastr.error(ts, "加载文章[" + config.updateAid + "]失败");
@@ -174,7 +174,7 @@
         });
         // 初始化复制剪切板
         initClipboard(config.selector.copyArticleLinkBtn);
-        utils.bindEvent(config.event.articleSaveCompleted, function (e, article, mark) {
+        context.on(config.event.articleSaveCompleted, function (e, article, mark) {
             var config = this.config;
             var articleLink = config.path_params.basePath + "a/detail/" + article.aid;
             var $copyLinkBtn = $(config.selector.copyArticleLinkBtn);
@@ -183,7 +183,7 @@
             $openArticleLink.attr("href", articleLink);
             pointer.successModal.niftyModal();
         });
-        utils.triggerEvent(config.event.articleFormInitCompleted, config);
+        context.trigger(config.event.articleFormInitCompleted, config);
     };
 
     var parsePostArticleData = function () {
@@ -290,13 +290,13 @@
     };
 
     var request = {
-        "saveArticle": function (article, mark, call) {
+        "saveArticle": function (article, mark, success) {
             var postData = article;
             postData.mark = mark;
             return $.post("article.api?method=save", postData, function (response) {
                 if (response.status == 200) {
-                    call && call.call(response, response.data.article);
-                } else if (call) {
+                    success && success.call(response, response.data.article);
+                } else if (success) {
                     toastr.error(response.message, (mark == "new" ? "保存" : "更新") + "文章失败");
                     console.warn("Error Code: " + response.status);
                 }
@@ -308,11 +308,11 @@
         "updateArticle": function (article) {
             return this.saveArticle(article, "update");
         },
-        "loadArticle": function (aid, call) {
+        "loadArticle": function (aid, success) {
             return $.get("article.api?method=getArticle", {"aid": aid}, function (response) {
                 if (response.status == 200) {
-                    call && call.call(response, response.data.article);
-                } else if (call) {
+                    success && success.call(response, response.data.article);
+                } else if (success) {
                     toastr.error(response.message, "加载文章失败");
                     console.warn("Error Code: " + response.status);
                 }
@@ -321,29 +321,6 @@
     };
 
     var utils = {
-        "once": function (eventName, func, bindFirst) {
-            var funcWrapper = function () {
-                try {
-                    func.apply(context, arguments);
-                } finally {
-                    utils.unbindEvent(eventName, funcWrapper);
-                }
-            };
-            utils.bindEvent(eventName, funcWrapper, bindFirst);
-        },
-        "bindEvent": function (eventName, func, bindFirst) {
-            if (bindFirst == true) {
-                $(context).onfirst(eventName, func);
-            } else {
-                $(context).bind(eventName, func);
-            }
-        },
-        "triggerEvent": function (eventName) {
-            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
-        },
-        "unbindEvent": function (eventName, func) {
-            $(context).unbind(eventName, func);
-        },
         "calcTagInputWidth": function (tags_modify_dom) {
             var tag_single_nodes = tags_modify_dom.find(".tag-single");
             var maxOffset = 0;
@@ -524,6 +501,10 @@
         "initArticleUpdateForm": initArticleUpdateForm,
         "initClipboard": initClipboard,
         "initCreateConfigInfo": initCreateConfigInfo,
+        "on": common_utils.on,
+        "once": common_utils.once,
+        "trigger": common_utils.trigger,
+        "off": common_utils.off
     };
 
     return context;

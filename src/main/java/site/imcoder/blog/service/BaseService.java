@@ -66,7 +66,7 @@ public abstract class BaseService implements GlobalConstants {
      * 200 ： 是管理员
      */
     public int isAdmin(User loginUser) {
-        if (loginUser == null || loginUser.getUid() == null || loginUser.getUid().equals(0L)) {
+        if (loginUser == null || !loginUser.isHasLoggedIn()) {
             return STATUS_NOT_LOGIN;
         } else if (loginUser.getUserGroup() != null && loginUser.getUserGroup().isManager()) {
             return STATUS_SUCCESS;

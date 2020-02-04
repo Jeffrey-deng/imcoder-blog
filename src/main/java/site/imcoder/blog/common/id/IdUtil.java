@@ -23,7 +23,7 @@ public class IdUtil {
             'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',}; // '+', '/'
 
     // 不能使用的特殊关键字
-    private static String[] special_keywords_short = {"home", "videos", "albums", "photos", "articles", "center", "history", "likes"};
+    private static String[] special_keywords_short = {"home", "videos", "albums", "photos", "articles", "center", "history", "likes", "topics"};
 
     private static long[] special_keywords_long = null;
 

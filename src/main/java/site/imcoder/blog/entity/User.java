@@ -1,5 +1,6 @@
 package site.imcoder.blog.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import site.imcoder.blog.common.type.UserAuthType;
 import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
@@ -213,7 +214,22 @@ public class User implements Serializable {
         this.userSetting = userSetting;
     }
 
-    // 返回某一种凭证
+    /**
+     * 是否登录
+     *
+     * @return
+     */
+    @JsonIgnore
+    public boolean isHasLoggedIn() {
+        return uid != null && uid > 0;
+    }
+
+    /**
+     * 返回某一种凭证
+     *
+     * @param userAuthType
+     * @return
+     */
     public UserAuth getUserAuth(UserAuthType userAuthType) {
         if (userAuths != null && !userAuths.isEmpty()) {
             for (UserAuth userAuth : userAuths) {

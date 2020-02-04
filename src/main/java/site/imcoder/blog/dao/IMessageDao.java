@@ -69,9 +69,10 @@ public interface IMessageDao {
      * 查找文章评论
      *
      * @param comment - 传入mainId和mainType
+     * @param loginUser
      * @return
      */
-    public List<Comment> findCommentList(Comment comment);
+    public List<Comment> findCommentList(Comment comment, User loginUser);
 
     /**
      * 查找评论
@@ -94,7 +95,7 @@ public interface IMessageDao {
      * 点赞评论
      *
      * @param comment
-     * @param step - 步长，可为负数
+     * @param step    - 步长，可为负数
      * @return
      */
     public int updateCommentLikeCount(Comment comment, int step);

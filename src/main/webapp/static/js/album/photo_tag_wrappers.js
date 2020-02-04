@@ -25,7 +25,7 @@
             "tagWrapperLineIdPrefix": "ptw_",
             "commonWrappersPanel": "#common_wrappers_panel",
             "searchWrappersPanel": "#search_wrappers_panel",
-            "defaultWrappersPanel": "#default_wrappers_panel",
+            "markWrappersPanel": "#mark_wrappers_panel",
         },
         callback: {
             "loadPhotoTagWrappers": function (config, callback) {
@@ -51,21 +51,25 @@
                     console.warn("Error Code: " + TS);
                 });
             },
-            "beforeCreateModalOpen": function (createModal, assignTagWrapperToModal_callback) {
+            "beforeCreateModalOpen": function (createModal) {
                 var context = this;
-                request.loadAlbums(context.config.load_condition.uid, function (albums) {
-                    assignTagWrapperToModal_callback(albums);
+                return $.Deferred(function (dfd) {
+                    request.loadAlbums(context.config.load_condition.uid, function (albums) {
+                        dfd.resolveWith(context, [albums]);
+                    });
                 });
             },
-            "beforeUpdateModalOpen": function (updateModal, tagWrapper, assignTagWrapperToModal_callback) {
+            "beforeUpdateModalOpen": function (updateModal, tagWrapper) {
                 var context = this;
-                request.loadAlbums(context.config.load_condition.uid, function (albums) {
-                    // 如果openUpdateTagWrapperModal传入的参数为tagWrapper对象，直接使用
-                    if (typeof tagWrapper == "object") {
-                        assignTagWrapperToModal_callback(tagWrapper, albums);
-                    } else {
-                        assignTagWrapperToModal_callback(context.utils.getTagWrapperInPage(tagWrapper), albums);
-                    }
+                return $.Deferred(function (dfd) {
+                    request.loadAlbums(context.config.load_condition.uid, function (albums) {
+                        // 如果openUpdateTagWrapperModal传入的参数为tagWrapper对象，直接使用
+                        if (typeof tagWrapper == "object") {
+                            dfd.resolveWith(context, [tagWrapper, albums]);
+                        } else {
+                            dfd.resolveWith(context, [context.utils.getTagWrapperInPage(tagWrapper), albums]);
+                        }
+                    });
                 });
             },
             "createCompleted": function (saveTagWrapper) {
@@ -374,7 +378,7 @@
     };
 
     var assembleCurrentTableHtml = function (tagWrapperList) {
-        var commonWrappersHtml = "", searchWrappersHtml = "", defaultWrappersHtml = "";
+        var commonWrappersHtml = "", searchWrappersHtml = "", markWrappersHtml = "", isAuthor = login_handle.equalsLoginUser(config.load_condition.uid);
         for (var i = 0, size = tagWrapperList.length; i < size; i++) {
             var wrapper = tagWrapperList[i];
             // commonWrappersHtml
@@ -389,11 +393,11 @@
                 commonWrappersHtml += '<td>' + (wrapper.action == 0 ? "continue" : "break") + '</td>';
                 commonWrappersHtml += '<td>' + (wrapper.extra == 0 ? "否" : "组") + '</td>';
                 commonWrappersHtml += '<td>' + wrapper.weight + '</td>';
-                commonWrappersHtml += '<td title="' + wrapper.permission + '">' + config.permissionMap[wrapper.permission] + '</td>';
+                isAuthor && (commonWrappersHtml += '<td title="' + wrapper.permission + '">' + config.permissionMap[wrapper.permission] + '</td>');
                 commonWrappersHtml += '</tr></tbody>';
             }
             // searchWrappersHtml
-            else if (wrapper.type == 1) {
+            else if (wrapper.type == 1 && isAuthor) {
                 var wrapperUrl = "p/tag/" + wrapper.name + "?uid=" + wrapper.uid;
                 var childTagUrl = "p/tags_square?" + (wrapper.match_mode == 5 ? "" : ("tags=<" + wrapper.name + ">&extend=true&")) + "uid=" + wrapper.uid +
                     (wrapper.scope == 0 ? "" : ("&album_id=" + wrapper.scope + "&from=album_detail")) +
@@ -406,21 +410,21 @@
                 searchWrappersHtml += '<td>' + (wrapper.action == 0 ? "continue" : "break") + '</td>';
                 searchWrappersHtml += '<td>' + (wrapper.extra == 0 ? "否" : "组") + '</td>';
                 searchWrappersHtml += '<td>' + wrapper.weight + '</td>';
-                searchWrappersHtml += '<td>' + wrapper.scope + '</td>';
-                searchWrappersHtml += '<td title="' + wrapper.permission + '">' + config.permissionMap[wrapper.permission] + '</td>';
+                searchWrappersHtml += '<td>' + (wrapper.scope != '0' ? ('<a href="p/album/' + wrapper.scope + '" target="_blank"><b>' + wrapper.scope + '</b></a>') : wrapper.scope) + '</td>';
+                isAuthor && (searchWrappersHtml += '<td title="' + wrapper.permission + '">' + config.permissionMap[wrapper.permission] + '</td>');
                 searchWrappersHtml += '</tr></tbody>';
             }
-            // defaultWrappersHtml
-            else {
+            // markWrappersHtml
+            else if (wrapper.type == 0) {
                 var wrapperUrl = wrapper.topic == 1 ? ("p/topic/" + wrapper.ptwid) : ("p/tag/" + wrapper.name + "?uid=" + wrapper.uid);
-                defaultWrappersHtml += '<tbody id="' + config.selector.tagWrapperLineIdPrefix + wrapper.ptwid + '" data-ptwid="' + wrapper.ptwid + '"><tr>';
-                defaultWrappersHtml += '<td><a href="' + wrapperUrl + '" target="_blank"><b>' + wrapper.ptwid + '</b></a></td>';
-                defaultWrappersHtml += '<td title="' + wrapper.description + '"><b>' + wrapper.name + '</b></td>';
-                defaultWrappersHtml += '<td>' + (wrapper.description || "无") + '</td>';
-                defaultWrappersHtml += '<td>' + (wrapper.topic == 0 ? "否" : "是") + '</td>';
-                defaultWrappersHtml += '<td>' + wrapper.scope + '</td>';
-                defaultWrappersHtml += '<td title="' + wrapper.permission + '">' + config.permissionMap[wrapper.permission] + '</td>';
-                defaultWrappersHtml += '</tr></tbody>';
+                markWrappersHtml += '<tbody id="' + config.selector.tagWrapperLineIdPrefix + wrapper.ptwid + '" data-ptwid="' + wrapper.ptwid + '"><tr>';
+                markWrappersHtml += '<td><a href="' + wrapperUrl + '" target="_blank"><b>' + wrapper.ptwid + '</b></a></td>';
+                markWrappersHtml += '<td title="' + wrapper.description + '"><b>' + wrapper.name + '</b></td>';
+                markWrappersHtml += '<td>' + (wrapper.description || "无") + '</td>';
+                markWrappersHtml += '<td>' + (wrapper.topic == 0 ? "否" : "是") + '</td>';
+                markWrappersHtml += '<td>' + (wrapper.scope != '0' ? ('<a href="p/album/' + wrapper.scope + '" target="_blank"><b>' + wrapper.scope + '</b></a>') : wrapper.scope) + '</td>';
+                isAuthor && (markWrappersHtml += '<td title="' + wrapper.permission + '">' + config.permissionMap[wrapper.permission] + '</td>');
+                markWrappersHtml += '</tr></tbody>';
             }
         }
         if (commonWrappersHtml) {
@@ -432,11 +436,11 @@
                 + '<th>action</th>'
                 + '<th>extra</th>'
                 + '<th>weight</th>'
-                + '<th>permission</th>'
+                + (isAuthor ? '<th>permission</th>' : '')
                 + '</tr></thead>';
-            $(config.selector.commonWrappersPanel).show().find("table").html(commonWrappersHeaderHtml + commonWrappersHtml);
+            $(config.selector.commonWrappersPanel).show().find("table").html(commonWrappersHeaderHtml + commonWrappersHtml).end().prev().show();
         } else {
-            $(config.selector.commonWrappersPanel).hide();
+            $(config.selector.commonWrappersPanel).hide().prev().hide();
         }
         if (searchWrappersHtml) {
             var searchWrappersHeaderHtml = '<thead><tr>'
@@ -448,24 +452,24 @@
                 + '<th>extra</th>'
                 + '<th>weight</th>'
                 + '<th>scope</th>'
-                + '<th>permission</th>'
+                + (isAuthor ? '<th>permission</th>' : '')
                 + '</tr></thead>';
-            $(config.selector.searchWrappersPanel).show().find("table").html(searchWrappersHeaderHtml + searchWrappersHtml);
+            $(config.selector.searchWrappersPanel).show().find("table").html(searchWrappersHeaderHtml + searchWrappersHtml).end().prev().show();
         } else {
-            $(config.selector.searchWrappersPanel).hide();
+            $(config.selector.searchWrappersPanel).hide().prev().hide();
         }
-        if (defaultWrappersHtml) {
-            var defaultWrappersHeaderHtml = '<thead><tr>'
+        if (markWrappersHtml) {
+            var markWrappersHeaderHtml = '<thead><tr>'
                 + '<th>id</th>'
                 + '<th>name</th>'
                 + '<th>description</th>'
                 + '<th>topic</th>'
                 + '<th>scope</th>'
-                + '<th>permission</th>'
+                + (isAuthor ? '<th>permission</th>' : '')
                 + '</tr></thead>';
-            $(config.selector.defaultWrappersPanel).show().find("table").html(defaultWrappersHeaderHtml + defaultWrappersHtml);
+            $(config.selector.markWrappersPanel).show().find("table").html(markWrappersHeaderHtml + markWrappersHtml).end().prev().show();;
         } else {
-            $(config.selector.defaultWrappersPanel).hide();
+            $(config.selector.markWrappersPanel).hide().prev().hide();
         }
     };
 
@@ -485,7 +489,8 @@
             createModal.find('.tag-wrapper-topic-group .tag-wrapper-topic[value="0"]').prop("checked", true).trigger("click");
             createModal.modal('show');
         };
-        config.callback.beforeCreateModalOpen.call(context, pointer.createModal, assignTagWrapperToModal_callback); // 回调
+        // 回调
+        common_utils.wrapAsyncResult.call(context, config.callback.beforeCreateModalOpen)(pointer.createModal).then(assignTagWrapperToModal_callback);
     };
 
     var openUpdateTagWrapperModal = function (tagWrapper) {
@@ -511,7 +516,8 @@
             updateModal.find('.tag-wrapper-topic-group .tag-wrapper-topic[value="' + wrapper.topic + '"]').prop("checked", true).trigger("click");
             updateModal.modal('show');
         };
-        config.callback.beforeUpdateModalOpen.call(context, pointer.updateModal, tagWrapper, assignTagWrapperToModal_callback); // 回调
+        // 回调
+        common_utils.wrapAsyncResult.call(context, config.callback.beforeUpdateModalOpen)(pointer.updateModal, tagWrapper).then(assignTagWrapperToModal_callback);
     };
 
     var request = {
@@ -591,10 +597,23 @@
 
     domReady(function () {
 
+        var params = common_utils.parseURL(window.location.href).params;
+        var load_condition = {};
+        $.each(params, function (key, value) {
+            params[key] = value && decodeURIComponent(decodeURIComponent(value));
+            if (key != "method" && key != "size" && key != "col" && key != "page" && key != "check" && key != "model") {
+                load_condition[key] = params[key];
+            }
+        });
         var hostUser = $("#first").find(".slogan_name").attr("data-host-user");
-        var load_condition = {
-            "uid": hostUser
-        };
+        load_condition.uid = hostUser;
+        var isClearTopicsPage = false;
+        var clearPageMatch = document.location.pathname.match(/.*\/(u\/([^/]*)\/?(topics))/);
+        if (clearPageMatch != null) {
+            isClearTopicsPage = true;
+            load_condition.type = 0;
+            load_condition.topic = 1;
+        }
 
         // 创建一个定期刷新的内存缓存实例
         var memoryPeriodCache = new PeriodCache({
@@ -632,20 +651,25 @@
         context.init({
             "load_condition": load_condition,
             "callback": {
-                "beforeCreateModalOpen": function (createModal, assignTagWrapperToModal_callback) {
-                    secureUserAlbumListConn.get(context.config.load_condition.uid, function (albums) {
-                        assignTagWrapperToModal_callback(albums);
+                "beforeCreateModalOpen": function (createModal) {
+                    var context = this;
+                    return $.Deferred(function (dfd) {
+                        secureUserAlbumListConn.get(context.config.load_condition.uid, function (albums) {
+                            dfd.resolveWith(context, [albums]);
+                        });
                     });
                 },
-                "beforeUpdateModalOpen": function (updateModal, tagWrapper, assignTagWrapperToModal_callback) {
+                "beforeUpdateModalOpen": function (updateModal, tagWrapper) {
                     var context = this;
-                    secureUserAlbumListConn.get(context.config.load_condition.uid, function (albums) {
-                        // 如果openUpdateTagWrapperModal传入的参数为tagWrapper对象，直接使用
-                        if (typeof tagWrapper == "object") {
-                            assignTagWrapperToModal_callback(tagWrapper, albums);
-                        } else {
-                            assignTagWrapperToModal_callback(context.utils.getTagWrapperInPage(tagWrapper), albums);
-                        }
+                    return $.Deferred(function (dfd) {
+                        secureUserAlbumListConn.get(context.config.load_condition.uid, function (albums) {
+                            // 如果openUpdateTagWrapperModal传入的参数为tagWrapper对象，直接使用
+                            if (typeof tagWrapper == "object") {
+                                dfd.resolveWith(context, [tagWrapper, albums]);
+                            } else {
+                                dfd.resolveWith(context, [context.utils.getTagWrapperInPage(tagWrapper), albums]);
+                            }
+                        });
                     });
                 },
                 "createCompleted": function (saveTagWrapper) {
@@ -664,12 +688,21 @@
                 return true;
             }
             var $line = $(this);
-            context.openUpdateTagWrapperModal($line.attr("data-ptwid"));
+            var isAuthor = login_handle.equalsLoginUser(context.config.load_condition.uid);
+            if (isAuthor) {
+                context.openUpdateTagWrapperModal($line.attr("data-ptwid"));
+            } else {
+                window.open($line.find('tr td a').eq(0).attr('href'));
+            }
         });
 
-        $("#create_tag_wrapper").click(function () {
-            context.openCreateTagWrapperModal();
-        });
+        if (login_handle.equalsLoginUser(context.config.load_condition.uid)) {
+            $("#create_tag_wrapper").click(function () {
+                context.openCreateTagWrapperModal();
+            });
+        } else {
+            $("#create_tag_wrapper").hide();
+        }
 
     });
 });

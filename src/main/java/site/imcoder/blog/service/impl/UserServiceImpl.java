@@ -797,210 +797,122 @@ public class UserServiceImpl extends BaseService implements IUserService {
     }
 
     /**
-     * 查询用户访问文章的历史记录
+     * 查询用户对文章的动作记录
      *
-     * @param queryAccessRecord
+     * @param queryActionRecord
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * articleActionRecords
+     * article_action_record_count
      */
     @Override
-    public IResponse findUserArticleAccessRecordList(AccessRecord<Article> queryAccessRecord, IRequest iRequest) {
-        if (queryAccessRecord == null) {
-            queryAccessRecord = new AccessRecord();
+    public IResponse findUserArticleActionRecordList(ActionRecord<Article> queryActionRecord, IRequest iRequest) {
+        if (queryActionRecord == null) {
+            queryActionRecord = new ActionRecord<>();
         }
-        IResponse response = reviseQueryAccessRecord(queryAccessRecord, iRequest);
+        IResponse response = reviseQueryActionRecord(queryActionRecord, iRequest);
         if (response.isSuccess()) {
-            List<AccessRecord<Article>> articleAccessRecordList = userDao.findArticleAccessRecordList(queryAccessRecord, iRequest.getLoginUser());
-            response.putAttr("articleAccessRecords", articleAccessRecordList);
-            response.putAttr("article_access_record_count", articleAccessRecordList.size());
+            List<ActionRecord<Article>> articleActionRecordList = userDao.findArticleActionRecordList(queryActionRecord, iRequest.getLoginUser());
+            response.putAttr("articleActionRecords", articleActionRecordList);
+            response.putAttr("article_action_record_count", articleActionRecordList.size());
         }
         return response;
     }
 
     /**
-     * 删除用户访问文章的历史记录
+     * 查询用户对视频的动作记录
      *
-     * @param queryAccessRecord
+     * @param queryActionRecord
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * videoActionRecords
+     * video_action_record_count
      */
     @Override
-    public IResponse deleteUserArticleAccessRecord(AccessRecord<Article> queryAccessRecord, IRequest iRequest) {
-        if (queryAccessRecord == null) {
-            queryAccessRecord = new AccessRecord();
+    public IResponse findUserVideoActionRecordList(ActionRecord<Video> queryActionRecord, IRequest iRequest) {
+        if (queryActionRecord == null) {
+            queryActionRecord = new ActionRecord();
         }
-        if (IdUtil.containValue(queryAccessRecord.getAr_id()) && queryAccessRecord.getBean() == null) {
-            queryAccessRecord.setBean(new Article());
-        }
-        return deleteUserAccessRecord(queryAccessRecord, iRequest);
-    }
-
-    /**
-     * 查询用户访问视频的历史记录
-     *
-     * @param queryAccessRecord
-     * @param iRequest
-     * @return IResponse:
-     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
-     */
-    @Override
-    public IResponse findUserVideoAccessRecordList(AccessRecord<Video> queryAccessRecord, IRequest iRequest) {
-        if (queryAccessRecord == null) {
-            queryAccessRecord = new AccessRecord();
-        }
-        IResponse response = reviseQueryAccessRecord(queryAccessRecord, iRequest);
+        IResponse response = reviseQueryActionRecord(queryActionRecord, iRequest);
         if (response.isSuccess()) {
-            List<AccessRecord<Video>> videoAccessRecordList = userDao.findVideoAccessRecordList(queryAccessRecord, iRequest.getLoginUser());
-            response.putAttr("videoAccessRecords", videoAccessRecordList);
-            response.putAttr("video_access_record_count", videoAccessRecordList.size());
+            List<ActionRecord<Video>> videoActionRecordList = userDao.findVideoActionRecordList(queryActionRecord, iRequest.getLoginUser());
+            response.putAttr("videoActionRecords", videoActionRecordList);
+            response.putAttr("video_action_record_count", videoActionRecordList.size());
         }
         return response;
     }
 
     /**
-     * 删除用户访问视频的历史记录
+     * 查询用户对照片的动作记录
      *
-     * @param queryAccessRecord
+     * @param queryActionRecord
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * photoActionRecords
+     * photo_action_record_count
      */
     @Override
-    public IResponse deleteUserVideoAccessRecord(AccessRecord<Video> queryAccessRecord, IRequest iRequest) {
-        if (queryAccessRecord == null) {
-            queryAccessRecord = new AccessRecord();
+    public IResponse findUserPhotoActionRecordList(ActionRecord<Photo> queryActionRecord, IRequest iRequest) {
+        if (queryActionRecord == null) {
+            queryActionRecord = new ActionRecord();
         }
-        if (IdUtil.containValue(queryAccessRecord.getAr_id()) && queryAccessRecord.getBean() == null) {
-            queryAccessRecord.setBean(new Video());
-        }
-        return deleteUserAccessRecord(queryAccessRecord, iRequest);
-    }
-
-    /**
-     * 查询用户访问照片的历史记录
-     *
-     * @param queryAccessRecord
-     * @param iRequest
-     * @return IResponse:
-     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
-     */
-    @Override
-    public IResponse findUserPhotoAccessRecordList(AccessRecord<Photo> queryAccessRecord, IRequest iRequest) {
-        if (queryAccessRecord == null) {
-            queryAccessRecord = new AccessRecord();
-        }
-        IResponse response = reviseQueryAccessRecord(queryAccessRecord, iRequest);
+        IResponse response = reviseQueryActionRecord(queryActionRecord, iRequest);
         if (response.isSuccess()) {
-            List<AccessRecord<Photo>> photoAccessRecordList = userDao.findPhotoAccessRecordList(queryAccessRecord, iRequest.getLoginUser());
-            response.putAttr("photoAccessRecords", photoAccessRecordList);
-            response.putAttr("photo_access_record_count", photoAccessRecordList.size());
+            List<ActionRecord<Photo>> photoActionRecordList = userDao.findPhotoActionRecordList(queryActionRecord, iRequest.getLoginUser());
+            response.putAttr("photoActionRecords", photoActionRecordList);
+            response.putAttr("photo_action_record_count", photoActionRecordList.size());
         }
         return response;
     }
 
     /**
-     * 删除用户访问照片的历史记录
+     * 查询用户对评论的动作记录
      *
-     * @param queryAccessRecord
+     * @param queryActionRecord
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * commentActionRecords
+     * comment_action_record_count
      */
     @Override
-    public IResponse deleteUserPhotoAccessRecord(AccessRecord<Photo> queryAccessRecord, IRequest iRequest) {
-        if (queryAccessRecord == null) {
-            queryAccessRecord = new AccessRecord();
+    public IResponse findUserCommentActionRecordList(ActionRecord<Comment> queryActionRecord, IRequest iRequest) {
+        if (queryActionRecord == null) {
+            queryActionRecord = new ActionRecord();
         }
-        if (IdUtil.containValue(queryAccessRecord.getAr_id()) && queryAccessRecord.getBean() == null) {
-            queryAccessRecord.setBean(new Photo());
+        IResponse response = reviseQueryActionRecord(queryActionRecord, iRequest);
+        if (response.isSuccess()) {
+            List<ActionRecord<Comment>> commentActionRecordList = userDao.findCommentActionRecordList(queryActionRecord, iRequest.getLoginUser());
+            response.putAttr("commentActionRecords", commentActionRecordList);
+            response.putAttr("comment_action_record_count", commentActionRecordList.size());
         }
-        return deleteUserAccessRecord(queryAccessRecord, iRequest);
+        return response;
     }
 
-    private IResponse reviseQueryAccessRecord(AccessRecord queryAccessRecord, IRequest iRequest) {
+    private IResponse reviseQueryActionRecord(ActionRecord queryActionRecord, IRequest iRequest) {
         IResponse response = new IResponse(STATUS_SUCCESS);
         if (iRequest.isHasNotLoggedIn()) {
-            if (Utils.isNotEmpty(queryAccessRecord.getLast_access_ip()) && !iRequest.getAccessIp().equals(queryAccessRecord.getLast_access_ip())) {
+            if (Utils.isNotEmpty(queryActionRecord.getIp()) && !iRequest.getAccessIp().equals(queryActionRecord.getIp())) {
                 response.setStatus(STATUS_FORBIDDEN, "不可以查看别人的记录噢~");
             } else {
-                queryAccessRecord.setUser(new User(0L));
-                queryAccessRecord.setLast_access_ip(iRequest.getAccessIp());
+                queryActionRecord.setUser(new User(0L));
+                queryActionRecord.setIp(iRequest.getAccessIp());
             }
-        } else if (queryAccessRecord.getUser() == null || !IdUtil.containValue(queryAccessRecord.getUser().getUid())) {
+        } else if (queryActionRecord.getUser() == null || !IdUtil.containValue(queryActionRecord.getUser().getUid())) {
             User queryUser = new User(iRequest.getLoginUser().getUid());
-            if (Utils.isNotEmpty(queryAccessRecord.getLast_access_ip()) && iRequest.getLoginUser().getUserGroup().isManager()) {
-                if (queryAccessRecord.getUser() != null && queryAccessRecord.getUser().getUid() != null && queryAccessRecord.getUser().getUid().equals(0L)) {
+            if (Utils.isNotEmpty(queryActionRecord.getIp()) && iRequest.getLoginUser().getUserGroup().isManager()) {
+                if (queryActionRecord.getUser() != null && queryActionRecord.getUser().getUid() != null && queryActionRecord.getUser().getUid().equals(0L)) {
                     queryUser = new User(0L);
                 } else {
                     queryUser = null;
                 }
             }
-            queryAccessRecord.setUser(queryUser);
-        } else if (!queryAccessRecord.getUser().getUid().equals(iRequest.getLoginUser().getUid()) && iRequest.getLoginUser().getUserGroup().isGeneralUser()) {
+            queryActionRecord.setUser(queryUser);
+        } else if (!queryActionRecord.getUser().getUid().equals(iRequest.getLoginUser().getUid()) && iRequest.getLoginUser().getUserGroup().isGeneralUser()) {
             response.setStatus(STATUS_FORBIDDEN, "不可以查看别人的记录噢~");
-        }
-        return response;
-    }
-
-    private IResponse deleteUserAccessRecord(AccessRecord queryAccessRecord, IRequest iRequest) {
-        IResponse response;
-        Object bean = queryAccessRecord.getBean();
-        if (!IdUtil.containValue(queryAccessRecord.getAr_id())) {
-            response = reviseQueryAccessRecord(queryAccessRecord, iRequest);
-            if (response.isSuccess() && iRequest.isManagerRequest() && queryAccessRecord.getUser() == null) {
-                response.setStatus(STATUS_PARAM_ERROR, "请指定user~");
-            } else if (response.equalsStatus(STATUS_FORBIDDEN)) {
-                response.setStatus(STATUS_FORBIDDEN, "你不能删除别人的记录~");
-            }
-            if (response.isSuccess()) {
-                if (bean != null) {
-                    if (!((bean instanceof Article && IdUtil.containValue(((Article) bean).getAid())) ||
-                            ((bean instanceof Photo && IdUtil.containValue(((Photo) bean).getPhoto_id()))) ||
-                            (bean instanceof Video && IdUtil.containValue(((Video) bean).getVideo_id())))) {
-                        response.setStatus(STATUS_PARAM_ERROR, "请指定主体对象id~");
-                    }
-                } else {
-                    response.setStatus(STATUS_PARAM_ERROR, "请指定主体类型~");
-                }
-            }
-        } else {
-            response = new IResponse(STATUS_SUCCESS);
-            if (bean == null || !((bean instanceof Article) || (bean instanceof Photo) || (bean instanceof Video))) {
-                response.setStatus(STATUS_PARAM_ERROR, "请指定主体类型~");
-            }
-        }
-        if (response.isSuccess()) {
-
-            AccessRecord db_access_record = null;
-            if (bean instanceof Article) {
-                db_access_record = userDao.findArticleAccessRecord(queryAccessRecord);
-            } else if (bean instanceof Photo) {
-                db_access_record = userDao.findPhotoAccessRecord(queryAccessRecord);
-            } else if (bean instanceof Video) {
-                db_access_record = userDao.findVideoAccessRecord(queryAccessRecord);
-            }
-            if (db_access_record != null) {
-                if (db_access_record.getUser().getUid().equals(iRequest.getLoginUser().getUid()) || iRequest.isManagerRequest()) {
-                    int row = 0;
-                    if (bean instanceof Article) {
-                        row = userDao.deleteArticleAccessRecord(queryAccessRecord);
-                    } else if (bean instanceof Photo) {
-                        row = userDao.deletePhotoAccessRecord(queryAccessRecord);
-                    } else if (bean instanceof Video) {
-                        row = userDao.deleteVideoAccessRecord(queryAccessRecord);
-                    }
-                    response.setStatus(convertRowToHttpCode(row));
-                    if (response.isSuccess()) {
-                        response.putAttr("accessRecord", db_access_record);
-                    }
-                } else {
-                    response.setStatus(STATUS_FORBIDDEN, "你不能删除别人的记录~");
-                }
-            } else {
-                response.setStatus(STATUS_NOT_FOUND, "此访问记录不存在~");
-            }
         }
         return response;
     }

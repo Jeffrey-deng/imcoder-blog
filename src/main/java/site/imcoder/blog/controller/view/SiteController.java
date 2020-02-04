@@ -5,7 +5,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import site.imcoder.blog.Interceptor.annotation.AccessRecorder;
+import site.imcoder.blog.Interceptor.annotation.AccessRecord;
 import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.common.type.UserGroupType;
@@ -72,7 +72,7 @@ public class SiteController extends BaseController {
 
     // 公告页
     @RequestMapping(value = "/notice/{id}")
-    @AccessRecorder(type = AccessRecorder.Types.ARTICLE, key = "article")
+    @AccessRecord(type = AccessRecord.Types.ARTICLE, key = "article")
     public String notice(@PathVariable @PrimaryKeyConvert Long id, Model model, IRequest iRequest) {
         IResponse articleResp = articleService.findArticle(new Article(id), iRequest);
         Article article = articleResp.getAttr("article");
@@ -95,7 +95,7 @@ public class SiteController extends BaseController {
 
     // 关于页
     @RequestMapping(value = "/about")
-    @AccessRecorder(type = AccessRecorder.Types.ARTICLE, key = "article")
+    @AccessRecord(type = AccessRecord.Types.ARTICLE, key = "article")
     public String about(Model model, IRequest iRequest) {
         Long aid = IdUtil.convertToLongPrimaryKey(Config.get(ConfigConstants.SITE_ABOUT_ARTICLE_ID));
         IResponse articleResp = articleService.findArticle(new Article(aid), iRequest);
@@ -111,7 +111,7 @@ public class SiteController extends BaseController {
 
     // 帮助页
     @RequestMapping(value = {"/help", "/help/{module}"})
-    @AccessRecorder(type = AccessRecorder.Types.ARTICLE, key = "article")
+    @AccessRecord(type = AccessRecord.Types.ARTICLE, key = "article")
     public String help(@PathVariable(required = false) String module, Model model, IRequest iRequest) {
         Long aid;
         String value = Utils.isEmpty(module) ?

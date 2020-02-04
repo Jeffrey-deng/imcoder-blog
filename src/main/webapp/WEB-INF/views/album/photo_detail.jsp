@@ -96,7 +96,7 @@
         <div class="">
             <div class="container">
                 <div class="" style="text-align:center;">
-                    <h2 class="slogan_name photo-name" hostUid="<s:eval expression="album.user.uid"/>" albumId="<s:eval expression="album.album_id"/>">${photo.name}</h2>
+                    <h2 class="slogan_name photo-name" hostUid="<s:eval expression="album.user.uid"/>" albumId="<s:eval expression="album.album_id"/>">${photoTitle}</h2>
                     <h3 class="slogan_desc album_name">${album.name}</h3>
                 </div>
             </div>
@@ -251,7 +251,7 @@
                         <div class="photo-detail-img">
                             <button title="上一张" type="button" class="topic-arrow-left topic-arrow mfp-arrow mfp-arrow-left mfp-prevent-close"></button>
                             <button title="下一张" type="button" class="topic-arrow-right topic-arrow mfp-arrow mfp-arrow-right mfp-prevent-close"></button>
-                            <img id="show-img" src="<s:eval expression="photo.path"/>"/>
+                            <img id="show-img" src="<s:eval expression="photo.path"/>" title="点击`平铺`显示"/>
                         </div>
                         <div class="photo-detail-info" data-photo-id="<s:eval expression="photo.photo_id"/>">
                             <div class="photo-detail-info-inline">
@@ -262,7 +262,7 @@
                                         </h3>
                                         <div class="photo-detail-set-area">
                                             <div class="photo-detail-click-count" title="点击量"><span class="glyphicon glyphicon-eye-open"></span><em class="photo-detail-click-count-value">${photo.click_count}</em></div>
-                                            <div class="photo-detail-show-size">显示：<a data-show-size="default">默认⬇</a></div>
+                                            <div class="photo-detail-show-size">显示：<a data-show-size="fit" title="点击`平铺`显示">适应⬇</a></div>
                                             <div class="photo-detail-user-nickname">
                                                 上传者：
                                                 <a data-user-id="<s:eval expression="album.user.uid"/>" href="u/<s:eval expression="album.user.uid"/>/home" target="_blank">

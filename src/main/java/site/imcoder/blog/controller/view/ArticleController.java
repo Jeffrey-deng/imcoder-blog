@@ -6,7 +6,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import site.imcoder.blog.Interceptor.annotation.AccessRecorder;
+import site.imcoder.blog.Interceptor.annotation.AccessRecord;
 import site.imcoder.blog.Interceptor.annotation.GZIP;
 import site.imcoder.blog.cache.Cache;
 import site.imcoder.blog.common.type.UserAuthType;
@@ -57,7 +57,7 @@ public class ArticleController extends BaseController {
      */
     @RequestMapping(value = "/a/detail/{aid}")
     @GZIP
-    @AccessRecorder(type = AccessRecorder.Types.ARTICLE, key = "article")
+    @AccessRecord(type = AccessRecord.Types.ARTICLE, key = "article")
     public String findArticle(@PathVariable @PrimaryKeyConvert Long aid, Model model, IRequest iRequest) {
         IResponse articleResp = articleService.findArticle(new Article(aid), iRequest.putAttr("isNeedAdjacentArticle", true));
         int flag = articleResp.getStatus();

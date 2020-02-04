@@ -96,21 +96,24 @@ public interface IVideoService {
      * 点赞视频
      *
      * @param video    - 只需传video_id
+     * @param undo     - 是否取消赞
      * @param iRequest
      * @return IResponse:
      * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
      */
-    public IResponse likeVideo(Video video, IRequest iRequest);
+    public IResponse likeVideo(Video video, boolean undo, IRequest iRequest);
 
     /**
-     * 查询视频的历史用户访问记录
+     * 查询视频的历史用户动作记录
      *
      * @param video
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * videoActionRecords
+     * video_action_record_count
      */
-    public IResponse findVideoAccessRecordList(Video video, IRequest iRequest);
+    public IResponse findVideoActionRecordList(Video video, IRequest iRequest);
 
     /**
      * 保存字幕对象

@@ -1,5 +1,6 @@
 package site.imcoder.blog.service;
 
+import site.imcoder.blog.entity.ActionRecord;
 import site.imcoder.blog.entity.Comment;
 import site.imcoder.blog.entity.Letter;
 import site.imcoder.blog.entity.SysMsg;
@@ -89,6 +90,29 @@ public interface IMessageService {
     public IResponse deleteComment(Comment comment, IRequest iRequest);
 
     /**
+     * 点赞评论
+     *
+     * @param comment  - 只需传cid
+     * @param undo     - 是否取消赞
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
+     */
+    public IResponse likeComment(Comment comment, boolean undo, IRequest iRequest);
+
+    /**
+     * 查询用户对评论的动作记录
+     *
+     * @param comment
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * commentActionRecords
+     * comment_action_record_count
+     */
+    public IResponse findCommentActionRecordList(Comment comment, IRequest iRequest);
+
+    /**
      * 手动发送系统消息, 只能由后台服务发，前台不能发
      *
      * @param sysMsg
@@ -126,15 +150,5 @@ public interface IMessageService {
      * status - 200：成功，404：这些系统消息不存在~，500: 失败
      */
     public IResponse deleteSystemMessageList(List<Long> smIdList, IRequest iRequest);
-
-    /**
-     * 点赞评论
-     *
-     * @param comment  - 只需传cid
-     * @param iRequest
-     * @return IResponse:
-     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
-     */
-    public IResponse likeComment(Comment comment, IRequest iRequest);
 
 }

@@ -20,7 +20,14 @@
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <base href="<%=basePath%>" target="_self">
-    <title>Photo Tag Wrappers - ${hostUser.nickname} | ImCoder's 博客</title>
+    <c:choose>
+        <c:when test="${not empty clear_model and clear_model == 'topics'}">
+            <title>Topics - ${hostUser.nickname} | ImCoder's 博客</title>
+        </c:when>
+        <c:otherwise>
+            <title>Photo Tag Wrappers - ${hostUser.nickname} | ImCoder's 博客</title>
+        </c:otherwise>
+    </c:choose>
     <meta name="description" content="文章归档,archives,ImCoder's 博客">
     <meta name="keywords" content="文章归档,archives,ImCoder's 博客">
     <!-- 使用url函数转换相关路径 -->
@@ -72,11 +79,23 @@
             text-align: left;
         }
 
-        .table>tbody>tr>td, .table > thead > tr > th {
+        .table > tbody > tr > td, .table > thead > tr > th {
             padding-left: 20px;
         }
 
+        table tr {
+            cursor: pointer;
+        }
+
+        <c:if test="${not empty clear_model and clear_model == 'topics'}">
+            #mark_wrappers_panel table tr *:nth-child(4) {
+                display: none;
+            }
+        </c:if>
+
     </style>
+
+
 
 </head>
 <body uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>" style="background-image: url(<%=staticPath%>img/bg-site.png);">
@@ -197,7 +216,14 @@
                     </ul>
                 </li>
                 <li><a href="<%=basePath%>">首页</a></li>
-                <li class="active"><a>TagWrapper</a></li>
+                <c:choose>
+                    <c:when test="${not empty clear_model and clear_model == 'topics'}">
+                        <li class="active"><a>topics</a></li>
+                    </c:when>
+                    <c:otherwise>
+                        <li class="active"><a>TagWrapper</a></li>
+                    </c:otherwise>
+                </c:choose>
             </ul>
             <ul class="nav navbar-nav navbar-right">
                 <form class="navbar-form navbar-left" role="search">
@@ -235,7 +261,14 @@
                 <!-- 标签wrapper管理  start -->
                 <header class="post post-container tag_wrapper_options">
                     <h1 class="post-title" itemprop="name headline">
-                        <a class="option_create_tag_wrapper" itemtype="url" id="create_tag_wrapper">创建新标签</a>
+                        <c:choose>
+                            <c:when test="${not empty loginUser and not empty hostUser and loginUser.uid.equals(hostUser.uid)}">
+                                <a class="option_create_tag_wrapper" itemtype="url" id="create_tag_wrapper">创建新标签</a>
+                            </c:when>
+                            <c:otherwise>
+                                <a>&nbsp;&nbsp;</a>
+                            </c:otherwise>
+                        </c:choose>
                         <div style="float: right" class="options_right">
                             <a class="option_tags_index" itemtype="url" href="p/tags_square?uid=<s:eval expression="hostUser.uid"/>" target="_blank">标签索引</a>
                         </div>
@@ -251,9 +284,7 @@
                             <div class="panel panel-primary" id="common_wrappers_panel">
                                 <div class="panel-heading">
                                     <div class="hr-title">
-                                        <label class="hr-left"></label>
-                                        公共标签
-                                        <label class="hr-right"></label>
+                                        <label class="hr-left"></label>公共标签<label class="hr-right"></label>
                                     </div>
                                 </div>
                                 <div style="width:100%;overflow:auto;">
@@ -267,9 +298,7 @@
                             <div class="panel panel-primary" id="search_wrappers_panel">
                                 <div class="panel-heading">
                                     <div class="hr-title">
-                                        <label class="hr-left"></label>
-                                        搜索标签
-                                        <label class="hr-right"></label>
+                                        <label class="hr-left"></label>搜索标签<label class="hr-right"></label>
                                     </div>
                                 </div>
                                 <div style="width:100%;overflow:auto;">
@@ -278,14 +307,12 @@
                                     </table>
                                 </div>
                             </div>
-                            <!-- default tag wrappers -->
+                            <!-- mark tag wrappers -->
                             <div class="hr-line-dashed"></div>
-                            <div class="panel panel-primary" id="default_wrappers_panel">
+                            <div class="panel panel-primary" id="mark_wrappers_panel">
                                 <div class="panel-heading">
                                     <div class="hr-title">
-                                        <label class="hr-left"></label>
-                                        标识标签
-                                        <label class="hr-right"></label>
+                                        <label class="hr-left"></label>标识标签<label class="hr-right"></label>
                                     </div>
                                 </div>
                                 <div style="width:100%;overflow:auto;">

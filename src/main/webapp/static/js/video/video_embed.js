@@ -34,9 +34,10 @@
             videoDomReady: false,
             videoHasPlayed: false,
             videoPlayStatus: "pause",
-        },
-        rotate: 0,
-        flip: ["0"]
+            userActivity: true,
+            videoRotate: 0,
+            videoFlip: ["0"]
+        }
     };
 
     var videoPageReady = function () {
@@ -90,23 +91,25 @@
         config.status.videoPlayStatus = playStatus;
     };
 
-    var activityChange = function (player, isActive) {
+    var activityChange = function (isActive) {
         $.each(config.callback.activity_change_calls, function (i, call) {
             try {
-                call.call(player, isActive, currentVideo);
+                call.call(currentVideo, isActive, currentPlayer);
             } catch (e) {
 
             }
         });
+        config.status.userActivity = isActive;
     };
 
-    var ratioChange = function (player, eyeRawWidth, eyeRawHeight, currentVideo, angle) {
+    var ratioChange = function (eyeRawWidth, eyeRawHeight, angle) {
         $.each(config.callback.ratio_change_calls, function (i, call) {
             try {
-                call.call(player, eyeRawWidth, eyeRawHeight, currentVideo, angle);
+                call.call(currentVideo, eyeRawWidth, eyeRawHeight, angle, currentPlayer);
             } catch (e) {
             }
         });
+        config.status.videoRotate = angle;
     };
 
     var request = {
@@ -151,29 +154,29 @@
         }
     };
 
-    // 根据比例设置元素宽高，算法以填充宽度优先, boxHeight为-1时表示不限制高度
-    var calcVideoPix = function ($video, whichCalcFirst, boxWidth, boxHeight, scale_width, scale_height) {
+    // 根据比例设置元素宽高，算法以填充宽度优先, box_height为undefined时表示不限制高度
+    var calcVideoPix = function ($video, whichCalcFirst, box_width, box_height, scale_width, scale_height) {
         if (whichCalcFirst == "w") { // 当宽度优先时
-            var need_height = boxWidth / scale_width * scale_height; // 设定height的值
-            if (boxHeight && need_height > boxHeight) { // 当没显示设置值（为undefined）时，不检查
-                $video.css("height", boxHeight + "px");
+            var need_height = box_width / scale_width * scale_height; // 设定height的值
+            if (box_height && need_height > box_height) {   // 当没`显示设置`值（为undefined）时
+                $video.css("height", box_height + "px");
                 $video.css("width", "");
                 // 高度不够时，设置最大高度，同时寻找合适宽度
-                var need_width = ((boxHeight) / scale_height) * scale_width;
-                if (need_width <= boxWidth) {
+                var need_width = ((box_height) / scale_height) * scale_width;
+                if (need_width <= box_width) {
                     $video.css("width", need_width + "px");
                 }
             } else {
                 $video.css("height", need_height + "px");
             }
         } else { // 当高度优先时
-            var need_width = boxHeight / scale_height * scale_width; // 设定width的值
-            if (boxWidth && need_width > boxWidth) {
-                $video.css("width", boxWidth + "px");
+            var need_width = box_height / scale_height * scale_width; // 设定width的值
+            if (box_width && need_width > box_width) {
+                $video.css("width", box_width + "px");
                 $video.css("height", "");
                 // 宽度不够时，设置最大宽度，同时寻找合适高度
-                var need_height = (boxWidth / scale_width) * scale_height;
-                if (need_height <= boxHeight) {
+                var need_height = (box_width / scale_width) * scale_height;
+                if (need_height <= box_height) {
                     $video.css("height", need_height + "px");
                 }
             } else {
@@ -223,7 +226,7 @@
                                 whichCalcFirst = "w";
                             }
                         }
-                        // 当没显示设置值（为undefined）时，另外处理
+                        // 当没`显示设置`值（为undefined）时，另外处理
                         // user_set_width 设置了具体的px值时也要重新获取，因为有的情况css_width值并不代表实际width，例如同时设置width和max-width，且width小于max-width时
                         var clearIframeWidth = user_set_width === undefined ? user_set_width : $video_iframe_in_top.width();
                         var clearIframeHeight = user_set_height === undefined ? user_set_height : $video_iframe_in_top.height();
@@ -289,9 +292,8 @@
     // 视频控制栏显示控制
     var bindVideoControlEvent = function (playerWrapper, player, video) {
         var isAudio = config.isAudio;
-        onActivityChange(function (isActive, currentVideo) {
-            var player = this;
-            if (isAudio) {
+        onActivityChange(function (isActive, player) {
+            if (player && isAudio) {
                 if (isActive) {
                     $(player.elements.container).css("transform", "");
                     if (player.paused) {
@@ -316,7 +318,7 @@
             if (!isAudio) {
                 // for popup hide control btn when mouse not moving.
                 $(_self).mousemove(function (e) {
-                    activityChange(player, true);
+                    activityChange(true);
                 });
             } else {
                 var isMouseMove = true;
@@ -329,14 +331,14 @@
                     activityChange(player, true);
                     mouse_timer = window.setInterval(function () {  // 定时器隐藏控制条
                         if (!isMouseMove) {
-                            activityChange(player, false);
+                            activityChange(true);
                         }
                         isMouseMove = false;
                     }, 5000);
                     isMouseMove = true;
                 }).on("mouseleave", ".audio-wrapper", function (e) {
                     mouse_timer && window.clearInterval(mouse_timer);
-                    activityChange(player, false);
+                    activityChange(true);
                     isMouseMove = false;
                 }).on("click", ".audio-wrapper", function (e) {
                     if ($(e.target).hasClass("audio-cover") || $(e.target).hasClass("audio-wrapper")) {
@@ -375,7 +377,7 @@
         player.on('playing', function (event) {
             // fixed bug
             $(player.elements.controls).find(".plyr__volume").removeAttr("hidden");
-            activityChange(player, false);
+            activityChange(true);
             videoHasPlayed();
             videoPlayStatusChange("playing");
         });
@@ -430,7 +432,11 @@
 
     // 旋转视频
     var rotateVideo = function (player, angle) {
-        var $realVideoDom = config.isAudio ? $("#player-wrapper").find(".audio-cover") : $(player.media).add(".plyr__poster");
+        var $realVideoDom = config.isAudio ? $("#player-wrapper").find(".audio-cover") : $(player.media);
+        if (!config.isAudio && ((currentVideo.width > currentVideo.height) === (currentVideo.cover.width > currentVideo.cover.height))) {
+            // $.fn.add函数返回新对象，不修改原来的
+            $realVideoDom = $realVideoDom.add(".plyr__poster");
+        }
         var clientHeight = document.documentElement.clientHeight;
         var clientWidth = document.documentElement.clientWidth;
         var transform_value, width_value, height_value, margin_top_value, margin_left_value, parent_height_value;
@@ -484,10 +490,9 @@
             "margin-left": margin_left_value
         });
         $realVideoDom.parent().css("height", parent_height_value);
-        if (angle != config.rotate) {
-            ratioChange(player, eyeRawWidth, eyeRawHeight, currentVideo, angle);
+        if (angle != config.status.videoRotate) {
+            ratioChange(eyeRawWidth, eyeRawHeight, angle);
         }
-        config.rotate = angle;
     };
 
     // 旋转视频按钮
@@ -530,18 +535,22 @@
             player.elements.settings.panels.home.removeAttribute("hidden");
         });
         $(window).resize(function () {
-            if (config.rotate == "90" || config.rotate == "270") {
-                rotateVideo(player, config.rotate);
+            if (config.status.videoRotate == "90" || config.status.videoRotate == "270") {
+                rotateVideo(player, config.status.videoRotate);
             }
         });
         if (initAngle && initAngle != "0") {
-            $rotate_panel.find('[role="menuitemradio"][value="' + initAngle + '"]').click();
+            $rotate_panel.find('[role="menuitemradio"][value="' + initAngle + '"]').trigger('click');
         }
     };
 
     // 翻转视频
     var flipVideo = function (player, flip_directions) {
-        var $realVideoDom = config.isAudio ? $("#player-wrapper").find(".audio-cover") : $(player.media).add(".plyr__poster");
+        var $realVideoDom = config.isAudio ? $("#player-wrapper").find(".audio-cover") : $(player.media);
+        if (!config.isAudio && ((currentVideo.width > currentVideo.height) === (currentVideo.cover.width > currentVideo.cover.height))) {
+            // $.fn.add函数返回新对象，不修改原来的
+            $realVideoDom = $realVideoDom.add(".plyr__poster");
+        }
         var css_transform_value = $realVideoDom[0].style.transform ? $realVideoDom[0].style.transform.replace(/\s*rotate[XY]\([^)]*\)\s*/g, "") : "";
         if (flip_directions) {
             for (var i in flip_directions) {
@@ -553,7 +562,7 @@
             }
         }
         $realVideoDom.css("transform", css_transform_value);
-        config.flip = flip_directions;
+        config.status.videoFlip = flip_directions;
     };
 
     // 翻转视频按钮
@@ -608,7 +617,7 @@
                 $flip_panel.find('[role="menuitemradio"][aria-checked="true"]').each(function (i, option) {
                     filp_directions.push(option.getAttribute("value"));
                 });
-                flipVideo(player, filp_directions, config.rotate);
+                flipVideo(player, filp_directions, config.status.videoRotate);
             }
             $flip_panel.attr("hidden", "");
             player.elements.settings.panels.home.removeAttribute("hidden");
@@ -625,7 +634,7 @@
             '<span class="plyr__tooltip">站内打开视频详情页</span></button>';
         var $open_in_site_button = $($.parseHTML(open_in_site_html));
         player.elements.buttons.open_in_site = $open_in_site_button[0];
-        $pip_button.before(player.elements.buttons.open_in_site);
+        player.elements.settings.menu.after(player.elements.buttons.open_in_site);
         $(player.elements.controls).on("click", '[data-plyr="open_in_site"]', function () {
             window.open("video/detail/" + video.video_id);
         });
@@ -850,18 +859,39 @@
     // 播放状态状态改变 - playing / pause / ended
     window.onVideoPlayStatusChange = function (call) {
         config.callback.video_play_status_change_calls.push(call);
+        if (config.status.videoPlayStatus != "pause") {
+            call.call(currentVideo, config.status.videoPlayStatus);
+        }
         return window;
     };
 
     // 活跃状态改变
     window.onActivityChange = function (call) {
         config.callback.activity_change_calls.push(call);
+        if (config.status.userActivity == false) {
+            call.call(currentVideo, config.status.userActivity, currentPlayer);
+        }
         return window;
     };
 
     // 视频显示比例改变
     window.onRatioChange = function (call) {
         config.callback.ratio_change_calls.push(call);
+        if (config.status.videoRotate && config.status.videoRotate != '0' && currentPlayer) {
+            var eyeRawWidth, eyeRawHeight;
+            switch (config.status.videoRotate) {
+                case "0":
+                case "180":
+                    eyeRawWidth = currentVideo.width;
+                    eyeRawHeight = currentVideo.height;
+                    break;
+                case "90":
+                case "270":
+                    eyeRawWidth = currentVideo.height;
+                    eyeRawHeight = currentVideo.width;
+            }
+            call.call(currentVideo, eyeRawWidth, eyeRawHeight, config.status.videoRotate, currentPlayer);
+        }
         return window;
     };
 

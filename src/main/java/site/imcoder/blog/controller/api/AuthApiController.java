@@ -96,7 +96,7 @@ public class AuthApiController extends BaseController {
         if (loginResp.isSuccess()) {
             //登陆成功
             User loginUser = loginResp.getAttr("user");
-            session.setAttribute("loginUser", loginUser);
+            session.setAttribute(KEY_LOGIN_USER, loginUser);
             // cookies
             String cookie_path = (request.getContextPath().length() == 0 ? "/" : request.getContextPath());
             boolean cookie_secure = request.getScheme().equalsIgnoreCase("https");

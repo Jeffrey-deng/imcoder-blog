@@ -476,7 +476,7 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
      * 点击量加1
      *
      * @param photo
-     * @param step - 步长，可为负数
+     * @param step  - 步长，可为负数
      * @return
      */
     @Override
@@ -497,7 +497,7 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
      * 点赞量加1
      *
      * @param photo
-     * @param step - 步长，可为负数
+     * @param step  - 步长，可为负数
      * @return
      */
     @Override
@@ -510,6 +510,27 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
         } catch (Exception e) {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.warn("updatePhotoLikeCount fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 评论量加1
+     *
+     * @param photo
+     * @param step  - 步长，可为负数
+     * @return
+     */
+    @Override
+    public int updatePhotoCommentCount(Photo photo, int step) {
+        try {
+            Map<String, Object> map = new HashMap<>();
+            map.put("photo", photo);
+            map.put("step", step);
+            return this.getSqlSession().update("album.updatePhotoCommentCount", map);
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.warn("updatePhotoCommentCount fail", e);
             return -1;
         }
     }

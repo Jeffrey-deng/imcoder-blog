@@ -200,23 +200,24 @@
                 },
                 "beforeUpdateModalOpen": function (updateModal, formatAlbumToModal_callback, album) {  // 更新窗口打开前回调
                     // dashboard页 添加照片所有者主页链接
-                    if (updateModal.find('span[name="user_id"]').length == 0) {
-                        updateModal.find('span[name="album_id"]').parent().after(
+                    let $userLinkText = updateModal.find('span[name="user_id"]');
+                    if ($userLinkText.length == 0) {
+                        updateModal.find('span[name="album_id"]').closest('.form-group').after(
                             '<div class="form-group"><label>所有者：</label>' +
                             '<a target="_blank" style="color: #666; cursor: pointer" title="点击查看用户主页" >' +
                             '<span name="user_id" class="control-label" style="display:inline-block;width: 50%;margin-left: 15px;"></span>' +
                             '</a></div>'
                         );
                     }
-                    var user_home_url = "u/" + album.user.uid + "/home";
-                    updateModal.find('span[name="user_id"]').text(album.user.nickname).parent().attr("href", user_home_url);
+                    let user_home_url = "u/" + album.user.uid + "/home";
+                    $userLinkText.text(album.user.nickname).parent().attr("href", user_home_url);
                     // 回调
                     formatAlbumToModal_callback(album);
                 }
             }
         });
         // 要删除的相册中包含视频时提示用户
-        album_handle.utils.bindEvent(album_handle.config.event.beforeDelete, function (e, params) {
+        album_handle.on(album_handle.config.event.beforeDelete, function (e, params) {
             var albumSizeInfo = PeriodCache.utils.getCacheValue(album_size_cache_conn.groupConfig.groupName, params.album_id);
             if (albumSizeInfo.videoCount) {
                 if (!window.confirm("你删除的相册包含" + albumSizeInfo.videoCount + "个视频，确定要继续吗？（建议先删除视频）")) {

@@ -140,12 +140,16 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
      * 查找文章评论
      *
      * @param comment - 传入mainId和mainType
+     * @param loginUser
      * @return
      */
     @Override
-    public List<Comment> findCommentList(Comment comment) {
+    public List<Comment> findCommentList(Comment comment, User loginUser) {
         try {
-            return this.getSqlSession().selectList("message.findCommentList", comment);
+            Map<String, Object> map = new HashMap<>();
+            map.put("condition", comment);
+            map.put("loginUser", loginUser);
+            return this.getSqlSession().selectList("message.findCommentList", map);
         } catch (Exception e) {
             logger.error("findCommentList fail", e);
             return null;
@@ -194,7 +198,7 @@ public class MessageDaoImpl extends CommonDao implements IMessageDao {
      * 点赞评论
      *
      * @param comment
-     * @param step - 步长，可为负数
+     * @param step    - 步长，可为负数
      * @return
      */
     @Override

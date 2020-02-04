@@ -8,6 +8,8 @@ public interface GlobalConstants {
 
     public static final String KEY_LOGIN_USER = "loginUser";
 
+    public static final String KEY_GUEST_USER = "guestUser";
+
     public static final int STATUS_SUCCESS = 200;
 
     public static final int STATUS_PARAM_ERROR = 400;
@@ -31,5 +33,8 @@ public interface GlobalConstants {
     public static final String FRIENDLY_NOT_FOUND = "无此记录";
 
     public static final String FRIENDLY_SERVER_ERROR = "服务器错误";
+
+    public static final String RESPONSE_BODY_RETURN_VALUE = "responseBodyReturnValue";
+
 
 }

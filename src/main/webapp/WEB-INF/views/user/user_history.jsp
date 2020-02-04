@@ -222,7 +222,7 @@
                     <div class="panel-footer">
                         <div class="btn-group btn-group-justified" role="group" aria-label="...">
                             <div class="btn-group user_likes_articles" role="group">
-                                <a class="btn btn-info" href="a/list?liked=true" target="_blank">文章</a>
+                                <a class="btn btn-info" href="u/<s:eval expression="loginUser.uid"/>/center/collections" target="_blank">文章</a>
                             </div>
                             <div class="btn-group user_likes_photos" role="group">
                                 <a class="btn btn-warning" href="u/<s:eval expression="loginUser.uid"/>/likes/photos" target="_blank">照片</a>

@@ -5,7 +5,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import site.imcoder.blog.Interceptor.annotation.AccessRecorder;
+import site.imcoder.blog.Interceptor.annotation.AccessRecord;
 import site.imcoder.blog.Interceptor.annotation.GZIP;
 import site.imcoder.blog.Interceptor.annotation.LoginRequired;
 import site.imcoder.blog.common.Utils;
@@ -47,7 +47,7 @@ public class UserController extends BaseController {
      * @return 通过权限检查的列表
      */
     @RequestMapping(value = {"/u/{uid}/{home}", "/u/{uid}"})
-    @AccessRecorder(type = AccessRecorder.Types.USER, key = "hostUser")
+    @AccessRecord(type = AccessRecord.Types.USER, key = "hostUser")
     public String user_home(
             @PathVariable(value = "home", required = false) String home_flag,
             @RequestParam(defaultValue = "5") int size,

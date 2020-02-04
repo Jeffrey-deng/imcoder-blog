@@ -1,6 +1,6 @@
 package site.imcoder.blog.event;
 
-import site.imcoder.blog.Interceptor.annotation.AccessRecorder;
+import site.imcoder.blog.Interceptor.annotation.AccessRecord;
 import site.imcoder.blog.entity.*;
 
 /**
@@ -15,28 +15,26 @@ public interface IEventTrigger {
     /**
      * 文章被浏览事件
      *
+     * @param accessDetail
      * @param accessRecord
-     * @param accessRecorder
      */
-    public void accessArticle(AccessRecord<Article> accessRecord, AccessRecorder accessRecorder);
-
+    public void accessArticle(AccessDetail accessDetail, AccessRecord accessRecord);
 
     /**
      * 视频被浏览事件
      *
+     * @param accessDetail
      * @param accessRecord
-     * @param accessRecorder
      */
-    public void accessVideo(AccessRecord<Video> accessRecord, AccessRecorder accessRecorder);
-
+    public void accessVideo(AccessDetail accessDetail, AccessRecord accessRecord);
 
     /**
      * 照片被浏览事件
      *
+     * @param accessDetail
      * @param accessRecord
-     * @param accessRecorder
      */
-    public void accessPhoto(AccessRecord<Photo> accessRecord, AccessRecorder accessRecorder);
+    public void accessPhoto(AccessDetail accessDetail, AccessRecord accessRecord);
 
     /**
      * 相册被浏览事件
@@ -44,37 +42,38 @@ public interface IEventTrigger {
      * @param accessRecord
      * @param accessRecorder
      */
-    public void accessAlbum(AccessRecord<Album> accessRecord, AccessRecorder accessRecorder);
+    public void accessAlbum(AccessDetail accessRecord, AccessRecord accessRecorder);
 
     /**
      * 用户个人空间被浏览事件
      *
+     * @param accessDetail
      * @param accessRecord
-     * @param accessRecorder
      */
-    public void accessUserHome(AccessRecord<User> accessRecord, AccessRecorder accessRecorder);
+    public void accessUserHome(AccessDetail accessDetail, AccessRecord accessRecord);
 
     /**
      * 网站被浏览事件
      *
-     * @param accessRecord
-     * @param accessRecorder - 可能为null
+     * @param accessDetail
      */
-    public void accessSite(AccessRecord accessRecord, AccessRecorder accessRecorder);
+    public void accessSite(AccessDetail accessDetail);
 
     /**
      * 添加评论事件
      *
      * @param comment
+     * @param creation
      */
-    public void addComment(Comment comment);
+    public void addComment(Comment comment, Object creation);
 
     /**
      * 删除评论事件
      *
      * @param comment
+     * @param creation
      */
-    public void deleteComment(Comment comment);
+    public void deleteComment(Comment comment, Object creation);
 
     /**
      * /**

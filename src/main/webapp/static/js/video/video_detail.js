@@ -74,12 +74,10 @@
                 }
             });
         },
-        "likePhoto": function (video_id, undo, call) {
+        "likeVideo": function (video_id, undo, call) {
             var post_param = {};
             post_param.video_id = video_id;
             post_param.undo = undo;
-            post_param.first_access_referer = document.referrer;
-            post_param.first_access_path = document.location.href;
             return $.post("video.api?method=likeVideo", post_param, function (response) {
                 if (response.status == 200) {
                     call && call(response.data.video, response.data.type, response);
@@ -97,44 +95,57 @@
         config.eyeRawWidth = config.videoWidth;
         config.eyeRawHeight = config.videoHeight;
         var switchFunc = function () {
-            var currValue = switchElem.attr("data-show-size") || "default";
-            if (currValue == "default") {
-                var scala = 9 / 16;
-                if (config.eyeRawWidth && config.eyeRawHeight) {
-                    scala = config.eyeRawHeight / config.eyeRawWidth;
-                }
-                videoElem.css("max-height", "");
-                videoElem.height(videoElem.width() * scala);
-                switchElem.attr("data-show-size", "max").text("填充⬇");
-            } else {
-                videoElem.css("max-height", "");
-                videoElem.css("height", "");
-                switchElem.attr("data-show-size", "default").text("默认⬇");
-                document.documentElement.scrollTop = 0;
+            var fromValue = switchElem.attr("data-show-size") || "fit";
+            var toValue = "";
+            switch (fromValue) {
+                case "fit":
+                    toValue = "fill";
+                    break;
+                case "fill":
+                    toValue = "fit";
+                    break;
+            }
+            switch (toValue) {
+                case "fit":
+                    videoElem.css("max-height", "");
+                    videoElem.css("height", "");
+                    switchElem.attr("data-show-size", "fit").text("适应⬇").attr("title", "点击切换为`填充`显示");
+                    document.documentElement.scrollTop = 0;
+                    break;
+                case "fill":
+                    var scala = 9 / 16;
+                    if (config.eyeRawWidth && config.eyeRawHeight) {
+                        scala = config.eyeRawHeight / config.eyeRawWidth;
+                    }
+                    videoElem.css("max-height", "unset");
+                    videoElem.height(videoElem.width() * scala);
+                    switchElem.attr("data-show-size", "fill").text("填充⬇").attr("title", "点击切换为`适应`显示");
+                    break;
             }
         };
-        switchElem.click(switchFunc);
+        switchElem.on('click', switchFunc);
         $(window).resize(function () {
-            var currValue = switchElem.attr("data-show-size") || "default";
-            if (currValue == "max") {
-                switchElem.attr("data-show-size", "default");
+            var currValue = switchElem.attr("data-show-size") || "fit";
+            if (currValue == "fill") {
+                switchElem.attr("data-show-size", "fit");
                 switchFunc();
             }
         });
         if (videoElem.width() / config.videoWidth * config.videoHeight < videoElem.height()) {
-            switchElem.click();
+            switchElem.trigger('click');
         }
         var insertFrameEvent = function (childWindow) {
             var searchFuncInter = window.setInterval(function () {
                 if (childWindow.onRatioChange) {
                     searchFuncInter && window.clearInterval(searchFuncInter);
-                    childWindow.onRatioChange(function (eyeRawWidth, eyeRawHeight, currentVideo, angle) {
+                    childWindow.onRatioChange(function (eyeRawWidth, eyeRawHeight, angle) {
+                        var currentVideo = this;
                         if (currentVideo.source_type != 2) {
                             config.eyeRawWidth = eyeRawWidth;
                             config.eyeRawHeight = eyeRawHeight;
-                            var currValue = switchElem.attr("data-show-size") || "default";
-                            if (currValue == "max") {
-                                switchElem.attr("data-show-size", "default");
+                            var currValue = switchElem.attr("data-show-size") || "fit";
+                            if (currValue == "fill") {
+                                switchElem.attr("data-show-size", "fit");
                                 switchFunc();
                             }
                         }
@@ -200,22 +211,20 @@
                 },
                 "hostUser": videoDetailConfig.hostUserId
             });
-            openEditBtn.click(function () {
+            openEditBtn.on('click', function () {
                 video_handle.openUpdateVideoModal(config.pageVideoId);
             });
         }
         // 点赞的小玩意
-        $(videoDetailConfig.selector.videoLikeArea).click(function () {
+        $(videoDetailConfig.selector.videoLikeArea).on('click', function () {
             var $valueNode = $(this).find(".video-detail-like-count");
             var undo = $valueNode.parent().hasClass("video-has-liked");
-            request.likePhoto(config.pageVideoId, undo, function (video, type, response) {
-                var newValue = (parseInt($valueNode.text()) || 0);
+            request.likeVideo(config.pageVideoId, undo, function (video, type, response) {
+                var newValue = video.like_count;
                 if (type == 1) {
                     if (undo) {
-                        (newValue - 1 >= 0) && newValue--;
                         toastr.success("已移除赞~");
                     } else {
-                        newValue++;
                         if (login_handle.validateLogin()) {
                             toastr.success("点击查看赞过的列表", "已添加到赞", {
                                 "timeOut": 12000,
@@ -444,7 +453,6 @@
     // 注册监控服务器的未读评论消息推送
     function initWsReceiveServerPush() {
         if (login_handle.validateLogin()) {
-            var eventPrefix = websocket_util.config.event.messageReceive + ".";
             var notify_ws_opts = {
                 "progressBar": false,
                 "positionClass": "toast-top-right",
@@ -518,7 +526,14 @@
     descNode.html(common_utils.convertLinkToHtmlTag(descNode.html(), false));
 
     // 评论列表构建完成后再构建合集名称显示栏
-    comment_plugin.utils.bindEvent(comment_plugin.config.event.commentHtmlBuildCompleted, function (list, pageIndex) {
+    comment_plugin.on(comment_plugin.config.event.commentHtmlBuildCompleted, function (e, list, pageIndex, buildReason) {
+        if (list.length < 50 && (buildReason == 'init' || buildReason == 'refresh')) {
+            if (!comment_plugin.config.currentTopic) {
+                $(comment_plugin.config.selector.commentListArea).find('.comment-list').removeClass('animated bounceInLeft bounceInRight').addClass('animated bounceInLeft');
+            } else {
+                $(comment_plugin.config.selector.commentListArea).find('.comment-list').removeClass('animated bounceInLeft bounceInRight').addClass('animated bounceInRight');
+            }
+        }
         if (!comment_plugin.pointer.topicTagWrappers) {
             request.loadPhotoTagWrappers(config.pageCoverId, function (data) {
                 config.tagWrappers = data.tagWrappers;
@@ -554,7 +569,7 @@
         if (/[&?]mark=([^&#]+)/.test(document.location.href)) {
             switch (RegExp.$1) {
                 case "edit":
-                    $(config.selector.openEditBtn).click();
+                    $(config.selector.openEditBtn).on('click',);
                     break;
                 case "meta":
                     var sh = $(config.selector.videoDetailInfo).offset().top - 100;

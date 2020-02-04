@@ -176,102 +176,152 @@ public interface IUserDao {
     public List<Collection> findCollectList(User user);
 
     /**
-     * 保存文章的访问记录
+     * 保存文章的动作记录
      *
-     * @param accessRecord
+     * @param actionRecord
      * @return
      */
-    public int saveArticleAccessRecord(AccessRecord<Article> accessRecord);
+    public int saveArticleActionRecord(ActionRecord<Article> actionRecord);
 
     /**
-     * 查询文章的访问记录
+     * 查询文章的动作记录
      *
-     * @param accessRecord
+     * @param actionRecord
      * @return
      */
-    public AccessRecord<Article> findArticleAccessRecord(AccessRecord<Article> accessRecord);
+    public ActionRecord<Article> findArticleActionRecord(ActionRecord<Article> actionRecord);
 
     /**
-     * 查询文章的访问记录列表
+     * 查询文章的动作记录列表
      *
-     * @param accessRecord
+     * @param actionRecord
      * @param loginUser
      * @return
      */
-    public List<AccessRecord<Article>> findArticleAccessRecordList(AccessRecord<Article> accessRecord, User loginUser);
+    public List<ActionRecord<Article>> findArticleActionRecordList(ActionRecord<Article> actionRecord, User loginUser);
 
     /**
-     * 删除文章的访问记录
+     * 保存文章的访问记录详情
      *
-     * @param accessRecord
+     * @param accessDetail
      * @return
      */
-    public int deleteArticleAccessRecord(AccessRecord<Article> accessRecord);
+    public int saveArticleAccessDetail(AccessDetail accessDetail);
 
     /**
-     * 保存视频的访问记录
+     * 删除文章的访问记录详情
      *
-     * @param accessRecord
+     * @param accessDetail
      * @return
      */
-    public int saveVideoAccessRecord(AccessRecord<Video> accessRecord);
+    public int deleteArticleAccessDetail(AccessDetail accessDetail);
 
     /**
-     * 查询视频的的访问记录
+     * 保存视频的动作记录
      *
-     * @param accessRecord
+     * @param actionRecord
      * @return
      */
-    public AccessRecord<Video> findVideoAccessRecord(AccessRecord<Video> accessRecord);
+    public int saveVideoActionRecord(ActionRecord<Video> actionRecord);
 
     /**
-     * 查询视频的访问记录列表
+     * 查询视频的动作记录
      *
-     * @param accessRecord
+     * @param actionRecord
+     * @return
+     */
+    public ActionRecord<Video> findVideoActionRecord(ActionRecord<Video> actionRecord);
+
+    /**
+     * 查询视频的动作记录列表
+     *
+     * @param actionRecord
      * @param loginUser
      * @return
      */
-    public List<AccessRecord<Video>> findVideoAccessRecordList(AccessRecord<Video> accessRecord, User loginUser);
+    public List<ActionRecord<Video>> findVideoActionRecordList(ActionRecord<Video> actionRecord, User loginUser);
 
     /**
-     * 删除视频的访问记录
+     * 保存视频的访问记录详情
      *
-     * @param accessRecord
+     * @param accessDetail
      * @return
      */
-    public int deleteVideoAccessRecord(AccessRecord<Video> accessRecord);
+    public int saveVideoAccessDetail(AccessDetail accessDetail);
 
     /**
-     * 保存照片的访问记录
+     * 删除视频的访问记录详情
      *
-     * @param accessRecord
+     * @param accessDetail
      * @return
      */
-    public int savePhotoAccessRecord(AccessRecord<Photo> accessRecord);
+    public int deleteVideoAccessDetail(AccessDetail accessDetail);
+
 
     /**
-     * 查询照片的访问记录
+     * 保存照片的动作记录
      *
-     * @param accessRecord
+     * @param actionRecord
      * @return
      */
-    public AccessRecord<Photo> findPhotoAccessRecord(AccessRecord<Photo> accessRecord);
+    public int savePhotoActionRecord(ActionRecord<Photo> actionRecord);
 
     /**
-     * 查询照片的访问记录列表
+     * 查询照片的动作记录
      *
-     * @param accessRecord
+     * @param actionRecord
+     * @return
+     */
+    public ActionRecord<Photo> findPhotoActionRecord(ActionRecord<Photo> actionRecord);
+
+    /**
+     * 查询照片的动作记录列表
+     *
+     * @param actionRecord
      * @param loginUser
      * @return
      */
-    public List<AccessRecord<Photo>> findPhotoAccessRecordList(AccessRecord<Photo> accessRecord, User loginUser);
+    public List<ActionRecord<Photo>> findPhotoActionRecordList(ActionRecord<Photo> actionRecord, User loginUser);
 
     /**
-     * 删除照片的访问记录
+     * 保存照片的访问记录详情
      *
-     * @param accessRecord
+     * @param accessDetail
      * @return
      */
-    public int deletePhotoAccessRecord(AccessRecord<Photo> accessRecord);
+    public int savePhotoAccessDetail(AccessDetail accessDetail);
+
+    /**
+     * 删除照片的访问记录详情
+     *
+     * @param accessDetail
+     * @return
+     */
+    public int deletePhotoAccessDetail(AccessDetail accessDetail);
+
+    /**
+     * 保存评论的动作记录
+     *
+     * @param actionRecord
+     * @return
+     */
+    public int saveCommentActionRecord(ActionRecord<Comment> actionRecord);
+
+    /**
+     * 查询评论的动作记录
+     *
+     * @param actionRecord
+     * @return
+     */
+    public ActionRecord<Comment> findCommentActionRecord(ActionRecord<Comment> actionRecord);
+
+    /**
+     * 查询评论的动作记录列表
+     *
+     * @param actionRecord
+     * @param loginUser
+     * @return
+     */
+    public List<ActionRecord<Comment>> findCommentActionRecordList(ActionRecord<Comment> actionRecord, User loginUser);
 
 }

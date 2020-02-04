@@ -1,5 +1,6 @@
 package site.imcoder.blog.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import site.imcoder.blog.controller.formatter.timeformat.TimeFormat;
 import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFill;
 import site.imcoder.blog.controller.formatter.urlprefix.impl.AccessRecordURLPrefixFiller;
@@ -12,24 +13,27 @@ import java.io.Serializable;
  * @author Jeffrey.Deng
  * @date 2019-10-30
  */
-public class AccessRecord<T extends Object> implements Serializable {
+public class AccessDetail implements Serializable {
 
     private static final long serialVersionUID = -4296171129566776592L;
 
     /**
-     * 主键
+     * 动作id
      */
+    @JsonIgnore
     private Long ar_id;
 
     /**
      * 访问的用户，用户未登录时设置uid为0
      */
-    private User user;
+    @JsonIgnore
+    private Long uid;
 
     /**
-     * 访问的对象
+     * 访问的对象id
      */
-    private T bean;
+    @JsonIgnore
+    private Long creation_id;
 
     /**
      * 首次访问访问路径
@@ -79,12 +83,7 @@ public class AccessRecord<T extends Object> implements Serializable {
      */
     private Integer deep;
 
-    /**
-     * 是否赞
-     */
-    private Integer is_like;
-
-    public AccessRecord() {
+    public AccessDetail() {
     }
 
     public Long getAr_id() {
@@ -95,20 +94,20 @@ public class AccessRecord<T extends Object> implements Serializable {
         this.ar_id = ar_id;
     }
 
-    public User getUser() {
-        return user;
+    public Long getUid() {
+        return uid;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public void setUid(Long uid) {
+        this.uid = uid;
     }
 
-    public T getBean() {
-        return bean;
+    public Long getCreation_id() {
+        return creation_id;
     }
 
-    public void setBean(T bean) {
-        this.bean = bean;
+    public void setCreation_id(Long creation_id) {
+        this.creation_id = creation_id;
     }
 
     public String getFirst_access_path() {
@@ -174,13 +173,4 @@ public class AccessRecord<T extends Object> implements Serializable {
     public void setDeep(Integer deep) {
         this.deep = deep;
     }
-
-    public Integer getIs_like() {
-        return is_like;
-    }
-
-    public void setIs_like(Integer is_like) {
-        this.is_like = is_like;
-    }
-
 }

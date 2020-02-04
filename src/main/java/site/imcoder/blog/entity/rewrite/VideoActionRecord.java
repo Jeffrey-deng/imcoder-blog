@@ -1,6 +1,6 @@
 package site.imcoder.blog.entity.rewrite;
 
-import site.imcoder.blog.entity.AccessRecord;
+import site.imcoder.blog.entity.ActionRecord;
 import site.imcoder.blog.entity.Video;
 
 import java.io.Serializable;
@@ -11,7 +11,7 @@ import java.io.Serializable;
  * @author Jeffrey.Deng
  * @date 2018-12-31
  */
-public class VideoAccessRecord extends AccessRecord<Video> implements Serializable {
+public class VideoActionRecord extends ActionRecord<Video> implements Serializable {
 
     private static final long serialVersionUID = 7804974574811374285L;
 

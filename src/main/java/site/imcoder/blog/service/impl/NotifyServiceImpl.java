@@ -284,10 +284,10 @@ public class NotifyServiceImpl extends BaseService implements INotifyService, We
      *
      * @param comment
      * @param replyUid 父类评论的用户id(parentId为0时设置主体对象的作者id)
-     * @param object   评论主体的对象（article?photo?video?）
+     * @param creation 评论主体的对象（article?photo?video?）
      */
     @Override
-    public void receivedComment(Comment comment, Long replyUid, Object object) {
+    public void receivedComment(Comment comment, Long replyUid, Object creation) {
         executorPool.execute(new Runnable() {
             @Override
             public void run() {
@@ -299,18 +299,18 @@ public class NotifyServiceImpl extends BaseService implements INotifyService, We
                 } else {
                     sendUser = comment.getUser();
                 }
-                //自己给自己回复则不发信，发的匿名信则都发送
-                //由于Parentid=0时，replyuid会被设置为作者id 所以只需要此判断足以
+                // 自己给自己回复则不发信，发的匿名信则都发送
+                // 由于Parentid=0时，replyuid会被设置为作者id 所以只需要此判断足以
                 if (comment.typeOfAnonymous() || (!sendUser.getUid().equals(replyUid))) {
                     // 接收通知的对象
                     User replyUser = cache.getUser(replyUid, Cache.READ);
                     // 根据评论主体类型mainType进行分别操作
-                    CommentType commentType = CommentType.valueOfName(comment.getMainType());
+                    CommentType commentType = CommentType.valueOf(comment.getMainType());
                     WsMessage wsMessage = null;
                     String main_url = null;
                     switch (commentType) {
                         case ARTICLE:   // 文章
-                            Article article = (Article) object;
+                            Article article = (Article) creation;
                             wsMessage = new WsMessage("receive_comment");
                             wsMessage.setMetadata("comment", comment);
                             wsMessage.setMetadata("article", article);
@@ -348,7 +348,7 @@ public class NotifyServiceImpl extends BaseService implements INotifyService, We
                             }
                             break;
                         case PHOTO: // 照片
-                            Photo photo = (Photo) object;
+                            Photo photo = (Photo) creation;
                             wsMessage = new WsMessage("receive_comment");
                             wsMessage.setMetadata("comment", comment);
                             wsMessage.setMetadata("photo", photo);
@@ -384,7 +384,7 @@ public class NotifyServiceImpl extends BaseService implements INotifyService, We
                             }
                             break;
                         case VIDEO: // 视频
-                            Video video = (Video) object;
+                            Video video = (Video) creation;
                             wsMessage = new WsMessage("receive_comment");
                             wsMessage.setMetadata("comment", comment);
                             wsMessage.setMetadata("video", video);
@@ -420,7 +420,7 @@ public class NotifyServiceImpl extends BaseService implements INotifyService, We
                             }
                             break;
                         case PHOTO_TOPIC: // 照片合集
-                            PhotoTagWrapper tagWrapper = (PhotoTagWrapper) object;
+                            PhotoTagWrapper tagWrapper = (PhotoTagWrapper) creation;
                             wsMessage = new WsMessage("receive_comment");
                             wsMessage.setMetadata("comment", comment);
                             wsMessage.setMetadata("tagWrapper", tagWrapper);

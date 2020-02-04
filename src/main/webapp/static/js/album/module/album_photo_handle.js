@@ -242,14 +242,14 @@
         pointer.updateModal.find(".update-convert-photo-url").click(function (e) {
             var _self = $(this);
             _self.css("font-weight", "bold").parent().find(".update-convert-photo-refer").css("font-weight", "normal");
-            _self.closest(".form-group").find('.update-photo-url').css("display", "block");
-            _self.closest(".form-group").find('.update-photo-refer').css("display", "none");
+            _self.closest('.form-group').find('.update-photo-url').css("display", "block");
+            _self.closest('.form-group').find('.update-photo-refer').css("display", "none");
         });
         pointer.updateModal.find(".update-convert-photo-refer").click(function (e) {
             var _self = $(this);
             _self.css("font-weight", "bold").parent().find(".update-convert-photo-url").css("font-weight", "normal");
-            _self.closest(".form-group").find('.update-photo-url').css("display", "none");
-            _self.closest(".form-group").find('.update-photo-refer').css("display", "block");
+            _self.closest('.form-group').find('.update-photo-url').css("display", "none");
+            _self.closest('.form-group').find('.update-photo-refer').css("display", "block");
         });
 
         // topic选择
@@ -295,7 +295,7 @@
         });
 
         // 打开topic
-        pointer.updateModal.find(".topic-select").closest(".form-group").find("label").click(function () {
+        pointer.updateModal.find(".topic-select").closest('.form-group').find("label").click(function () {
             var $topic_select = pointer.updateModal.find(".topic-select");
             if ($topic_select.is(":visible")) {
                 var topicId = $topic_select.find("option:selected").attr("data-ptwid");
@@ -347,7 +347,7 @@
                 var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
                 if (code == 13) {
                     utils.addTagFromInput(upload_tags_modify_dom, $(e.currentTarget));
-                    upload_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").text("编辑");
+                    upload_tags_modify_dom.closest('.form-group').find(".tags-edit-btn").text("编辑");
                     // 防止触发表单提交 返回false
                     // e.preventDefault();
                     return false;
@@ -358,14 +358,14 @@
                 // upload_tags_modify_dom.find(".tag-single").length == 0
                 if (input_dom.val() != "") {
                     utils.addTagFromInput(upload_tags_modify_dom, input_dom);
-                    upload_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").text("编辑");
+                    upload_tags_modify_dom.closest('.form-group').find(".tags-edit-btn").text("编辑");
                 }
             }
         }, ".tag-input");
-        upload_tags_modify_dom.closest(".form-group").find("label").dblclick(function () { // 双击标签全部编辑
-            upload_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").click();
+        upload_tags_modify_dom.closest('.form-group').find("label").dblclick(function () { // 双击标签全部编辑
+            upload_tags_modify_dom.closest('.form-group').find(".tags-edit-btn").click();
         });
-        upload_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").on("click", function (e) {
+        upload_tags_modify_dom.closest('.form-group').find(".tags-edit-btn").on("click", function (e) {
             var $btn = $(this);
             if ($btn.text() == '确定') {
                 upload_tags_modify_dom.find(".tag-input").blur();
@@ -417,7 +417,7 @@
                 var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
                 if (code == 13) {
                     utils.addTagFromInput(update_tags_modify_dom, $(e.currentTarget));
-                    update_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").text("编辑");
+                    update_tags_modify_dom.closest('.form-group').find(".tags-edit-btn").text("编辑");
                     // 防止触发表单提交 返回false
                     // e.preventDefault();
                     return false;
@@ -427,7 +427,7 @@
                 var input_dom = $(e.currentTarget);
                 // update_tags_modify_dom.find(".tag-single").length == 0
                 if (input_dom.val() != "") {
-                    update_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").text("编辑");
+                    update_tags_modify_dom.closest('.form-group').find(".tags-edit-btn").text("编辑");
                     utils.addTagFromInput(update_tags_modify_dom, input_dom);
                 }
             }
@@ -453,16 +453,16 @@
                 var tag = _self.text();
                 if (config.tagExtendClickEvent || clickEvt.altKey) {  // 是否按住alt点击
                     clickEvt.preventDefault();
-                    utils.triggerEvent(config.event.tagExtendClick, tag, photo_id, clickEvt, config.tagExtendClickEvent);
+                    context.trigger(config.event.tagExtendClick, tag, photo_id, clickEvt, config.tagExtendClickEvent);
                 } else {
-                    utils.triggerEvent(config.event.tagClick, tag, photo_id, clickEvt);
+                    context.trigger(config.event.tagClick, tag, photo_id, clickEvt);
                 }
             }
         }, ".tag-content");
-        update_tags_modify_dom.closest(".form-group").find("label").dblclick(function () { // 双击标签全部编辑
-            update_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").click();
+        update_tags_modify_dom.closest('.form-group').find("label").dblclick(function () { // 双击标签全部编辑
+            update_tags_modify_dom.closest('.form-group').find(".tags-edit-btn").click();
         });
-        update_tags_modify_dom.closest(".form-group").find(".tags-edit-btn").on("click", function (e) {
+        update_tags_modify_dom.closest('.form-group').find(".tags-edit-btn").on("click", function (e) {
             var $btn = $(this);
             if ($btn.text() == '确定') {
                 update_tags_modify_dom.find(".tag-input").blur();
@@ -563,6 +563,7 @@
                     "closeButton": false
                 }).success("正在上传第 " + (index + 1) + " 张", "", "notify_uploading");
             }
+            context.trigger(config.event.beforeEachUpload, photoInfo, file, data);
             $.ajax({
                 url: "photo.api?method=upload",
                 data: data,
@@ -574,7 +575,7 @@
                     if (response.status == 200) {
                         var data = response.data;
                         config.callback.eachUploadCompleted.call(context, context, data.photo); // 回调
-                        utils.triggerEvent(config.event.eachUploadCompleted, data.photo);
+                        context.trigger(config.event.eachUploadCompleted, data.photo);
                         photos.push(data.photo);
                         index++;
                         if (index > files.length - 1) {
@@ -587,7 +588,7 @@
                             pointer.uploadModal.find('button[name="uploadPhoto_trigger"]').removeAttr("disabled");
                             pointer.uploadModal.find('input[name="photos"]').val("");
                             config.callback.allUploadCompleted.call(context, context, photos); // 回调
-                            utils.triggerEvent(config.event.allUploadCompleted, photos);
+                            context.trigger(config.event.allUploadCompleted, photos);
                             pointer.uploadPhotos = null;
                         } else {
                             uploadPhoto(files, photoInfo, index, photos);
@@ -608,13 +609,7 @@
             });
         };
         // 上传之前回调
-        utils.triggerEvent(config.event.beforeEachUpload, photoInfo, file, data);
-        var deferred = config.callback.beforeEachUpload.call(context, context, photoInfo, file, data);
-        if (deferred && deferred.promise) {
-            deferred.done(call);
-        } else {
-            call();
-        }
+        common_utils.wrapAsyncResult.call(context, config.callback.beforeEachUpload)(context, photoInfo, file, data).then(call);
     };
     var updatePhoto = function (photo, file) {
         if (photo.topic) {
@@ -627,11 +622,10 @@
             });
             delete photo.topic;
         }
+        var call = null, formData;
         if (photo != null && photo.photo_id) {
-            var call = null;
-            var formData = undefined;
             if (file && /^image.*/.test(file.type)) { // 如果指定了文件，则更新图片文件
-                var formData = new FormData();
+                formData = new FormData();
                 formData.append("file", file);
                 formData.append("originName", (file.name.lastIndexOf(".") != -1 ? file.name : (file.name + ".jpg")));
                 $.each(photo, function (key, value) {
@@ -652,7 +646,7 @@
                                 var data = response.data;
                                 toastr.success("更新成功", "", {"progressBar": false});
                                 config.callback.updateCompleted.call(context, context, data.photo);
-                                utils.triggerEvent(config.event.updateCompleted, data.photo);
+                                context.trigger(config.event.updateCompleted, data.photo);
                                 pointer.updateModal.modal('hide');
                             } else {
                                 toastr.error(response.message, "错误", {"progressBar": false});
@@ -678,7 +672,7 @@
                             toastr.success("更新成功", "", {"progressBar": false});
                             pointer.updateModal.modal('hide');
                             config.callback.updateCompleted.call(context, context, data.photo); // 回调
-                            utils.triggerEvent(config.event.updateCompleted, data.photo);
+                            context.trigger(config.event.updateCompleted, data.photo);
                         } else {
                             toastr.error(response.message, "错误", {"progressBar": false});
                             console.warn("Error Code: " + response.status);
@@ -692,48 +686,50 @@
                     });
                 };
             }
-            common_utils.notify({
-                "progressBar": false,
-                "hideDuration": 0,
-                "showDuration": 0,
-                "timeOut": 0,
-                "closeButton": false
-            }).success("正在更新图片~", "", "notify_updating");
-            pointer.updateModal.find('button[name="updatePhoto_trigger"]').attr("disabled", "disabled");
             // 更新之前回调
-            utils.triggerEvent(config.event.beforeUpdate, photo, file, formData);
-            var deferred = config.callback.beforeUpdate.call(context, context, photo, file, formData);
-            if (!(deferred && deferred.promise)) {
-                deferred = $.when();
-            }
-            deferred.done(call);
+            common_utils.wrapAsyncResult.call(context, config.callback.beforeUpdate)(context, photo, file, formData).then(function () {
+                common_utils.notify({
+                    "progressBar": false,
+                    "hideDuration": 0,
+                    "showDuration": 0,
+                    "timeOut": 0,
+                    "closeButton": false
+                }).success("正在更新图片~", "", "notify_updating");
+                pointer.updateModal.find('button[name="updatePhoto_trigger"]').attr("disabled", "disabled");
+                context.trigger(config.event.beforeUpdate, photo, file, formData);
+                call.call(context);
+            });
         }
     };
     var deletePhoto = function (photo_id) {
         if (photo_id && photo_id != "0") {
             var params = {"photo_id": photo_id};
-            var call = function () {
+            var call = function (allow) {
+                if (context.trigger(config.event.beforeDelete, params) === false) {
+                    allow = false;
+                }
+                if (allow === false) {
+                    return;
+                }
                 $.post("photo.api?method=delete", params, function (response) {
                     if (response.status == 200) {
                         toastr.success("删除成功", "", {"progressBar": false});
                         pointer.updateModal.modal('hide');
                         config.callback.deleteCompleted.call(context, context, params); // 回调
-                        utils.triggerEvent(config.event.deleteCompleted, photo_id);
+                        context.trigger(config.event.deleteCompleted, photo_id);
                     } else {
                         toastr.error(response.message, "错误", {"progressBar": false});
                         console.warn("Error Code: " + response.status);
                     }
                 });
             };
-            var allow = utils.triggerEvent(config.event.beforeDelete, params);
-            if (allow === false) {
-                return;
-            }
-            var deferred = config.callback.beforeDelete.call(context, context, params);
-            if (!(deferred && deferred.promise)) {
-                deferred = $.when();
-            }
-            deferred.done(call);
+            var allow = true;
+            common_utils.wrapAsyncResult.call(context, config.callback.beforeDelete)(context, params).then(function (allowDelete) {
+                if (allowDelete === false) {
+                    allow = false;
+                }
+                call(allow);
+            });
         }
     };
     var loadPhoto = function (photo_id, success) {
@@ -795,16 +791,16 @@
                 }
             });
             if (images.length > 0) {
-                pointer.uploadModal.find('input[name="photos"]').closest(".form-group").hide();
+                pointer.uploadModal.find('input[name="photos"]').closest('.form-group').hide();
                 pointer.uploadModal.find('.modal-title').text("上传图片（已选择 " + images.length + " 张图片）");
                 pointer.uploadPhotos = images;
             } else {
-                pointer.uploadModal.find('input[name="photos"]').closest(".form-group").show();
+                pointer.uploadModal.find('input[name="photos"]').closest('.form-group').show();
                 pointer.uploadModal.find('.modal-title').text("上传图片");
                 pointer.uploadPhotos = null;
             }
         } else {
-            pointer.uploadModal.find('input[name="photos"]').closest(".form-group").show();
+            pointer.uploadModal.find('input[name="photos"]').closest('.form-group').show();
             pointer.uploadModal.find('.modal-title').text("上传图片");
             pointer.uploadPhotos = null;
         }
@@ -851,7 +847,7 @@
             // define btn by user type
             var fileStyle = isAuthor ? "block" : "none";
             var btnStyle = isAuthor ? "inline-block" : "none";
-            pointer.updateModal.find('input[name="photo_file"]').val("").closest(".form-group").css("display", fileStyle);
+            pointer.updateModal.find('input[name="photo_file"]').val("").closest('.form-group').css("display", fileStyle);
             pointer.updateModal.find('button[name="deletePhoto_trigger"]').css("display", btnStyle);
             pointer.updateModal.find('button[name="updatePhoto_trigger"]').css("display", btnStyle);
 
@@ -860,10 +856,10 @@
             var tags_modify_dom = pointer.updateModal.find('.tags-modify').eq(0).css("height", "");
             if (isAuthor) {
                 // show
-                tags_modify_dom.closest(".form-group").show().find(".tags-edit-btn").show();
+                tags_modify_dom.closest('.form-group').show().find(".tags-edit-btn").show();
                 // css
                 tags_modify_dom.addClass("form-control");
-                tags_modify_dom.css("overflow-y", "hidden").closest(".form-group").css("padding-top", "").next().css("padding-top", "7px");
+                tags_modify_dom.css("overflow-y", "hidden").closest('.form-group').css("padding-top", "").next().css("padding-top", "7px");
                 // html
                 var tags_str = '';
                 $.each(photo.tags.split('#'), function (i, tag) {
@@ -879,10 +875,10 @@
                 pointer.updateModal.find('.tags-edit-btn').text("编辑");
             } else if (!isAuthor && photo.tags) {
                 // show
-                tags_modify_dom.closest(".form-group").show().find(".tags-edit-btn").hide();
+                tags_modify_dom.closest('.form-group').show().find(".tags-edit-btn").hide();
                 // css
                 tags_modify_dom.removeClass("form-control");
-                tags_modify_dom.css("overflow-y", "").closest(".form-group").css("padding-top", "7px").next().css("padding-top", "");
+                tags_modify_dom.css("overflow-y", "").closest('.form-group').css("padding-top", "7px").next().css("padding-top", "");
                 // html
                 var tags_str = '';
                 $.each(photo.tags.split('#'), function (i, tag) {
@@ -893,11 +889,11 @@
                 tags_modify_dom.html(tags_str);
             } else {
                 // hide
-                tags_modify_dom.closest(".form-group").hide();
+                tags_modify_dom.closest('.form-group').hide();
                 // html
                 tags_modify_dom.find(".tag-single").remove();
                 // css
-                tags_modify_dom.css("overflow-y", "").closest(".form-group").next().css("padding-top", "7px");
+                tags_modify_dom.css("overflow-y", "").closest('.form-group').next().css("padding-top", "7px");
             }
             var photoTopic = null;
             if (photo.topic && photo.topic.ptwid) {
@@ -907,9 +903,9 @@
                 // 合集名称选择
                 var topic_select_dom = pointer.updateModal
                     .find('.form-group .topic-name').text("").parent().attr("href", "").hide()
-                    .closest(".form-group").show()
+                    .closest('.form-group').show()
                     .find("label").text("合集名称 / 权限：")
-                    .closest(".form-group")
+                    .closest('.form-group')
                     .find('.topic-select,.topic-permission-select').parent().show(0).find(".topic-select");
                 utils.applyTopicToSelect(topic_select_dom, photo.tags, photoTopic);
                 // 合集权限选择
@@ -917,14 +913,14 @@
             } else if (photoTopic) {
                 pointer.updateModal
                     .find('.form-group .topic-name').text(photo.topic.name).parent().attr("href", "p/topic/" + photoTopic.ptwid).show()
-                    .closest(".form-group").show()
+                    .closest('.form-group').show()
                     .find("label").text("合集名称：")
-                    .closest(".form-group")
+                    .closest('.form-group')
                     .find('.topic-select,.topic-permission-select').html("").parent().hide(0);
             } else {
                 pointer.updateModal
                     .find('.form-group .topic-name').text("").parent().attr("href", "")
-                    .closest(".form-group").hide()
+                    .closest('.form-group').hide()
                     .find('.topic-select,.topic-permission-select').html("");
             }
             pointer.updateModal.modal('show');
@@ -950,29 +946,6 @@
         });
     };
     var utils = {
-        "once": function (eventName, func, bindFirst) {
-            var funcWrapper = function () {
-                try {
-                    func.apply(context, arguments);
-                } finally {
-                    utils.unbindEvent(eventName, funcWrapper);
-                }
-            };
-            utils.bindEvent(eventName, funcWrapper, bindFirst);
-        },
-        "bindEvent": function (eventName, func, bindFirst) {
-            if (bindFirst == true) {
-                $(context).onfirst(eventName, func);
-            } else {
-                $(context).bind(eventName, func);
-            }
-        },
-        "triggerEvent": function (eventName) {
-            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
-        },
-        "unbindEvent": function (eventName, func) {
-            $(context).unbind(eventName, func);
-        },
         "calcTagInputWidth": function (tags_modify_dom) {
             var tag_single_nodes = tags_modify_dom.find(".tag-single");
             var maxOffset = 0;
@@ -1118,7 +1091,11 @@
         "loadTagWrapper": loadTagWrapper,
         "downloadPhoto": downloadPhoto,
         "openUploadPhotoModal": openUploadPhotoModal,
-        "openUpdatePhotoModal": openUpdatePhotoModal
+        "openUpdatePhotoModal": openUpdatePhotoModal,
+        "on": common_utils.on,
+        "once": common_utils.once,
+        "trigger": common_utils.trigger,
+        "off": common_utils.off
     };
     return context;
 

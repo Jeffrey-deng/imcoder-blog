@@ -19,7 +19,8 @@ use RESTFul style for url、new primary key style.
     6、modify url to RESTFul style.
     7、add auto convert annotation: URLPrefixFill(file path auto fill with cdn full address)、GeneralConvert、PrimaryKeyConvert.
     8、add access interceptor to automatically record access to user creations.
-    9、unified exclusion filter with ExcludedFilter.
+    9、unified access、like、comment record with action record.
+    10、unified exclusion filter with ExcludedFilter.
     >
     （2）site front-end
     1、reorganize css of modal and profilecenter and so forth.
@@ -37,6 +38,8 @@ use RESTFul style for url、new primary key style.
     4、support more permission type.
     5、add users's photo-tag-wrapper manager page.
     6、support set auto mount by tagWrapper.name or photo.tags for album.
+    7、enhance the blowup function、add photo rotate/flip.
+    8、add some animation effects、photo node wrap link tag.
     >
     （5）video module
     1、add upload mp3 file support.

@@ -33,7 +33,7 @@ public enum PermissionType {
      * @param value
      * @return
      */
-    public static PermissionType valueOfName(int value) {
+    public static PermissionType valueOf(int value) {
         for (PermissionType type : values()) {
             if (type.value == value) {
                 return type;

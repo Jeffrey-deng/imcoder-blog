@@ -25,33 +25,14 @@
         }
     };
     var context = {
-        "config": config
+        "config": config,
+        "on": common_utils.on,
+        "once": common_utils.once,
+        "trigger": common_utils.trigger,
+        "off": common_utils.off
     };
 
     var utils = {
-        "once": function (eventName, func, bindFirst) {
-            var funcWrapper = function () {
-                try {
-                    func.apply(context, arguments);
-                } finally {
-                    utils.unbindEvent(eventName, funcWrapper);
-                }
-            };
-            utils.bindEvent(eventName, funcWrapper, bindFirst);
-        },
-        "bindEvent": function (eventName, func, bindFirst) {
-            if (bindFirst == true) {
-                $(context).onfirst(eventName, func);
-            } else {
-                $(context).bind(eventName, func);
-            }
-        },
-        "triggerEvent": function (eventName) {
-            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
-        },
-        "unbindEvent": function (eventName, func) {
-            $(context).unbind(eventName, func);
-        },
         "getFormatPages": function (statusWsMessage, uid, ip) {
             var wsMessage = common_utils.extendNonNull(true, {"metadata": {"pages": []}}, statusWsMessage);
             var pages = wsMessage.metadata.pages;
@@ -144,7 +125,7 @@
             } else {
                 pointer.configMap = {};
             }
-            utils.triggerEvent(config.event.config_load, pointer.configMap);
+            context.trigger(config.event.config_load, pointer.configMap);
         });
     }
 
@@ -156,7 +137,7 @@
     function initWsReceiveServerPush() {
         websocket_util.on(websocket_util.config.event.messageReceive + "." + "status", function (e, wsMessage, wsEvent) {
             pointer.statusWsMessage = wsMessage;
-            utils.triggerEvent(config.event.ws_status_load, pointer.statusWsMessage);
+            context.trigger(config.event.ws_status_load, pointer.statusWsMessage);
         });
         postQueryWsStatus();
         setInterval(postQueryWsStatus, 30000);
@@ -170,7 +151,7 @@
             var modal = $("#modal_system_status");
             modal.find(".modal-title").text("重新初始化系统缓存");
             modal.find(".modal-confirm").text("你确定要从数据库重新加载文章、用户等资料以刷新缓存中的数据吗?");
-            modal.find(".modal_btn_confirm").unbind("click").click(function () {
+            modal.find(".modal_btn_confirm").off("click").on('click', function () {
                 $.post("manager.api?method=reload_cache", function (response) {
                     if (response.status == 200) {
                         toastr.success("已重新初始化缓存");
@@ -184,11 +165,11 @@
             modal.modal();
         });
 
-        $("#btn_reload_config").click(function () {
+        $("#btn_reload_config").on('click', function () {
             var modal = $("#modal_system_status");
             modal.find(".modal-title").text("重新加载配置文件");
             modal.find(".modal-confirm").text("你确定要重新从文件加载配置吗?");
-            modal.find(".modal_btn_confirm").unbind("click").click(function () {
+            modal.find(".modal_btn_confirm").off("click").on('click', function () {
                 $.post("manager.api?method=reload_config", function (response) {
                     if (response.status == 200) {
                         toastr.success("已重新读取配置文件");
@@ -207,7 +188,7 @@
             $("#modal_update_config .config_value").val(pointer.configMap[key] || "");
         });
 
-        $("#btn_update_config").click(function () {
+        $("#btn_update_config").on('click', function () {
             loadAllConfig(function (configMap) {
                 if (configMap) {
                     var str = "";
@@ -234,7 +215,7 @@
             });
         });
 
-        $("#modal_update_config").find(".modal_btn_confirm").click(function () {
+        $("#modal_update_config").find(".modal_btn_confirm").on('click', function () {
             var modal = $("#modal_update_config");
             var params = {};
             params.key = modal.find(".config_key").val();
@@ -266,7 +247,7 @@
             minHeight: config.pushContentMinHeight
         });
 
-        utils.bindEvent(config.event.ws_status_load, function (e, statusWsMessage) {
+        context.on(config.event.ws_status_load, function (e, statusWsMessage) {
             // message
             var messageUsers = utils.getFormatUsers(statusWsMessage);
             messageUsers.unshift({"uid": 0, "nickname": "全部"});
@@ -378,24 +359,24 @@
             }
         });
 
-        $("#btn_push_message").click(function () {
-            utils.once(config.event.ws_status_load, function (e, statusWsMessage) {
+        $("#btn_push_message").on('click', function () {
+            context.once(config.event.ws_status_load, function (e, statusWsMessage) {
                 pushMessageModal.find(".push_type").trigger("change");
                 $("#modal_push_message").modal();
             });
             postQueryWsStatus();
         });
 
-        $("#btn_ws_pv").click(function () {
-            utils.once(config.event.ws_status_load, function (e, statusWsMessage) {
+        $("#btn_ws_pv").on('click', function () {
+            context.once(config.event.ws_status_load, function (e, statusWsMessage) {
                 var pages = utils.getFormatPages(statusWsMessage);
                 console.table(pages, ["id", "user", "title", "link", "open_time", "active"]);
             });
             postQueryWsStatus();
         });
 
-        $("#btn_ws_uv").click(function () {
-            utils.once(config.event.ws_status_load, function (e, statusWsMessage) {
+        $("#btn_ws_uv").on('click', function () {
+            context.once(config.event.ws_status_load, function (e, statusWsMessage) {
                 var users = utils.getFormatUsers(statusWsMessage);
                 console.table(users, ["uid", "nickname", "email", "description", "last_login_time", "last_login_ip"]);
             });
@@ -403,7 +384,7 @@
         });
 
         // 管理员消息推送
-        pushMessageModal.find(".modal_btn_confirm").click(function () {
+        pushMessageModal.find(".modal_btn_confirm").on('click', function () {
             var modal = $("#modal_push_message");
             var postWsMessage = {"id": new Date().getTime(), "mapping": "push_manager_notify", "metadata": {}};
             var push_type = pushMessageModal.find(".push_type").val();
@@ -478,7 +459,7 @@
                         .success("已" + (postWsMessage.metadata.users ? ("向 " + postWsMessage.metadata.users.toString()) : "全部用户") + " 推送消息，" +
                             "<br><a class='withdrawTrigger' data-wsid='" + postWsMessage.id + "' style='color: #f8ac59'>点我撤回</a>", "消息ID: " + postWsMessage.id,
                             "push_manager_notify_success_" + postWsMessage.id)
-                        .find(".withdrawTrigger").click(function () {
+                        .find(".withdrawTrigger").on('click', function () {
                         modal.find(".push_content").val("@del:" + this.getAttribute("data-wsid"));
                         modal.find(".push_type").val("push_message").trigger("change");
                         modal.find(".push_users").val("0");

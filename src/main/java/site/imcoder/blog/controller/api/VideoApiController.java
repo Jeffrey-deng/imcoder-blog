@@ -5,18 +5,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
-import site.imcoder.blog.Interceptor.annotation.AccessRecorder;
+import site.imcoder.blog.Interceptor.annotation.AccessRecord;
 import site.imcoder.blog.Interceptor.annotation.GZIP;
 import site.imcoder.blog.Interceptor.annotation.LoginRequired;
 import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.controller.BaseController;
 import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
 import site.imcoder.blog.controller.resolver.annotation.BindNullIfEmpty;
-import site.imcoder.blog.entity.AccessRecord;
+import site.imcoder.blog.entity.AccessDetail;
 import site.imcoder.blog.entity.Photo;
 import site.imcoder.blog.entity.Subtitle;
 import site.imcoder.blog.entity.Video;
-import site.imcoder.blog.entity.rewrite.VideoAccessRecord;
 import site.imcoder.blog.service.IAlbumService;
 import site.imcoder.blog.service.IVideoService;
 import site.imcoder.blog.service.message.IRequest;
@@ -222,66 +221,40 @@ public class VideoApiController extends BaseController {
     /**
      * 点赞视频
      *
-     * @param video        - 只需传video_id
-     * @param undo         - true: 取消赞，false: 赞
-     * @param accessRecord
+     * @param video    - 只需传video_id
+     * @param undo     - true: 取消赞，false: 赞
      * @param iRequest
      * @return IResponse:
      * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
      */
-    @AccessRecorder(type = AccessRecorder.Types.VIDEO, key = "video", action = AccessRecorder.Actions.LIKE, recordRewriteKey = "recordRewriteKey")
     @RequestMapping(params = "method=likeVideo")
     @ResponseBody
-    public IResponse likeVideo(Video video, @RequestParam(defaultValue = "false") boolean undo, VideoAccessRecord accessRecord, IRequest iRequest) {
-        IResponse videoResp = videoService.findVideo(video, iRequest);
-        if (videoResp.isSuccess()) {
-            Video db_video = videoResp.getAttr("video");
-            if (!undo) {    // 赞
-                if (db_video.getLiked() != null && db_video.getLiked()) {
-                    videoResp.setMessage("你已经赞过该视频了~");
-                    videoResp.putAttr("type", 0);
-                    accessRecord.setIs_like(null);
-                } else {
-                    videoResp.putAttr("type", 1);
-                    accessRecord.setIs_like(1);
-                }
-            } else {    // 取消赞
-                if (db_video.getLiked() != null && db_video.getLiked()) {
-                    videoResp.putAttr("type", 1);
-                    accessRecord.setIs_like(0);
-                } else {
-                    videoResp.setMessage("你并没有赞过该视频~");
-                    videoResp.putAttr("type", 0);
-                    accessRecord.setIs_like(null);
-                }
-            }
-            videoResp.putAttr("recordRewriteKey", accessRecord);
-        } else {
-            return videoResp;
-        }
-        return videoResp;
+    public IResponse likeVideo(Video video, @RequestParam(defaultValue = "false") boolean undo, IRequest iRequest) {
+        return videoService.likeVideo(video, undo, iRequest);
     }
 
     /**
-     * 查询视频的历史用户访问记录
+     * 查询视频的用户动作记录
      *
      * @param video
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * videoActionRecords
+     * video_action_record_count
      */
     @LoginRequired
-    @RequestMapping(params = "method=getVideoAccessRecordList")
+    @RequestMapping(params = "method=getVideoActionRecordList")
     @ResponseBody
     @GZIP
-    public IResponse getVideoAccessRecordList(Video video, IRequest iRequest) {
-        return videoService.findVideoAccessRecordList(video, iRequest);
+    public IResponse getVideoActionRecordList(Video video, IRequest iRequest) {
+        return videoService.findVideoActionRecordList(video, iRequest);
     }
 
     /**
      * 手动触发保存视频的一次访问记录，以处理自动记录不能处理的情况
      *
-     * @param accessRecord
+     * @param accessDetail
      * @param video_id
      * @param cover_id
      * @param iRequest
@@ -289,11 +262,11 @@ public class VideoApiController extends BaseController {
      * status - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 视频ID未找到
      * video - video
      */
-    @AccessRecorder(type = AccessRecorder.Types.VIDEO, key = "video", recordRewriteKey = "recordRewriteKey")
+    @AccessRecord(type = AccessRecord.Types.VIDEO, key = "video", recordRewriteKey = "recordRewriteKey")
     @RequestMapping(params = "method=triggerVideoAccess")
     @ResponseBody
     public IResponse triggerVideoAccess(
-            VideoAccessRecord accessRecord,
+            AccessDetail accessDetail,
             @RequestParam(defaultValue = "0") @PrimaryKeyConvert Long video_id,
             @RequestParam(defaultValue = "0") @PrimaryKeyConvert Long cover_id,
             IRequest iRequest) {
@@ -305,8 +278,8 @@ public class VideoApiController extends BaseController {
         IResponse videoResp = videoService.findVideo(video, iRequest);
         if (videoResp.isSuccess()) {
             videoResp.setMessage("访问记录提交成功~");
-            if (accessRecord != null) {
-                videoResp.putAttr("recordRewriteKey", accessRecord);
+            if (accessDetail != null) {
+                videoResp.putAttr("recordRewriteKey", accessDetail);
             }
         }
         return videoResp;

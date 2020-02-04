@@ -31,10 +31,19 @@
             "copyVideoUrlTrigger": ".copyVideoUrl_btn"
         },
         callback: {
+            "beforeUpload": function (context, videoInfo, videoFile, coverFile, formData) {  // 每一个图片上传之前回调，返回一个Deferred对象可以异步执行
+                return;
+            },
             "uploadCompleted": function (context, video) {  // 视频上传完成后回调
                 return;
             },
+            "beforeUpdate": function (context, videoInfo, videoFile, coverFile, formData) {  // 更新之前回调，返回一个Deferred对象可以异步执行
+                return;
+            },
             "updateCompleted": function (context, video) {  // 更新完成后回调
+                return;
+            },
+            "beforeDelete": function (context, params) {  // 删除之前回调，返回一个Deferred对象可以异步执行
                 return;
             },
             "deleteCompleted": function (context, params) {  // 删除完成后回调
@@ -504,9 +513,9 @@
                 var tag = _self.text();
                 if (config.tagExtendClickEvent) {  // 是否按住alt点击
                     clickEvt.preventDefault();
-                    utils.triggerEvent(config.event.tagExtendClick, tag, video_id, clickEvt, config.tagExtendClickEvent);
+                    context.trigger(config.event.tagExtendClick, tag, video_id, clickEvt, config.tagExtendClickEvent);
                 } else {
-                    utils.triggerEvent(config.event.tagClick, tag, video_id, clickEvt);
+                    context.trigger(config.event.tagClick, tag, video_id, clickEvt);
                 }
             }
         }, ".tag-content");
@@ -662,50 +671,53 @@
             data.append("cover.iscover", 0);
             data.append("cover.refer", photoInfo.refer);
         }
-        // 上传之前回调
-        utils.triggerEvent(config.event.beforeUpload, videoInfo, videoFile, coverFile, data);
-        common_utils.notify({
-            "progressBar": false,
-            "hideDuration": 0,
-            "showDuration": 0,
-            "timeOut": 0,
-            "closeButton": false
-        }).success("正在上传视频", "", "notify_uploading");
-        $.ajax({
-            url: "video.api?method=upload",
-            data: data,
-            type: "POST",
-            contentType: false,
-            cache: false,
-            processData: false,
-            success: function (response) {
-                pointer.uploadModal.find('input[name="cover_photo_id"]').val("0");
-                if (response.status == 200) {
-                    var data = response.data;
-                    common_utils.removeNotify("notify_uploading");
-                    toastr.success("上传完成！");
-                    config.callback.uploadCompleted.call(context, context, data.video); // 回调
-                    utils.triggerEvent(config.event.uploadCompleted, data.video);
-                    pointer.uploadModal.modal('hide');
-                    pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
-                    pointer.uploadModal.find('input[name="video_file"]').val("");
-                    pointer.uploadModal.find('input[name="cover_file"]').val("");
-                } else {
+        const call = function () {
+            common_utils.notify({
+                "progressBar": false,
+                "hideDuration": 0,
+                "showDuration": 0,
+                "timeOut": 0,
+                "closeButton": false
+            }).success("正在上传视频", "", "notify_uploading");
+            // 上传之前回调
+            context.trigger(config.event.beforeUpload, videoInfo, videoFile, coverFile, data);
+            $.ajax({
+                url: "video.api?method=upload",
+                data: data,
+                type: "POST",
+                contentType: false,
+                cache: false,
+                processData: false,
+                success: function (response) {
+                    pointer.uploadModal.find('input[name="cover_photo_id"]').val("0");
+                    if (response.status == 200) {
+                        var data = response.data;
+                        common_utils.removeNotify("notify_uploading");
+                        toastr.success("上传完成！");
+                        config.callback.uploadCompleted.call(context, context, data.video); // 回调
+                        context.trigger(config.event.uploadCompleted, data.video);
+                        pointer.uploadModal.modal('hide');
+                        pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
+                        pointer.uploadModal.find('input[name="video_file"]').val("");
+                        pointer.uploadModal.find('input[name="cover_file"]').val("");
+                    } else {
+                        videoFile == null && (videoFile = {"name": "文件为空"});
+                        common_utils.removeNotify("notify_uploading");
+                        toastr.error(response.message, videoFile.name + ", 上传失败", {timeOut: 0});
+                        console.log("Error Code: " + videoFile.name + " upload fail - " + response.status);
+                        pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
+                    }
+                },
+                error: function () {
                     videoFile == null && (videoFile = {"name": "文件为空"});
                     common_utils.removeNotify("notify_uploading");
-                    toastr.error(response.message, videoFile.name + ", 上传失败", {timeOut: 0});
-                    console.log("Error Code: " + videoFile.name + " upload fail - " + response.status);
+                    toastr.error(videoFile.name + " 上传失败", "未知错误", {timeOut: 0});
                     pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
+                    pointer.uploadModal.find('input[name="cover_photo_id"]').val("0");
                 }
-            },
-            error: function () {
-                videoFile == null && (videoFile = {"name": "文件为空"});
-                common_utils.removeNotify("notify_uploading");
-                toastr.error(videoFile.name + " 上传失败", "未知错误", {timeOut: 0});
-                pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr("disabled");
-                pointer.uploadModal.find('input[name="cover_photo_id"]').val("0");
-            }
-        });
+            });
+        };
+        common_utils.wrapAsyncResult(config.callback.beforeUpload)(context, videoInfo, videoFile, coverFile, data).then(call);
     };
 
     var updateVideo = function (videoFile, coverFile, videoInfo) {
@@ -744,54 +756,84 @@
             data.append("cover.iscover", 0);
             data.append("cover.refer", photoInfo.refer);
         }
-        common_utils.notify({
-            "progressBar": false,
-            "hideDuration": 0,
-            "showDuration": 0,
-            "timeOut": 0,
-            "closeButton": false
-        }).success("正在" + ((videoFile || coverFile) ? "上传" : "更新") + "视频", "", "notify_updating");
-        pointer.updateModal.find('button[name="updateVideo_trigger"]').attr("disabled", "disabled");
-        // 更新之前回调
-        utils.triggerEvent(config.event.beforeUpdate, videoInfo, videoFile, coverFile, data);
-        $.ajax({
-            url: "video.api?method=update",
-            data: data,
-            type: "POST",
-            contentType: false,
-            cache: false,
-            processData: false,
-            success: function (response) {
-                common_utils.removeNotify("notify_updating");
-                if (response.status == 200) {
-                    var data = response.data;
-                    toastr.success("更新完成！");
-                    config.callback.updateCompleted.call(context, context, data.video); // 回调
-                    utils.triggerEvent(config.event.updateCompleted, data.video);
-                    pointer.updateModal.modal('hide');
-                    pointer.updateModal.find('input[name="video_file"]').val("");
-                    pointer.updateModal.find('input[name="cover_file"]').val("");
-                } else {
-                    toastr.error(response.message, "更新失败", {timeOut: 0});
-                    console.log("Error Code: " + response.status + " update fail - " + response.message);
+        const call = function () {
+            common_utils.notify({
+                "progressBar": false,
+                "hideDuration": 0,
+                "showDuration": 0,
+                "timeOut": 0,
+                "closeButton": false
+            }).success("正在" + ((videoFile || coverFile) ? "上传" : "更新") + "视频", "", "notify_updating");
+            pointer.updateModal.find('button[name="updateVideo_trigger"]').attr("disabled", "disabled");
+            // 更新之前回调
+            context.trigger(config.event.beforeUpdate, videoInfo, videoFile, coverFile, data);
+            $.ajax({
+                url: "video.api?method=update",
+                data: data,
+                type: "POST",
+                contentType: false,
+                cache: false,
+                processData: false,
+                success: function (response) {
+                    common_utils.removeNotify("notify_updating");
+                    if (response.status == 200) {
+                        var data = response.data;
+                        toastr.success("更新完成！");
+                        config.callback.updateCompleted.call(context, context, data.video); // 回调
+                        context.trigger(config.event.updateCompleted, data.video);
+                        pointer.updateModal.modal('hide');
+                        pointer.updateModal.find('input[name="video_file"]').val("");
+                        pointer.updateModal.find('input[name="cover_file"]').val("");
+                    } else {
+                        toastr.error(response.message, "更新失败", {timeOut: 0});
+                        console.log("Error Code: " + response.status + " update fail - " + response.message);
+                    }
+                    pointer.updateModal.find('button[name="updateVideo_trigger"]').removeAttr("disabled");
+                },
+                error: function (XHR, TS) {
+                    common_utils.removeNotify("notify_uploading");
+                    toastr.error(" 上传失败, " + TS, "错误", {timeOut: 0});
+                    pointer.updateModal.find('button[name="updateVideo_trigger"]').removeAttr("disabled");
                 }
-                pointer.updateModal.find('button[name="updateVideo_trigger"]').removeAttr("disabled");
-            },
-            error: function (XHR, TS) {
-                common_utils.removeNotify("notify_uploading");
-                toastr.error(" 上传失败, " + TS, "错误", {timeOut: 0});
-                pointer.updateModal.find('button[name="updateVideo_trigger"]').removeAttr("disabled");
-            }
-        });
+            });
+        };
+        common_utils.wrapAsyncResult(config.callback.beforeUpdate)(context, videoInfo, videoFile, coverFile, data).then(call);
     };
 
     var deleteVideo = function (video_id) {
-        var params = {"video_id": video_id};
-        var allow = utils.triggerEvent(config.event.beforeDelete, params);
-        if (allow === false) {
+        if (true) {
+            toastr.error("删除功能开发中~");
             return;
         }
-        toastr.error("删除功能开发中~");
+        if (video_id && video_id != "0") {
+            var params = {"video_id": video_id};
+            var call = function (allow) {
+                if (context.trigger(config.event.beforeDelete, params) === false) {
+                    allow = false;
+                }
+                if (allow === false) {
+                    return;
+                }
+                $.post("video.api?method=delete", params, function (response) {
+                    if (response.status == 200) {
+                        toastr.success("删除成功", "", {"progressBar": false});
+                        pointer.updateModal.modal('hide');
+                        config.callback.deleteCompleted.call(context, context, params); // 回调
+                        context.trigger(config.event.deleteCompleted, video_id);
+                    } else {
+                        toastr.error(response.message, "错误", {"progressBar": false});
+                        console.warn("Error Code: " + response.status);
+                    }
+                });
+            };
+            var allow = true;
+            common_utils.wrapAsyncResult.call(context, config.callback.beforeDelete)(context, params).then(function (allowDelete) {
+                if (allowDelete === false) {
+                    allow = false;
+                }
+                call(allow);
+            });
+        }
     };
 
     var uploadSubtitle = function (file, subtitle, call) {
@@ -1041,29 +1083,6 @@
         });
     };
     var utils = {
-        "once": function (eventName, func, bindFirst) {
-            var funcWrapper = function () {
-                try {
-                    func.apply(context, arguments);
-                } finally {
-                    utils.unbindEvent(eventName, funcWrapper);
-                }
-            };
-            utils.bindEvent(eventName, funcWrapper, bindFirst);
-        },
-        "bindEvent": function (eventName, func, bindFirst) {
-            if (bindFirst == true) {
-                $(context).onfirst(eventName, func);
-            } else {
-                $(context).bind(eventName, func);
-            }
-        },
-        "triggerEvent": function (eventName) {
-            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
-        },
-        "unbindEvent": function (eventName, func) {
-            $(context).unbind(eventName, func);
-        },
         "calcTagInputWidth": function (tags_modify_dom) {
             var tag_single_nodes = tags_modify_dom.find(".tag-single");
             var maxOffset = 0;
@@ -1146,7 +1165,11 @@
         "loadVideo": loadVideo,
         "loadAlbums": loadAlbums,
         "openUploadVideoModal": openUploadVideoModal,
-        "openUpdateVideoModal": openUpdateVideoModal
+        "openUpdateVideoModal": openUpdateVideoModal,
+        "on": common_utils.on,
+        "once": common_utils.once,
+        "trigger": common_utils.trigger,
+        "off": common_utils.off
     };
     return context;
 

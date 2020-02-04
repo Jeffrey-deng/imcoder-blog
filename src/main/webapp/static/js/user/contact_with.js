@@ -14,8 +14,9 @@
 })(function ($, domReady, toastr, login_handle) {
 
     function follow(hostUser) {
+        var $followBtn = $('.follow');
         if (login_handle.validateLogin()) {
-            if ($('.follow').attr('followed') == "false") {
+            if ($followBtn.attr('followed') == "false") {
                 $.ajax({
                     url: 'user.api?method=follow',
                     type: "POST",
@@ -25,14 +26,14 @@
                             var data = response.data;
                             if (data.type == 1) {
                                 toastr.success('关注成功~');
-                                $('.follow').attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
+                                $followBtn.attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
                             } else if (data.type == 0) {
                                 toastr.success(data.info);
-                                $('.follow').attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
+                                $followBtn.attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
                             } else if (data.type == 2) {
                                 toastr.success('关注成功~');
                                 toastr.info('你们由于互相关注，自动成为好友~');
-                                $('.follow').attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
+                                $followBtn.attr('followed', 'true').html('<i class="fa fa-thumbs-up"></i>已关注');
                             }
                         } else {
                             toastr.error(response.message, '关注失败！');
@@ -54,11 +55,11 @@
                             var data = response.data;
                             if (data.type == 1) {
                                 toastr.success('取消关注成功~');
-                                $('.follow').attr('followed', 'false').html('<i class="fa fa-thumbs-up"></i>关注');
+                                $followBtn.attr('followed', 'false').html('<i class="fa fa-thumbs-up"></i>关注');
                             } else if (data.type == 2) {
                                 toastr.success('取消关注成功~');
                                 toastr.info('好友关系也自动取消~');
-                                $('.follow').attr('followed', 'false').html('<i class="fa fa-thumbs-up"></i>关注');
+                                $followBtn.attr('followed', 'false').html('<i class="fa fa-thumbs-up"></i>关注');
                             }
                         } else {
                             toastr.error(response.message, '取消关注失败~');
@@ -74,7 +75,7 @@
         } else {
             //弹出登陆框
             login_handle.showLoginModal("", function () {
-                $('.follow').eq(0).click();
+                $followBtn.eq(0).click();
             });
         }
 

@@ -14,8 +14,8 @@
 })(function ($, bootstrap, domReady, toastr, common_utils, login_handle) {
 
     var request = {
-        "loadUserAccessRecordList": function (uid, success) {
-            return $.get("user.api?method=getUserAccessRecordList", {"user.uid": uid}, function (response) {
+        "loadUserActionRecordList": function (uid, success) {
+            return $.get("user.api?method=getUserActionRecordList", {"user.uid": uid}, function (response) {
                 if (response.status == 200) {
                     success(response.data);
                 } else {
@@ -28,59 +28,62 @@
 
     domReady(function () {
         var hostUser = login_handle.getCurrentUserId();
-        request.loadUserAccessRecordList(hostUser, function (data) {
-            var article_access_record_count = data.article_access_record_count,
-                photo_access_record_count = data.photo_access_record_count,
-                video_access_record_count = data.video_access_record_count,
-                real_article_access_record_count = 0,
-                real_photo_access_record_count = 0,
-                real_video_access_record_count = 0,
+        request.loadUserActionRecordList(hostUser, function (data) {
+            var article_action_record_count = data.article_action_record_count,
+                photo_action_record_count = data.photo_action_record_count,
+                video_action_record_count = data.video_action_record_count,
+                real_article_action_record_count = 0,
+                real_photo_action_record_count = 0,
+                real_video_action_record_count = 0,
                 article_liked_count = 0,
                 photo_liked_count = 0,
                 video_liked_count = 0,
                 real_article_liked_count = 0,
                 real_photo_liked_count = 0,
                 real_video_liked_count = 0;
-            data.articleAccessRecords.forEach(function (ar) {
-                if (ar.bean && ar.bean.aid && ar.bean.aid != "0") {
-                    real_article_access_record_count++;
-                    if (ar.is_like > 0) {
+            data.articleActionRecords.forEach(function (ar) {
+                var article = ar.creation;
+                if (article && article.aid && article.aid != "0") {
+                    real_article_action_record_count++;
+                    if (ar.liked) {
                         real_article_liked_count++;
                     }
                 }
-                if (ar.is_like > 0) {
+                if (ar.liked) {
                     article_liked_count++;
                 }
             });
-            data.photoAccessRecords.forEach(function (ar) {
-                if (ar.bean && ar.bean.photo_id && ar.bean.photo_id != "0") {
-                    real_photo_access_record_count++;
-                    if (ar.is_like > 0) {
+            data.photoActionRecords.forEach(function (ar) {
+                var photo = ar.creation;
+                if (photo && photo.photo_id && photo.photo_id != "0") {
+                    real_photo_action_record_count++;
+                    if (ar.liked) {
                         real_photo_liked_count++;
                     }
                 }
-                if (ar.is_like > 0) {
+                if (ar.liked) {
                     photo_liked_count++
                 }
             });
-            data.videoAccessRecords.forEach(function (ar) {
-                if (ar.bean && ar.bean.video_id && ar.bean.video_id != "0") {
-                    real_video_access_record_count++;
-                    if (ar.is_like > 0) {
+            data.videoActionRecords.forEach(function (ar) {
+                var video = ar.creation;
+                if (video && video.video_id && video.video_id != "0") {
+                    real_video_action_record_count++;
+                    if (ar.liked) {
                         real_video_liked_count++;
                     }
                 }
-                if (ar.is_like > 0) {
+                if (ar.liked) {
                     video_liked_count++
                 }
             });
             var $user_history_panel = $('#user_history_panel');
             $user_history_panel.find('.user_history_articles a')
-                .text('文章：' + real_article_access_record_count).attr('title', '总记录：' + article_access_record_count + '\n可能其中某些你没有权限访问或已被作者删除');
+                .text('文章：' + real_article_action_record_count).attr('title', '总记录：' + article_action_record_count + '\n可能其中某些你没有权限访问或已被作者删除');
             $user_history_panel.find('.user_history_photos a')
-                .text('照片：' + real_photo_access_record_count).attr('title', '总记录：' + photo_access_record_count + '\n可能其中某些你没有权限访问或已被作者删除');
+                .text('照片：' + real_photo_action_record_count).attr('title', '总记录：' + photo_action_record_count + '\n可能其中某些你没有权限访问或已被作者删除');
             $user_history_panel.find('.user_history_videos a')
-                .text('视频：' + real_video_access_record_count).attr('title', '总记录：' + video_access_record_count + '\n可能其中某些你没有权限访问或已被作者删除');
+                .text('视频：' + real_video_action_record_count).attr('title', '总记录：' + video_action_record_count + '\n可能其中某些你没有权限访问或已被作者删除');
 
             var user_likes_panel = $('#user_likes_panel');
             user_likes_panel.find('.user_likes_articles a')

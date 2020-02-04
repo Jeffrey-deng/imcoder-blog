@@ -106,14 +106,14 @@
                     jumpPage(_self.getAttribute('jumpPage'))
                 }
                 config.callback.paginationClick_callback.call(context, _self.parentNode);
-                utils.triggerEvent(config.event.pagePaginationClick, _self.parentNode);
+                context.trigger(config.event.pagePaginationClick, _self.parentNode);
                 return false;
             });
             $("#" + config.selector.albumsContainer_id)
                 .on("click", ".album_name", function (e) {
                     var album = utils.getAlbumByCache(e.currentTarget.parentNode.getAttribute("data-id"));
                     config.callback.actionForEditAlbum.call(context, album);
-                    utils.triggerEvent(config.event.actionForEditAlbum, album);
+                    context.trigger(config.event.actionForEditAlbum, album);
                 })
                 .on({
                     "dragstart": function (e) {
@@ -130,7 +130,7 @@
                         toastr.remove(pointer.notify_drag, true);
                         var album = utils.getAlbumByCache(e.currentTarget.parentNode.parentNode.getAttribute("data-id"));
                         config.callback.actionForEditAlbum.call(context, album);
-                        utils.triggerEvent(config.event.actionForEditAlbum, album);
+                        context.trigger(config.event.actionForEditAlbum, album);
                     }
                 }, "img");
 
@@ -217,7 +217,7 @@
             document.title,
             location.pathname + search
         );
-        utils.triggerEvent(config.event.pageJumpCompleted, pagenum); // 页码跳转完成事件
+        context.trigger(config.event.pageJumpCompleted, pagenum); // 页码跳转完成事件
     };
 
     var assembleCurrentPageHtml = function (pagenum) {
@@ -232,10 +232,11 @@
             fragment.appendChild(utils.createAlbumNode(albums[i]));
         }
 
-        var albumsContainer = document.getElementById(config.selector.albumsContainer_id);
-        albumsContainer.innerHTML = "";
-        albumsContainer.appendChild(fragment);
-        utils.replaceLoadErrorImgToDefault(albumsContainer);
+        var $albumsContainer = $('#' + config.selector.albumsContainer_id);
+        // empty()会移除子元素上的所有事件和数据data
+        // 只用 albumsContainer.innerHTML = ""; 会有内存泄露，因为数据还在JQuery里存着
+        $albumsContainer.html(fragment);
+        utils.replaceLoadErrorImgToDefault($albumsContainer);
 
         // 分页
         var navigator_fragment = document.createDocumentFragment();
@@ -270,9 +271,8 @@
             page_right.className = "page-right";
             navigator_fragment.appendChild(page_right);
         }
-        var page_nav_dom = $(config.selector.page_nav).get(0);
-        page_nav_dom.innerHTML = "";
-        page_nav_dom.appendChild(navigator_fragment);
+        var $page_nav_dom = $(config.selector.page_nav);
+        $page_nav_dom.html(navigator_fragment);
         utils.calcNavLocation();
     };
 
@@ -348,34 +348,11 @@
             // pointer.masonryInstance.recalculate(true, true); 刷新所有（无视完成标记） / 添加完成标记
             pointer.notify_pageloading && toastr.remove(pointer.notify_pageloading, true);
             config.callback.photosOnLoad_callback.call(context, pointer.masonryInstance, nodes);
-            utils.triggerEvent(config.event.pageLoadCompleted, pointer.masonryInstance, nodes);
+            context.trigger(config.event.pageLoadCompleted, pointer.masonryInstance, nodes);
         });
     };
 
     var utils = {
-        "once": function (eventName, func, bindFirst) {
-            var funcWrapper = function () {
-                try {
-                    func.apply(context, arguments);
-                } finally {
-                    utils.unbindEvent(eventName, funcWrapper);
-                }
-            };
-            utils.bindEvent(eventName, funcWrapper, bindFirst);
-        },
-        "bindEvent": function (eventName, func, bindFirst) {
-            if (bindFirst == true) {
-                $(context).onfirst(eventName, func);
-            } else {
-                $(context).bind(eventName, func);
-            }
-        },
-        "triggerEvent": function (eventName) {
-            return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
-        },
-        "unbindEvent": function (eventName, func) {
-            $(context).unbind(eventName, func);
-        },
         "createAlbumNode": function (album) {
             var div = document.createElement("div");
             div.id = (config.selector.album_id_prefix + album.album_id);
@@ -404,6 +381,7 @@
             span.innerText = album.name;
             nameDiv.appendChild(span);
 
+            $(div).data('album', album);
             config.callback.makeupNode_callback.call(context, div, album);
             return div;
         },
@@ -552,7 +530,11 @@
         "jumpPage": jumpPage,
         "assembleCurrentPageHtml": assembleCurrentPageHtml,
         "utils": utils,
-        "initWaterfallFlow": initWaterfallFlow
+        "initWaterfallFlow": initWaterfallFlow,
+        "on": common_utils.on,
+        "once": common_utils.once,
+        "trigger": common_utils.trigger,
+        "off": common_utils.off
     };
 
     return context;
