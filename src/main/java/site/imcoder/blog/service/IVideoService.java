@@ -104,6 +104,17 @@ public interface IVideoService {
     public IResponse likeVideo(Video video, boolean undo, IRequest iRequest);
 
     /**
+     * 更新视频设置
+     *
+     * @param video    - 设置videoSetting属性
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 封面未找到, 500: 服务器错误
+     * video - video对象
+     */
+    public IResponse updateVideoSetting(Video video, IRequest iRequest);
+
+    /**
      * 查询视频的历史用户动作记录
      *
      * @param video

@@ -244,7 +244,7 @@ public class UserServiceImpl extends BaseService implements IUserService {
         User loginUser = iRequest.getLoginUser();
         IResponse response = new IResponse();
         if (user == null || !IdUtil.containValue(user.getUid())) {
-            if (loginUser == null) {
+            if (iRequest.isHasNotLoggedIn()) {
                 return response.setStatus(STATUS_PARAM_ERROR, "请设置要查询的用户id");
             } else {
                 return response.putAttr("user", loginUser).setStatus(STATUS_SUCCESS, "未设置要查询的用户id，返回当前登录用户资料");
@@ -263,7 +263,7 @@ public class UserServiceImpl extends BaseService implements IUserService {
                 boolean enableSecurity = (loginUser == null || (loginUser.getUserGroup().isGeneralUser() && !user.getUid().equals(loginUser.getUid())));
                 cache.fillUserStats(hostUser, enableSecurity);
                 hostUser.setUserAuths(null);
-                //loginUser-->判断主人各项资料访客的查看权限
+                // loginUser-->判断主人各项资料访客的查看权限
                 if (enableSecurity) {
                     hostUser.setUserStatus(null);
                     hostUser.setEmail(null);
@@ -477,7 +477,7 @@ public class UserServiceImpl extends BaseService implements IUserService {
      * type - 1：已关注，0：未关注
      */
     @Override
-    public IResponse checkFollow(User hostUser, IRequest iRequest) {
+    public IResponse checkIsFollowing(User hostUser, IRequest iRequest) {
         IResponse response = new IResponse();
         if (iRequest.isHasNotLoggedIn()) {
             return response.setStatus(STATUS_NOT_LOGIN);
@@ -485,7 +485,7 @@ public class UserServiceImpl extends BaseService implements IUserService {
             return response.setStatus(STATUS_PARAM_ERROR);
         } else {
             Follow follow = new Follow(iRequest.getLoginUser().getUid(), hostUser.getUid());
-            // userDao.checkFollow(follow)
+            // userDao.checkFollow(follow);
             if (cache.containsFollow(follow) > 0) {
                 return response.setStatus(STATUS_SUCCESS, "已关注").putAttr("type", 1);
             } else {
@@ -549,7 +549,7 @@ public class UserServiceImpl extends BaseService implements IUserService {
      * type - 1: 取消关注成功, 2: 取消关注成功并取消好友
      */
     @Override
-    public IResponse removeFollow(User hostUser, IRequest iRequest) {
+    public IResponse unfollow(User hostUser, IRequest iRequest) {
         User loginUser = iRequest.getLoginUser();
         IResponse response = new IResponse();
         if (iRequest.isHasNotLoggedIn()) {
@@ -636,7 +636,7 @@ public class UserServiceImpl extends BaseService implements IUserService {
      * type - 1：已收藏，0：未收藏
      */
     @Override
-    public IResponse checkCollection(Article article, IRequest iRequest) {
+    public IResponse checkArticleIsCollected(Article article, IRequest iRequest) {
         IResponse response = new IResponse();
         if (iRequest.isHasNotLoggedIn()) {
             response.setStatus(STATUS_NOT_LOGIN);
@@ -646,7 +646,7 @@ public class UserServiceImpl extends BaseService implements IUserService {
             if (userDao.checkCollection(new Collection(iRequest.getLoginUser().getUid(), article.getAid())) > 0) {
                 response.setStatus(STATUS_SUCCESS, "已收藏").putAttr("type", 1);
             } else {
-                response.setStatus(STATUS_NOT_FOUND, "未收藏").putAttr("type", 0);
+                response.setStatus(STATUS_SUCCESS, "未收藏").putAttr("type", 0);
             }
         }
         return response;
@@ -674,9 +674,9 @@ public class UserServiceImpl extends BaseService implements IUserService {
         } else if (cache.getArticle(article.getAid(), Cache.READ) == null) {
             return response.setStatus(STATUS_NOT_FOUND, "无此文章");
         }
-        Collection clet = new Collection(loginUser.getUid(), article.getAid());
-        clet.setClet_time(new Date().getTime());
-        int index = userDao.saveCollection(clet); // 插入
+        Collection collection = new Collection(loginUser.getUid(), article.getAid());
+        collection.setClet_time(new Date().getTime());
+        int index = userDao.saveCollection(collection); // 插入
         if (index == 1) {
             // 文章收藏数加1
             trigger.addCollection(article, loginUser);
@@ -684,7 +684,7 @@ public class UserServiceImpl extends BaseService implements IUserService {
             notifyService.collectedByUser(loginUser, article);
             response.setStatus(STATUS_SUCCESS, "收藏成功~").putAttr("type", 1);
         } else if (index == 2) {
-            response.setStatus(STATUS_SUCCESS, "重复插入~").putAttr("type", 0);
+            response.setStatus(STATUS_SUCCESS, "重复收藏~").putAttr("type", 0);
         } else {
             response.setStatus(STATUS_SERVER_ERROR);
         }
@@ -699,12 +699,12 @@ public class UserServiceImpl extends BaseService implements IUserService {
      * collections - 收藏文章列表
      */
     @Override
-    public IResponse findCollectList(IRequest iRequest) {
+    public IResponse findCollectedArticleList(IRequest iRequest) {
         IResponse response = new IResponse();
         if (iRequest.isHasNotLoggedIn()) {
             return response.setStatus(STATUS_NOT_LOGIN);
         } else {
-            return response.putAttr("collections", userDao.findCollectList(iRequest.getLoginUser())).setStatus(STATUS_SUCCESS);
+            return response.putAttr("collections", userDao.findCollectionList(iRequest.getLoginUser())).setStatus(STATUS_SUCCESS);
         }
     }
 
@@ -715,21 +715,23 @@ public class UserServiceImpl extends BaseService implements IUserService {
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * type - 0: 并没有收藏过该文章, 1: 取消收藏成功
      */
     @Override
-    public IResponse removeArticleCollection(Article article, IRequest iRequest) {
+    public IResponse uncollectArticle(Article article, IRequest iRequest) {
         User loginUser = iRequest.getLoginUser();
         IResponse response = new IResponse();
         if (iRequest.isHasNotLoggedIn()) {
             return response.setStatus(STATUS_NOT_LOGIN);
         }
-        Collection clet = new Collection(loginUser.getUid(), article.getAid());
-        //user-->删除用户收藏表行
-        int row = userDao.deleteCollection(clet);
-        if (row > 0) {
-            //文章收藏数减1
-            trigger.deleteCollection(article, loginUser);
-            response.setStatus(STATUS_SUCCESS);
+        Collection collection = new Collection(loginUser.getUid(), article.getAid());
+        int row = userDao.deleteCollection(collection);
+        if (row == 0) {
+            response.setStatus(STATUS_SUCCESS, "你并没有收藏过该文章~").putAttr("type", 0);
+        } else if (row > 0) {
+            // 文章收藏数减1
+            trigger.removeCollection(article, loginUser);
+            response.setStatus(STATUS_SUCCESS, "取消收藏成功~").putAttr("type", 1);
         } else {
             response.setStatus(convertRowToHttpCode(row));
         }
@@ -742,7 +744,8 @@ public class UserServiceImpl extends BaseService implements IUserService {
      * @param imageFile       与headPhotoPath二选一
      * @param imageRawFile    头像的原图
      * @param head_photo_path 设置默认头像时传入链接，不需要传file了
-     * @param iRequest
+     * @param iRequest attr:
+     *                 {User} user - 用户id，管理员可以给别人修改头像
      * @return IResponse:
      * status - 200：成功，400: 图片为空，401：需要登录，403：无权限，404：无此用户，500: 失败
      * head_photo - 头像地址
@@ -750,22 +753,37 @@ public class UserServiceImpl extends BaseService implements IUserService {
      */
     @Override
     public IResponse saveHeadPhoto(MultipartFile imageFile, MultipartFile imageRawFile, String head_photo_path, IRequest iRequest) {
-        User loginUser = iRequest.getLoginUser();
         IResponse response = new IResponse();
-        int flag = STATUS_SUCCESS;
         if (iRequest.isHasNotLoggedIn()) {
             response.setStatus(STATUS_NOT_LOGIN);
         } else if ((imageFile == null || imageFile.isEmpty()) && Utils.isEmpty(head_photo_path)) {
             response.setStatus(STATUS_PARAM_ERROR, "imageFile与headPhotoPath二选一");
         }
         if (response.isSuccess()) {
+            User user = iRequest.getAttr("user");
+            if (user != null) {
+                if (IdUtil.containValue(user.getUid())) {
+                    if (iRequest.getLoginUser().getUid().equals(user.getUid()) || iRequest.isManagerRequest()) {
+                        user = cache.getUser(user.getUid(), Cache.READ);
+                        if (user == null) {
+                            response.setStatus(STATUS_NOT_FOUND, "该用户不存在");
+                        }
+                    } else {
+                        response.setStatus(STATUS_FORBIDDEN, "你不能设置别人的头像");
+                    }
+                } else {
+                    response.setStatus(STATUS_PARAM_ERROR, "uid不是合法值");
+                }
+            } else {
+                user = iRequest.getLoginUser();
+            }
             try {
                 String headPhotoValue = null;
                 String headPhotoRawValue = null;
                 if (imageFile != null && !imageFile.isEmpty()) {
-                    String savePath = Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/head/" + IdUtil.convertToShortPrimaryKey(loginUser.getUid()) + "/";
-                    String fileName = "head_photo_" + IdUtil.convertToShortPrimaryKey(loginUser.getUid()) + "_" + IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis()) + ".jpg";
-                    String fileRawName = "head_photo_" + IdUtil.convertToShortPrimaryKey(loginUser.getUid()) + "_" + IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis()) + "_raw.jpg";
+                    String savePath = Config.get(ConfigConstants.ARTICLE_UPLOAD_RELATIVEPATH) + "image/head/" + IdUtil.convertToShortPrimaryKey(user.getUid()) + "/";
+                    String fileName = "head_photo_" + IdUtil.convertToShortPrimaryKey(user.getUid()) + "_" + IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis()) + ".jpg";
+                    String fileRawName = "head_photo_" + IdUtil.convertToShortPrimaryKey(user.getUid()) + "_" + IdUtil.convertDecimalIdTo62radix(System.currentTimeMillis()) + "_raw.jpg";
                     if (fileService.saveHeadPhotoFile(imageFile.getInputStream(), savePath, fileName)) {
                         fileService.saveHeadPhotoFile(imageRawFile.getInputStream(), savePath, fileRawName);
                         headPhotoValue = savePath + fileName;
@@ -778,15 +796,21 @@ public class UserServiceImpl extends BaseService implements IUserService {
                     headPhotoValue = head_photo_path;
                     headPhotoRawValue = head_photo_path;
                 }
-                if (flag == STATUS_SUCCESS) {
-                    User cacheUser = cache.getUser(loginUser.getUid(), Cache.READ);
+                if (response.isSuccess()) {
+                    User cacheUser = cache.getUser(user.getUid(), Cache.READ);
+                    String beforeHeadPhoto = cacheUser.getHead_photo();
+                    // 这里获取到cacheUser为用户session中对象，所以管理员依然可以修改用户session中的头像
                     cacheUser.setHead_photo(headPhotoValue);
-                    response.setStatus(saveProfile(cache.cloneUser(cacheUser), iRequest));
+                    response.setStatus(convertRowToHttpCode(userDao.saveProfile(cacheUser)));
+                    if (response.isFail()) {
+                        cacheUser.setHead_photo(beforeHeadPhoto);
+                    }
+                    response.putAttr("user", new User(cacheUser.getUid()));
                     response.putAttr("head_photo", headPhotoValue);
-                    response.putAttr("head_photo_cdn_path", Config.get(ConfigConstants.SITE_CLOUD_ADDR) + headPhotoValue);
+                    response.putAttr("head_photo_cdn_path", Config.get(ConfigConstants.SITE_CDN_ADDR) + headPhotoValue);
                     response.putAttr("head_photo_raw", headPhotoRawValue);
-                    response.putAttr("head_photo_raw_cdn_path", Config.get(ConfigConstants.SITE_CLOUD_ADDR) + headPhotoRawValue);
-                    response.putAttr("cdn_path_prefix", Config.get(ConfigConstants.SITE_CLOUD_ADDR));
+                    response.putAttr("head_photo_raw_cdn_path", Config.get(ConfigConstants.SITE_CDN_ADDR) + headPhotoRawValue);
+                    response.putAttr("cdn_path_prefix", Config.get(ConfigConstants.SITE_CDN_ADDR));
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -864,6 +888,30 @@ public class UserServiceImpl extends BaseService implements IUserService {
             List<ActionRecord<Photo>> photoActionRecordList = userDao.findPhotoActionRecordList(queryActionRecord, iRequest.getLoginUser());
             response.putAttr("photoActionRecords", photoActionRecordList);
             response.putAttr("photo_action_record_count", photoActionRecordList.size());
+        }
+        return response;
+    }
+
+    /**
+     * 查询用户对相册的动作记录
+     *
+     * @param queryActionRecord
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * albumActionRecords
+     * album_action_record_count
+     */
+    @Override
+    public IResponse findUserAlbumActionRecordList(ActionRecord<Album> queryActionRecord, IRequest iRequest) {
+        if (queryActionRecord == null) {
+            queryActionRecord = new ActionRecord();
+        }
+        IResponse response = reviseQueryActionRecord(queryActionRecord, iRequest);
+        if (response.isSuccess()) {
+            List<ActionRecord<Album>> albumActionRecordList = userDao.findAlbumActionRecordList(queryActionRecord, iRequest.getLoginUser());
+            response.putAttr("albumActionRecords", albumActionRecordList);
+            response.putAttr("album_action_record_count", albumActionRecordList.size());
         }
         return response;
     }

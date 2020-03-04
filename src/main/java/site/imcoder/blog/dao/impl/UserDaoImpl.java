@@ -379,8 +379,8 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
      * @return
      */
     @Override
-    public List<Collection> findCollectList(User user) {
-        return this.getSqlSession().selectList("user.findCollectList", user);
+    public List<Collection> findCollectionList(User user) {
+        return this.getSqlSession().selectList("user.findCollectionList", user);
     }
 
     /**
@@ -563,7 +563,9 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
     public int savePhotoActionRecord(ActionRecord<Photo> actionRecord) {
         try {
             return saveActionRecord(actionRecord, actionRecord.getCreation() != null ? actionRecord.getCreation().getPhoto_id() : null,
-                    "user.findSimplePhotoActionRecord", "user.updatePhotoActionRecord", "user.savePhotoActionRecord");
+                    "user.findSimplePhotoActionRecord",
+                    "user.updatePhotoActionRecord",
+                    "user.savePhotoActionRecord");
         } catch (Exception e) {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("savePhotoActionRecord fail", e);
@@ -634,6 +636,93 @@ public class UserDaoImpl extends CommonDao implements IUserDao {
         } catch (Exception e) {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("deletePhotoAccessDetail fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 保存相册的动作记录
+     *
+     * @param actionRecord
+     * @return
+     */
+    @Override
+    public int saveAlbumActionRecord(ActionRecord<Album> actionRecord) {
+        try {
+            return saveActionRecord(actionRecord, actionRecord.getCreation() != null ? actionRecord.getCreation().getAlbum_id() : null,
+                    "user.findSimpleAlbumActionRecord",
+                    "user.updateAlbumActionRecord",
+                    "user.saveAlbumActionRecord");
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("saveAlbumActionRecord fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 查询相册的动作记录
+     *
+     * @param actionRecord
+     * @return
+     */
+    @Override
+    public ActionRecord<Album> findAlbumActionRecord(ActionRecord<Album> actionRecord) {
+        return this.getSqlSession().selectOne("user.findAlbumActionRecord", actionRecord);
+    }
+
+    /**
+     * 查询相册的动作记录列表
+     *
+     * @param actionRecord
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public List<ActionRecord<Album>> findAlbumActionRecordList(ActionRecord<Album> actionRecord, User loginUser) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("condition", actionRecord);
+        map.put("loginUser", loginUser);
+        return this.getSqlSession().selectList("user.findAlbumActionRecordList", map);
+    }
+
+    /**
+     * 保存相册的访问记录详情
+     *
+     * @param accessDetail
+     * @return
+     */
+    @Override
+    public int saveAlbumAccessDetail(AccessDetail accessDetail) {
+        try {
+            return saveAccessDetail(accessDetail,
+                    new Album(accessDetail.getCreation_id()),
+                    "user.findSimpleAlbumActionRecord",
+                    "user.saveAlbumActionRecord",
+                    "user.findSimpleAlbumAccessDetail",
+                    "user.updateAlbumAccessDetail",
+                    "user.saveAlbumAccessDetail");
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("saveAlbumAccessDetail fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 删除相册的访问记录详情
+     *
+     * @param accessDetail
+     * @return
+     */
+    @Override
+    public int deleteAlbumAccessDetail(AccessDetail accessDetail) {
+        try {
+            return deleteAccessDetail(accessDetail, new Album(accessDetail.getCreation_id()),
+                    "user.findSimpleAlbumActionRecord", "user.deleteAlbumAccessDetail");
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.error("deleteAlbumAccessDetail fail", e);
             return -1;
         }
     }

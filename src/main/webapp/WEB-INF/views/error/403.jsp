@@ -5,7 +5,8 @@
 <%@ taglib prefix="s" uri="http://www.springframework.org/tags" %>
 <%
     String path = request.getContextPath();
-    String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String hostPath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String basePath = Config.get(ConfigConstants.SITE_ADDR);
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
@@ -13,13 +14,12 @@
     request.setAttribute("site_police_record_code", Config.get(ConfigConstants.SITE_POLICE_RECORD_CODE));
     request.setAttribute("site_police_record_number", Config.get(ConfigConstants.SITE_POLICE_RECORD_NUMBER));
 %>
-<%response.setStatus(403); %>
+<%response.setStatus(403);%>
 <!DOCTYPE html>
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <base href="<%=basePath%>" target="_self">
     <title>403 - ImCoder's 博客</title>
     <meta name="keywords" content="403,ImCoder's 博客">
     <meta name="description" content="403,ImCoder's 博客">
@@ -139,10 +139,16 @@
     <h3 class="font-bold">权限不足</h3>
     <div class="error-desc">
         你没有查看此页面的权限! <c:if test="${empty loginUser}">如果您认为您有权限，请<a id="login_btn">登录</a>再试</c:if>
+        <c:if test="${not empty errorInfo}">
+            <br/>原因：${errorInfo}
+        </c:if>
         <br/>
         <a href="<%=basePath%>" class="btn btn-primary m-t">主页</a>
     </div>
 </div>
+<a id="basePath" class="site-path-prefix" href="<%=basePath%>" style="display:none;"></a>
+<a id="staticPath" class="site-path-prefix" href="<%=staticPath%>" style="display:none;"></a>
+<a id="cloudPath" class="site-path-prefix" href="<%=cloudPath%>" style="display:none;"></a>
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
@@ -150,20 +156,22 @@
 <!-- ######################################## -->
 <script>
     if (window.frameElement) {
-        if (document.readyState == "complete") {
-            window.frameElement.style.height = document.body.scrollHeight + 110 + "px";
-        } else {
-            window.onload = function () {
-                setTimeout(function () {
-                    window.frameElement.style.height = document.body.scrollHeight + 110 + "px";
-                }, 500);
+        if (!(window.frameElement.className && window.frameElement.className.indexOf('take-over-css') != -1)) {
+            if (document.readyState == "complete") {
+                window.frameElement.style.height = document.body.scrollHeight + 110 + "px";
+            } else {
+                window.onload = function () {
+                    setTimeout(function () {
+                        window.frameElement.style.height = document.body.scrollHeight + 110 + "px";
+                    }, 500);
+                }
             }
         }
     }
     var login_btn = document.getElementById('login_btn');
     if (login_btn) {
         var encoderUrl = encodeURIComponent(encodeURIComponent(window.location.href));
-        login_btn.href = "auth/login?continue=" + encoderUrl;
+        login_btn.href = "<%=basePath%>auth/login?continue=" + encoderUrl;
     }
 </script>
 </body>

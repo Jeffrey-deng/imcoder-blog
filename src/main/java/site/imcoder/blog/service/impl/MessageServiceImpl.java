@@ -211,7 +211,7 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
     /**
      * 得到评论列表
      *
-     * @param comment  - 传入mainId和mainType
+     * @param comment  - 传入creationId和creationType
      * @param iRequest
      * @return IResponse:
      * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，500: 失败
@@ -221,30 +221,42 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
     public IResponse findCommentList(Comment comment, IRequest iRequest) {
         iRequest.putAttr("loadAccessRecord", false);
         IResponse response = new IResponse();
-        if (comment == null || !IdUtil.containValue(comment.getMainId())) {
-            return response.setStatus(STATUS_PARAM_ERROR, "需要mainId");
+        if (comment == null || !IdUtil.containValue(comment.getCreationId())) {
+            return response.setStatus(STATUS_PARAM_ERROR, "需要creationId");
         }
+        boolean disable_list_comment = false;
         // 根据评论主体类型mainType进行分别操作
-        CommentType commentType = CommentType.valueOf(comment.getMainType());
+        CommentType commentType = CommentType.valueOf(comment.getCreationType());
         switch (commentType) {
             case ARTICLE:   // 文章
-                Article cacheArticle = cache.getArticle(comment.getMainId(), Cache.READ);
+                Article cacheArticle = cache.getArticle(comment.getCreationId(), Cache.READ);
                 response.setStatus(authService.validateUserPermissionUtil(cacheArticle.getAuthor(), cacheArticle.getPermission(), iRequest));
                 break;
             case PHOTO: // 照片
-                response.setStatus(albumService.findPhoto(new Photo(comment.getMainId()), iRequest));
+                response.setStatus(albumService.findPhoto(new Photo(comment.getCreationId()), iRequest));
                 break;
             case VIDEO: // 视频
-                response.setStatus(videoService.findVideo(new Video(comment.getMainId()), iRequest));
+                IResponse videoResp = videoService.findVideo(new Video(comment.getCreationId()), iRequest);
+                response.setStatus(videoResp);
+                if (videoResp.isSuccess()) {
+                    Video video = videoResp.getAttr("video");
+                    disable_list_comment = checkIsCloseComment(video.getSetting().getDisable_list_comment(), video.getUser(), iRequest);
+                }
+                break;
+            case AlBUM: // 相册
+                response.setStatus(albumService.findAlbumInfo(new Album(comment.getCreationId()), iRequest));
                 break;
             case PHOTO_TOPIC: // 照片合集
-                response.setStatus(albumService.findPhotoTagWrapper(new PhotoTagWrapper(comment.getMainId()), iRequest));
+                response.setStatus(albumService.findPhotoTagWrapper(new PhotoTagWrapper(comment.getCreationId()), iRequest));
                 break;
             default:
-                response.setStatus(STATUS_PARAM_ERROR, "该mainType不支持~");
+                response.setStatus(STATUS_PARAM_ERROR, "该creationType不支持~");
                 break;
         }
         if (response.isSuccess()) {
+            if (disable_list_comment) {
+                return response.setStatus(STATUS_FORBIDDEN, "当前评论被关闭").putAttr("forbidden_type", "setting_disable_list_comment");
+            }
             List<Comment> comments = messageDao.findCommentList(comment, iRequest.getLoginUser());
             if (comments != null) {
                 for (Comment cmt : comments) {
@@ -256,6 +268,10 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
             response.putAttr("comments", comments);
         }
         return response;
+    }
+
+    private boolean checkIsCloseComment(boolean close, User author, IRequest iRequest) {
+        return close && !(iRequest.isHasLoggedIn() && (iRequest.getLoginUser().getUid().equals(author.getUid()) || iRequest.isManagerRequest()));
     }
 
     /**
@@ -273,65 +289,79 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
         IResponse response = new IResponse();
         if (iRequest.isHasNotLoggedIn()) {
             return response.setStatus(STATUS_NOT_LOGIN);
-        } else if (comment == null || !IdUtil.containValue(comment.getMainId()) || comment.getContent() == null) {
+        } else if (comment == null || !IdUtil.containValue(comment.getCreationId()) || comment.getContent() == null) {
             return response.setStatus(STATUS_PARAM_ERROR);
         }
+        boolean disable_send_comment = false;
         // 根据评论主体类型mainType进行分别操作
-        CommentType commentType = CommentType.valueOf(comment.getMainType());
-        Object mainTypeCreation = null;
-        Long mainCreationHostUserId = 0L;
+        CommentType commentType = CommentType.valueOf(comment.getCreationType());
+        Object creation = null;
+        Long creationHostUserId = 0L;
         switch (commentType) {
             case ARTICLE:   // 文章
-                Article cacheArticle = cache.getArticle(comment.getMainId(), Cache.READ);
+                Article cacheArticle = cache.getArticle(comment.getCreationId(), Cache.READ);
                 response.setStatus(authService.validateUserPermissionUtil(cacheArticle.getAuthor(), cacheArticle.getPermission(), iRequest));
                 if (response.isSuccess()) {
-                    mainTypeCreation = cacheArticle;
-                    mainCreationHostUserId = cacheArticle.getAuthor().getUid();
+                    creation = cacheArticle;
+                    creationHostUserId = cacheArticle.getAuthor().getUid();
                 }
                 break;
             case PHOTO: // 照片
-                IResponse photoResp = albumService.findPhoto(new Photo(comment.getMainId()), iRequest);
+                IResponse photoResp = albumService.findPhoto(new Photo(comment.getCreationId()), iRequest);
                 response.setStatus(photoResp);
                 if (photoResp.isSuccess()) {
-                    mainTypeCreation = photoResp.getAttr("photo");
-                    mainCreationHostUserId = ((Photo) mainTypeCreation).getUid();
+                    creation = photoResp.getAttr("photo");
+                    creationHostUserId = ((Photo) creation).getUid();
                 }
                 break;
             case VIDEO: // 视频
-                IResponse videoResp = videoService.findVideo(new Video(comment.getMainId()), iRequest);
+                IResponse videoResp = videoService.findVideo(new Video(comment.getCreationId()), iRequest);
                 response.setStatus(videoResp);
                 if (videoResp.isSuccess()) {
-                    mainTypeCreation = videoResp.getAttr("video");
-                    mainCreationHostUserId = ((Video) mainTypeCreation).getUser().getUid();
+                    Video video = videoResp.getAttr("video");
+                    creation = video;
+                    creationHostUserId = video.getUser().getUid();
+                    disable_send_comment = checkIsCloseComment(video.getSetting().getDisable_send_comment(), video.getUser(), iRequest);
+                }
+                break;
+            case AlBUM: // 相册
+                IResponse albumResp = albumService.findAlbumInfo(new Album(comment.getCreationId()), iRequest);
+                response.setStatus(albumResp);
+                if (albumResp.isSuccess()) {
+                    creation = albumResp.getAttr("album");
+                    creationHostUserId = ((Album) creation).getUser().getUid();
                 }
                 break;
             case PHOTO_TOPIC: // 照片合集
-                IResponse tagWrapperResp = albumService.findPhotoTagWrapper(new PhotoTagWrapper(comment.getMainId()), iRequest);
+                IResponse tagWrapperResp = albumService.findPhotoTagWrapper(new PhotoTagWrapper(comment.getCreationId()), iRequest);
                 response.setStatus(tagWrapperResp);
                 if (tagWrapperResp.isSuccess()) {
-                    mainTypeCreation = tagWrapperResp.getAttr("tagWrapper");
-                    mainCreationHostUserId = ((PhotoTagWrapper) mainTypeCreation).getUid();
+                    creation = tagWrapperResp.getAttr("tagWrapper");
+                    creationHostUserId = ((PhotoTagWrapper) creation).getUid();
                 }
                 break;
             default:
-                response.setStatus(STATUS_PARAM_ERROR, "该mainType不支持~");
+                response.setStatus(STATUS_PARAM_ERROR, "该creationType不支持~");
                 break;
         }
         Comment parentComment = null;
         if (response.isSuccess()) {
+            if (disable_send_comment) {
+                return response.setStatus(STATUS_FORBIDDEN, "当前作品被设置为禁止评论~").putAttr("forbidden_type", "setting_disable_send_comment");
+            }
             comment.setCid(IdUtil.generatePrimaryKey()); // 主键
             Long replyUid = 0L;
             if (IdUtil.containValue(comment.getParentId())) {    // 查到replyUid，防止父评论为匿名用户发送
-                parentComment = messageDao.findComment(new Comment(comment.getParentId(), comment.getMainType()));
+                parentComment = messageDao.findComment(new Comment(comment.getParentId(), comment.getCreationType()));
                 if (parentComment == null) {
                     response.setStatus(STATUS_NOT_FOUND, "你回复的评论不存在~");
-                } else if (parentComment.getMainType() != comment.getMainType()) {
-                    response.setStatus(STATUS_PARAM_ERROR, "父评论mainType与当前comment不相同~");
+                } else if (parentComment.getCreationType() != comment.getCreationType()) {
+                    response.setStatus(STATUS_PARAM_ERROR, "父评论creationType与当前comment不相同~");
                 } else {
                     replyUid = parentComment.getUser().getUid();
                 }
             } else {
-                replyUid = mainCreationHostUserId;
+                replyUid = creationHostUserId;
             }
             if (response.isSuccess()) {
                 comment.setUser(iRequest.getLoginUser());
@@ -343,13 +373,13 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
                         comment.setUser(getAnonymousUser(comment.getUser()));
                     }
                     // 触发发送新评论通知
-                    notifyService.receivedComment(comment, replyUid, mainTypeCreation);
+                    notifyService.receivedComment(comment, replyUid, creation);
                 }
                 response.setStatus(convertRowToHttpCode(index));
             }
         }
         if (response.isSuccess()) {
-            trigger.addComment(comment, mainTypeCreation);
+            trigger.addComment(comment, creation);
             response.putAttr("comment", comment);
         }
         return response;
@@ -421,14 +451,15 @@ public class MessageServiceImpl extends BaseService implements IMessageService {
                     actionRecord.setIp(iRequest.getAccessIp());
                 }
                 ActionRecord<Comment> lastActionRecord = userDao.findCommentActionRecord(actionRecord);
+                boolean hasLike = lastActionRecord != null && lastActionRecord.getLiked() != null && lastActionRecord.getLiked();
                 if (!undo) {    // 赞
-                    if (lastActionRecord != null && lastActionRecord.getLiked() != null && lastActionRecord.getLiked()) {
+                    if (hasLike) {
                         response.setMessage("你已经赞过该评论了~");
                     } else {
                         saveLikeValue = true;
                     }
                 } else {    // 取消赞
-                    if (lastActionRecord != null && lastActionRecord.getLiked() != null && lastActionRecord.getLiked()) {
+                    if (hasLike) {
                         saveLikeValue = false;
                     } else {
                         response.setMessage("你并没有赞过该评论~");

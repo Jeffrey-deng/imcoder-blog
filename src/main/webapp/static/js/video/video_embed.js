@@ -6,21 +6,17 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'toastr', 'Plyr', 'common_utils'], factory);
+        define(['jquery', 'Plyr', 'toastr', 'globals', 'common_utils'], factory);
     } else {
         // Browser globals
-        factory(jQuery, toastr, Plyr, common_utils);
+        factory(jQuery, Plyr, toastr, globals, common_utils);
     }
-})(function ($, toastr, Plyr, common_utils) {
+})(function ($, Plyr, toastr, globals, common_utils) {
 
     var currentVideo = null;
     var currentPlayer = null;
     var config = {
-        path_params: {
-            "basePath": $("#basePath").attr("href"),
-            "cloudPath": $("#cloudPath").attr("href"),
-            "staticPath": $("#staticPath").attr("href")
-        },
+        path_params: globals.path_params,
         callback: {
             "activity_change_calls": [],
             "ratio_change_calls": [],
@@ -37,7 +33,8 @@
             userActivity: true,
             videoRotate: 0,
             videoFlip: ["0"]
-        }
+        },
+        isEmbedWindow: window.top != window.self
     };
 
     var videoPageReady = function () {
@@ -51,7 +48,6 @@
             });
         }
         config.status.videoPageReady = true;
-
     };
 
     var videoDomReady = function () {
@@ -112,75 +108,53 @@
         config.status.videoRotate = angle;
     };
 
-    var request = {
-        "loadVideo": function (video_id, callback) {
-            var video_param = null;
-            if (typeof video_id == "object") {
-                video_param = video_id;
-            } else {
-                video_param = {"video_id": video_id};
-            }
-            $.get("video.api?method=getVideo", video_param, function (response) {
-                if (response.status == 200) {
-                    callback(response.data.video);
-                } else {
-                    console.log("Load video found error, Error Code: " + response.status);
-                    toastr.error(response.message, "加载视频出错", {"timeOut": 0});
-                }
-            });
-        },
-        "saveVideoHasPlayed": function (video_id, callback) {
-            if (!video_id) {
-                return;
-            }
-            var post_param = null;
-            if (typeof video_id == "object") {
-                post_param = video_id;
-            } else {
-                post_param = {"video_id": video_id};
-            }
-            post_param.deep = 1;
-            post_param.first_access_referer = document.referrer;
-            post_param.first_access_path = document.location.href;
-            // if (window.frameElement) {
-            //     video_param.first_access_referer = window.parent.document.referrer;
-            //     video_param.first_access_path = window.parent.document.location.href;
-            // }
-            $.post("video.api?method=triggerVideoAccess", post_param, function (response) {
-                if (response.status == 200) {
-                    callback && callback(response.data.video);
-                }
-            });
+    const request = globals.extend(globals.request, {
+        video_embed: {
+            'loadVideo': function (video_id, success) {
+                let postData = typeof video_id === 'object' ? video_id : {"video_id": video_id};
+                return globals.request.get(globals.api.getVideo, postData, success, ['video'], '加载视频出错');
+            },
+            'saveVideoHasPlayed': function (video_id, success) {
+                let postData = typeof video_id === 'object' ? video_id : {"video_id": video_id};
+                postData.deep = 1;
+                postData.first_access_referer = document.referrer;
+                postData.first_access_path = document.location.href;
+                // if (window.frameElement) { // 只有同源才能获取
+                //     postData.first_access_referer = window.parent.document.referrer;
+                //     postData.first_access_path = window.parent.document.location.href;
+                // }
+                return globals.request.post(globals.api.triggerVideoAccess, postData, success, ['video'], false);
+            },
         }
-    };
+    }).video_embed;
 
     // 根据比例设置元素宽高，算法以填充宽度优先, box_height为undefined时表示不限制高度
     var calcVideoPix = function ($video, whichCalcFirst, box_width, box_height, scale_width, scale_height) {
-        if (whichCalcFirst == "w") { // 当宽度优先时
+        if (whichCalcFirst == 'w') { // 当宽度优先时
             var need_height = box_width / scale_width * scale_height; // 设定height的值
             if (box_height && need_height > box_height) {   // 当没`显示设置`值（为undefined）时
-                $video.css("height", box_height + "px");
-                $video.css("width", "");
+                $video.css('height', box_height + 'px');
+                $video.css('width', '');
                 // 高度不够时，设置最大高度，同时寻找合适宽度
                 var need_width = ((box_height) / scale_height) * scale_width;
                 if (need_width <= box_width) {
-                    $video.css("width", need_width + "px");
+                    $video.css('width', need_width + 'px');
                 }
             } else {
-                $video.css("height", need_height + "px");
+                $video.css('height', need_height + 'px');
             }
         } else { // 当高度优先时
             var need_width = box_height / scale_height * scale_width; // 设定width的值
             if (box_width && need_width > box_width) {
-                $video.css("width", box_width + "px");
-                $video.css("height", "");
+                $video.css('width', box_width + 'px');
+                $video.css('height', '');
                 // 宽度不够时，设置最大宽度，同时寻找合适高度
                 var need_height = (box_width / scale_width) * scale_height;
                 if (need_height <= box_height) {
-                    $video.css("height", need_height + "px");
+                    $video.css('height', need_height + 'px');
                 }
             } else {
-                $video.css("width", need_width + "px");
+                $video.css('width', need_width + 'px');
             }
         }
     };
@@ -198,10 +172,24 @@
                     return;
                 }
                 player.set_iframe_size_running_lock = true; // 锁
-                var scale_type = $video_iframe_in_top.attr("data-scale");   // 保持的比例方式
+                let scale_type = $video_iframe_in_top.attr('data-scale');   // 保持的比例方式
+                let scale_stay_in_rotate = $video_iframe_in_top.attr('data-stay-in-rotate') == 'true';
+                let style = $video_iframe_in_top.prop('style');
+                let scale_w, scale_h, clearIframeWidth, clearIframeHeight;
                 switch (true) {
                     case "stay" == scale_type:
-                        var style = $video_iframe_in_top.prop("style");
+                        if (scale_stay_in_rotate && (player.rotate == 90 || player.rotate == 270)) {
+                            scale_w = video.height;
+                            scale_h = video.width;
+                        } else {
+                            scale_w = video.width;
+                            scale_h = video.height;
+                        }
+                    case /^(\d+):(\d+)$/.test(scale_type):
+                        if (scale_type != 'stay') {
+                            scale_w = parseInt(RegExp.$1);
+                            scale_h = parseInt(RegExp.$2);
+                        }
                         if (user_set_height === null) {
                             if (style.height.indexOf('%') != -1) {
                                 user_set_height = NaN;
@@ -228,41 +216,9 @@
                         }
                         // 当没`显示设置`值（为undefined）时，另外处理
                         // user_set_width 设置了具体的px值时也要重新获取，因为有的情况css_width值并不代表实际width，例如同时设置width和max-width，且width小于max-width时
-                        var clearIframeWidth = user_set_width === undefined ? user_set_width : $video_iframe_in_top.width();
-                        var clearIframeHeight = user_set_height === undefined ? user_set_height : $video_iframe_in_top.height();
-                        calcVideoPix($video_iframe_in_top, whichCalcFirst, clearIframeWidth, clearIframeHeight, video.width, video.height);
-                        break;
-                    case /^(\d+):(\d+)$/.test(scale_type):
-                        var scale_w = parseInt(RegExp.$1);
-                        var scale_h = parseInt(RegExp.$2);
-                        var style = $video_iframe_in_top.prop("style");
-                        if (user_set_height === null) {
-                            if (style.height.indexOf('%') != -1) {
-                                user_set_height = NaN;
-                            } else if (style.height.indexOf('em') != -1) {
-                                user_set_height = NaN;
-                            } else {
-                                user_set_height = parseInt(style.height) || undefined;
-                            }
-                            if (user_set_height !== undefined) {
-                                whichCalcFirst = "h";
-                            }
-                        }
-                        if (user_set_width === null) {
-                            if (style.width.indexOf('%') != -1) {
-                                user_set_width = NaN;
-                            } else if (style.width.indexOf('em') != -1) {
-                                user_set_width = NaN;
-                            } else {
-                                user_set_width = parseInt(style.width) || undefined;
-                            }
-                            if (user_set_width !== undefined) {
-                                whichCalcFirst = "w";
-                            }
-                        }
-                        // 当没显示设置值（为undefined）时，另外处理
-                        var clearIframeWidth = user_set_width === undefined ? user_set_width : $video_iframe_in_top.width();
-                        var clearIframeHeight = user_set_height === undefined ? user_set_height : $video_iframe_in_top.height();
+                        let precisionSize = (user_set_width !== undefined || user_set_height !== undefined) && common_utils.getElemRealPrecisionSize($video_iframe_in_top);
+                        clearIframeWidth = user_set_width === undefined ? user_set_width : precisionSize.width;
+                        clearIframeHeight = user_set_height === undefined ? user_set_height : precisionSize.height;
                         calcVideoPix($video_iframe_in_top, whichCalcFirst, clearIframeWidth, clearIframeHeight, scale_w, scale_h);
                         break;
                     default:
@@ -274,18 +230,17 @@
             };
             setIframeSize();
             if (true) {
-                $($video_iframe_in_top.prop("contentWindow")).resize(setIframeSize);
+                $($video_iframe_in_top.prop('contentWindow')).resize(setIframeSize);
             }
-            var set_autoplay = $video_iframe_in_top.attr("data-autoplay");  // 是否自动播放
-            if (set_autoplay == "true") {
-                player.autoplay = true;
-            } else {
-                player.autoplay = false;
+            var set_autoplay = $video_iframe_in_top.attr('data-autoplay');  // 是否自动播放
+            if (set_autoplay) {
+                player.autoplay = set_autoplay == 'true';
             }
-            var set_start = $video_iframe_in_top.attr("data-start"); // seek到一个播放时间，单位秒
+            var set_start = $video_iframe_in_top.attr('data-start'); // seek到一个播放时间，单位秒
             if (!isNaN(set_start)) {
-                player.startTime = parseFloat(set_start);
+                player.start_time = parseFloat(set_start);
             }
+            $video_iframe_in_top.attr('allowfullscreen', 'true')[0].allowFullscreen = true;
         }
     };
 
@@ -295,14 +250,14 @@
         onActivityChange(function (isActive, player) {
             if (player && isAudio) {
                 if (isActive) {
-                    $(player.elements.container).css("transform", "");
-                    if (player.paused) {
-                        playerWrapper.find(".audio-play-btn").show(0);
+                    $(player.elements.container).css('transform', '');
+                    if (player.paused) { // 暂停时
+                        playerWrapper.find('.audio-play-btn').show(0);
                     }
                 } else {
-                    $(player.elements.container).css("transform", "translateY(100%)");
-                    if (!player.paused) {
-                        playerWrapper.find(".audio-play-btn").hide(0);
+                    if (!player.paused) { // 播放时
+                        $(player.elements.container).css('transform', 'translateY(100%)');
+                        playerWrapper.find('.audio-play-btn').hide(0);
                     }
                 }
             }
@@ -310,55 +265,66 @@
         // 这些回调方法在父window中无效，需使用我新创建的API
         // Triggered when the instance is ready for API calls.
         player.on('ready', function (event) {
-            if (video.video_type == "video/mp3") {
+            if (video.video_type == 'video/mp3') {
                 $(player.media).addClass('audio-player');
             }
-            // var instance = event.detail.plyr;
-            var _self = this;
+            // var instance = event.detail.plyr; // player
+            // this equals player.elements.container
+            var $self = $(this);
+            if (!player.isEmbed) {
+                // add the removed poster in new version
+                $self.addClass(player.config.classNames.posterEnabled);
+                $('<div>', {
+                    'class': player.config.classNames.poster,
+                    'style': 'background-image: url(\'' + player.config.poster + '\');'
+                }).appendTo(player.elements.wrapper);
+            }
             if (!isAudio) {
                 // for popup hide control btn when mouse not moving.
-                $(_self).mousemove(function (e) {
+                $self.on('mousemove', function (e) {
                     activityChange(true);
                 });
             } else {
-                var isMouseMove = true;
-                var mouse_timer = null;
-                playerWrapper.on("mousemove", ".audio-wrapper", function (e) {
-                    activityChange(player, true);
+                let isMouseMove = true;
+                let mouse_timer = null;
+                playerWrapper.on('mousemove', '.audio-wrapper', function (e) {
+                    activityChange(true);
                     isMouseMove = true;
-                }).on("mouseenter", ".audio-wrapper", function (e) {
+                }).on('mouseenter', '.audio-wrapper', function (e) {
                     mouse_timer && window.clearInterval(mouse_timer);
-                    activityChange(player, true);
+                    activityChange(true);
                     mouse_timer = window.setInterval(function () {  // 定时器隐藏控制条
                         if (!isMouseMove) {
-                            activityChange(true);
+                            activityChange(false);
                         }
                         isMouseMove = false;
                     }, 5000);
                     isMouseMove = true;
-                }).on("mouseleave", ".audio-wrapper", function (e) {
+                }).on('mouseleave', '.audio-wrapper', function (e) {
                     mouse_timer && window.clearInterval(mouse_timer);
-                    activityChange(true);
+                    activityChange(false);
                     isMouseMove = false;
-                }).on("click", ".audio-wrapper", function (e) {
-                    if ($(e.target).hasClass("audio-cover") || $(e.target).hasClass("audio-wrapper")) {
+                }).on('click', '.audio-wrapper', function (e) {
+                    let $target = $(e.target);
+                    if ($target.hasClass('audio-cover') || $target.hasClass('audio-wrapper')) {
                         player.togglePlay();
                     }
-                }).on("click", ".audio-play-btn", function () {
+                }).on('click', '.audio-play-btn', function () {
                     player.togglePlay();
                 });
             }
-            // 强制打开字幕，默认即使有字幕也会因为语言不符合而关闭
-            if (video.subtitles && video.subtitles.length > 0) {
-                player.toggleCaptions(true);
+            if (!isAudio) {
+                // 强制打开字幕，默认即使有字幕也会因为语言不符合而关闭
+                if (video.subtitles && video.subtitles.length > 0) {
+                    player.toggleCaptions(true);
+                }
+            } else {
+                // add new button
+                playerWrapper.find('.audio-play-btn').show();
             }
-            // add new button
-            playerWrapper.find(".audio-play-btn").show();
-            initLoopControlHtml(player);
-            if (true) {
-                initRotateControlHtml(player, video.rotate);
-                initFlipControlHtml(player);
-            }
+            initLoopControlHtml(player, player.enable_loop);
+            initRotateControlHtml(player, player.rotate);
+            initFlipControlHtml(player);
             initOpenInSiteControlHtml(player, video);
             initWebFullscreenControlHtml(player, video);
             videoDomReady();
@@ -366,32 +332,32 @@
         // The media's metadata has finished loading; all attributes now contain as much useful information as they're going to.
         player.on('loadedmetadata', function (event) {
             // fixed bug
-            $(player.elements.controls).find(".plyr__volume").removeAttr("hidden");
+            $(player.elements.controls).find('.plyr__volume').removeAttr('hidden');
             if (player.autoplay) {
                 player.play();
             }
-            if (player.startTime > 0) {
-                player.currentTime = player.startTime;
+            if (player.start_time > 0) {
+                player.currentTime = player.start_time;
             }
         });
         player.on('playing', function (event) {
             // fixed bug
-            $(player.elements.controls).find(".plyr__volume").removeAttr("hidden");
-            activityChange(true);
+            $(player.elements.controls).find('.plyr__volume').removeAttr('hidden');
+            activityChange(false);
             videoHasPlayed();
-            videoPlayStatusChange("playing");
+            videoPlayStatusChange('playing');
         });
-        player.on("pause", function () {
-            activityChange(player, true);
-            videoPlayStatusChange("pause");
+        player.on('pause', function () {
+            activityChange(true);
+            videoPlayStatusChange('pause');
         });
-        player.on("ended", function () {
-            videoPlayStatusChange("ended");
+        player.on('ended', function () {
+            videoPlayStatusChange('ended');
         });
     };
 
     // 视频循环按钮
-    var initLoopControlHtml = function (player) {
+    var initLoopControlHtml = function (player, initLoop) {
         var loop_button_html =
             '<button data-plyr="settings" type="button" class="plyr__control plyr__control--forward" role="menuitem" aria-haspopup="true">' +
             '<span>循环<span class="plyr__menu__value">off</span></span>' +
@@ -409,51 +375,55 @@
         player.elements.settings.panels.home.firstElementChild.appendChild(player.elements.settings.buttons.loop);
         player.elements.settings.panels.loop = $loop_panel[0];
         player.elements.settings.popup.firstElementChild.appendChild(player.elements.settings.panels.loop);
-        $loop_button.on("click", function () {
-            player.elements.settings.panels.home.setAttribute("hidden", "");
-            $loop_panel.removeAttr("hidden");
+        $loop_button.on('click', function () {
+            player.elements.settings.panels.home.setAttribute('hidden', '');
+            $loop_panel.removeAttr('hidden');
         });
         // player.config.classNames.control
-        $loop_panel.on("click", "button", function () {
-            var _self = $(this);
-            if (_self.attr("role") == "menuitemradio") {
-                var loopValue = _self.attr("value");
-                var loopText = _self.text();
-                $loop_panel.find('[role="menuitemradio"]').attr("aria-checked", "false");
-                _self.attr("aria-checked", "true");
-                $loop_button.find(".plyr__menu__value").text(loopText);
+        $loop_panel.on('click', 'button', function () {
+            var $self = $(this);
+            if ($self.attr('role') == 'menuitemradio') {
+                var loopValue = $self.attr('value');
+                var loopText = $self.text();
+                $loop_panel.find('[role="menuitemradio"]').attr('aria-checked', 'false');
+                $self.attr('aria-checked', 'true');
+                $loop_button.find('.plyr__menu__value').text(loopText);
                 // set value
-                player.loop = loopValue == "on" ? true : false;
+                player.loop = loopValue == 'on' ? true : false;
             }
-            $loop_panel.attr("hidden", "");
-            player.elements.settings.panels.home.removeAttribute("hidden");
+            $loop_panel.attr('hidden', '');
+            player.elements.settings.panels.home.removeAttribute('hidden');
         });
+        if (initLoop) {
+            $loop_panel.find('[role="menuitemradio"][value="on"]').trigger('click');
+        }
     };
 
     // 旋转视频
     var rotateVideo = function (player, angle) {
-        var $realVideoDom = config.isAudio ? $("#player-wrapper").find(".audio-cover") : $(player.media);
+        angle = parseInt(angle) % 360;
+        var $realVideoDom = config.isAudio ? $('#player-wrapper').find('.audio-cover') : (player.isEmbed ? $(player.elements.wrapper).find('iframe') : $(player.media));
         if (!config.isAudio && ((currentVideo.width > currentVideo.height) === (currentVideo.cover.width > currentVideo.cover.height))) {
             // $.fn.add函数返回新对象，不修改原来的
-            $realVideoDom = $realVideoDom.add(".plyr__poster");
+            $realVideoDom = $realVideoDom.add('.plyr__poster');
         }
         var clientHeight = document.documentElement.clientHeight;
         var clientWidth = document.documentElement.clientWidth;
         var transform_value, width_value, height_value, margin_top_value, margin_left_value, parent_height_value;
         var eyeRawWidth, eyeRawHeight; // 用户实际看到的宽高
         switch (angle) {
-            case "0":
-            case "180":
+            case 0:
+            case 180:
                 eyeRawWidth = currentVideo.width;
                 eyeRawHeight = currentVideo.height;
-                width_value = "";
-                height_value = "";
-                margin_top_value = "";
-                margin_left_value = "";
-                parent_height_value = "";
+                width_value = '';
+                height_value = '';
+                margin_top_value = '';
+                margin_left_value = '';
+                parent_height_value = '';
                 break;
-            case "90":
-            case "270":
+            case 90:
+            case 270:
                 eyeRawWidth = currentVideo.height;
                 eyeRawHeight = currentVideo.width;
                 var newHeight = clientHeight;
@@ -469,18 +439,18 @@
                     newMarginTop = 0 - ((newWidth - newHeight) / 2);
                     newMarginLeft = (clientWidth - newHeight) / 2;
                 }
-                width_value = newHeight + "px";
-                height_value = newWidth + "px";
-                margin_top_value = newMarginTop + "px";
-                margin_left_value = newMarginLeft + "px";
-                parent_height_value = clientHeight + "px";
+                width_value = newHeight + 'px';
+                height_value = newWidth + 'px';
+                margin_top_value = newMarginTop + 'px';
+                margin_left_value = newMarginLeft + 'px';
+                parent_height_value = clientHeight + 'px';
                 break;
         }
-        transform_value = (angle == "0" ? "" : ("rotate(" + angle + "deg)"));
+        transform_value = (angle == '0' ? '' : ('rotate(' + angle + 'deg)'));
         var before_css_transform_value = $realVideoDom[0].style.transform;
-        before_css_transform_value = before_css_transform_value && before_css_transform_value.replace(/\s*rotate\([^)]*\)\s*/g, "");
+        before_css_transform_value = before_css_transform_value && before_css_transform_value.replace(/\s*rotate\([^)]*\)\s*/g, '');
         if (before_css_transform_value) {
-            transform_value = (transform_value ? (transform_value + " ") : "") + before_css_transform_value;
+            transform_value = (transform_value ? (transform_value + ' ') : '') + before_css_transform_value;
         }
         $realVideoDom.css({
             "transform": transform_value,
@@ -489,7 +459,7 @@
             "margin-top": margin_top_value,
             "margin-left": margin_left_value
         });
-        $realVideoDom.parent().css("height", parent_height_value);
+        $realVideoDom.parent().css('height', parent_height_value);
         if (angle != config.status.videoRotate) {
             ratioChange(eyeRawWidth, eyeRawHeight, angle);
         }
@@ -516,52 +486,52 @@
         player.elements.settings.panels.home.firstElementChild.appendChild(player.elements.settings.buttons.rotate);
         player.elements.settings.panels.rotate = $rotate_panel[0];
         player.elements.settings.popup.firstElementChild.appendChild(player.elements.settings.panels.rotate);
-        $rotate_button.on("click", function () {
-            player.elements.settings.panels.home.setAttribute("hidden", "");
-            $rotate_panel.removeAttr("hidden");
+        $rotate_button.on('click', function () {
+            player.elements.settings.panels.home.setAttribute('hidden', '');
+            $rotate_panel.removeAttr('hidden');
         });
         // player.config.classNames.control
-        $rotate_panel.on("click", "button", function () {
-            var _self = $(this);
-            if (_self.attr("role") == "menuitemradio") {
-                var angle = _self.attr("value");
-                var angleText = _self.text();
-                $rotate_panel.find('[role="menuitemradio"]').attr("aria-checked", "false");
-                _self.attr("aria-checked", "true");
-                $rotate_button.find(".plyr__menu__value").text(angleText);
+        $rotate_panel.on('click', 'button', function () {
+            var $self = $(this);
+            if ($self.attr('role') == 'menuitemradio') {
+                var angle = $self.attr('value');
+                var angleText = $self.text();
+                $rotate_panel.find('[role="menuitemradio"]').attr('aria-checked', 'false');
+                $self.attr('aria-checked', 'true');
+                $rotate_button.find('.plyr__menu__value').text(angleText);
                 rotateVideo(player, angle);
             }
-            $rotate_panel.attr("hidden", "");
-            player.elements.settings.panels.home.removeAttribute("hidden");
+            $rotate_panel.attr('hidden', '');
+            player.elements.settings.panels.home.removeAttribute('hidden');
         });
         $(window).resize(function () {
-            if (config.status.videoRotate == "90" || config.status.videoRotate == "270") {
+            if (config.status.videoRotate == 90 || config.status.videoRotate == 270) {
                 rotateVideo(player, config.status.videoRotate);
             }
         });
-        if (initAngle && initAngle != "0") {
+        if (initAngle && initAngle != 0) {
             $rotate_panel.find('[role="menuitemradio"][value="' + initAngle + '"]').trigger('click');
         }
     };
 
     // 翻转视频
     var flipVideo = function (player, flip_directions) {
-        var $realVideoDom = config.isAudio ? $("#player-wrapper").find(".audio-cover") : $(player.media);
+        var $realVideoDom = config.isAudio ? $('#player-wrapper').find('.audio-cover') : (player.isEmbed ? $(player.elements.wrapper).find('iframe') : $(player.media));
         if (!config.isAudio && ((currentVideo.width > currentVideo.height) === (currentVideo.cover.width > currentVideo.cover.height))) {
             // $.fn.add函数返回新对象，不修改原来的
-            $realVideoDom = $realVideoDom.add(".plyr__poster");
+            $realVideoDom = $realVideoDom.add('.plyr__poster');
         }
-        var css_transform_value = $realVideoDom[0].style.transform ? $realVideoDom[0].style.transform.replace(/\s*rotate[XY]\([^)]*\)\s*/g, "") : "";
+        var css_transform_value = $realVideoDom[0].style.transform ? $realVideoDom[0].style.transform.replace(/\s*rotate[XY]\([^)]*\)\s*/g, '') : '';
         if (flip_directions) {
-            for (var i in flip_directions) {
-                if (flip_directions[i] == "h") {
-                    css_transform_value += " rotateY(180deg)"; // scaleX(-1)
-                } else if (flip_directions[i] == "v") {
-                    css_transform_value += " rotateX(180deg)"; // scaleY(-1)
+            for (let i in flip_directions) {
+                if (flip_directions[i] == 'h') {
+                    css_transform_value += ' rotateY(180deg)'; // scaleX(-1)
+                } else if (flip_directions[i] == 'v') {
+                    css_transform_value += ' rotateX(180deg)'; // scaleY(-1)
                 }
             }
         }
-        $realVideoDom.css("transform", css_transform_value);
+        $realVideoDom.css('transform', css_transform_value);
         config.status.videoFlip = flip_directions;
     };
 
@@ -585,68 +555,76 @@
         player.elements.settings.panels.home.firstElementChild.appendChild(player.elements.settings.buttons.flip);
         player.elements.settings.panels.flip = $flip_panel[0];
         player.elements.settings.popup.firstElementChild.appendChild(player.elements.settings.panels.flip);
-        $flip_button.on("click", function () {
-            player.elements.settings.panels.home.setAttribute("hidden", "");
-            $flip_panel.removeAttr("hidden");
+        $flip_button.on('click', function () {
+            player.elements.settings.panels.home.setAttribute('hidden', '');
+            $flip_panel.removeAttr('hidden');
         });
         // player.config.classNames.control
-        $flip_panel.on("click", "button", function () {
-            var _self = $(this);
-            if (_self.attr("role") == "menuitemradio") {
-                var filp_direction = _self.attr("value");
-                var filp_text = _self.text();
-                if (filp_direction == "0") {
-                    $flip_panel.find('[role="menuitemradio"]').attr("aria-checked", "false");
-                    _self.attr("aria-checked", "true");
+        $flip_panel.on('click', 'button', function () {
+            var $self = $(this);
+            if ($self.attr('role') == 'menuitemradio') {
+                var filp_direction = $self.attr('value');
+                var filp_text = $self.text();
+                if (filp_direction == '0') {
+                    $flip_panel.find('[role="menuitemradio"]').attr('aria-checked', 'false');
+                    $self.attr('aria-checked', 'true');
                 } else {
-                    if (_self.attr("aria-checked") == "true") {
-                        _self.attr("aria-checked", "false");
+                    if ($self.attr('aria-checked') == 'true') {
+                        $self.attr('aria-checked', 'false');
                         var $selectAvailable = $flip_panel.find('[role="menuitemradio"][aria-checked="true"].available-value');
                         if ($selectAvailable.length == 0) {
-                            filp_text = $flip_panel.find('[role="menuitemradio"][value="0"]').attr("aria-checked", "true").text();
+                            filp_text = $flip_panel.find('[role="menuitemradio"][value="0"]').attr('aria-checked', 'true').text();
                         } else {
                             filp_text = $selectAvailable.eq(0).text();
                         }
                     } else {
-                        $flip_panel.find('[role="menuitemradio"][value="0"]').attr("aria-checked", "false");
-                        _self.attr("aria-checked", "true");
+                        $flip_panel.find('[role="menuitemradio"][value="0"]').attr('aria-checked', 'false');
+                        $self.attr('aria-checked', 'true');
                     }
                 }
-                $flip_button.find(".plyr__menu__value").text(filp_text);
+                $flip_button.find('.plyr__menu__value').text(filp_text);
                 var filp_directions = [];
                 $flip_panel.find('[role="menuitemradio"][aria-checked="true"]').each(function (i, option) {
-                    filp_directions.push(option.getAttribute("value"));
+                    filp_directions.push(option.getAttribute('value'));
                 });
                 flipVideo(player, filp_directions, config.status.videoRotate);
             }
-            $flip_panel.attr("hidden", "");
-            player.elements.settings.panels.home.removeAttribute("hidden");
+            $flip_panel.attr('hidden', '');
+            player.elements.settings.panels.home.removeAttribute('hidden');
         });
     };
 
     // 站内打开视频详情页按钮
     var initOpenInSiteControlHtml = function (player, video) {
         var $pip_button = $(player.elements.buttons.pip);
-        var pip_icon_url_prefix = ($("#sprite-plyr").length == 0 ? player.config.iconUrl : "");
-        $pip_button.find("svg > use").attr("href", pip_icon_url_prefix + "#plyr-logo-youtube");
+        // ($('#sprite-plyr').length == 0 ? player.config.iconUrl : '');
+        var pip_icon_url_prefix = player.config.iconUrl.indexOf(globals.path_params.basePath) == 0 ? player.config.iconUrl : '';
+        $pip_button.find('svg > use').attr('href', pip_icon_url_prefix + '#plyr-logo-youtube');
         var open_in_site_html = '<button type="button" class="plyr__control" data-plyr="open_in_site">' +
-            '<svg role="presentation" focusable="false"><use xlink:href="' + pip_icon_url_prefix + "#plyr-pip" + '"></use></svg>' +
+            '<svg role="presentation" focusable="false"><use xlink:href="' + pip_icon_url_prefix + '#plyr-pip' + '"></use></svg>' +
             '<span class="plyr__tooltip">站内打开视频详情页</span></button>';
         var $open_in_site_button = $($.parseHTML(open_in_site_html));
         player.elements.buttons.open_in_site = $open_in_site_button[0];
         player.elements.settings.menu.after(player.elements.buttons.open_in_site);
-        $(player.elements.controls).on("click", '[data-plyr="open_in_site"]', function () {
-            window.open("video/detail/" + video.video_id);
+        $(player.elements.controls).on('click', '[data-plyr="open_in_site"]', function () {
+            window.open(('video/detail/' + video.video_id).toURL());
         });
     };
 
     // 切换网页全屏
     var switchWebFullscreen = function (player, video, isSwitchToOn) {
-        var $video_iframe_in_top = window.frameElement ? $(window.frameElement) : null;
-        if ($video_iframe_in_top) {
+        if (config.isEmbedWindow) {
+            let $video_iframe_in_top = window.frameElement ? $(window.frameElement) : null, $body_iframe_in_top;
+            if (!$video_iframe_in_top) {
+                return;
+            }
+            $body_iframe_in_top = $(window.parent.document.body);
             if (isSwitchToOn) {
                 player.web_fullscreen = true;
-                player.backIframeCss = $video_iframe_in_top.attr("style");
+                player.backIframeCss = $video_iframe_in_top.attr('style');
+                player.backTopBodyCss = $body_iframe_in_top[0].style.overflow || '';
+                $body_iframe_in_top.css('overflow', 'hidden');
+                $video_iframe_in_top.toggleClass("player-web-fullscreen", true);
                 $video_iframe_in_top.css({
                     "position": "fixed",
                     "top": "0",
@@ -661,6 +639,7 @@
                     player.fullscreen.exit();
                 }
             } else {
+                $body_iframe_in_top.css('overflow', player.backTopBodyCss);
                 $video_iframe_in_top.css({
                     "position": "",
                     "top": "",
@@ -669,13 +648,16 @@
                     "height": "",
                     "padding": "",
                     "margin": "",
-                    "z-index": ""
+                    "z-index": "",
                 });
-                player.backIframeCss && $video_iframe_in_top.attr("style", player.backIframeCss);
+                setTimeout(function () {
+                    $video_iframe_in_top.toggleClass("player-web-fullscreen", false);
+                }, 250);
+                player.backIframeCss && $video_iframe_in_top.attr('style', player.backIframeCss);
                 player.web_fullscreen = false;
             }
         } else if (!isSwitchToOn) {
-            document.location.href = "video/detail/" + video.video_id;
+            document.location.href = ('video/detail/' + video.video_id).toURL();
         }
     };
 
@@ -699,50 +681,140 @@
             '</button>';
         var $web_fullscreen_button = $($.parseHTML(web_fullscreen_html));
         player.elements.buttons.web_fullscreen = $web_fullscreen_button[0];
-        $(player.elements.buttons.download).before(player.elements.buttons.web_fullscreen);
-        $(player.elements.controls).on("click", '[data-plyr="web_fullscreen"]', function () {
-            var isSwitchToOn = $web_fullscreen_button.find(".player-web-fullscreen-on").attr("class").indexOf("icon--not-pressed") != -1;
+        if (!config.isAudio) {
+            $(player.elements.buttons.fullscreen).before(player.elements.buttons.web_fullscreen);
+        } else {
+            $(player.elements.controls).append(player.elements.buttons.web_fullscreen);
+        }
+        $(player.elements.controls).on('click', '[data-plyr="web_fullscreen"]', function () {
+            var isSwitchToOn = $web_fullscreen_button.find('.player-web-fullscreen-on').attr('class').indexOf('icon--not-pressed') != -1;
             switchWebFullscreen(player, video, isSwitchToOn);
             if (isSwitchToOn) {
-                $web_fullscreen_button.find(".player-web-fullscreen-on").attr("class", "icon--pressed player-web-fullscreen-on");
-                $web_fullscreen_button.find(".player-web-fullscreen-off").attr("class", "icon--not-pressed player-web-fullscreen-off");
-                $web_fullscreen_button.find(".player-web-fullscreen-on-tooltip").removeClass("label--not-pressed").addClass("label--pressed");
-                $web_fullscreen_button.find(".player-web-fullscreen-off-tooltip").removeClass("label--pressed").addClass("label--not-pressed");
+                $web_fullscreen_button.find('.player-web-fullscreen-on').attr('class', 'icon--pressed player-web-fullscreen-on');
+                $web_fullscreen_button.find('.player-web-fullscreen-off').attr('class', 'icon--not-pressed player-web-fullscreen-off');
+                $web_fullscreen_button.find('.player-web-fullscreen-on-tooltip').removeClass('label--not-pressed').addClass('label--pressed');
+                $web_fullscreen_button.find('.player-web-fullscreen-off-tooltip').removeClass('label--pressed').addClass('label--not-pressed');
             } else {
-                $web_fullscreen_button.find(".player-web-fullscreen-on").attr("class", "icon--not-pressed player-web-fullscreen-on");
-                $web_fullscreen_button.find(".player-web-fullscreen-off").attr("class", "icon--pressed player-web-fullscreen-off");
-                $web_fullscreen_button.find(".player-web-fullscreen-on-tooltip").removeClass("label--pressed").addClass("label--not-pressed");
-                $web_fullscreen_button.find(".player-web-fullscreen-off-tooltip").removeClass("label--not-pressed").addClass("label--pressed");
+                $web_fullscreen_button.find('.player-web-fullscreen-on').attr('class', 'icon--not-pressed player-web-fullscreen-on');
+                $web_fullscreen_button.find('.player-web-fullscreen-off').attr('class', 'icon--pressed player-web-fullscreen-off');
+                $web_fullscreen_button.find('.player-web-fullscreen-on-tooltip').removeClass('label--pressed').addClass('label--not-pressed');
+                $web_fullscreen_button.find('.player-web-fullscreen-off-tooltip').removeClass('label--not-pressed').addClass('label--pressed');
             }
         });
-        if (window.frameElement == null) {
-            $web_fullscreen_button.click();
+        if (!config.isEmbedWindow) {
+            $web_fullscreen_button.trigger('click');
         }
     };
 
-    var localVideoConfig = common_utils.getLocalConfig('album', {
-       'video_page': {
-           'embed': {
-               'audio_use_fake_video': true
-           }
-       }
+    // Localisation
+    var getPlayerI18n = function () {
+        let i18n, navLang = navigator.language || navigator.userLanguage, lang = navLang.substr(0, 2);
+        if (lang == 'zh') {
+            i18n = {
+                restart: '重新播放',
+                rewind: '后退 {seektime}s',
+                play: '播放',
+                pause: '暂停',
+                fastForward: '前进 {seektime}s',
+                seek: '跳到',
+                seekLabel: '{currentTime} of {duration}',
+                played: '播放完毕',
+                buffered: '缓存完毕',
+                currentTime: '当前时间点',
+                duration: '总时长',
+                volume: '声音',
+                mute: '静音',
+                unmute: '取消静音',
+                enableCaptions: '开启字幕',
+                disableCaptions: '关闭字幕',
+                download: '下载',
+                enterFullscreen: '进入全屏',
+                exitFullscreen: '退出全屏',
+                frameTitle: 'Player for {title}',
+                captions: '字幕',
+                settings: '设置',
+                pip: 'PIP',
+                menuBack: '返回上级菜单',
+                speed: '速度',
+                normal: '正常',
+                quality: '质量',
+                loop: '循环',
+                start: '起始点',
+                end: '终止点',
+                all: '全部',
+                reset: '重置',
+                disabled: '关闭',
+                enabled: '开启',
+                advertisement: '广告',
+                qualityBadge: {
+                    2160: '4K',
+                    1440: 'HD',
+                    1080: 'HD',
+                    720: 'HD',
+                    576: 'SD',
+                    480: 'SD',
+                },
+            };
+        } else {
+            i18n = Plyr.defaults.i18n;
+        }
+        return i18n;
+    };
+
+    var localVideoConfig = globals.getLocalConfig('album', {
+        'video_page': {
+            'embed': {
+                'audio_use_fake_video': true
+            }
+        }
     }).video_page;
-    request.loadVideo($('#video_info_form input[name="video_id"]').val(), function (video) {
+    request.loadVideo($('#video_info_form').find('input[name="video_id"]').val(), function (video) {
         currentVideo = video;
-        var playerWrapper = $("#player-wrapper");
-        if (video.source_type != 2) {   // 类型为链接
-            var player = null;
-            var isAudio;
+        var $playerWrapper = $('#player-wrapper');
+        var initParams = common_utils.parseURL(document.location.href).params;
+        var isEmbedWindow = config.isEmbedWindow;
+        // 获取是否关闭embed
+        var disable_embed = video.setting.disable_embed;
+        var disable_embed_redirect = 'detail';
+        if (!disable_embed && initParams.hasOwnProperty('disable_embed')) {
+            disable_embed = initParams['disable_embed'] == 'true';
+            disable_embed_redirect = initParams['disable_embed_redirect'] == 'embed' ? 'embed' : 'detail';
+        }
+        if (disable_embed && isEmbedWindow) { // 关闭embed
+            let redirect_url = common_utils.removeParamForURL('save_access_record', (common_utils.removeParamForURL('disable_embed_redirect', common_utils.removeParamForURL('disable_embed'))))
+                .replace('/video/embed/', '/video/' + disable_embed_redirect + '/');
+            $('<a>', {
+                'href': redirect_url,
+                'target': '_blank',
+                'title': video.name || ('video_' + video.video_id),
+                'style': 'position: absolute;height: 100%;width: 100%;left: 0;top: 0;opacity: 0; background-color: transparent; z-index: 10000000;',
+            }).appendTo('body');
+        }
+        let isYoutube = false, youtubeVideoUrl, youtubeVideoId; // 采用plyr播放youtube
+        if (video.source_type == 2 && /(https?:\/\/(?:www\.)?youtube\.com\/embed\/([A-Za-z0-9]+)(\?[^"]+)?)/.test(video.code)) {
+            youtubeVideoUrl = RegExp.$1;
+            youtubeVideoId = RegExp.$2;
+            if (!(disable_embed && isEmbedWindow)) {
+                $('<div>', {
+                    'id': 'site-player',
+                    'data-plyr-provider': 'youtube',
+                    'data-plyr-embed-id': youtubeVideoUrl
+                }).appendTo($playerWrapper.empty());
+            }
+            isYoutube = true;
+        }
+        if (video.source_type != 2 || isYoutube) {   // 类型为链接
+            let player = null;
+            let isAudio;
             if (localVideoConfig.embed.audio_use_fake_video) {  // 是否用video标签播放audio
                 isAudio = false;
             } else {
-                isAudio = (video.video_type == "video/mp3");
+                isAudio = (video.video_type == 'video/mp3');
             }
             config.isAudio = isAudio;
             // 字幕
-            var tracksHtml = "";
-            var defaultTrackLang = "auto";
-            if (video.subtitles && video.subtitles.length > 0) {
+            let tracksHtml = '', defaultTrackLang = "auto", videoHasSubtitle = (video.subtitles && video.subtitles.length > 0);
+            if (videoHasSubtitle) {
                 video.subtitles.forEach(function (subtitle, i) {
                     tracksHtml += '<track kind="subtitles" label="' + subtitle.name + '" src="' + subtitle.path + '" srclang="' + subtitle.lang + '"/>';
                     if (i == 0) {
@@ -750,79 +822,118 @@
                     }
                 });
             }
+            // 构建Plyr-player
             if (!isAudio) {  // 视频
-                var $video_player = $("#site-player");
+                let $video_player = $('#site-player');
                 // calcVideoPix($video_player);  // 发现并不需要计算，因为我在外面计算好了，100vh, 100vw即可
-                $video_player.attr("poster", video.cover.path);
+                $video_player.attr('poster', video.cover.path);
                 if (tracksHtml) {
                     $video_player.append(tracksHtml);
+                }
+                let video_controls = ["play-large", "play", "progress", "current-time", "duration", "volume", "captions", "settings", "pip", "airplay", "fullscreen"];
+                if (!video.setting.disable_download || $('body').attr('data-is-special-man') == 'true') {
+                    video_controls.splice(-1, 0, 'download');
                 }
                 player = currentPlayer = new Plyr($video_player, {
                     title: video.name,
                     poster: video.cover.path,
                     iconUrl: config.path_params.staticPath + "lib/plyr/plyr.svg",
                     blankVideo: config.path_params.staticPath + "lib/plyr/blank.mp4",
-                    disableContextMenu: false,
-                    controls: ["play-large", "play", "progress", "current-time", "duration", "volume", "captions", "settings", "pip", "airplay", "fullscreen", "download"],
+                    disableContextMenu: true,
+                    controls: video_controls,
                     // settings: ['captions', 'quality', 'speed', 'loop'],
                     tooltips: {"controls": true, "seek": true},
-                    // ratio: video.height + ":" + video.width,
+                    ratio: isYoutube ? (video.width + ':' + video.height) : null,
                     invertTime: false,
-                    captions: {"active": true, "language": defaultTrackLang, "update": false}
+                    resetOnEnd: true,
+                    captions: {"active": videoHasSubtitle, "language": defaultTrackLang, "update": false},
+                    i18n: getPlayerI18n(),
+                    urls: {
+                        "download": isYoutube ? undefined : ('video.api?method=downloadVideo&video_id=' + video.video_id).toURL()
+                    }
                 });
+                if (isYoutube) {
+                    $(player.elements.container).addClass('plyr__video-embed-disable');
+                }
                 // $(window).resize(function () {
-                //     calcVideoPix($("#site-player"));
+                //     calcVideoPix($('#site-player'));
                 // });
-            } else {
-                playerWrapper.html('<div class="audio-wrapper">' +
+            } else {    // 音频
+                $playerWrapper.html('<div class="audio-wrapper">' +
                     '<div class="audio-cover" style="background-image: url(' + (video.cover.path) + ');"></div>' +
                     '<button type="button" class="audio-play-btn">' +
                     '<svg width="100%" height="100%"><path d="M15.562 8.1L3.87.225c-.818-.562-1.87 0-1.87.9v15.75c0 .9 1.052 1.462 1.87.9L15.563 9.9c.584-.45.584-1.35 0-1.8z"></path></svg>' +
                     '<span>Play</span></button>' +
                     '<audio class="audio-player" id="site-player">' + tracksHtml + '</audio></div>');
-                player = currentPlayer = new Plyr($("#site-player"), {
+                let audio_controls = ["play-large", "play", "progress", "current-time", "duration", "volume", "captions", "settings", "pip", "airplay"];
+                if (!video.setting.disable_download) {
+                    audio_controls.push('download');
+                }
+                player = currentPlayer = new Plyr($('#site-player'), {
                     title: video.name,
                     iconUrl: config.path_params.staticPath + "lib/plyr/plyr.svg",
                     blankVideo: config.path_params.staticPath + "lib/plyr/blank.mp4",
-                    disableContextMenu: false,
-                    controls: ["play-large", "play", "progress", "current-time", "duration", "volume", "captions", "settings", "pip", "airplay", "download"],
+                    disableContextMenu: true,
+                    controls: audio_controls,
                     // settings: ['captions', 'quality', 'speed', 'loop'],
                     tooltips: {"controls": true, "seek": true},
                     invertTime: false,
-                    captions: {"active": true, "language": defaultTrackLang, "update": false}
+                    captions: {"active": videoHasSubtitle, "language": defaultTrackLang, "update": false},
+                    i18n: getPlayerI18n(),
+                    urls: {
+                        "download": ('video.api?method=downloadVideo&video_id=' + video.video_id).toURL()
+                    }
                 });
             }
+            // 根据设置和url初始化一些参数
+            player.enable_loop = video.setting.enable_loop;
+            player.rotate = video.setting.rotate;
+            player.autoplay = initParams['autoplay'] == 'true';
+            if (!isNaN(initParams['start'])) {
+                player.start_time = parseFloat(initParams['start']);
+            }
+            if (initParams.hasOwnProperty('loop')) {
+                player.enable_loop = initParams['loop'] == 'true';
+            }
+            if (!isNaN(initParams['rotate'])) {
+                player.rotate = (parseInt(initParams['rotate']) + 360) % 360;
+            }
             initIframeSettingInParentPage(player, video);
-            bindVideoControlEvent(playerWrapper, player, video);
-            document.getElementById("site-player").src = video.path;
+            bindVideoControlEvent($playerWrapper, player, video);
+            if (!isYoutube && !(disable_embed && isEmbedWindow)) {  // 赋值source
+                document.getElementById('site-player').src = video.path;
+            }
         } else {    // 类型为嵌入
-            playerWrapper.html(video.code);
-            var iframeNode = playerWrapper.children().eq(0);
-            if (iframeNode && iframeNode.length > 0) {
-                iframeNode.prop("id", "site-player");
-                var videoHasClickedFunc = function (contentDocument) {
-                    $(contentDocument.body).click(function () {
-                        videoHasPlayed();
-                    });
+            $playerWrapper.html(video.code);
+            let $iframeNode = $playerWrapper.children().eq(0);
+            if ($iframeNode && $iframeNode.length > 0) {
+                $iframeNode.attr('id', 'site-player');
+                $iframeNode.attr('allowfullscreen', 'true')[0].allowFullscreen = true;
+                let videoHasClickedFunc = function (contentDocument) {
+                    if (contentDocument) {
+                        $(contentDocument.body).on('click', function () {
+                            videoHasPlayed();
+                        });
+                    }
                 };
-                if (iframeNode.prop("contentDocument") && iframeNode.prop("contentDocument").readyState == "complete") {
-                    videoHasClickedFunc(iframeNode.prop("contentDocument"));
+                if ($iframeNode.prop('contentDocument') && $iframeNode.prop('contentDocument').readyState == 'complete') {
+                    videoHasClickedFunc($iframeNode.prop('contentDocument'));
                 } else {
-                    iframeNode.load(function () { // 等子iframe加载完毕
+                    $iframeNode.load(function () { // 等子iframe加载完毕
                         videoHasClickedFunc(this.contentDocument);
                     });
                 }
             }
             videoDomReady();
             // 去黑边
-            // calcVideoPix(playerWrapper.children(0));
+            // calcVideoPix($playerWrapper.children(0));
             // $(window).resize(function () {
-            //     calcVideoPix($("#player-wrapper").children(0));
+            //     calcVideoPix($('#player-wrapper').children(0));
             // });
         }
         // document.title = video.name + document.title;
-        // $('head meta[name="description"]').attr("content", video.description);
-        // $('head meta[name="keywords"]').attr("content", video.tags + $('head meta[name="keywords"]').attr("content"));
+        // $('head meta[name="description"]').attr('content', video.description);
+        // $('head meta[name="keywords"]').attr('content', video.tags + $('head meta[name="keywords"]').attr('content'));
         videoPageReady();
         onVideoHasPlayed(function () {
             request.saveVideoHasPlayed(currentVideo.video_id);
@@ -859,7 +970,7 @@
     // 播放状态状态改变 - playing / pause / ended
     window.onVideoPlayStatusChange = function (call) {
         config.callback.video_play_status_change_calls.push(call);
-        if (config.status.videoPlayStatus != "pause") {
+        if (config.status.videoPlayStatus != 'pause') {
             call.call(currentVideo, config.status.videoPlayStatus);
         }
         return window;
@@ -877,16 +988,16 @@
     // 视频显示比例改变
     window.onRatioChange = function (call) {
         config.callback.ratio_change_calls.push(call);
-        if (config.status.videoRotate && config.status.videoRotate != '0' && currentPlayer) {
+        if (config.status.videoRotate && config.status.videoRotate != 0 && currentPlayer) {
             var eyeRawWidth, eyeRawHeight;
             switch (config.status.videoRotate) {
-                case "0":
-                case "180":
+                case 0:
+                case 180:
                     eyeRawWidth = currentVideo.width;
                     eyeRawHeight = currentVideo.height;
                     break;
-                case "90":
-                case "270":
+                case 90:
+                case 270:
                     eyeRawWidth = currentVideo.height;
                     eyeRawHeight = currentVideo.width;
             }

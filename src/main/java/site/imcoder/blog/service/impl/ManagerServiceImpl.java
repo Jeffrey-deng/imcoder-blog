@@ -666,9 +666,9 @@ public class ManagerServiceImpl extends BaseService implements IManagerService {
             for (Comment comment : commentList) {
                 long newCid = IdUtil.convertOldPrimaryKeyToNew(comment.getCid());
                 long newUid = IdUtil.convertOldPrimaryKeyToNew(comment.getUser().getUid());
-                long newMainId = IdUtil.convertOldPrimaryKeyToNew(comment.getMainId());
+                long newCreationId = IdUtil.convertOldPrimaryKeyToNew(comment.getCreationId());
                 long newParentId = IdUtil.convertOldPrimaryKeyToNew(comment.getParentId());
-                commentSqlList.add("update comment set cid = " + newCid + ", uid = " + newUid + ", main_id = " + newMainId + ", r_cid = " + newParentId + " where cid = " + comment.getCid());
+                commentSqlList.add("update comment set cid = " + newCid + ", uid = " + newUid + ", creation_id = " + newCreationId + ", r_cid = " + newParentId + " where cid = " + comment.getCid());
             }
             int ci = 0;
             try {
@@ -745,7 +745,7 @@ public class ManagerServiceImpl extends BaseService implements IManagerService {
     }
 
     private List<Comment> loadCommentList(Connection conn, Statement statement) {
-        String query = "select cid, main_type, main_id, uid, r_cid from comment";
+        String query = "select cid, creation_type, creation_id, uid, r_cid from comment";
         List<Comment> commentList = null;
         ResultSet resultSet = null;
         try {
@@ -754,8 +754,8 @@ public class ManagerServiceImpl extends BaseService implements IManagerService {
             while (resultSet.next()) {
                 Comment c = new Comment();
                 c.setCid(resultSet.getLong("cid"));
-                c.setMainType(resultSet.getInt("main_type"));
-                c.setMainId(resultSet.getLong("main_id"));
+                c.setCreationType(resultSet.getInt("creation_type"));
+                c.setCreationId(resultSet.getLong("creation_id"));
                 c.setUser(new User(resultSet.getLong("uid")));
                 c.setParentId(resultSet.getLong("r_cid"));
                 commentList.add(c);

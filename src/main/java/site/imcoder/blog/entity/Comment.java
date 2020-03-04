@@ -25,16 +25,16 @@ public class Comment implements Serializable {
     private Long cid;
 
     /**
-     * 评论对象主体类型（文章?照片?视频?）
+     * 评论对象所属的作品类型（文章?照片?视频?）
      * 参考 {@link CommentType}
      */
-    private int mainType;
+    private int creationType;
 
     /**
-     * 评论对象主体ID（文章id?照片id?视频id?）
+     * 评论对象所属的作品ID（文章id?照片id?视频id?）
      */
     @PrimaryKeyConvert
-    private Long mainId;
+    private Long creationId;
 
     /**
      * 该评论所有者
@@ -86,14 +86,14 @@ public class Comment implements Serializable {
     public Comment() {
     }
 
-    public Comment(Long cid, int mainType) {
+    public Comment(Long cid, int creationType) {
         this.cid = cid;
-        this.mainType = mainType;
+        this.creationType = creationType;
     }
 
     public Comment(Long cid) {
         this.cid = cid;
-        this.mainType = CommentType.ARTICLE.value;
+        this.creationType = CommentType.ARTICLE.value;
     }
 
     public Long getCid() {
@@ -104,20 +104,20 @@ public class Comment implements Serializable {
         this.cid = cid;
     }
 
-    public int getMainType() {
-        return mainType;
+    public int getCreationType() {
+        return creationType;
     }
 
-    public void setMainType(int mainType) {
-        this.mainType = mainType;
+    public void setCreationType(int creationType) {
+        this.creationType = creationType;
     }
 
-    public Long getMainId() {
-        return mainId;
+    public Long getCreationId() {
+        return creationId;
     }
 
-    public void setMainId(Long mainId) {
-        this.mainId = mainId;
+    public void setCreationId(Long creationId) {
+        this.creationId = creationId;
     }
 
     public User getUser() {

@@ -5,7 +5,7 @@
 <mapper namespace="user">
 
     <delete id="deleteUser" parameterType="Long">
-        delete from user where uid=#{uid}
+        delete from user where uid = #{uid}
     </delete>
 
     <!-- 查询所有 -->
@@ -145,35 +145,35 @@
     <!-- 保存关注 如果已关注则不插入 由count判断 -->
     <insert id="saveFollow" parameterType="hashMap">
         <selectKey keyProperty="count" resultType="int" order="BEFORE">
-            select count(*) from user_follow where ( uid=#{follow.followerUid} and fuid=#{follow.followingUid} )
+            select count(*) from user_follow where (uid=#{follow.followerUid} and fuid=#{follow.followingUid})
         </selectKey>
         <if test="count == 0">
             insert into user_follow(UID,FUID) values (#{follow.followerUid},#{follow.followingUid})
         </if>
         <if test="count > 0">
-            select count(*) from user_follow where ( uid=#{follow.followerUid} and fuid=#{follow.followingUid} )
+            select count(*) from user_follow where (uid=#{follow.followerUid} and fuid=#{follow.followingUid})
         </if>
     </insert>
 
     <!-- 查询用户关注列表 -->
     <select id="findFollowingList" parameterType="user" resultMap="userMap_contact">
-        select uf.fuid as userid,nickname,sex,email,address,birthday,description,head_photo,qq,weibo,says,site,
-        ug.gid,ug.group_name
+        select uf.fuid as userid, nickname, sex, address, birthday, description, head_photo, weibo, says, site,
+        ug.gid, ug.group_name
         from user_follow uf left join
-        ( user u left join user_group ug on u.gid=ug.gid ) on uf.fuid=u.uid
+        (user u left join user_group ug on u.gid = ug.gid) on uf.fuid = u.uid
         <where>
-            uf.uid=#{uid}
+            uf.uid = #{uid}
         </where>
     </select>
 
     <!-- 查询粉丝关注列表 -->
     <select id="findFollowerList" parameterType="user" resultMap="userMap_contact">
-        select uf.uid as userid,nickname,sex,email,address,birthday,description,head_photo,qq,weibo,says,site,
-        ug.gid,ug.group_name
+        select uf.uid as userid, nickname, sex, address, birthday, description, head_photo, weibo, says, site,
+        ug.gid, ug.group_name
         from user_follow uf left join
-        ( user u left join user_group ug on u.gid=ug.gid ) on uf.uid=u.uid
+        (user u left join user_group ug on u.gid = ug.gid) on uf.uid = u.uid
         <where>
-            uf.fuid=#{uid}
+            uf.fuid = #{uid}
         </where>
     </select>
 
@@ -181,12 +181,10 @@
         <result column="userid" property="uid"/>
         <result column="nickname" property="nickname"/>
         <result column="sex" property="sex"/>
-        <result column="email" property="email"/>
         <result column="address" property="address"/>
         <result column="birthday" property="birthday"/>
         <result column="description" property="description"/>
         <result column="head_photo" property="head_photo"/>
-        <result column="qq" property="qq"/>
         <result column="weibo" property="weibo"/>
         <result column="site" property="site"/>
         <result column="says" property="says"/>
@@ -225,12 +223,12 @@
 
     <!-- 查询用户好友 -->
     <select id="findFriendList" parameterType="user" resultMap="userMap_contact">
-        select f.fid as userid,nickname,sex,email,address,birthday,description,head_photo,qq,weibo,says,site,
-        ug.gid,ug.group_name
+        select f.fid as userid, nickname, sex, address, birthday, description, head_photo, weibo, says, site,
+        ug.gid, ug.group_name
         from friends f left join
-        ( user u left join user_group ug on u.gid=ug.gid ) on f.fid=u.uid
+        (user u left join user_group ug on u.gid = ug.gid) on f.fid = u.uid
         <where>
-            f.uid=#{uid}
+            f.uid = #{uid}
         </where>
     </select>
 
@@ -245,30 +243,30 @@
     <!-- *************************收藏 start********************* -->
     <!-- 检查收藏是否重复 -->
     <select id="checkCollection" parameterType="collect" resultType="int">
-        select count(*) from collection where ( uid=#{uid} and aid=#{article.aid} );
+        select count(*) as count from collection where (uid = #{uid} and aid = #{article.aid});
     </select>
 
     <!-- 插入用户收藏表行 -->
     <insert id="saveCollection" parameterType="collect">
-        insert into collection(uid,aid,clet_time) values (#{uid},#{article.aid},#{clet_time})
+        insert into collection(uid, aid, clet_time) values (#{uid}, #{article.aid}, #{clet_time})
     </insert>
 
     <!-- 删除用户收藏表行  -->
     <insert id="deleteCollection" parameterType="collect">
-        delete from collection where ( uid=#{uid} and aid=#{article.aid} )
+        delete from collection where (uid = #{uid} and aid = #{article.aid})
     </insert>
 
     <!-- 查找收藏文章列表 -->
-    <select id="findCollectList" parameterType="user" resultMap="collectListMap">
-        select coid,c.uid,a.aid,a.title,clet_time,
-        u.uid as auid,u.nickname
+    <select id="findCollectionList" parameterType="user" resultMap="collectionListMap">
+        select coid, c.uid, a.aid, a.title, clet_time,
+        u.uid as auid, u.nickname
         from collection c left join
-        ( article a left join user u on a.uid = u.uid )
-        on c.aid=a.aid
-        where c.uid=#{uid}
+        (article a left join user u on a.uid = u.uid)
+        on c.aid = a.aid
+        where c.uid = #{uid}
     </select>
 
-    <resultMap id="collectListMap" type="collect">
+    <resultMap id="collectionListMap" type="collect">
         <id column="coid" property="coid"/>
         <result column="uid" property="uid"/>
         <result column="clet_time" property="clet_time"/>
@@ -300,59 +298,13 @@
         from ((article_action_record ar left join article_access_detail ad on ar.aar_id = ad.aar_id) left join user u on ar.uid = u.uid)
         left join ((article a left join article_type at on a.atid = at.atid) left join (user au left join user_group aug on au.gid = aug.gid) on a.uid = au.uid)
         on ar.aid = a.aid
-        <where>
-            <choose>
-                <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.aid != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
-                    <choose>
-                        <when test="ar_id != null and ar_id > 0">
-                            and ar.aar_id = #{ar_id}
-                        </when>
-                        <otherwise>
-                            <choose>
-                                <when test="user != null and user.uid != null and user.uid > 0">
-                                    and ar.AID = #{creation.aid} and ar.UID = #{user.uid}
-                                </when>
-                                <otherwise>
-                                    and ar.AID = #{creation.aid} and ar.UID = 0 and ar.ip = #{ip}
-                                </otherwise>
-                            </choose>
-                        </otherwise>
-                    </choose>
-                </when>
-                <otherwise>
-                    1 != 1
-                </otherwise>
-            </choose>
-        </where>
+        <include refid="singleArticleActionRecordWhere"/>
         limit 1
     </select>
 
     <select id="findSimpleArticleActionRecord" parameterType="actionRecord" resultType="actionRecord">
         select ar.aar_id as ar_id from article_action_record ar
-        <where>
-            <choose>
-                <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.aid != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
-                    <choose>
-                        <when test="ar_id != null and ar_id > 0">
-                            and ar.aar_id = #{ar_id}
-                        </when>
-                        <otherwise>
-                            <choose>
-                                <when test="user != null and user.uid != null and user.uid > 0">
-                                    and ar.AID = #{creation.aid} and ar.UID = #{user.uid}
-                                </when>
-                                <otherwise>
-                                    and ar.AID = #{creation.aid} and ar.UID = 0 and ar.ip = #{ip}
-                                </otherwise>
-                            </choose>
-                        </otherwise>
-                    </choose>
-                </when>
-                <otherwise>
-                    1 != 1
-                </otherwise>
-            </choose>
-        </where>
+        <include refid="singleArticleActionRecordWhere"/>
         limit 1
     </select>
 
@@ -470,6 +422,10 @@
                 comment_at = #{comment_at}
             </if>
         </set>
+        <include refid="singleArticleActionRecordWhere"/>
+    </update>
+
+    <sql id="singleArticleActionRecordWhere">
         <where>
             <choose>
                 <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.aid != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
@@ -494,26 +450,24 @@
                 </otherwise>
             </choose>
         </where>
-    </update>
+    </sql>
 
     <select id="findSimpleArticleAccessDetail" parameterType="accessDetail" resultType="accessDetail">
-        select aar_id as ar_id, first_access_path, first_access_referer, first_access_time,
-        last_access_time, last_access_ip, last_access_user_agent, access_times, deep
+        select aar_id as ar_id,
+        <include refid="accessDetailSelect"/>
         from article_access_detail
         where aar_id = #{ar_id}
         limit 1
     </select>
 
     <insert id="saveArticleAccessDetail" parameterType="accessDetail">
-        insert into article_access_detail (aar_id, first_access_path, first_access_referer, first_access_time,
-        last_access_time, last_access_ip, last_access_user_agent, access_times, deep)
-        values (#{ar_id}, #{first_access_path}, #{first_access_referer}, #{first_access_time},
-        #{last_access_time}, #{last_access_ip}, #{last_access_user_agent}, #{access_times}, #{deep})
+        insert into article_access_detail (aar_id,
+        <include refid="accessDetailInsertValues"/>
     </insert>
 
     <update id="updateArticleAccessDetail" parameterType="accessDetail">
-        update article_access_detail set last_access_time = #{last_access_time}, last_access_ip = #{last_access_ip},
-        last_access_user_agent = #{last_access_user_agent}, access_times = #{access_times}, deep = #{deep}
+        update article_access_detail
+        <include refid="accessDetailUpdateSet"/>
         where aar_id = #{ar_id}
     </update>
 
@@ -588,62 +542,23 @@
         v.video_id, v.uid as author_uid , vu.nickname as author_nickname, vu.sex as author_sex, vu.head_photo as author_head_photo,
         v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
-        v.upload_time, v.originName, v.refer, v.permission, v.rotate, v.click_count, v.like_count, v.comment_count
+        v.upload_time, v.originName, v.refer, v.permission, v.click_count, v.like_count, v.comment_count,
+        (case when vs.disable_view is not null and vs.disable_view > 0 then true else false end) as vs_disable_view,
+        (case when vs.disable_send_comment is not null and vs.disable_send_comment > 0 then true else false end) as vs_disable_send_comment,
+        (case when vs.disable_list_comment is not null and vs.disable_list_comment > 0 then true else false end) as vs_disable_list_comment,
+        (case when vs.disable_embed is not null and vs.disable_embed > 0 then true else false end) as vs_disable_embed,
+        (case when vs.disable_download is not null and vs.disable_download > 0 then true else false end) as vs_disable_download,
+        vs.rotate as vs_rotate,
+        (case when vs.enable_loop is not null and vs.enable_loop > 0 then true else false end) as vs_enable_loop
         from ((video_action_record ar left join video_access_detail ad on ar.var_id = ad.var_id) left join user u on ar.uid = u.uid)
-        left join ((video v left join user vu on v.uid = vu.uid) left join photo p on v.cover_id = p.photo_id)
+        left join (((video v left join user vu on v.uid = vu.uid) left join photo p on v.cover_id = p.photo_id) left join video_setting vs on v.video_id = vs.video_id)
         on ar.video_id = v.video_id
-        <where>
-            <choose>
-                <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.video_id != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
-                    <choose>
-                        <when test="ar_id != null and ar_id > 0">
-                            and ar.var_id = #{ar_id}
-                        </when>
-                        <otherwise>
-                            <choose>
-                                <when test="user != null and user.uid != null and user.uid > 0">
-                                    and ar.video_id = #{creation.video_id} and ar.UID = #{user.uid}
-                                </when>
-                                <otherwise>
-                                    and ar.video_id = #{creation.video_id} and ar.UID = 0 and ar.ip = #{ip}
-                                </otherwise>
-                            </choose>
-                        </otherwise>
-                    </choose>
-                </when>
-                <otherwise>
-                    1 != 1
-                </otherwise>
-            </choose>
-        </where>
+        <include refid="singleVideoActionRecordWhere"/>
     </select>
 
     <select id="findSimpleVideoActionRecord" parameterType="actionRecord" resultType="actionRecord">
         select ar.var_id as ar_id from video_action_record ar
-        <where>
-            <choose>
-                <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.video_id != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
-                    <choose>
-                        <when test="ar_id != null and ar_id > 0">
-                            and ar.var_id = #{ar_id}
-                        </when>
-                        <otherwise>
-                            <choose>
-                                <when test="user != null and user.uid != null and user.uid > 0">
-                                    and ar.video_id = #{creation.video_id} and ar.UID = #{user.uid}
-                                </when>
-                                <otherwise>
-                                    and ar.video_id = #{creation.video_id} and ar.UID = 0 and ar.ip = #{ip}
-                                </otherwise>
-                            </choose>
-                        </otherwise>
-                    </choose>
-                </when>
-                <otherwise>
-                    1 != 1
-                </otherwise>
-            </choose>
-        </where>
+        <include refid="singleVideoActionRecordWhere"/>
         limit 1
     </select>
 
@@ -658,13 +573,20 @@
         v.video_id, v.uid as author_uid , vu.nickname as author_nickname, vu.sex as author_sex, vu.head_photo as author_head_photo,
         v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
-        v.upload_time, v.refer, v.permission, v.rotate, v.click_count, v.like_count, v.comment_count,
+        v.upload_time, v.refer, v.permission, v.click_count, v.like_count, v.comment_count,
         <if test="is_login">
             (case when v.uid = #{loginUser.uid} then v.originName else null end) as originName,
         </if>
+        (case when vs.disable_view is not null and vs.disable_view > 0 then true else false end) as vs_disable_view,
+        (case when vs.disable_send_comment is not null and vs.disable_send_comment > 0 then true else false end) as vs_disable_send_comment,
+        (case when vs.disable_list_comment is not null and vs.disable_list_comment > 0 then true else false end) as vs_disable_list_comment,
+        (case when vs.disable_embed is not null and vs.disable_embed > 0 then true else false end) as vs_disable_embed,
+        (case when vs.disable_download is not null and vs.disable_download > 0 then true else false end) as vs_disable_download,
+        vs.rotate as vs_rotate,
+        (case when vs.enable_loop is not null and vs.enable_loop > 0 then true else false end) as vs_enable_loop,
         st.st_id, st.uid as st_uid, st.video_id as st_video_id, st.name as st_name, st.lang as st_lang, st.mime_type as st_mime_type, st.path as st_path, st.upload_time as st_upload_time
         from ((video_action_record ar left join video_access_detail ad on ar.var_id = ad.var_id) left join user u on ar.uid = u.uid)
-        left join (((
+        left join ((((
         (select all_v.* from video all_v
         <where>
             <choose>
@@ -696,7 +618,7 @@
                 </otherwise>
             </choose>
         </where>
-        ) v left join user vu on v.uid = vu.uid) left join photo p on v.cover_id = p.photo_id) left join video_subtitle st on v.video_id = st.video_id)
+        ) v left join user vu on v.uid = vu.uid) left join photo p on v.cover_id = p.photo_id) left join video_setting vs on v.video_id = vs.video_id) left join video_subtitle st on v.video_id = st.video_id)
         on ar.video_id = v.video_id
         <where>
             <if test="condition.user != null and condition.user.uid != null">
@@ -765,6 +687,10 @@
                 comment_at = #{comment_at}
             </if>
         </set>
+        <include refid="singleVideoActionRecordWhere"/>
+    </update>
+
+    <sql id="singleVideoActionRecordWhere">
         <where>
             <choose>
                 <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.video_id != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
@@ -789,26 +715,24 @@
                 </otherwise>
             </choose>
         </where>
-    </update>
+    </sql>
 
     <select id="findSimpleVideoAccessDetail" parameterType="accessDetail" resultType="accessDetail">
-        select var_id as ar_id, first_access_path, first_access_referer, first_access_time,
-        last_access_time, last_access_ip, last_access_user_agent, access_times, deep
+        select var_id as ar_id,
+        <include refid="accessDetailSelect"/>
         from video_access_detail
         where var_id = #{ar_id}
         limit 1
     </select>
 
     <insert id="saveVideoAccessDetail" parameterType="accessDetail">
-        insert into video_access_detail (var_id, first_access_path, first_access_referer, first_access_time,
-        last_access_time, last_access_ip, last_access_user_agent, access_times, deep)
-        values (#{ar_id}, #{first_access_path}, #{first_access_referer}, #{first_access_time},
-        #{last_access_time}, #{last_access_ip}, #{last_access_user_agent}, #{access_times}, #{deep})
+        insert into video_access_detail (var_id,
+        <include refid="accessDetailInsertValues"/>
     </insert>
 
     <update id="updateVideoAccessDetail" parameterType="accessDetail">
-        update video_access_detail set last_access_time = #{last_access_time}, last_access_ip = #{last_access_ip},
-        last_access_user_agent = #{last_access_user_agent}, access_times = #{access_times}, deep = #{deep}
+        update video_access_detail
+        <include refid="accessDetailUpdateSet"/>
         where var_id = #{ar_id}
     </update>
 
@@ -848,7 +772,6 @@
             <result column="originName" property="originName"/>
             <result column="refer" property="refer"/>
             <result column="permission" property="permission"/>
-            <result column="rotate" property="rotate"/>
             <result column="click_count" property="click_count"/>
             <result column="like_count" property="like_count"/>
             <result column="comment_count" property="comment_count"/>
@@ -865,6 +788,15 @@
                 <result column="p_width" property="width"/>
                 <result column="p_height" property="height"/>
                 <result column="image_type" property="image_type"/>
+            </association>
+            <association property="setting" javaType="videoSetting">
+                <result column="vs_disable_view" property="disable_view"/>
+                <result column="vs_disable_send_comment" property="disable_send_comment"/>
+                <result column="vs_disable_list_comment" property="disable_list_comment"/>
+                <result column="vs_disable_embed" property="disable_embed"/>
+                <result column="vs_disable_download" property="disable_download"/>
+                <result column="vs_rotate" property="rotate"/>
+                <result column="vs_enable_loop" property="enable_loop"/>
             </association>
             <collection property="subtitles" javaType="ArrayList" column="st_id" ofType="subtitle">
                 <id column="st_id" property="st_id"/>
@@ -904,59 +836,13 @@
         from ((photo_action_record ar left join photo_access_detail ad on ar.par_id = ad.par_id) left join user u on ar.uid = u.uid)
         left join ((photo p left join album a on p.album_id = a.album_id) left join photo_tag_wrapper t on p.topic = t.ptwid)
         on ar.photo_id = p.photo_id
-        <where>
-            <choose>
-                <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.photo_id != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
-                    <choose>
-                        <when test="ar_id != null and ar_id > 0">
-                            and ar.par_id = #{ar_id}
-                        </when>
-                        <otherwise>
-                            <choose>
-                                <when test="user != null and user.uid != null and user.uid > 0">
-                                    and ar.photo_id = #{creation.photo_id} and ar.UID = #{user.uid}
-                                </when>
-                                <otherwise>
-                                    and ar.photo_id = #{creation.photo_id} and ar.UID = 0 and ar.ip = #{ip}
-                                </otherwise>
-                            </choose>
-                        </otherwise>
-                    </choose>
-                </when>
-                <otherwise>
-                    1 != 1
-                </otherwise>
-            </choose>
-        </where>
+        <include refid="singlePhotoActionRecordWhere"/>
         limit 1
     </select>
 
     <select id="findSimplePhotoActionRecord" parameterType="actionRecord" resultType="actionRecord">
         select ar.par_id as ar_id from photo_action_record ar
-        <where>
-            <choose>
-                <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.photo_id != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
-                    <choose>
-                        <when test="ar_id != null and ar_id > 0">
-                            and ar.par_id = #{ar_id}
-                        </when>
-                        <otherwise>
-                            <choose>
-                                <when test="user != null and user.uid != null and user.uid > 0">
-                                    and ar.photo_id = #{creation.photo_id} and ar.UID = #{user.uid}
-                                </when>
-                                <otherwise>
-                                    and ar.photo_id = #{creation.photo_id} and ar.UID = 0 and ar.ip = #{ip}
-                                </otherwise>
-                            </choose>
-                        </otherwise>
-                    </choose>
-                </when>
-                <otherwise>
-                    1 != 1
-                </otherwise>
-            </choose>
-        </where>
+        <include refid="singlePhotoActionRecordWhere"/>
         limit 1
     </select>
 
@@ -1076,6 +962,10 @@
                 comment_at = #{comment_at}
             </if>
         </set>
+        <include refid="singlePhotoActionRecordWhere"/>
+    </update>
+
+    <sql id="singlePhotoActionRecordWhere">
         <where>
             <choose>
                 <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.photo_id != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
@@ -1100,26 +990,24 @@
                 </otherwise>
             </choose>
         </where>
-    </update>
+    </sql>
 
     <select id="findSimplePhotoAccessDetail" parameterType="accessDetail" resultType="accessDetail">
-        select par_id as ar_id, first_access_path, first_access_referer, first_access_time,
-        last_access_time, last_access_ip, last_access_user_agent, access_times, deep
+        select par_id as ar_id,
+        <include refid="accessDetailSelect"/>
         from photo_access_detail
         where par_id = #{ar_id}
         limit 1
     </select>
 
     <insert id="savePhotoAccessDetail" parameterType="accessDetail">
-        insert into photo_access_detail (par_id, first_access_path, first_access_referer, first_access_time,
-        last_access_time, last_access_ip, last_access_user_agent, access_times, deep)
-        values (#{ar_id}, #{first_access_path}, #{first_access_referer}, #{first_access_time},
-        #{last_access_time}, #{last_access_ip}, #{last_access_user_agent}, #{access_times}, #{deep})
+        insert into photo_access_detail (par_id,
+        <include refid="accessDetailInsertValues"/>
     </insert>
 
     <update id="updatePhotoAccessDetail" parameterType="accessDetail">
-        update photo_access_detail set last_access_time = #{last_access_time}, last_access_ip = #{last_access_ip},
-        last_access_user_agent = #{last_access_user_agent}, access_times = #{access_times}, deep = #{deep}
+        update photo_access_detail
+        <include refid="accessDetailUpdateSet"/>
         where par_id = #{ar_id}
     </update>
 
@@ -1182,69 +1070,267 @@
     </resultMap>
     <!-- 照片动作记录 end -->
 
+    <!-- 相册动作记录 start -->
+    <select id="findAlbumActionRecord" parameterType="actionRecord" resultMap="albumActionRecordMap">
+        select ar.aar_id, ar.UID, (case when (ar.UID = 0) then ar.ip else u.nickname end) as nickname, u.sex, u.head_photo, u.gid, ar.ip,
+        (case when (ar.liked > 0) then true else false end) as liked, (case when (ar.like_at = 0) then null else ar.like_at end) as like_at,
+        (case when (ar.commented > 0) then true else false end) as commented, (case when (ar.comment_at = 0) then null else ar.comment_at end) as comment_at,
+        (case when (ad.aad_id is not null) then true else false end) as accessed, ad.last_access_time as access_at,
+        ad.aad_id, ad.first_access_path, ad.first_access_referer, ad.first_access_time,
+        ad.last_access_time, ad.last_access_ip, ad.last_access_user_agent, ad.access_times, ad.deep,
+        a.album_id, a.name, a.description, a.create_time, a.permission, a.mount, a.size, a.show_col, a.click_count, a.like_count, a.comment_count,
+        p.photo_id as cover_id, p.path as cover_path, p.width as cover_width, p.height as cover_height,
+        au.uid as author_uid, au.nickname as author_nickname, au.sex as author_sex, au.head_photo as author_head_photo
+        from ((album_action_record ar left join album_access_detail ad on ar.aar_id = ad.aar_id) left join user u on ar.uid = u.uid)
+        left join ((album a left join user au on a.uid = au.uid) left join photo p on a.cover = p.photo_id)
+        on ar.album_id = a.album_id
+        <include refid="singleAlbumActionRecordWhere"/>
+        limit 1
+    </select>
+
+    <select id="findSimpleAlbumActionRecord" parameterType="actionRecord" resultType="actionRecord">
+        select ar.aar_id as ar_id from album_action_record ar
+        <include refid="singleAlbumActionRecordWhere"/>
+        limit 1
+    </select>
+
+    <select id="findAlbumActionRecordList" parameterType="hashMap" resultMap="albumActionRecordMap">
+        select ar.aar_id, ar.UID, (case when (ar.UID = 0) then ar.ip else u.nickname end) as nickname, u.sex, u.head_photo, u.gid, ar.ip,
+        (case when (ar.liked > 0) then true else false end) as liked, (case when (ar.like_at = 0) then null else ar.like_at end) as like_at,
+        (case when (ar.commented > 0) then true else false end) as commented, (case when (ar.comment_at = 0) then null else ar.comment_at end) as comment_at,
+        (case when (ad.aad_id is not null) then true else false end) as accessed, ad.last_access_time as access_at,
+        ad.aad_id, ad.first_access_path, ad.first_access_referer, ad.first_access_time,
+        ad.last_access_time, ad.last_access_ip, ad.last_access_user_agent, ad.access_times, ad.deep,
+        a.album_id, a.name, a.description, a.create_time, a.permission, a.mount, a.size, a.show_col, a.click_count, a.like_count, a.comment_count,
+        p.photo_id as cover_id, p.path as cover_path, p.width as cover_width, p.height as cover_height,
+        au.uid as author_uid, au.nickname as author_nickname, au.sex as author_sex, au.head_photo as author_head_photo
+        from ((album_action_record ar left join album_access_detail ad on ar.aar_id = ad.aar_id) left join user u on ar.uid = u.uid)
+        left join ((
+        (select all_a.* from album all_a
+        <where>
+            <choose>
+                <when test="loginUser != null and loginUser.uid > 0 and loginUser.userGroup.gid == '-1'">
+                    and (1 = 1)
+                </when>
+                <when test="loginUser != null and loginUser.uid > 0">
+                    and (
+                    all_a.uid = #{loginUser.uid}
+                    or
+                    (
+                    (all_a.permission = 0 or all_a.permission = 1)
+                    or
+                    (all_a.permission = 2 or all_a.permission = 2)
+                    or
+                    ((all_a.permission = 4 or all_a.permission = 3) and all_a.uid in (select following.fuid from
+                    user_follow following where following.uid = #{loginUser.uid}))
+                    or
+                    ((all_a.permission = 6 or all_a.permission = 4) and all_a.uid in (select follower.uid from
+                    user_follow follower where follower.fuid = #{loginUser.uid}))
+                    or
+                    ((all_a.permission = 8 or all_a.permission = 5) and all_a.uid in (select friend.uid from friends
+                    friend where friend.fid = #{loginUser.uid}))
+                    )
+                    )
+                </when>
+                <otherwise>
+                    and (all_a.permission = 0 or all_a.permission = 1)
+                </otherwise>
+            </choose>
+        </where>
+        ) a left join user au on a.uid = au.uid) left join photo p on a.cover = p.photo_id)
+        on ar.album_id = a.album_id
+        <where>
+            <if test="condition.user != null and condition.user.uid != null">
+                and ar.UID = #{condition.user.uid}
+            </if>
+            <if test="condition.creation != null">
+                <if test="condition.creation.album_id != null and condition.creation.album_id > 0">
+                    and ar.album_id = #{condition.creation.album_id}
+                </if>
+            </if>
+            <if test="condition.ip != null and condition.ip != ''">
+                and ar.ip = #{condition.ip}
+            </if>
+            <if test="condition.liked">
+                and ar.liked > 0
+            </if>
+            <if test="condition.commented">
+                and ar.commented > 0
+            </if>
+            <if test="condition.accessed">
+                and (ad.aad_id is not null)
+            </if>
+            <if test="condition.accessDetail != null">
+                <if test="condition.accessDetail.deep != null and condition.accessDetail.deep > 0">
+                    and ad.deep = #{condition.deep}
+                </if>
+                <if test="condition.accessDetail.last_access_ip != null and condition.accessDetail.last_access_ip != ''">
+                    and ad.last_access_ip = #{condition.last_access_ip}
+                </if>
+            </if>
+        </where>
+        <choose>
+            <when test="condition.liked">
+                order by ar.like_at desc
+            </when>
+            <when test="condition.commented">
+                order by ar.comment_at desc
+            </when>
+            <when test="condition.accessed">
+                order by ar.access_at desc
+            </when>
+            <otherwise>
+                order by ar.aar_id desc
+            </otherwise>
+        </choose>
+    </select>
+
+    <insert id="saveAlbumActionRecord" parameterType="actionRecord" useGeneratedKeys="true" keyProperty="ar_id" keyColumn="aar_id">
+        insert into album_action_record (UID, ip, album_id, liked, like_at, commented, comment_at)
+        values (#{user.uid}, #{ip}, #{creation.album_id}, #{liked}, #{like_at}, #{commented}, #{comment_at})
+    </insert>
+
+    <update id="updateAlbumActionRecord" parameterType="actionRecord">
+        update album_action_record ar
+        <set>
+            <if test="liked != null">
+                liked = (case when #{liked} then 1 else 0 end),
+            </if>
+            <if test="like_at != null">
+                like_at = #{like_at}
+            </if>
+            <if test="commented != null">
+                commented = (case when #{commented} then 1 else 0 end),
+            </if>
+            <if test="comment_at != null">
+                comment_at = #{comment_at}
+            </if>
+        </set>
+        <include refid="singleAlbumActionRecordWhere"/>
+    </update>
+
+    <sql id="singleAlbumActionRecordWhere">
+        <where>
+            <choose>
+                <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.album_id != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
+                    <choose>
+                        <when test="ar_id != null and ar_id > 0">
+                            and aar_id = #{ar_id}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="user != null and user.uid != null and user.uid > 0">
+                                    and ar.album_id = #{creation.album_id} and ar.UID = #{user.uid}
+                                </when>
+                                <otherwise>
+                                    and ar.album_id = #{creation.album_id} and ar.UID = 0 and ar.ip = #{ip}
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    1 != 1
+                </otherwise>
+            </choose>
+        </where>
+    </sql>
+
+    <select id="findSimpleAlbumAccessDetail" parameterType="accessDetail" resultType="accessDetail">
+        select aar_id as ar_id,
+        <include refid="accessDetailSelect"/>
+        from album_access_detail
+        where aar_id = #{ar_id}
+        limit 1
+    </select>
+
+    <insert id="saveAlbumAccessDetail" parameterType="accessDetail">
+        insert into album_access_detail (aar_id,
+        <include refid="accessDetailInsertValues"/>
+    </insert>
+
+    <update id="updateAlbumAccessDetail" parameterType="accessDetail">
+        update album_access_detail
+        <include refid="accessDetailUpdateSet"/>
+        where aar_id = #{ar_id}
+    </update>
+
+    <delete id="deleteAlbumAccessDetail" parameterType="accessDetail">
+        delete from album_access_detail where aar_id = #{ar_id}
+    </delete>
+
+    <resultMap id="albumActionRecordMap" type="actionRecord">
+        <id column="aar_id" property="ar_id"/>
+        <id column="ip" property="ip"/>
+        <result column="liked" property="liked"/>
+        <result column="like_at" property="like_at"/>
+        <result column="commented" property="commented"/>
+        <result column="comment_at" property="comment_at"/>
+        <result column="accessed" property="accessed"/>
+        <result column="access_at" property="access_at"/>
+        <association property="user" column="uid" javaType="user">
+            <id column="uid" property="uid"/>
+            <result column="nickname" property="nickname"/>
+            <result column="sex" property="sex"/>
+            <result column="head_photo" property="head_photo"/>
+        </association>
+        <association property="creation" column="album_id" javaType="album">
+            <id column="album_id" property="album_id"/>
+            <result column="name" property="name"/>
+            <result column="description" property="description"/>
+            <result column="create_time" property="create_time" javaType="java.util.Date" jdbcType="BIGINT"
+                    typeHandler="site.imcoder.blog.dao.typehandler.DateTypeHandler"/>
+            <result column="permission" property="permission"/>
+            <result column="mount" property="mount"/>
+            <result column="size" property="size"/>
+            <result column="show_col" property="show_col"/>
+            <result column="click_count" property="click_count"/>
+            <result column="like_count" property="like_count"/>
+            <result column="comment_count" property="comment_count"/>
+            <association column="cover_id" property="cover" javaType="photo">
+                <id column="cover_id" property="photo_id"/>
+                <result column="author_uid" property="uid"/>
+                <result column="cover_path" property="path"/>
+                <result column="cover_width" property="width"/>
+                <result column="cover_height" property="height"/>
+            </association>
+            <association column="author_uid" property="user" javaType="user">
+                <id column="author_uid" property="uid"/>
+                <result column="author_nickname" property="nickname"/>
+                <result column="author_sex" property="sex"/>
+                <result column="author_head_photo" property="head_photo"/>
+            </association>
+        </association>
+        <association property="accessDetail" column="aad_id" javaType="accessDetail">
+            <result column="first_access_path" property="first_access_path"/>
+            <result column="first_access_referer" property="first_access_referer"/>
+            <result column="first_access_time" property="first_access_time"/>
+            <result column="last_access_time" property="last_access_time"/>
+            <result column="last_access_ip" property="last_access_ip"/>
+            <result column="last_access_user_agent" property="last_access_user_agent"/>
+            <result column="access_times" property="access_times"/>
+            <result column="deep" property="deep"/>
+        </association>
+    </resultMap>
+    <!-- 相册动作记录 end -->
+
     <!-- 评论动作记录 start -->
     <select id="findCommentActionRecord" parameterType="actionRecord" resultMap="commentActionRecordMap">
         select ar.car_id, ar.UID, (case when (ar.UID = 0) then ar.ip else u.nickname end) as nickname, u.sex, u.head_photo, u.gid, ar.ip,
         (case when (ar.liked > 0) then true else false end) as liked, (case when (ar.like_at = 0) then null else ar.like_at end) as like_at,
         (case when (ar.commented > 0) then true else false end) as commented, (case when (ar.comment_at = 0) then null else ar.comment_at end) as comment_at,
-        c.cid, c.main_type, c.main_id, c.r_cid, c.send_time, c.anonymous, c.like_count,
+        c.cid, c.creation_type, c.creation_id, c.r_cid, c.send_time, c.anonymous, c.like_count,
         cu.uid as comment_user_uid, cu.nickname as comment_user_nickname, cu.head_photo as comment_user_head_photo, cu.sex as comment_user_sex
         from ((comment_action_record ar) left join user u on ar.uid = u.uid)
         left join (comment c left join user cu on c.uid = cu.uid)
         on ar.cid = c.cid
-        <where>
-            <choose>
-                <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.cid != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
-                    <choose>
-                        <when test="ar_id != null and ar_id > 0">
-                            and ar.car_id = #{ar_id}
-                        </when>
-                        <otherwise>
-                            <choose>
-                                <when test="user != null and user.uid != null and user.uid > 0">
-                                    and ar.cid = #{creation.cid} and ar.UID = #{user.uid}
-                                </when>
-                                <otherwise>
-                                    and ar.cid = #{creation.cid} and ar.UID = 0 and ar.ip = #{ip}
-                                </otherwise>
-                            </choose>
-                        </otherwise>
-                    </choose>
-                </when>
-                <otherwise>
-                    1 != 1
-                </otherwise>
-            </choose>
-        </where>
+        <include refid="singleCommentActionRecordWhere"/>
         limit 1
     </select>
 
     <select id="findSimpleCommentActionRecord" parameterType="actionRecord" resultType="actionRecord">
         select ar.car_id as ar_id from comment_action_record ar
-        <where>
-            <choose>
-                <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.cid != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
-                    <choose>
-                        <when test="ar_id != null and ar_id > 0">
-                            and ar.car_id = #{ar_id}
-                        </when>
-                        <otherwise>
-                            <choose>
-                                <when test="user != null and user.uid != null and user.uid > 0">
-                                    and ar.cid = #{creation.cid} and ar.UID = #{user.uid}
-                                </when>
-                                <otherwise>
-                                    and ar.cid = #{creation.cid} and ar.UID = 0 and ar.ip = #{ip}
-                                </otherwise>
-                            </choose>
-                        </otherwise>
-                    </choose>
-                </when>
-                <otherwise>
-                    1 != 1
-                </otherwise>
-            </choose>
-        </where>
+        <include refid="singleCommentActionRecordWhere"/>
         limit 1
     </select>
 
@@ -1252,7 +1338,7 @@
         select ar.car_id, ar.UID, (case when (ar.UID = 0) then ar.ip else u.nickname end) as nickname, u.sex, u.head_photo, u.gid, ar.ip,
         (case when (ar.liked > 0) then true else false end) as liked, (case when (ar.like_at = 0) then null else ar.like_at end) as like_at,
         (case when (ar.commented > 0) then true else false end) as commented, (case when (ar.comment_at = 0) then null else ar.comment_at end) as comment_at,
-        c.cid, c.main_type, c.main_id, c.r_cid, c.send_time, c.anonymous, c.like_count,
+        c.cid, c.creation_type, c.creation_id, c.r_cid, c.send_time, c.anonymous, c.like_count,
         cu.uid as comment_user_uid, cu.nickname as comment_user_nickname, cu.head_photo as comment_user_head_photo, cu.sex as comment_user_sex
         from ((comment_action_record ar) left join user u on ar.uid = u.uid)
         left join (comment c left join user cu on c.uid = cu.uid)
@@ -1310,6 +1396,10 @@
                 comment_at = #{comment_at}
             </if>
         </set>
+        <include refid="singleCommentActionRecordWhere"/>
+    </update>
+
+    <sql id="singleCommentActionRecordWhere">
         <where>
             <choose>
                 <when test="(ar_id != null and ar_id > 0) or (creation != null and creation.cid != null and ((user != null and user.uid != null and user.uid > 0) or (ip != null and ip != '')))">
@@ -1334,7 +1424,7 @@
                 </otherwise>
             </choose>
         </where>
-    </update>
+    </sql>
 
     <resultMap id="commentActionRecordMap" type="actionRecord">
         <id column="car_id" property="ar_id"/>
@@ -1351,8 +1441,8 @@
         </association>
         <association property="creation" column="cid" javaType="comment">
             <id column="cid" property="cid"/>
-            <result column="main_type" property="mainType"/>
-            <result column="main_id" property="mainId"/>
+            <result column="creation_type" property="creationType"/>
+            <result column="creation_id" property="creationId"/>
             <result column="r_cid" property="parentId"/>
             <result column="content" property="content"/>
             <result column="send_time" property="send_time"/>
@@ -1367,5 +1457,20 @@
         </association>
     </resultMap>
     <!-- 评论动作记录 end -->
+
+    <sql id="accessDetailSelect">
+        first_access_path, first_access_referer, first_access_time,
+        last_access_time, last_access_ip, last_access_user_agent, access_times, deep
+    </sql>
+    <sql id="accessDetailInsertValues">
+        first_access_path, first_access_referer, first_access_time,
+        last_access_time, last_access_ip, last_access_user_agent, access_times, deep)
+        values (#{ar_id}, #{first_access_path}, #{first_access_referer}, #{first_access_time},
+        #{last_access_time}, #{last_access_ip}, #{last_access_user_agent}, #{access_times}, #{deep})
+    </sql>
+    <sql id="accessDetailUpdateSet">
+        set last_access_time = #{last_access_time}, last_access_ip = #{last_access_ip},
+        last_access_user_agent = #{last_access_user_agent}, access_times = #{access_times}, deep = #{deep}
+    </sql>
 
 </mapper>

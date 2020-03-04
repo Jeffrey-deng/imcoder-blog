@@ -2,12 +2,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'clipboard', 'niftymodals', 'edit_tool', 'common_utils', 'login_handle'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'clipboard', 'niftymodals', 'globals', 'common_utils', 'login_handle', 'edit_tool'], factory);
     } else {
         // Browser globals
-        window.edit_handle = factory(window.jQuery, null, $(document).ready, toastr, Clipboard, null, null, common_utils, login_handle);
+        window.edit_handle = factory(window.jQuery, null, $(document).ready, toastr, Clipboard, null, globals, common_utils, login_handle, edit_tool);
     }
-})(function ($, bootstrap, domReady, toastr, Clipboard, niftymodals, edit_tool, common_utils, login_handle) {
+})(function ($, bootstrap, domReady, toastr, Clipboard, niftymodals, globals, common_utils, login_handle, edit_tool) {
 
     var pointer = {
         form: null,
@@ -28,11 +28,7 @@
             "summaryEditor": "#article_summary",
             "copyArticleLinkBtn": "#resultTipsModal .copy_article_link_btn"
         },
-        path_params: {
-            "basePath": "https://imcoder.site/",
-            "cloudPath": "https://cloud.imcoder.site/",
-            "staticPath": "https://static.imcoder.site/"
-        },
+        path_params: globals.path_params,
         event: {
             "articleFormInitCompleted": "article.form.init.completed",
             "beforeArticleSave": "article.save.before",
@@ -43,7 +39,7 @@
     };
 
     var init = function (options) {
-        common_utils.extendNonNull(true, config, options);
+        $.extendNotNull(true, config, options);
         pointer.form = $(config.selector.form);
         pointer.mainEditor = $(config.selector.mainEditor);
         pointer.summaryEditor = $(config.selector.summaryEditor);
@@ -59,7 +55,7 @@
         var $tags_modify_dom = pointer.form.find('.form-group-article-edit-tags .article-edit-tags');
         var $article_edit_tags_group = pointer.form.find('.form-group-article-edit-tags');
         utils.calcTagInputWidth($tags_modify_dom);
-        $tags_modify_dom.on("click", ".tag-close", function (e) { // 删除
+        $tags_modify_dom.on('click', '.tag-close', function (e) { // 删除
             utils.deleteTag($tags_modify_dom, $(e.currentTarget.parentNode));
         });
         $tags_modify_dom.on({ // 提交
@@ -68,7 +64,7 @@
                 var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
                 if (code == 13) {
                     utils.addTagFromInput($tags_modify_dom, $(e.currentTarget));
-                    $article_edit_tags_group.find(".article-edit-btn-tags-edit").text("编辑");
+                    $article_edit_tags_group.find('.article-edit-btn-tags-edit').text('编辑');
                     // 防止触发表单提交 返回false
                     e.preventDefault();
                     return false;
@@ -76,35 +72,35 @@
             },
             "blur": function (e) {
                 var input_dom = $(e.currentTarget);
-                if (input_dom.val() != "") {
+                if (input_dom.val() != '') {
                     utils.addTagFromInput($tags_modify_dom, input_dom);
-                    $article_edit_tags_group.find(".article-edit-btn-tags-edit").text("编辑");
+                    $article_edit_tags_group.find('.article-edit-btn-tags-edit').text('编辑');
                 }
             }
-        }, ".tag-input");
-        $article_edit_tags_group.on("dblclick", "label", function () { // 双击标签全部编辑
-            $tags_modify_dom.closest(".form-group").find(".tags-edit-btn").click();
+        }, '.tag-input');
+        $article_edit_tags_group.on('dblclick', 'label', function () { // 双击标签全部编辑
+            $tags_modify_dom.closest('.form-group').find('.tags-edit-btn').click();
         });
-        $article_edit_tags_group.on("click", ".article-edit-btn-tags-edit", function (e) {
+        $article_edit_tags_group.on('click', '.article-edit-btn-tags-edit', function (e) {
             var $btn = $(this);
             if ($btn.text() == '确定') {
-                $tags_modify_dom.find(".tag-input").blur();
+                $tags_modify_dom.find('.tag-input').blur();
                 return;
             }
-            var tags = "";
-            $tags_modify_dom.find(".tag-content").each(function (i, tag) {
-                tags += "#" + tag.innerText;
+            var tags = '';
+            $tags_modify_dom.find('.tag-content').each(function (i, tag) {
+                tags += '#' + tag.innerText;
             });
             if (tags) {
-                $tags_modify_dom.find(".tag-input").val(tags);
-                $tags_modify_dom.find(".tag-single").remove();
+                $tags_modify_dom.find('.tag-input').val(tags);
+                $tags_modify_dom.find('.tag-single').remove();
                 utils.calcTagInputWidth($tags_modify_dom);
                 $tags_modify_dom.autoTextareaHeight({
                     maxHeight: 150,
                     minHeight: config.tagsAreaHeight,
                     runOnce: true
                 });
-                $btn.text("确定");
+                $btn.text('确定');
             }
         });
         config.tagsAreaHeight = $tags_modify_dom.outerHeight();
@@ -113,57 +109,49 @@
             minHeight: config.tagsAreaHeight
         });
         // save
-        pointer.form.on("click", ".article-edit-btn-submit", function (e) {
+        pointer.form.on('click', '.article-edit-btn-submit', function (e) {
             e.preventDefault();
-            var submitBtn = $(this);
-            submitBtn.attr("disabled", "disabled");
+            var $submitBtn = $(this);
+            $submitBtn.attr('disabled', 'disabled');
             var postArticle = parsePostArticleData(pointer.form);
             if (postArticle) {
-                if (config.mark == "update") {
+                if (config.mark == 'update') {
                     postArticle.aid = pointer.currArticle.aid;
                 }
                 context.trigger(config.event.beforeArticleSave, postArticle, config.mark);
-                request.saveArticle(postArticle, config.mark).then(function (response) {
-                    if (response.status == 200) {
-                        pointer.isSaveFlag = true;
-                        pointer.currArticle = response.data.article;
-                        toastr.success("文章" + (config.mark == "new" ? "保存" : "更新") + "成功!", "提示");
-                        context.trigger(config.event.articleSaveCompleted, pointer.currArticle, config.mark);
-                    } else if (response.status == 401) {
-                        submitBtn.removeAttr("disabled");
+                request.saveArticle(postArticle, config.mark).final(function (article) {
+                    pointer.isSaveFlag = true;
+                    pointer.currArticle = article;
+                    toastr.success('文章' + (config.mark == 'new' ? '保存' : '更新') + '成功!', '提示');
+                    context.trigger(config.event.articleSaveCompleted, pointer.currArticle, config.mark);
+                }, function (status, message, type) {
+                    $submitBtn.removeAttr('disabled');
+                    if (type == 1 && status == 401) {
                         toastr.error('由于您编辑时间过长导致Session过期了，\n您可以点击下面链接进行登录后，\n再返回此页面进行保存操作！\n<a>点击这里登录</a>.', "保存失败", {
                             "timeOut": 0,
                             onclick: function () {
-                                window.open("auth/login?uid=" + login_handle.getCurrentUserId());
+                                window.open(('auth/login?uid=' + login_handle.getCurrentUserId()).toURL());
                             }
                         });
-                        console.warn("Error Code: " + response.status);
                     } else {
-                        submitBtn.removeAttr("disabled");
-                        toastr.error(response.message, (config.mark == "new" ? "保存" : "更新") + "文章失败");
-                        console.warn("Error Code: " + response.status);
+                        toastr.error(message, (config.mark == 'new' ? '保存' : '更新') + '文章失败（代码' + status + '）');
                     }
-                }, function (xhr, textStatus) {
-                    submitBtn.removeAttr("disabled");
-                    toastr.error(textStatus, "保存失败");
-                    console.error("保存失败: " + textStatus);
                 });
             } else {
-                submitBtn.removeAttr("disabled");
+                $submitBtn.removeAttr('disabled');
             }
         });
         // reset
-        pointer.form.on("click", ".article-edit-btn-cancel", function (e) {
+        pointer.form.on('click', '.article-edit-btn-cancel', function (e) {
             e.preventDefault();
         });
         // 初始化更新表单
-        if (config.mark == "update" && config.updateAid) {
-            request.loadArticle(config.updateAid, function (article) {
-                context.trigger(config.event.articleLoadCompleted, article);
+        if (config.mark == 'update' && config.updateAid) {
+            request.loadArticle(config.updateAid).final(function (article) {
                 initArticleUpdateForm(article);
-            }).fail(function (xhr, ts) {
-                toastr.error(ts, "加载文章[" + config.updateAid + "]失败");
-                console.error("加载[" + config.updateAid + "]文章失败: " + ts);
+                context.trigger(config.event.articleLoadCompleted, article);
+            }, function (status, message, type) {
+                toastr.error(message, '加载文章[' + config.updateAid + ']失败');
             });
         }
         // 监听页面刷新或关闭事件
@@ -176,33 +164,33 @@
         initClipboard(config.selector.copyArticleLinkBtn);
         context.on(config.event.articleSaveCompleted, function (e, article, mark) {
             var config = this.config;
-            var articleLink = config.path_params.basePath + "a/detail/" + article.aid;
+            var articleLink = ('a/detail/' + article.aid).toURL();
             var $copyLinkBtn = $(config.selector.copyArticleLinkBtn);
-            $copyLinkBtn.attr("data-clipboard-text", articleLink);
+            $copyLinkBtn.attr('data-clipboard-text', articleLink);
             var $openArticleLink = pointer.successModal.find('.open-article-link');
-            $openArticleLink.attr("href", articleLink);
+            $openArticleLink.url('href', articleLink);
             pointer.successModal.niftyModal();
         });
         context.trigger(config.event.articleFormInitCompleted, config);
     };
 
     var parsePostArticleData = function () {
-        var postArticle = {}, category = {}, tags = "", objKey, objValue, childObjKey, childObjValue;
-        postArticle.detail = pointer.mainEditor.summernote('isEmpty') ? "" : pointer.mainEditor.summernote('code');
+        var postArticle = {}, category = {}, tags = '', objKey, objValue, childObjKey, childObjValue;
+        postArticle.detail = pointer.mainEditor.summernote('isEmpty') ? '' : pointer.mainEditor.summernote('code');
         postArticle.title = pointer.form.find('.form-group-article-edit-title .article-edit-title').val();
-        postArticle.summary = pointer.summaryEditor.summernote('isEmpty') ? "" : pointer.summaryEditor.summernote('code');
+        postArticle.summary = pointer.summaryEditor.summernote('isEmpty') ? '' : pointer.summaryEditor.summernote('code');
         category.atid = pointer.form.find('.form-group-article-edit-category .article-edit-category').val();
         postArticle.category = category;
         postArticle.permission = pointer.form.find('.form-group-article-edit-permission .article-edit-permission').val();
         var $tags_modify_dom = pointer.form.find('.form-group-article-edit-tags .article-edit-tags');
-        var $tags_input_dom = $tags_modify_dom.find(".tag-input");
+        var $tags_input_dom = $tags_modify_dom.find('.tag-input');
         if ($tags_input_dom.val()) {
             utils.addTagFromInput($tags_modify_dom, $tags_input_dom);
         }
-        $tags_modify_dom.find(".tag-content").each(function (i, tagNode) {
+        $tags_modify_dom.find('.tag-content').each(function (i, tagNode) {
             var tagValue = tagNode.innerText;
             if (tagValue) {
-                tags += "#" + tagValue + "#";
+                tags += '#' + tagValue + '#';
             }
         });
         postArticle.tags = tags;
@@ -211,10 +199,10 @@
         if (isReady) {
             for (objKey in postArticle) {
                 objValue = postArticle[objKey];
-                if (typeof objValue == "object") {
+                if (typeof objValue == 'object') {
                     for (childObjKey in objValue) {
                         childObjValue = objValue[childObjKey];
-                        postArticle[objKey + "." + childObjKey] = childObjValue;
+                        postArticle[objKey + '.' + childObjKey] = childObjValue;
                     }
                     delete postArticle[objKey];
                 }
@@ -229,32 +217,32 @@
         var isReady = true;
         if (!login_handle.validateLogin()) {
             isReady = false;
-            toastr.error("你未登陆！", "提示");
+            toastr.error('你未登陆！', '提示');
         }
         if (!postArticle.detail) {
             isReady = false;
-            toastr.error("文章内容不能为空！", "提示");
+            toastr.error('文章内容不能为空！', '提示');
         }
         if (postArticle.summary.length > 1000) {
             isReady = false;
-            toastr.error("文章摘要内容过长！ 1000/" + postArticle.summary.length, "提示");
+            toastr.error('文章摘要内容过长！ 1000/' + postArticle.summary.length, '提示');
         }
         if (!postArticle.title) {
             isReady = false;
-            toastr.error("文章标题不能为空！", "提示");
+            toastr.error('文章标题不能为空！', '提示');
         }
         if (postArticle.tags.length > 200) {
             isReady = false;
-            toastr.error("文章标签过长！ 200/" + postArticle.tags.length, "提示");
+            toastr.error('文章标签过长！ 200/' + postArticle.tags.length, '提示');
         }
         if (isReady) {
             // 如果没有填写摘要  则取detail前1000(html)字符
             if (!postArticle.summary) {
                 if (postArticle.detail.length >= 1000) {
                     var headThousand = postArticle.detail.substring(0, 1000);
-                    var headThousandTag = headThousand.substring(0, headThousand.lastIndexOf(">"));
+                    var headThousandTag = headThousand.substring(0, headThousand.lastIndexOf('>'));
                     // 利用浏览器来补全标签
-                    postArticle.summary = $("<div/>").html(headThousandTag).html();
+                    postArticle.summary = $('<div/>').html(headThousandTag).html();
                 } else {
                     postArticle.summary = postArticle.detail;
                 }
@@ -271,12 +259,12 @@
         pointer.form.find('.form-group-article-edit-category .article-edit-category').val(article.category.atid);
         pointer.form.find('.form-group-article-edit-permission .article-edit-permission').val(article.permission);
         var $tags_modify_dom = pointer.form.find('.form-group-article-edit-tags .article-edit-tags');
-        $tags_modify_dom.find(".tag-single").remove();
+        $tags_modify_dom.find('.tag-single').remove();
         var tags_html = '';
         $.each(article.tags.split('#'), function (i, tag) {
             if (tag) {
                 tags_html += '<span class="tag-single">' +
-                    '<a class="tag-content" target="_blank" href="a/list?tags=&lt;' + tag + '&gt;">' + tag + '</a>' +
+                    '<a class="tag-content" target="_blank" href="' + ('a/list?tags=&lt;' + tag + '&gt;').toURL() + '">' + tag + '</a>' +
                     '<span class="tag-close"">&times</span></span>';
             }
         });
@@ -289,40 +277,28 @@
         });
     };
 
-    var request = {
-        "saveArticle": function (article, mark, success) {
-            var postData = article;
-            postData.mark = mark;
-            return $.post("article.api?method=save", postData, function (response) {
-                if (response.status == 200) {
-                    success && success.call(response, response.data.article);
-                } else if (success) {
-                    toastr.error(response.message, (mark == "new" ? "保存" : "更新") + "文章失败");
-                    console.warn("Error Code: " + response.status);
-                }
-            });
-        },
-        "createArticle": function (article) {
-            return this.saveArticle(article, "new");
-        },
-        "updateArticle": function (article) {
-            return this.saveArticle(article, "update");
-        },
-        "loadArticle": function (aid, success) {
-            return $.get("article.api?method=getArticle", {"aid": aid}, function (response) {
-                if (response.status == 200) {
-                    success && success.call(response, response.data.article);
-                } else if (success) {
-                    toastr.error(response.message, "加载文章失败");
-                    console.warn("Error Code: " + response.status);
-                }
-            });
+    const request = globals.extend(globals.request, {
+        edit_handle: {
+            'saveArticle': function (postData, mark, success) {
+                postData.mark = mark;
+                return globals.request.post(globals.api.saveArticle, postData, success, ['article'], success && ((mark == 'new' ? '保存' : '更新') + '文章失败'));
+            },
+            'createArticle': function (postData, success) {
+                return this.saveArticle(postData, 'new', success);
+            },
+            'updateArticle': function (postData, success) {
+                return this.saveArticle(postData, 'update', success);
+            },
+            'loadArticle': function (aid, success) {
+                let postData = {"aid": aid};
+                return globals.request.get(globals.api.getArticle, postData, success, ['article'], success && '加载文章失败');
+            }
         }
-    };
+    }).edit_handle;
 
     var utils = {
         "calcTagInputWidth": function (tags_modify_dom) {
-            var tag_single_nodes = tags_modify_dom.find(".tag-single");
+            var tag_single_nodes = tags_modify_dom.find('.tag-single');
             var maxOffset = 0;
             tag_single_nodes.each(function (i, tag_single) {
                 if (tag_single.offsetTop > maxOffset) {
@@ -342,7 +318,7 @@
                 }
             });
             var width = total_width - left_width - 5;
-            tags_modify_dom.find(".tag-input").width(width > 50 ? width : total_width);
+            tags_modify_dom.find('.tag-input').width(width > 50 ? width : total_width);
         },
         "addTagFromInput": function (tags_modify_dom, input_dom) {
             var tag = input_dom.val();
@@ -350,18 +326,18 @@
                 // 如果要使用分割字符, 用 ""、{}、${} 包裹
                 var elMap = {};
                 tag = common_utils.replaceByEL(tag, function (index, key) {
-                    var replaceMark = "replaceEL_" + index;
+                    var replaceMark = 'replaceEL_' + index;
                     elMap[replaceMark] = key;
                     return replaceMark;
                 });
-                var insert_text = "";
+                var insert_text = '';
                 $.each(tag.split(/[#×✖,，;；]/), function (i, value) {
                     if (value) {
                         // 标记处还原原始值
                         var match = value.match(/replaceEL_[\d]{1}/);
                         match && (value = value.replace(match[0], elMap[match[0]]));
-                        if (value.indexOf("#") == -1) {
-                            insert_text += '<span class="tag-single"><a class="tag-content"  target="_blank" href="a/list?tags=&lt;' + value + '&gt;">' + value + '</a><span class="tag-close"">&times</span></span>';
+                        if (value.indexOf('#') == -1) {
+                            insert_text += '<span class="tag-single"><a class="tag-content"  target="_blank" href="' + ('a/list?tags=&lt;' + value + '&gt;').toURL() + '">' + value + '</a><span class="tag-close"">&times</span></span>';
                         }
                     }
                 });
@@ -374,9 +350,9 @@
                         runOnce: true
                     });
                 }
-                input_dom.val("");
+                input_dom.val('');
             } else {
-                toastr.error("输入的单个标签不能为空或全是空格！，标签栏为空可以", "", {"progressBar": false, "timeOut": 7000});
+                toastr.error('输入的单个标签不能为空或全是空格！，标签栏为空可以', '', {"progressBar": false, "timeOut": 7000});
             }
         },
         "deleteTag": function (tags_modify_dom, tag_single) {
@@ -412,7 +388,7 @@
      * 剪切板初始化
      */
     function initZeroClipboards(copyBtnSelector, findCopyTextFn) {
-        ZeroClipboard.config( { swfPath: config.path_params.basePath + 'lib/zeroClipboard/ZeroClipboard.swf' } );
+        ZeroClipboard.config({swfPath: config.path_params.staticPath + 'lib/zeroClipboard/ZeroClipboard.swf'});
         // ZeroClipboard.config({swfPath: "https://cdn.bootcss.com/zeroclipboard/2.0.0-beta.4/ZeroClipboard.swf"});
         var client = new ZeroClipboard($(copyBtnSelector));
         client.on('ready', function (event) {
@@ -421,13 +397,13 @@
                 event.clipboardData.setData('text/plain', text);
             });
             client.on('aftercopy', function (event) {
-                toastr.success("文章地址复制成功！", "提示");
+                toastr.success('文章地址复制成功！', '提示');
                 // console.log('Copied text to clipboard: ' + event.data['text/plain']);
             });
         });
         client.on('error', function (event) {
             console.log('ZeroClipboard error of type "' + event.name + '": ' + event.message);
-            // toastr.error("你的浏览器不支持复制！", "提示");
+            // toastr.error('你的浏览器不支持复制！', '提示');
             ZeroClipboard.destroy();
         });
     }
@@ -442,7 +418,7 @@
         //  console.error('该浏览器不支持Clipboard复制');
         // }
         clipboard.on('success', function (e) {
-            toastr.success("文章地址复制成功！", "提示");
+            toastr.success('文章地址复制成功！', '提示');
             console.info('已复制Text:', e.text);
             e.clearSelection();
         });
@@ -456,14 +432,14 @@
     // 初始化文章上传的配置
     function initCreateConfigInfo() {
         return $.Deferred(function (dfd) {
-            $.get("article.api?method=getCreateConfigInfo", function (response) {
+            $.get(globals.api.getArticleCreateConfigInfo, function (response) {
                 if (response.status == 200) {
                     var createConfigInfo = pointer.createConfigInfo = response.data;
                     config.maxUploadSize = createConfigInfo.uploadArgs.maxPhotoUploadSize;
                     edit_tool.config.maxUploadSize = config.maxUploadSize;
                     if (!createConfigInfo || createConfigInfo.isAllowCreate) {
-                        pointer.form.find(".article-edit-btn-submit").removeAttr("disabled");
-                        common_utils.removeNotify("notify-no-allow-create");
+                        pointer.form.find('.article-edit-btn-submit').removeAttr('disabled');
+                        globals.removeNotify('notify-no-allow-create');
                         dfd.resolve(createConfigInfo);
                     } else {
                         var users = null;
@@ -475,13 +451,13 @@
                                 users = "管理员";
                                 break
                         }
-                        common_utils.notify({timeOut: 0}).info("系统当前配置为只允许<br>【<b>" + users + "</b>】上传文章", "您暂时不能上传", "notify-no-allow-create");
-                        pointer.form.find(".article-edit-btn-submit").attr("disabled", "disabled");
+                        globals.notify({timeOut: 0}).info('系统当前配置为只允许<br>【<b>' + users + '</b>】上传文章', '您暂时不能上传', 'notify-no-allow-create');
+                        pointer.form.find('.article-edit-btn-submit').attr('disabled', 'disabled');
                         dfd.reject('系统当前配置为只允许' + users + '上传文章');
                     }
                 } else {
-                    pointer.form.find(".article-edit-btn-submit").attr("disabled", "disabled");
-                    toastr.error("加载上传文章配置失败", "错误");
+                    pointer.form.find('.article-edit-btn-submit').attr('disabled', 'disabled');
+                    toastr.error('加载上传文章配置失败', '错误');
                     dfd.reject('加载上传文章配置失败, ' + response.message);
                 }
             }).fail(function (xhr, ts) {
@@ -501,10 +477,10 @@
         "initArticleUpdateForm": initArticleUpdateForm,
         "initClipboard": initClipboard,
         "initCreateConfigInfo": initCreateConfigInfo,
-        "on": common_utils.on,
-        "once": common_utils.once,
-        "trigger": common_utils.trigger,
-        "off": common_utils.off
+        "on": globals.on,
+        "once": globals.once,
+        "trigger": globals.trigger,
+        "off": globals.off
     };
 
     return context;

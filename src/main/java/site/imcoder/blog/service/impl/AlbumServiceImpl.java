@@ -92,7 +92,7 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
         uploadConfig.putAttr("allowUploadLowestLevel", Config.getInt(ConfigConstants.CLOUD_ALLOW_UPLOAD_LOWEST_LEVEL));
         uploadConfig.putAttr("isAllowUpload", isAllowUpload(loginUser));
         // uploadArgs
-        Map<String, Object> uploadArgs = new HashMap();
+        Map<String, Object> uploadArgs = new HashMap<>();
         uploadArgs.put("mode", Config.get(ConfigConstants.CLOUD_FILE_SYSTEM_MODE));
         uploadArgs.put("maxPhotoUploadSize", Integer.parseInt(Config.getChild(ConfigConstants.CLOUD_PHOTO_MAX_UPLOADSIZE, "@user_", loginUser.getUid() + "", ":")));
         uploadArgs.put("maxVideoUploadSize", Integer.parseInt(Config.getChild(ConfigConstants.CLOUD_VIDEO_MAX_UPLOADSIZE, "@user_", loginUser.getUid() + "", ":")));
@@ -146,6 +146,9 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
             album.setCover(generateDefaultCover());
             album.setCreate_time(new Date());
             album.setSize(0);
+            album.setClick_count(0);
+            album.setLike_count(0);
+            album.setComment_count(0);
             fillAlbumNotRequiredValueIfNull(album);
             int index = albumDao.saveAlbum(album);
             if (index > 0) {
@@ -169,10 +172,10 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
      */
     @Override
     public IResponse findAlbumInfo(Album album, IRequest iRequest) {
-        User loginUser = iRequest.getLoginUser();
+        boolean loadActionRecord = iRequest.getAttr("loadActionRecord", true);
         IResponse response = new IResponse();
-        if (album == null) {
-            response.setStatus(STATUS_PARAM_ERROR);
+        if (album == null || !IdUtil.containValue(album.getAlbum_id())) {
+            response.setStatus(STATUS_PARAM_ERROR, "参数错误，未指定album_id~");
             return response;
         }
         Album db_album = albumDao.findAlbumInfo(album);
@@ -189,6 +192,22 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
         IResponse authResp = authService.validateUserPermissionUtil(db_album.getUser(), db_album.getPermission(), iRequest);
         if (authResp.isSuccess()) {
             response.putAttr("album", db_album).setStatus(STATUS_SUCCESS);
+            if (loadActionRecord) {
+                ActionRecord<Album> queryActionRecord = new ActionRecord<>();
+                queryActionRecord.setCreation(db_album);
+                queryActionRecord.setUser(iRequest.getLoginUser());
+                queryActionRecord.setIp(iRequest.getAccessIp());
+                ActionRecord<Album> albumActionRecord = userDao.findAlbumActionRecord(queryActionRecord);
+                if (albumActionRecord != null) {
+                    db_album.setAccessed(albumActionRecord.getAccessed());
+                    db_album.setLiked(albumActionRecord.getLiked());
+                    db_album.setCommented(albumActionRecord.getCommented());
+                } else {
+                    db_album.setAccessed(false);
+                    db_album.setLiked(false);
+                    db_album.setCommented(false);
+                }
+            }
         } else {
             response.putAttr("album", null).setStatus(authResp);
         }
@@ -387,44 +406,101 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
     public IResponse updateAlbum(Album album, IRequest iRequest) {
         User loginUser = iRequest.getLoginUser();
         IResponse response = new IResponse();
-        int flag = STATUS_SUCCESS;
-        if (album == null) {
-            flag = STATUS_PARAM_ERROR;
-            return response.setStatus(flag);
+        if (album == null || !IdUtil.containValue(album.getAlbum_id())) {
+            response.setStatus(STATUS_PARAM_ERROR, "参数错误，未指定album_id~");
         } else if (iRequest.isHasNotLoggedIn()) {
-            flag = STATUS_NOT_LOGIN;
-            return response.setStatus(flag);
-        }
-        IResponse albumResp = findAlbumInfo(album, iRequest);
-        int photoRespFlag = albumResp.getStatus();
-        if (photoRespFlag == STATUS_SUCCESS) {
-            Album db_album = albumResp.getAttr("album");
-            if (db_album.getUser().getUid().equals(loginUser.getUid())) {
-                fillAlbumNotRequiredValueIfNull(album, db_album);
-                // 检查封面
-                if (IdUtil.containValue(album.getCover().getPhoto_id()) && !album.getCover().getPhoto_id().equals(db_album.getCover().getPhoto_id())) {
-                    IResponse photoResp = findPhoto(album.getCover(), iRequest);
-                    if (photoResp.isFail() || !((Photo) photoResp.getAttr("photo")).getUid().equals(loginUser.getUid())) {
-                        flag = STATUS_PARAM_ERROR;
-                    }
-                }
-                if (flag == STATUS_SUCCESS) {
-                    flag = convertRowToHttpCode(albumDao.updateAlbum(album));
-                    if (flag == STATUS_SUCCESS) {
-                        Album newAlbumInfo = findAlbumInfo(album, iRequest).getAttr("album");
-                        response.putAttr("album", newAlbumInfo);
-                        if (db_album.getPermission() != album.getPermission()) { // 更新跟随相册权限的PhotoTagWrapper
-                            albumDao.updatePhotoTagWrapperPermissionInScope(newAlbumInfo);
+            response.setStatus(STATUS_NOT_LOGIN);
+        } else {
+            IResponse albumResp = findAlbumInfo(album, iRequest);
+            response.setStatus(albumResp);
+            if (response.isSuccess()) {
+                Album db_album = albumResp.getAttr("album");
+                if (db_album.getUser().getUid().equals(loginUser.getUid())) {
+                    fillAlbumNotRequiredValueIfNull(album, db_album);
+                    // 检查封面
+                    if (IdUtil.containValue(album.getCover().getPhoto_id()) && !album.getCover().getPhoto_id().equals(db_album.getCover().getPhoto_id())) {
+                        IResponse photoResp = findPhoto(album.getCover(), iRequest);
+                        if (photoResp.isFail() || !((Photo) photoResp.getAttr("photo")).getUid().equals(loginUser.getUid())) {
+                            response.setStatus(STATUS_PARAM_ERROR, "该封面不可用~");
                         }
                     }
+                    if (response.isSuccess()) {
+                        response.setStatus(convertRowToHttpCode(albumDao.updateAlbum(album)));
+                        if (response.isSuccess()) {
+                            Album newAlbumInfo = findAlbumInfo(album, iRequest).getAttr("album");
+                            response.putAttr("album", newAlbumInfo);
+                            if (!db_album.getPermission().equals(album.getPermission())) { // 更新跟随相册权限的PhotoTagWrapper
+                                albumDao.updatePhotoTagWrapperPermissionInScope(newAlbumInfo);
+                            }
+                        }
+                    }
+                } else {
+                    response.setStatus(STATUS_FORBIDDEN, "你不能操作别人的相册~");
                 }
-            } else {
-                flag = STATUS_FORBIDDEN;
             }
-        } else {
-            flag = photoRespFlag;
         }
-        response.setStatus(flag);
+        return response;
+    }
+
+    /**
+     * 点赞相册
+     *
+     * @param album    - 只需传album_id
+     * @param undo     - 是否取消赞
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
+     */
+    @Override
+    public IResponse likeAlbum(Album album, boolean undo, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (album == null || !IdUtil.containValue(album.getAlbum_id())) {
+            response.setStatus(STATUS_PARAM_ERROR);
+        } else {
+            IResponse albumResp = findAlbumInfo(album, iRequest);
+            if (albumResp.isSuccess()) {
+                Boolean saveLikeValue = null;
+                Album db_album = albumResp.getAttr("album");
+                if (!undo) {    // 赞
+                    if (db_album.getLiked() != null && db_album.getLiked()) {
+                        response.setMessage("你已经赞过该相册了~");
+                    } else {
+                        saveLikeValue = true;
+                    }
+                } else {    // 取消赞
+                    if (db_album.getLiked() != null && db_album.getLiked()) {
+                        saveLikeValue = false;
+                    } else {
+                        response.setMessage("你并没有赞过该相册~");
+                    }
+                }
+                if (saveLikeValue != null) {
+                    ActionRecord<Album> actionRecord = new ActionRecord<>();
+                    actionRecord.setCreation(album);
+                    if (iRequest.isHasLoggedIn()) {
+                        actionRecord.setUser(iRequest.getLoginUser());
+                    } else {
+                        actionRecord.setIp(iRequest.getAccessIp());
+                    }
+                    actionRecord.setLiked(saveLikeValue);
+                    response.setStatus(convertRowToHttpCode(userDao.saveAlbumActionRecord(actionRecord)));
+                    if (response.isSuccess()) {
+                        response.putAttr("type", 1);
+                        if (saveLikeValue) {
+                            db_album.setLike_count(db_album.getLike_count() + 1);
+                        } else {
+                            db_album.setLike_count(db_album.getLike_count() > 0 ? db_album.getLike_count() - 1 : 0);
+                        }
+                        albumDao.updateAlbumLikeCount(album, saveLikeValue ? 1 : -1);
+                    }
+                } else {
+                    response.putAttr("type", 0);
+                }
+                response.putAttr("album", db_album);
+            } else {
+                response.setStatus(albumResp);
+            }
+        }
         return response;
     }
 
@@ -506,6 +582,9 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
         } else if (file == null || photo == null) {
             response.setStatus(STATUS_PARAM_ERROR);
         } else {
+            photo.setClick_count(0);
+            photo.setLike_count(0);
+            photo.setComment_count(0);
             fillPhotoNotRequiredValueIfNull(photo);
             if (photo.getOriginName() == null) {
                 photo.setOriginName(file.getOriginalFilename());
@@ -1051,7 +1130,7 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
             queryWrapper.setUid(photo.getUid());
             queryWrapper.setName(tags.replaceAll("(^<)|(>$)", ""));
             queryWrapper.setType(TagWrapperType.SEARCH.value);
-            List<PhotoTagWrapper> tagWrappers = albumDao.findPhotoTagWrappers(queryWrapper, loginUser);
+            List<PhotoTagWrapper> tagWrappers = albumDao.findPhotoTagWrapperList(queryWrapper, loginUser);
             if (tagWrappers != null && tagWrappers.size() > 0) {
                 boolean isUseful = false;
                 for (PhotoTagWrapper tagWrapper : tagWrappers) {
@@ -1085,7 +1164,7 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
     /**
      * 点赞照片
      *
-     * @param photo    - 只需传video_id
+     * @param photo    - 只需传photo_id
      * @param undo     - 是否取消赞
      * @param iRequest
      * @return IResponse:
@@ -1267,7 +1346,7 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
      * tagWrappers
      */
     @Override
-    public IResponse findPhotoTagWrappers(PhotoTagWrapper tagWrapper, IRequest iRequest) {
+    public IResponse findPhotoTagWrapperList(PhotoTagWrapper tagWrapper, IRequest iRequest) {
         User loginUser = iRequest.getLoginUser();
         IResponse response = new IResponse();
         if (tagWrapper == null) {
@@ -1285,7 +1364,7 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
                 tagWrapper.setCommon_value(1);
             }
         }
-        List<PhotoTagWrapper> list = albumDao.findPhotoTagWrappers(tagWrapper, loginUser);
+        List<PhotoTagWrapper> list = albumDao.findPhotoTagWrapperList(tagWrapper, loginUser);
         if (list == null) {
             response.setStatus(STATUS_PARAM_ERROR);
         } else {
@@ -1305,14 +1384,14 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
      * topicTagWrappers
      */
     @Override
-    public IResponse findPhotoTagWrappers(Photo photo, IRequest iRequest) {
+    public IResponse findPhotoTagWrapperList(Photo photo, IRequest iRequest) {
         IResponse response = new IResponse();
         IResponse photoResp = findPhoto(photo, iRequest);
         if (photoResp.isSuccess()) {
             Photo db_photo = photoResp.getAttr("photo");
             PhotoTagWrapper queryTagWrapper = new PhotoTagWrapper();
             queryTagWrapper.setUid(db_photo.getUid());
-            IResponse tagWrapperResp = findPhotoTagWrappers(queryTagWrapper, iRequest);
+            IResponse tagWrapperResp = findPhotoTagWrapperList(queryTagWrapper, iRequest);
             List<PhotoTagWrapper> userTagWrappers = tagWrapperResp.getAttr("tagWrappers");  // 用户设置的tagWrappers
             // return tagWrappers
             List<PhotoTagWrapper> tagWrappers = new ArrayList<>();  // 返回的命中tagWrappers
@@ -1497,7 +1576,7 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
                 tagWrapper.setAction(0);
                 tagWrapper.setWeight(0);
                 IResponse queryResp = findPhotoTagWrapper(tagWrapper, iRequest);
-                if (queryResp.getStatus() != STATUS_NOT_FOUND) {
+                if (!queryResp.equalsStatus(STATUS_NOT_FOUND)) {
                     if (queryResp.isSuccess()) {
                         response.putAttr("tagWrapper", queryResp.getAttr("tagWrapper"));
                     }
@@ -1780,6 +1859,45 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
     }
 
     /**
+     * 查询相册的历史用户动作记录
+     *
+     * @param album
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * albumActionRecords
+     * album_action_record_count
+     */
+    @Override
+    public IResponse findAlbumActionRecordList(Album album, IRequest iRequest) {
+        User loginUser = iRequest.getLoginUser();
+        IResponse response = new IResponse();
+        if (album == null) {
+            response.setStatus(STATUS_PARAM_ERROR);
+        } else if (iRequest.isHasNotLoggedIn()) {
+            response.setStatus(STATUS_NOT_LOGIN);
+        } else {
+            IResponse albumResp = findAlbumInfo(album, iRequest);
+            if (albumResp.isSuccess()) {
+                Album db_album = albumResp.getAttr("album");
+                if (db_album.getUser().getUid().equals(loginUser.getUid())) {
+                    ActionRecord<Album> queryActionRecord = new ActionRecord<>();
+                    queryActionRecord.setCreation(new Album(db_album.getAlbum_id()));
+                    List<ActionRecord<Album>> albumActionRecordList = userDao.findAlbumActionRecordList(queryActionRecord, iRequest.getLoginUser());
+                    response.putAttr("albumActionRecords", albumActionRecordList);
+                    response.putAttr("album_action_record_count", albumActionRecordList.size());
+                    response.putAttr(albumResp.getAttr());
+                } else {
+                    response.setStatus(STATUS_FORBIDDEN, "访问记录只能作者本人查看~");
+                }
+            } else {
+                response.setStatus(albumResp);
+            }
+        }
+        return response;
+    }
+
+    /**
      * 查询照片的历史用户动作记录
      *
      * @param photo
@@ -1850,13 +1968,19 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
         if (album.getDescription() == null) {
             album.setDescription(EMPTY);
         }
-        if (album.getCover() == null) {
-            album.setCover(new Photo());
-        }
         if (album.getMount() == null) {
             album.setMount(EMPTY);
         }
-        if (!IdUtil.containValue(album.getCover().getPhoto_id())) {
+        if (album.getPermission() == null) {
+            album.setPermission(0);
+        }
+        if (album.getShow_col() == null) {
+            album.setShow_col(0);
+        }
+        if (album.getCover() == null) {
+            album.setCover(new Photo());
+        }
+        if (album.getCover().getPhoto_id() == null) { // 因为cover_id可以设置为0，所以这里只需要判断null就行
             album.getCover().setPhoto_id(0L);
         }
     }
@@ -1873,20 +1997,26 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
             if (album.getDescription() == null) {
                 album.setDescription(db_album.getDescription());
             }
-            if (album.getCover() == null) {
-                album.setCover(db_album.getCover());
-            }
             if (album.getMount() == null) {
                 album.setMount(db_album.getMount());
+            }
+            if (album.getPermission() == null) {
+                album.setPermission(db_album.getPermission());
+            }
+            if (album.getShow_col() == null) {
+                album.setShow_col(db_album.getShow_col());
             }
             if (album.getUser() == null) {
                 album.setUser(db_album.getUser());
             }
-            if (album.getCover().getPhoto_id() == null) {
-                album.getCover().setPhoto_id(album.getCover().getPhoto_id());
-            }
-            if (album.getUser().getUid() == null) {
+            if (!IdUtil.containValue(album.getUser().getUid())) {
                 album.getUser().setUid(db_album.getUser().getUid());
+            }
+            if (album.getCover() == null) {
+                album.setCover(db_album.getCover());
+            }
+            if (album.getCover().getPhoto_id() == null) { // 因为cover_id可以设置为0，所以这里只需要判断null就行
+                album.getCover().setPhoto_id(album.getCover().getPhoto_id());
             }
         }
     }

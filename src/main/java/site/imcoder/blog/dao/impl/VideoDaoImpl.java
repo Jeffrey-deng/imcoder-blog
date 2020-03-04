@@ -1,5 +1,6 @@
 package site.imcoder.blog.dao.impl;
 
+import org.apache.ibatis.session.SqlSession;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
@@ -36,7 +37,10 @@ public class VideoDaoImpl extends CommonDao implements IVideoDao {
     @Override
     public int saveVideo(Video video) {
         try {
-            return this.getSqlSession().insert("video.saveVideo", video);
+            SqlSession sqlSession = this.getSqlSession();
+            int row = sqlSession.insert("video.saveVideo", video);
+            sqlSession.insert("video.saveVideoSetting", video);
+            return row;
         } catch (Exception e) {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.error("saveVideo fail", e);
@@ -268,6 +272,23 @@ public class VideoDaoImpl extends CommonDao implements IVideoDao {
         } catch (Exception e) {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             logger.warn("updateSubtitle fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 更新视频设置
+     *
+     * @param video
+     * @return
+     */
+    @Override
+    public int updateVideoSetting(Video video) {
+        try {
+            return this.getSqlSession().update("video.updateVideoSetting", video);
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.warn("updateVideoSetting fail", e);
             return -1;
         }
     }

@@ -5,7 +5,8 @@
 <%@ taglib prefix="s" uri="http://www.springframework.org/tags" %>
 <%
     String path = request.getContextPath();
-    String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String hostPath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String basePath = Config.get(ConfigConstants.SITE_ADDR);
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
@@ -19,7 +20,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
-    <base href="<%=basePath%>" target="_self">
+    <%--<base href="<%=basePath%>" target="_self">--%>
     <title>${hostUser.nickname}的个人博客 | ImCoder's 博客</title>
     <meta name="keywords" content="${hostUser.nickname},主页,个人博客,ImCoder's 博客">
     <meta name="description" content="${hostUser.description}">
@@ -31,31 +32,31 @@
     <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
 </head>
-<body uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>" style="background-image: url(<%=staticPath%>img/bg-site.png);">
+<body uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>" style="background-image: url('<%=staticPath%>img/bg-site.png');">
 <!-- <body background="../../img/bg-site.png"> -->
 
 <!-- START THE COVER  background-image: url(img/bg-site.png);" -->
 <div id="first" class="" style="text-align:center;z-index:1000;">
     <div class="carousel-inner">
         <div class="container">
-            <h1 class="slogan_name" data-user-id="<s:eval expression="hostUser.uid"/>">${hostUser.nickname}</h1>
-            <h3 class="slogan_desc">${hostUser.description}</h3>
+            <h1 class="slogan-name" data-user-id="<s:eval expression="hostUser.uid"/>">${hostUser.nickname}</h1>
+            <h3 class="slogan-desc">${hostUser.description}</h3>
             <!-- hide 'follow' button when hostUser is loginUser  -->
             <c:if test="${ !( (!empty loginUser) and (loginUser.uid==hostUser.uid) ) }">
-                <p><a name="follow" followed="false" class="btn btn-large btn-success follow"><b>关注</b></a></p>
+                <p><a name="follow" data-followed="false" class="btn btn-large btn-success follow" role="button"><b>关注</b></a></p>
             </c:if>
         </div>
     </div><!-- END COVER -->
 </div>
 
-<!-- start #toolbar -->
+<!-- toolbar start -->
 <nav id="header" class="navbar navbar-default toolbar" role="navigation">
     <div class="container-fluid">
         <div class="navbar-header">
             <div class="navbar-brand">
-                <p><a class="logo" style="color: #333;" href="<%=basePath%>">ImCoder</a></p>
+                <p><a class="logo" href="<%=basePath%>">ImCoder</a></p>
             </div>
-            <button type="button" class="navbar-toggle collapsed " data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
                 <span class="sr-only">Toggle navigation</span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
@@ -64,113 +65,115 @@
         </div>
         <div class="collapse navbar-collapse hiddenscorll" id="navbar-collapse">
             <ul class="nav navbar-nav">
-                <li class="dropdown sitenavigation">
+                <li class="dropdown site-navigation">
                     <a class="dropdown-toggle" data-toggle="dropdown">导航<span class="caret"></span></a>
-                    <ul class="dropdown-menu " role="menu">
+                    <ul class="dropdown-menu" role="menu">
                         <div class="row">
-                            <div class="col-sm-2 rowname">
-                                <div class="coldesc">分类</div>
+                            <div class="nav-menu nav-menu-kind">
+                                分类
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a href="a/list?category.atid=0" target="_blank">默认</a></div>
+                            <div class="nav-menu">
+                                <a href="<%=basePath%>a/list?category.atid=0" target="_blank">默认</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a href="a/list?category.atid=1" target="_blank">开发</a></div>
+                            <div class="nav-menu">
+                                <a href="<%=basePath%>a/list?category.atid=1" target="_blank">开发</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a href="a/list?category.atid=2" target="_blank">折腾</a></div>
+                            <div class="nav-menu">
+                                <a href="<%=basePath%>a/list?category.atid=2" target="_blank">折腾</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a href="a/list?category.atid=3" target="_blank">资源</a></div>
+                            <div class="nav-menu">
+                                <a href="<%=basePath%>a/list?category.atid=3" target="_blank">资源</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a href="a/list?category.atid=4" target="_blank">科技</a></div>
+                            <div class="nav-menu">
+                                <a href="<%=basePath%>a/list?category.atid=4" target="_blank">科技</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a href="a/list?category.atid=5" target="_blank">游戏</a></div>
+                            <div class="nav-menu">
+                                <a href="<%=basePath%>a/list?category.atid=5" target="_blank">游戏</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a href="a/list?category.atid=6" target="_blank">段子</a></div>
+                            <div class="nav-menu">
+                                <a href="<%=basePath%>a/list?category.atid=6" target="_blank">段子</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a href="a/list?category.atid=7" target="_blank">杂谈</a></div>
+                            <div class="nav-menu">
+                                <a href="<%=basePath%>a/list?category.atid=7" target="_blank">杂谈</a>
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-sm-2 rowname">
-                                <div class="coldesc">服务</div>
+                            <div class="nav-menu nav-menu-kind">
+                                服务
                             </div>
-                            <div class="col-xs-1 morespace">
-                                <div class="coldesc"><a class="toolbar_jump_writeblog">写博客</a></div>
+                            <div class="nav-menu more-space">
+                                <a class="toolbar-jump-write-article" href="<%=basePath%>a/edit?mark=new" target="_blank">写博客</a>
                             </div>
-                            <div class="col-xs-1 morespace">
-                                <div class="coldesc"><a class="toolbar_jump_paste_code" href="http://paste.ubuntu.com" target="_blank">贴代码</a></div>
+                            <div class="nav-menu more-space">
+                                <a class="toolbar-jump-paste-code" href="http://paste.ubuntu.com" target="_blank">贴代码</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_albums" href="<%=basePath%>p/dashboard" target="_blank">相册</a></div>
+                            <div class="nav-menu">
+                                <a class="toolbar-jump-albums" href="<%=basePath%>p/dashboard" target="_blank">相册</a>
                             </div>
-                            <div class="col-sm-1" style="padding-left: 5px">
-                                <div class="coldesc"><a class="toolbar_jump_cloud" href="<%=cloudPath%>" target="_blank">cloud</a></div>
+                            <div class="nav-menu" style="padding-left: 5px">
+                                <a class="toolbar-jump-cloud" href="<%=cloudPath%>" target="_blank">cloud</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_archives" href="<%=basePath%>a/archives" target="_blank">归档</a></div>
+                            <div class="nav-menu">
+                                <a class="toolbar-jump-archives" href="<%=basePath%>a/archives" target="_blank">归档</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_tags" href="<%=basePath%>a/tags" target="_blank">标签</a></div>
+                            <div class="nav-menu">
+                                <a class="toolbar-jump-tags" href="<%=basePath%>a/tags" target="_blank">标签</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_user_history" href="<%=basePath%>u/history" target="_blank">历史</a></div>
+                            <div class="nav-menu">
+                                <a class="toolbar-jump-user-history" href="<%=basePath%>u/history" target="_blank">历史</a>
                             </div>
-                            <c:if test="${ (!empty loginUser) && loginUser.userGroup.isManager() }">
-                                <div class="col-sm-1">
-                                    <div class="coldesc"><a class="toolbar_jump_manager" href="manager/backstage" target="_blank">管理</a></div>
+                            <c:if test="${(not empty loginUser) && loginUser.userGroup.isManager()}">
+                                <div class="nav-menu">
+                                    <a class="toolbar-jump-manager" href="<%=basePath%>manager/backstage" target="_blank">管理</a>
                                 </div>
                             </c:if>
                         </div>
                         <div class="row">
-                            <div class="col-sm-2 rowname">
-                                <div class="coldesc">站点</div>
+                            <div class="nav-menu nav-menu-kind">
+                                站点
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_login">登录</a></div>
+                            <div class="nav-menu">
+                                <a class="toolbar-jump-login" href="<%=basePath%>auth/login" target="_blank">登录</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_register" href="auth/register" target="_blank">注册</a></div>
+                            <div class="nav-menu">
+                                <a class="toolbar-jump-register" href="<%=basePath%>auth/register" target="_blank">注册</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_notice" target="_blank" href="notices">公告</a></div>
+                            <div class="nav-menu">
+                                <a class="toolbar-jump-notice" href="<%=basePath%>notices" target="_blank">公告</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_help" target="_blank" href="help">帮助</a></div>
+                            <div class="nav-menu">
+                                <a class="toolbar-jump-help" href="<%=basePath%>help" target="_blank">帮助</a>
                             </div>
-                            <div class="col-sm-1">
-                                <div class="coldesc"><a class="toolbar_jump_about" target="_blank" href="<%=basePath%>about">关于</a></div>
+                            <div class="nav-menu">
+                                <a class="toolbar-jump-about" href="<%=basePath%>about" target="_blank">关于</a>
                             </div>
                         </div>
                     </ul>
                 </li>
                 <li><a href="<%=basePath%>">首页</a></li>
-                <li class="active"><a>${hostUser.nickname}</a></li>
+                <li class="active"><a href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/home">${hostUser.nickname}</a></li>
             </ul>
             <ul class="nav navbar-nav navbar-right">
-                <form class="navbar-form navbar-left" role="search">
+                <form class="navbar-form navbar-left site-search" role="search">
                     <div class="form-group">
-                        <input type="text" class="search-query form-control span3 toolbar_search_input" style="margin:auto;" name="kw" placeholder="输入关键字搜索">
+                        <input type="text" class="search-query form-control span3 toolbar-input-search-keyword" name="kw" placeholder="输入关键字搜索">
                     </div>
-                    <button type="button" class="btn-search submit toolbar_search_trigger">搜索</button>
+                    <button type="button" class="btn-search submit toolbar-btn-search-submit">搜索</button>
                 </form>
-                <c:if test="${ !empty loginUser }">
-                    <li class="dropdown user">
+                <c:if test="${not empty loginUser}">
+                    <li class="dropdown site-login-user">
                         <a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                             <img src="<s:eval expression="loginUser.head_photo"/>"/><span class="caret"></span>
                         </a>
                         <ul class="dropdown-menu">
-                            <h4><a class="anav-menu_user toolbar_user_profilecenter" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center" target="_blank">个人中心</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_userhome" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/home" target="_blank">我的博客</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_albums" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/albums" target="_blank">我的相册</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_messages" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center/messages" target="_blank">我的消息</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_setting" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center/settings" target="_blank">修改设置</a></h4>
-                            <h4><a class="anav-menu_user toolbar_user_logout" title="点击退出登录">安全退出</a></h4>
+                            <li><a class="nav-menu toolbar-jump-user-center" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center" target="_blank">个人中心</a></li>
+                            <li><a class="nav-menu toolbar-jump-user-home" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/home" target="_blank">我的博客</a></li>
+                            <li><a class="nav-menu toolbar-jump-user-albums" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/albums" target="_blank">我的相册</a></li>
+                            <li><a class="nav-menu toolbar-jump-user-videos" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/videos" target="_blank">我的视频</a></li>
+                            <li><a class="nav-menu toolbar-jump-user-history" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/history" target="_blank">我的历史</a></li>
+                            <li><a class="nav-menu toolbar-jump-user-messages" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center/messages" target="_blank">我的消息</a></li>
+                            <li><a class="nav-menu toolbar-jump-user-setting" href="<%=basePath%>u/<s:eval expression="loginUser.uid"/>/center/settings" target="_blank">修改设置</a></li>
+                            <li><a class="nav-menu toolbar-jump-user-logout" title="点击退出登录">安全退出</a></li>
                         </ul>
                     </li>
                 </c:if>
@@ -178,7 +181,7 @@
         </div><!-- navbar-collapse end -->
     </div><!-- container-fluid end -->
 </nav>
-<!-- end #toolbar -->
+<!-- toolbar end -->
 
 <!-- body start -->
 <div id="body">
@@ -189,22 +192,23 @@
             <aside class="col-md-3 col-sm-12 col-xs-12">
 
                 <section class="post-author" id="user_rank">
-                    <div class="widget-head-color-box navy-bg text-center">
-                        <div class="m-b-md">
-                            <h2 class="font-bold no-margins" id="h_auid" auid="<s:eval expression="hostUser.uid"/>">
-                                <a style="color:white;" href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/home">${hostUser.nickname}</a>
+                    <div class="widget-profile-box">
+                        <div class="head-photo-frosted-bg" style="background-image: url('<s:eval expression="hostUser.head_photo"/>');"></div>
+                        <div class="author-nickname-wrapper">
+                            <h2 class="author-nickname author-uid" data-author-uid="<s:eval expression="hostUser.uid"/>">
+                                <a href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/home">${hostUser.nickname}</a>
                             </h2>
-                            <small>${hostUser.userGroup.group_name}</small>
+                            <small class="author-user-group">${hostUser.userGroup.group_name}</small>
                         </div>
-                        <img src="<s:eval expression="hostUser.head_photo"/>" class="img-circle circle-border m-b-md author-head" alt="profile">
-                        <div>
-                            <span><a class="author-articleCount" target="_blank" style="color:white;" href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/home">${hostUser.userStats.articleCount} 动态</a></span> |
-                            <span><a class="author-followingCount" target="_blank" style="color:white;" href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/contact/followings">${hostUser.userStats.followingCount} 关注</a></span> |
-                            <span><a class="author-followerCount" target="_blank" style="color:white;" href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/contact/followers">${hostUser.userStats.followerCount} 关注者</a></span>
+                        <img class="author-head-photo" src="<s:eval expression="hostUser.head_photo"/>" alt="head-photo">
+                        <div class="author-post-stats">
+                            <span><a class="author-articleCount" target="_blank" href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/home">${hostUser.userStats.articleCount} 动态</a></span> |
+                            <span><a class="author-followingCount" target="_blank" href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/contact/followings">${hostUser.userStats.followingCount} 关注</a></span> |
+                            <span><a class="author-followerCount" target="_blank" href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/contact/followers">${hostUser.userStats.followerCount} 关注者</a></span>
                         </div>
                         <!-- hide when hostUser is loginUser and show in bottom div -->
-                        <c:if test="${ !( (!empty loginUser) and (loginUser.uid==hostUser.uid) ) }">
-                            <div class="text-center author-says" style="padding-top:1.0715em;margin-bottom:-1.0715em;">
+                        <c:if test="${!((not empty loginUser) and (loginUser.uid == hostUser.uid))}">
+                            <div class="author-says">
                                     ${hostUser.says}
                             </div>
                         </c:if>
@@ -212,14 +216,14 @@
                     <div class="widget-text-box">
                         <!-- hide 'follow' button when hostUser is loginUser  -->
                         <c:choose>
-                            <c:when test="${ !( (!empty loginUser) and (loginUser.uid==hostUser.uid) ) }">
-                                <div class="text-right">
-                                    <a name="follow" followed="false" class="btn btn-xs btn-primary follow"><i class="fa fa-thumbs-up"></i>关注</a>
-                                    <a name="letter" class="btn btn-xs btn-white letter"><i class="fa fa-heart"></i>私信</a>
+                            <c:when test="${!((not empty loginUser) and (loginUser.uid == hostUser.uid))}">
+                                <div class="widget-handle-box">
+                                    <a name="follow" data-followed="false" class="btn btn-xs btn-primary follow" role="button"><i class="fa fa-thumbs-up"></i>关注</a>
+                                    <a name="letter" class="btn btn-xs btn-white letter" role="button"><i class="fa fa-heart"></i>私信</a>
                                 </div>
                             </c:when>
                             <c:otherwise>
-                                <div class="text-center author-says">
+                                <div class="author-says">
                                         ${hostUser.says}
                                 </div>
                             </c:otherwise>
@@ -239,7 +243,7 @@
                 </section>
 
                 <section class="post hidden-xs" id="photos_show">
-                    <p class="ui red ribbon label"><a title="点击打开相册" target="_blank" href="u/<s:eval expression="hostUser.uid"/>/albums" style="color:white;text-decoration: none;">Photos</a></p>
+                    <p class="ui red ribbon label"><a title="点击打开相册" target="_blank" href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/albums" style="color:white;text-decoration: none;">Photos</a></p>
                     <p></p>
                     <div class="photos">
                     </div>
@@ -250,14 +254,14 @@
                     <p></p>
                     <ul id="rank_class">
                         <c:forEach items="${hostUser.userStats.articleCateCount}" var="category">
-                            <li><a href="a/list?category.atid=${category.atid}&author.uid=<s:eval expression="hostUser.uid"/>">${category.atname}：(<span>${category.count}</span>)</a></li>
+                            <li><a href="<%=basePath%>a/list?category.atid=${category.atid}&author.uid=<s:eval expression="hostUser.uid"/>">${category.atname}：(<span>${category.count}</span>)</a></li>
                         </c:forEach>
                     </ul>
                 </section>
 
                 <section class="post" id="article_hot">
                     <p class="ui red ribbon label">
-                        <a title="将文章按点击量排序" target="_blank" href="a/list?click_count=-1" style="color:white;text-decoration: none;">热门文章</a>
+                        <a title="将文章按点击量排序" target="_blank" href="<%=basePath%>a/list?click_count=-1" style="color:white;text-decoration: none;">热门文章</a>
                     </p>
                     <p></p>
                     <ul id="rank_hot" class="rank-list"></ul>
@@ -265,7 +269,7 @@
 
                 <section class="post" id="article_hotTag">
                     <p class="ui red ribbon label">
-                        <a title="查看所有标签" target="_blank" href="a/tags" style="color:white;text-decoration: none;">热门标签</a>
+                        <a title="查看所有标签" target="_blank" href="<%=basePath%>a/tags" style="color:white;text-decoration: none;">热门标签</a>
                     </p>
                     <p></p>
                     <ul id="rank_hotTag" class="rank-list"></ul>
@@ -273,7 +277,7 @@
 
                 <section class="post" id="article_newest">
                     <p class="ui red ribbon label">
-                        <a title="查看文章归档" target="_blank" href="a/archives" style="color:white;text-decoration: none;">最新文章</a>
+                        <a title="查看文章归档" target="_blank" href="<%=basePath%>a/archives" style="color:white;text-decoration: none;">最新文章</a>
                     </p>
                     <p></p>
                     <ul id="rank_newest" class="rank-list"></ul>
@@ -288,56 +292,65 @@
                 <!-- 用户导航头  start -->
                 <header class="post post-container">
                     <ul class="post-meta user-data-path" style="margin-top: 0px;margin-bottom: 0px;font-size: 14px;">
-                        <li id="userInfo_trigger" uid="<s:eval expression="hostUser.uid"/>"><a>资料</a></li>
-                        <li><a href="u/<s:eval expression="hostUser.uid"/>/albums" target="_blank">相册</a></li>
-                        <li><a href="a/archives?uid=<s:eval expression="hostUser.uid"/>" target="_blank">归档</a></li>
-                        <li><a href="a/tags?uid=<s:eval expression="hostUser.uid"/>" target="_blank">标签</a></li>
+                        <li id="btn_user_profile_modal_open" data-uid="<s:eval expression="hostUser.uid"/>"><a>资料</a></li>
+                        <li><a href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/albums" target="_blank">相册</a></li>
+                        <li><a href="<%=basePath%>a/archives?uid=<s:eval expression="hostUser.uid"/>" target="_blank">归档</a></li>
+                        <li><a href="<%=basePath%>a/tags?uid=<s:eval expression="hostUser.uid"/>" target="_blank">标签</a></li>
                     </ul>
                 </header>
                 <!-- 用户导航头  end -->
 
-
                 <c:choose>
-                    <c:when test="${ !empty articleList }">
-                        <!-- 文章项 start -->
+                    <c:when test="${not empty articleList}">
                         <c:forEach items="${articleList}" var="article">
-                            <article class="post" itemscope="" itemtype="http://schema.org/BlogPosting">
+                            <!-- 文章项 start -->
+                            <article class="post" itemscope itemtype="http://schema.org/Article" itemid="<s:eval expression="article.aid"/>">
                                 <header class="post-container">
+                                    <!-- 文章标题 -->
                                     <h2 class="post-title" itemprop="name headline">
-                                        <a itemtype="url" href="a/detail/<s:eval expression="article.aid"/>">${article.title}</a>
+                                        <a href="<%=basePath%>a/detail/<s:eval expression="article.aid"/>" target="_blank" itemprop="url">
+                                                ${article.title}
+                                        </a>
                                     </h2>
+                                    <!-- 文章meta -->
                                     <ul class="post-meta">
                                         <li>
-                                            <time datetime="${article.create_time}" itemprop="datePublished">
-                                                <s:eval expression="article.create_time"/>
-                                            </time>
+                                            <time datetime="${article.create_time}" itemprop="datePublished"><s:eval expression="article.create_time"/></time>
                                         </li>
                                         <li>
-                                            分类: <a href="a/list?category.atid=${article.category.atid}">${article.category.atname}</a>
+                                            分类: <a href="<%=basePath%>a/list?category.atid=${article.category.atid}" target="_blank" itemprop="category about">${article.category.atname}</a>
                                         </li>
                                     </ul>
+                                    <!-- 文章摘要 -->
                                     <section class="post-content" itemprop="articleBody">
-                                            ${article.summary}
+                                        <s:eval expression="article.summary"/>
                                         <p class="more">
-                                            <br><a href="a/detail/<s:eval expression="article.aid"/>" title="${article.title}">- 阅读剩余部分 -</a>
+                                            <br>
+                                            <a href="<%=basePath%>a/detail/<s:eval expression="article.aid"/>" title="${article.title}" target="_blank">- 阅读剩余部分 -</a>
                                         </p>
                                     </section>
                                 </header>
-
+                                <!-- 文章尾 -->
                                 <footer class="post-footer">
                                     <p>
-                                        <span itemprop="keywords" class="tags">标签:
-                                            <c:forTokens items="${article.tags}" delims="#" var="tag">
-                                                &nbsp;&nbsp;&nbsp;<a href="a/list?tags=${tag}">#${tag}#</a>
-                                            </c:forTokens>
-                                        </span>
-                                        <a class="post-comments" itemprop="discussionUrl" href="a/detail/<s:eval expression="article.aid"/>#comments">${article.comment_count} 条评论</a>
+                                    <span class="tags" itemprop="keywords">标签:
+                                        <c:forTokens items="${article.tags}" delims="#" var="tag">
+                                            &nbsp;&nbsp;&nbsp;<a href="<%=basePath%>a/list?tags=${tag}" target="_blank">#${tag}#</a>
+                                        </c:forTokens>
+                                    </span>
+                                        <c:choose>
+                                            <c:when test="${article.comment_count == 0}">
+                                                <a class="post-comments" href="<%=basePath%>a/detail/<s:eval expression="article.aid"/>#addComment" target="_blank" itemprop="discussionUrl">抢占沙发</a>
+                                            </c:when>
+                                            <c:otherwise>
+                                                <a class="post-comments" href="<%=basePath%>a/detail/<s:eval expression="article.aid"/>#comments" target="_blank"><span itemprop="commentCount discussionUrl">${article.comment_count}</span> 条评论</a>
+                                            </c:otherwise>
+                                        </c:choose>
                                     </p>
                                 </footer>
                             </article>
-
+                            <!-- 文章项 end -->
                         </c:forEach>
-                        <!-- 文章项 end -->
 
                         <!-- 分页 start -->
                         <ol class="page-navigator">
@@ -390,7 +403,7 @@
     <div class="stick"></div>
 </div>
 
-<div class="modal fade" id="userInfoModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel">
+<div class="modal fade" id="userProfileModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -400,68 +413,67 @@
                 </button>
                 <h4 class="modal-title" id="">用户资料</h4>
             </div>
-            <div class="modal-body" style="padding-bottom: 10px;">
+            <div class="modal-body">
                 <form class="form-horizontal">
                     <div class="form-group">
-                        <label class="col-sm-4 col-xs-4 control-label"><img name="head_photo" style="height: 50px;"></label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="nickname" style="height: 50px;line-height:50px;vertical-align:middle;"></span>
+                        <label class="col-sm-4 col-xs-4 control-label"><img class="form-user-head-photo" style="height: 50px;"></label>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-nickname" style="height: 50px;line-height:50px;vertical-align:middle;"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">用户组:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="usergroup"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-group"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">性别:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="sex"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-sex"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">自我介绍:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="description"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-description"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">生日:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="birthday"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-birthday"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">地址:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="address"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-address"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">微博:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="weibo"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-weibo"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">主页:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="site"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-site"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">QQ:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="qq"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-qq"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">文章数:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="articleCount"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-article-count"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">关注数:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="followingCount"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-following-count"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">粉丝数:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="followerCount"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-follower-count"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">签名:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="says"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-says"></span>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-4 col-xs-4 control-label">注册时间:</label>
-                        <span class="col-sm-7 col-xs-7 control-label" name="register_time"></span>
+                        <span class="col-sm-7 col-xs-7 control-label form-user-register-time"></span>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-
                 <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
             </div>
         </div>
@@ -474,7 +486,7 @@
         <div class="modal-content animated flipInY">
             <div class="modal-header text-center">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h2 class="modal-title" id="loginModalLabel">登录 / <a href="auth/register" target="_blank">注册</a></h2>
+                <h2 class="modal-title" id="loginModalLabel">登录 / <a href="<%=basePath%>auth/register" target="_blank">注册</a></h2>
             </div>
             <form role="form" id="login_form">
                 <div class="modal-body">
@@ -505,10 +517,11 @@
 <footer id="footer" role="contentinfo" class="card site-footer">
     <span>© 2016 </span><a href="https://imcoder.site" target="_blank">ImCoder</a><span> 博客 ，基于 </span><a>Java</a><span> 语言开发</span>
     <c:if test="${not empty site_icp_record_code}">
-        <span>，ICP备案：</span><a href="http://beian.miit.gov.cn/" target="_blank">${site_icp_record_code}</a>
+        <span>，ICP备案：</span><a class="site-icp-record" href="http://beian.miit.gov.cn/" target="_blank">${site_icp_record_code}</a>
     </c:if>
     <c:if test="${not empty site_police_record_code}">
-        <span>，公安备案：</span><img class="police-record-icon" src="<%=staticPath%>img/police_record_icon.png"><a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=${site_police_record_number}" target="_blank">${site_police_record_code}</a>
+        <span>，公安备案：</span><img class="police-record-icon" src="<%=staticPath%>img/police_record_icon.png">
+        <a class="site-police-record" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=${site_police_record_number}" target="_blank">${site_police_record_code}</a>
     </c:if>
 </footer>
 

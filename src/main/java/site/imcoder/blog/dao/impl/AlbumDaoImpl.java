@@ -170,6 +170,69 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
     }
 
     /**
+     * 点击量加1
+     *
+     * @param album
+     * @param step  - 步长，可为负数
+     * @return
+     */
+    @Override
+    public int updateAlbumClickCount(Album album, int step) {
+        try {
+            Map<String, Object> map = new HashMap<>();
+            map.put("album", album);
+            map.put("step", step);
+            return this.getSqlSession().update("album.updateAlbumClickCount", map);
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.warn("updateAlbumClickCount fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 点赞量加1
+     *
+     * @param album
+     * @param step  - 步长，可为负数
+     * @return
+     */
+    @Override
+    public int updateAlbumLikeCount(Album album, int step) {
+        try {
+            Map<String, Object> map = new HashMap<>();
+            map.put("album", album);
+            map.put("step", step);
+            return this.getSqlSession().update("album.updateAlbumLikeCount", map);
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.warn("updateAlbumLikeCount fail", e);
+            return -1;
+        }
+    }
+
+    /**
+     * 评论量加1
+     *
+     * @param album
+     * @param step  - 步长，可为负数
+     * @return
+     */
+    @Override
+    public int updateAlbumCommentCount(Album album, int step) {
+        try {
+            Map<String, Object> map = new HashMap<>();
+            map.put("album", album);
+            map.put("step", step);
+            return this.getSqlSession().update("album.updateAlbumCommentCount", map);
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            logger.warn("updateAlbumCommentCount fail", e);
+            return -1;
+        }
+    }
+
+    /**
      * 插入照片
      *
      * @param photo
@@ -543,16 +606,16 @@ public class AlbumDaoImpl extends CommonDao implements IAlbumDao {
      * @return
      */
     @Override
-    public List<PhotoTagWrapper> findPhotoTagWrappers(PhotoTagWrapper tagWrapper, User loginUser) {
+    public List<PhotoTagWrapper> findPhotoTagWrapperList(PhotoTagWrapper tagWrapper, User loginUser) {
         try {
             Map<String, Object> map = new HashMap<>();
             map.put("wrapper", tagWrapper);
             map.put("loginUser", loginUser);
             map.put("wrapper_type_mark", TagWrapperType.MARK.value);
             map.put("wrapper_type_search", TagWrapperType.SEARCH.value);
-            return this.getSqlSession().selectList("album.findPhotoTagWrappers", map);
+            return this.getSqlSession().selectList("album.findPhotoTagWrapperList", map);
         } catch (Exception e) {
-            logger.warn("findPhotoTagWrappers fail", e);
+            logger.warn("findPhotoTagWrapperList fail", e);
             return null;
         }
     }

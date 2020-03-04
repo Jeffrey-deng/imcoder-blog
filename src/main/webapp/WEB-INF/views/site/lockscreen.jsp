@@ -3,7 +3,8 @@
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%
     String path = request.getContextPath();
-    String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String hostPath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String basePath = Config.get(ConfigConstants.SITE_ADDR);
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
@@ -24,7 +25,6 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <base href="<%=basePath%>" target="_self">
     <title>重新登录 - ImCoder's 博客</title>
     <meta name="keywords" content="imcoder.site,重新验证密码">
     <meta name="description" content="重新验证密码登录到imcoder.site">
@@ -36,6 +36,74 @@
     <link rel="stylesheet" href="<%=staticPath%>lib/font-awesome/font-awesome.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
     <style>
+
+        /* site-background start */
+        .site-background-wrap {
+            position: relative;
+            z-index: -1;
+        }
+
+        .site-background {
+            top: 0px;
+        }
+
+        .site-background-canvas {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0px;
+            background-color: rgb(0, 0, 0);
+        }
+
+        .site-background-canvas-image {
+            position: absolute;
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            top: 0px;
+            width: 100%;
+            height: 100%;
+            opacity: 1;
+        }
+
+        .site-background-canvas-video-wrap {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+        }
+
+        .site-background-canvas-video-wrap video {
+            position: absolute;
+            opacity: 1;
+            left: 0px;
+            top: -66px;
+        }
+
+        .site-background-canvas-video-poster-wrap {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            top: 0px;
+            left: 0px;
+        }
+
+        .site-background-canvas-video-poster-wrap img {
+            object-position: 50% 50%;
+            object-fit: cover;
+        }
+
+        .site-background-canvas-overlay {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(38, 94, 118, 0.15);
+        }
+
+        /* site-background end */
+
         .toast-success-no-icon {
             background-color: #51A351 !important;
         }
@@ -137,7 +205,21 @@
     </div>
 </div>
 
+<div id="site_background_wrap" class="site-background-wrap">
+    <div class="site-background">
+        <div class="site-background-canvas">
+            <div class="site-background-canvas-image" style="background-image: url('<%=staticPath%>img/site_background_canvas_image.webp');"></div>
+            <div class="site-background-canvas-video-wrap">
+                <video class="site-background-canvas-video" src="<%=staticPath%>media/site_background_canvas_video.mp4" role="presentation" preload="auto" playsinline="" loop="" muted="" autoplay="true"></video>
+            </div>
+            <div class="site-background-canvas-overlay" style="background-image: url('<%=staticPath%>img/site_background_canvas_overlay.png');"></div>
+        </div>
+    </div>
+</div>
 
+<a id="basePath" class="site-path-prefix" href="<%=basePath%>" style="display:none;"></a>
+<a id="staticPath" class="site-path-prefix" href="<%=staticPath%>" style="display:none;"></a>
+<a id="cloudPath" class="site-path-prefix" href="<%=cloudPath%>" style="display:none;"></a>
 <!-- Bootstrap & Plugins core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->

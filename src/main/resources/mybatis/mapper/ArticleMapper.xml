@@ -270,7 +270,7 @@
     </select>
 
     <!-- 根据置顶文章 -->
-    <select id="findTopsList" parameterType="hashMap" resultMap="articleListMap">
+    <select id="findTopArticleList" parameterType="hashMap" resultMap="articleListMap">
         select a.aid,title,tags,summary,create_time,update_time,click_count,collect_count,comment_count,permission,top,recommend,
         at.atid,at.atname,
         u.uid as auid,u.gid,nickname,sex,head_photo,
@@ -549,7 +549,7 @@
 
     <!-- 删除文章  start -->
     <delete id="deleteArticle_comment" parameterType="article">
-        delete from comment where main_type = 0 and main_id=#{aid}
+        delete from comment where creation_type = 0 and creation_id = #{aid}
     </delete>
     <delete id="deleteArticle_collection" parameterType="article">
         delete from collection where aid=#{aid}

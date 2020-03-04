@@ -440,11 +440,11 @@ public class ArticleServiceImpl extends BaseService implements IArticleService {
      * articles
      */
     @Override
-    public IResponse findTopArticles(int size, IRequest iRequest) {
+    public IResponse findTopArticleList(int size, IRequest iRequest) {
         if (size == 0) {
             size = Config.getInt(ConfigConstants.ARTICLE_HOME_SIZE_TOP);
         }
-        return new IResponse().putAttr("articles", articleDao.findTopsList(size, iRequest.getLoginUser())).setStatus(STATUS_SUCCESS);
+        return new IResponse().putAttr("articles", articleDao.findTopArticleList(size, iRequest.getLoginUser())).setStatus(STATUS_SUCCESS);
     }
 
     /**

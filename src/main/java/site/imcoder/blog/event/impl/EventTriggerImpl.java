@@ -126,7 +126,22 @@ public class EventTriggerImpl implements IEventTrigger {
      */
     @Override
     public void accessAlbum(AccessDetail accessDetail, AccessRecord accessRecord) {
-
+        Long album_id = accessDetail.getCreation_id();
+        if (album_id != null) {
+            Album album = new Album(album_id);
+            switch (accessRecord.action()) {
+                case SAVE:
+                    if (userDao.saveAlbumAccessDetail(accessDetail) > 0) {
+                        albumDao.updateAlbumClickCount(album, 1);
+                    }
+                    break;
+                case DELETE:
+                    if (userDao.deleteAlbumAccessDetail(accessDetail) > 0) {
+                        albumDao.updateAlbumClickCount(album, -1);
+                    }
+                    break;
+            }
+        }
     }
 
     /**
@@ -169,10 +184,10 @@ public class EventTriggerImpl implements IEventTrigger {
     @Override
     public void addComment(Comment comment, Object creation) {
         if (comment != null) {
-            CommentType commentType = CommentType.valueOf(comment.getMainType());
+            CommentType commentType = CommentType.valueOf(comment.getCreationType());
             switch (commentType) {
                 case ARTICLE:   // 文章
-                    Article article = creation != null ? (Article) creation : new Article(comment.getMainId());
+                    Article article = creation != null ? (Article) creation : new Article(comment.getCreationId());
                     if (!comment.typeOfAnonymous() && (article.getCommented() == null || !article.getCommented())) {
                         ActionRecord<Article> actionRecord = new ActionRecord<>();
                         actionRecord.setCreation(article);
@@ -183,7 +198,7 @@ public class EventTriggerImpl implements IEventTrigger {
                     cache.updateArticleCommentCount(article, 1);
                     break;
                 case PHOTO: // 照片
-                    Photo photo = creation != null ? (Photo) creation : new Photo(comment.getMainId());
+                    Photo photo = creation != null ? (Photo) creation : new Photo(comment.getCreationId());
                     if (!comment.typeOfAnonymous() && (photo.getCommented() == null || !photo.getCommented())) {
                         ActionRecord<Photo> actionRecord = new ActionRecord<>();
                         actionRecord.setCreation(photo);
@@ -194,7 +209,7 @@ public class EventTriggerImpl implements IEventTrigger {
                     albumDao.updatePhotoCommentCount(photo, 1);
                     break;
                 case VIDEO: // 视频
-                    Video video = creation != null ? (Video) creation : new Video(comment.getMainId());
+                    Video video = creation != null ? (Video) creation : new Video(comment.getCreationId());
                     if (!comment.typeOfAnonymous() && (video.getCommented() == null || !video.getCommented())) {
                         ActionRecord<Video> actionRecord = new ActionRecord<>();
                         actionRecord.setCreation(video);
@@ -203,6 +218,17 @@ public class EventTriggerImpl implements IEventTrigger {
                         userDao.saveVideoActionRecord(actionRecord);
                     }
                     videoDao.updateVideoCommentCount(video, 1);
+                    break;
+                case AlBUM: // 相册
+                    Album album = creation != null ? (Album) creation : new Album(comment.getCreationId());
+                    if (!comment.typeOfAnonymous() && (album.getCommented() == null || !album.getCommented())) {
+                        ActionRecord<Album> actionRecord = new ActionRecord<>();
+                        actionRecord.setCreation(album);
+                        actionRecord.setUser(comment.getUser());
+                        actionRecord.setCommented(true);
+                        userDao.saveAlbumActionRecord(actionRecord);
+                    }
+                    albumDao.updateAlbumCommentCount(album, 1);
                     break;
                 case PHOTO_TOPIC: // 照片合集
                     break;
@@ -219,19 +245,23 @@ public class EventTriggerImpl implements IEventTrigger {
     @Override
     public void deleteComment(Comment comment, Object creation) {
         if (comment != null) {
-            CommentType commentType = CommentType.valueOf(comment.getMainType());
+            CommentType commentType = CommentType.valueOf(comment.getCreationType());
             switch (commentType) {
                 case ARTICLE:   // 文章
-                    Article article = creation != null ? (Article) creation : new Article(comment.getMainId());
+                    Article article = creation != null ? (Article) creation : new Article(comment.getCreationId());
                     cache.updateArticleCommentCount(article, -1);
                     break;
                 case PHOTO: // 照片
-                    Photo photo = creation != null ? (Photo) creation : new Photo(comment.getMainId());
+                    Photo photo = creation != null ? (Photo) creation : new Photo(comment.getCreationId());
                     albumDao.updatePhotoCommentCount(photo, -1);
                     break;
                 case VIDEO: // 视频
-                    Video video = creation != null ? (Video) creation : new Video(comment.getMainId());
+                    Video video = creation != null ? (Video) creation : new Video(comment.getCreationId());
                     videoDao.updateVideoCommentCount(video, -1);
+                    break;
+                case AlBUM: // 相册
+                    Album album = creation != null ? (Album) creation : new Album(comment.getCreationId());
+                    albumDao.updateAlbumCommentCount(album, -1);
                     break;
                 case PHOTO_TOPIC: // 照片合集
                     break;
@@ -388,12 +418,11 @@ public class EventTriggerImpl implements IEventTrigger {
 
     /**
      * 删除收藏事件
-     *
-     * @param article
+     *  @param article
      * @param user
      */
     @Override
-    public void deleteCollection(Article article, User user) {
+    public void removeCollection(Article article, User user) {
         if (article != null) {
             cache.updateArticleCollectCount(article, -1);
         }

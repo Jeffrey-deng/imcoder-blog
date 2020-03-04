@@ -47,10 +47,10 @@ import java.util.List;
 public class ResolverRegistrarBeanPostProcessor implements BeanPostProcessor {
 
     @Resource
-    BindIRequestMethodArgumentResolver bindIRequestMethodArgumentResolver;
+    private BindIRequestMethodArgumentResolver bindIRequestMethodArgumentResolver;
 
     @Resource
-    BindNullIfEmptyParamResolver bindNullIfEmptyParamResolver;
+    private BindNullIfEmptyParamResolver bindNullIfEmptyParamResolver;
 
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {

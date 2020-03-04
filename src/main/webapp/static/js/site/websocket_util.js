@@ -10,12 +10,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'common_utils'], factory);
+        define(['jquery', 'globals', 'common_utils'], factory);
     } else {
         // Browser globals
-        window.websocket_util = factory(window.jQuery, common_utils);
+        window.websocket_util = factory(window.jQuery, globals, common_utils);
     }
-})(function ($, common_utils) {
+})(function ($, globals, common_utils) {
 
     /**
      * `WebsocketHeartbeatJs` constructor.
@@ -75,7 +75,7 @@
                 _self.initEventHandle();
             }
         } catch (e) {
-            _self.reconnect("exception");
+            _self.reconnect('exception');
             throw e;
         }
     };
@@ -85,12 +85,12 @@
         _self.ws.onclose = function (event) {
             _self.isAvailable = false;
             _self.onclose(event);
-            _self.reconnect("close");
+            _self.reconnect('close');
         };
         _self.ws.onerror = function (e) {
             _self.isAvailable = false;
             _self.onerror(e);
-            _self.reconnect("error");
+            _self.reconnect('error');
         };
         _self.ws.onopen = function (event) {
             _self.isAvailable = true;
@@ -108,19 +108,19 @@
         // 注册事件监控当设备从睡眠中唤醒时执行，启动重连
         // 各种浏览器兼容
         var hidden, state, visibilityChange;
-        if (typeof document.hidden !== "undefined") {
+        if (typeof document.hidden !== 'undefined') {
             hidden = "hidden";
             visibilityChange = "visibilitychange";
             state = "visibilityState";
-        } else if (typeof document.webkitHidden !== "undefined") {
+        } else if (typeof document.webkitHidden !== 'undefined') {
             hidden = "webkitHidden";
             visibilityChange = "webkitvisibilitychange";
             state = "webkitVisibilityState";
-        } else if (typeof document.mozHidden !== "undefined") {
+        } else if (typeof document.mozHidden !== 'undefined') {
             hidden = "mozHidden";
             visibilityChange = "mozvisibilitychange";
             state = "mozVisibilityState";
-        } else if (typeof document.msHidden !== "undefined") {
+        } else if (typeof document.msHidden !== 'undefined') {
             hidden = "msHidden";
             visibilityChange = "msvisibilitychange";
             state = "msVisibilityState";
@@ -141,17 +141,17 @@
             return _self.inactive_timer;
         };
         _self.resetInActiveTimer();
-        $(document).on("mouseover", function (e) {
+        $(document).on('mouseover', function (e) {
             if (!_self.inactive_timer) {
                 _self.resetInActiveTimer();
             }
             _self.isPageActive = true;
-        }).on("click", function (e) {
+        }).on('click', function (e) {
             if (!_self.inactive_timer) {
                 _self.resetInActiveTimer();
             }
             _self.isPageActive = true;
-        }).on("scroll", function (e) {
+        }).on('scroll', function (e) {
             if (!_self.inactive_timer) {
                 _self.resetInActiveTimer();
             }
@@ -194,7 +194,7 @@
         _self.pingTimeoutId = setTimeout(function () {
             // 这里发送一个心跳，后端收到后，返回一个心跳消息，
             // onmessage拿到返回的心跳就说明连接正常，断网则发送不成功，浏览器会触发ws.onclose,从而触发reconnect
-            if (typeof _self.opts.pingMsg == "function") {
+            if (typeof _self.opts.pingMsg == 'function') {
                 _self.ws.send(_self.opts.pingMsg.call(_self, _self.isAvailable, _self.isPageActive));
             } else {
                 _self.ws.send(_self.opts.pingMsg);
@@ -215,9 +215,9 @@
     var wakeUp = function () {
         var _self = WebsocketHeartbeatJs.instance;
         // 当连接不可用，且标签被激活时
-        if (_self != null && !_self.isAvailable && document[_self.visibilityStateKey] == "visible" && !_self.forbidReconnect) {
+        if (_self != null && !_self.isAvailable && document[_self.visibilityStateKey] == 'visible' && !_self.forbidReconnect) {
             // 重新连接
-            _self.reconnect("wakeUp", true);
+            _self.reconnect('wakeUp', true);
         }
         if (document[_self.visibilityHiddenKey]) {
             _self.isPageActive = false;
@@ -273,18 +273,18 @@
     };
 
     var init = function (options) {
-        common_utils.extendNonNull(true, config, options);
-        var basePath = $("head").find("base").attr("href");
+        $.extendNotNull(true, config, options);
+        var basePath = globals.path_params.basePath;
         if (!basePath) {
-            basePath = document.location.origin + document.location.pathname.replace(/[^\/]*?$/, "");
+            basePath = document.location.origin + document.location.pathname.replace(/[^\/]*?$/, '');
         }
         if (!basePath.match(/\/$/)) {
-            basePath = basePath + "/";
+            basePath = basePath + '/';
         }
-        if (basePath.indexOf("https") == 0) {
-            config.wsUrl = basePath.replace(/^https/, "wss") + "subscribe";
+        if (basePath.indexOf('https') == 0) {
+            config.wsUrl = basePath.replace(/^https/, 'wss') + 'subscribe';
         } else {
-            config.wsUrl = basePath.replace(/^http/, "ws") + "subscribe";
+            config.wsUrl = basePath.replace(/^http/, 'ws') + 'subscribe';
         }
         createWebSocket();   //连接ws
     };
@@ -322,45 +322,45 @@
                 if (!message) {
                     return;
                 }
-                if (message.mapping == "forbidden") {   // 如果拒绝连接
-                    var time = common_utils.formatDate(new Date(), "hh:mm:ss");
+                if (message.mapping == 'forbidden') {   // 如果拒绝连接
+                    var time = common_utils.formatDate(new Date(), 'hh:mm:ss');
                     pointer.webSocket.close();
-                    console.log("websocket connection 强制下线 at " + time);
-                } else if (message.mapping && message.mapping != "pong") { // 过滤掉ping消息的返回消息pong
+                    console.log('websocket connection 强制下线 at ' + time);
+                } else if (message.mapping && message.mapping != 'pong') { // 过滤掉ping消息的返回消息pong
                     // 调用绑定该mapping的事件
-                    context.trigger(config.event.messageReceive + "." + message.mapping, message, wsEvent);
+                    context.trigger(config.event.messageReceive + '.' + message.mapping, message, wsEvent);
                 }
             } catch (e) {
-                console.warn("handle message of server pushing find exception", e);
+                console.warn('handle message of server pushing find exception', e);
             }
         };
 
         //连接发生错误的回调方法
         pointer.webSocket.onerror = function (e) {
-            var time = common_utils.formatDate(new Date(), "hh:mm:ss");
-            console.log("websocket an error occurred at " + time);
+            var time = common_utils.formatDate(new Date(), 'hh:mm:ss');
+            console.log('websocket an error occurred at ' + time);
             context.trigger(config.event.connectionError, e);
         };
 
         //连接关闭的回调方法
         pointer.webSocket.onclose = function (event) {
-            var time = common_utils.formatDate(new Date(), "hh:mm:ss");
-            console.log("websocket connection disconnect from server at " + time);
+            var time = common_utils.formatDate(new Date(), 'hh:mm:ss');
+            console.log('websocket connection disconnect from server at ' + time);
             context.trigger(config.event.connectionClose, event);
         };
 
         //连接重连的回调方法
         pointer.webSocket.onreconnect = function (textStatus) {
-            var time = common_utils.formatDate(new Date(), "hh:mm:ss");
-            if (textStatus == "wakeUp") {
-                console.log("websocket wake up and reconnection server at " + time);
+            var time = common_utils.formatDate(new Date(), 'hh:mm:ss');
+            if (textStatus == 'wakeUp') {
+                console.log('websocket wake up and reconnection server at ' + time);
             } else {
-                console.log("websocket reconnection server at " + time);
+                console.log('websocket reconnection server at ' + time);
             }
         };
 
         //监听窗口关闭事件，当窗口关闭时，主动去关闭websocket连接，防止连接还没断开就关闭窗口，server端会抛异常。
-        window.addEventListener("beforeunload", function () {
+        window.addEventListener('beforeunload', function () {
             pointer.webSocket.close();
         });
     }
@@ -377,15 +377,15 @@
     };
 
     // 绑定事件
-    // 收到消息事件可以绑定 （websocket_util.config.event.messageReceive + "." + mapping） 为事件名
+    // 收到消息事件可以绑定 （websocket_util.config.event.messageReceive + '.' + mapping） 为事件名
     // 或者直接使用 onPush(mapping, call)
     // bindFirst: 该事件是否插入到队列的第一个位置
     // onXXX方法命名时on后面接的字符不能为事件名前缀，不然会让jquery在触发事件时调用
     var onPush = function (mapping, func, bindFirst) {
-        if (typeof mapping == "function") {
+        if (typeof mapping == 'function') {
             context.on(config.event.messageReceive, mapping, func);
         } else {
-            context.on(config.event.messageReceive + "." + mapping, func, bindFirst);
+            context.on(config.event.messageReceive + '.' + mapping, func, bindFirst);
         }
         return this;
     };
@@ -419,10 +419,10 @@
         "pointer": pointer,
         "init": init,
         "utils": utils,
-        "on": common_utils.on,
-        "once": common_utils.once,
-        "trigger": common_utils.trigger,
-        "off": common_utils.off,
+        "on": globals.on,
+        "once": globals.once,
+        "trigger": globals.trigger,
+        "off": globals.off,
         "onPush": onPush,
         "ready": ready,
         "post": post

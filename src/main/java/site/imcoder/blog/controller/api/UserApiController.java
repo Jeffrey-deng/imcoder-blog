@@ -7,13 +7,12 @@ import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.Interceptor.annotation.AccessRecord;
 import site.imcoder.blog.Interceptor.annotation.GZIP;
 import site.imcoder.blog.Interceptor.annotation.LoginRequired;
+import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.common.type.UserAuthType;
 import site.imcoder.blog.controller.BaseController;
+import site.imcoder.blog.controller.resolver.annotation.BindNullIfEmpty;
 import site.imcoder.blog.entity.*;
-import site.imcoder.blog.entity.rewrite.ArticleActionRecord;
-import site.imcoder.blog.entity.rewrite.CommentActionRecord;
-import site.imcoder.blog.entity.rewrite.PhotoActionRecord;
-import site.imcoder.blog.entity.rewrite.VideoActionRecord;
+import site.imcoder.blog.entity.rewrite.*;
 import site.imcoder.blog.service.IArticleService;
 import site.imcoder.blog.service.IUserService;
 import site.imcoder.blog.service.message.IRequest;
@@ -80,7 +79,7 @@ public class UserApiController extends BaseController {
     @RequestMapping(params = "method=getUser")
     @ResponseBody
     public IResponse getUser(User user, IRequest iRequest) {
-        //查询用户为当前用户也要查询数据库 因为如果用户更新了资料(直接通过数据库改的方式)就会不同步
+        // 查询用户为当前用户也要查询数据库 因为如果用户更新了资料(直接通过数据库改的方式)就会不同步
         return userService.findUser(user, iRequest);
     }
 
@@ -100,7 +99,7 @@ public class UserApiController extends BaseController {
     public IResponse saveProfile(User user, HttpSession session, IRequest iRequest) {
         IResponse response = userService.saveProfile(user, iRequest);
         if (response.isSuccess()) {
-            //更新session中的loginUser
+            // 更新session中的loginUser
             session.setAttribute("loginUser", response.getAttr("user"));
         }
         return response;
@@ -121,10 +120,17 @@ public class UserApiController extends BaseController {
     @LoginRequired
     @RequestMapping(params = "method=updateHeadPhoto")
     @ResponseBody
-    public IResponse updateUserHeadPhoto(MultipartFile imageFile, MultipartFile imageRawFile, String head_photo_path, IRequest iRequest) {
+    public IResponse updateUserHeadPhoto(@BindNullIfEmpty User user, MultipartFile imageFile, MultipartFile imageRawFile, String head_photo_path, IRequest iRequest) {
+        if (user != null && IdUtil.containValue(user.getUid())) {
+            iRequest.putAttr("user", user);
+        }
         IResponse response = userService.saveHeadPhoto(imageFile, imageRawFile, head_photo_path, iRequest);
         if (response.isSuccess()) {
-            iRequest.getLoginUser().setHead_photo(response.getAttr("head_photo"));
+            User affectedUser = response.getAttr("user");
+            if (iRequest.getLoginUser().getUid().equals(affectedUser.getUid())) {
+                // 更新session中的loginUser
+                iRequest.getLoginUser().setHead_photo(response.getAttr("head_photo"));
+            }
         }
         return response;
     }
@@ -170,10 +176,10 @@ public class UserApiController extends BaseController {
      * type - 1：已关注，0：未关注
      */
     @LoginRequired
-    @RequestMapping(params = "method=checkFollow")
+    @RequestMapping(params = "method=checkIsFollowing")
     @ResponseBody
-    public IResponse checkFollow(User hostUser, IRequest iRequest) {
-        return userService.checkFollow(hostUser, iRequest);
+    public IResponse checkIsFollowing(User hostUser, IRequest iRequest) {
+        return userService.checkIsFollowing(hostUser, iRequest);
     }
 
     /**
@@ -202,10 +208,10 @@ public class UserApiController extends BaseController {
      * type - 1: 取消关注成功, 2: 取消关注成功并取消好友
      */
     @LoginRequired
-    @RequestMapping(params = "method=removeFollow")
+    @RequestMapping(params = "method=unfollow")
     @ResponseBody
-    public IResponse removeFollow(User hostUser, IRequest iRequest) {
-        return userService.removeFollow(hostUser, iRequest);
+    public IResponse unfollow(User hostUser, IRequest iRequest) {
+        return userService.unfollow(hostUser, iRequest);
     }
 
     /**
@@ -259,10 +265,10 @@ public class UserApiController extends BaseController {
      * type - 1：已收藏，0：未收藏
      */
     @LoginRequired
-    @RequestMapping(params = "method=checkCollection")
+    @RequestMapping(params = "method=checkArticleIsCollected")
     @ResponseBody
-    public IResponse checkCollection(Article article, IRequest iRequest) {
-        return userService.checkCollection(article, iRequest);
+    public IResponse checkArticleIsCollected(Article article, IRequest iRequest) {
+        return userService.checkArticleIsCollected(article, iRequest);
     }
 
     /**
@@ -290,10 +296,10 @@ public class UserApiController extends BaseController {
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
      */
     @LoginRequired
-    @RequestMapping(params = "method=unCollectArticle")
+    @RequestMapping(params = "method=uncollectArticle")
     @ResponseBody
-    public IResponse removeArticleCollection(Article article, IRequest iRequest) {
-        return userService.removeArticleCollection(article, iRequest);
+    public IResponse uncollectArticle(Article article, IRequest iRequest) {
+        return userService.uncollectArticle(article, iRequest);
     }
 
     /**
@@ -304,10 +310,10 @@ public class UserApiController extends BaseController {
      * collections - 收藏文章列表
      */
     @LoginRequired
-    @RequestMapping(params = "method=getArticleCollections")
+    @RequestMapping(params = "method=getCollectedArticleList")
     @ResponseBody
-    public IResponse getArticleCollections(IRequest iRequest) {
-        return userService.findCollectList(iRequest);
+    public IResponse getCollectedArticleList(IRequest iRequest) {
+        return userService.findCollectedArticleList(iRequest);
     }
 
     /**
@@ -320,10 +326,10 @@ public class UserApiController extends BaseController {
      * articleActionRecords
      * article_action_record_count
      */
-    @RequestMapping(params = "method=getUserArticleActionRecordList")
+    @RequestMapping(params = "method=getUserArticleActionRecords")
     @ResponseBody
     @GZIP
-    public IResponse getUserArticleActionRecordList(ArticleActionRecord accessRecord, IRequest iRequest) {
+    public IResponse getUserArticleActionRecords(ArticleActionRecord accessRecord, IRequest iRequest) {
         return userService.findUserArticleActionRecordList(accessRecord, iRequest);
     }
 
@@ -337,10 +343,10 @@ public class UserApiController extends BaseController {
      * videoActionRecords
      * video_action_record_count
      */
-    @RequestMapping(params = "method=getUserVideoActionRecordList")
+    @RequestMapping(params = "method=getUserVideoActionRecords")
     @ResponseBody
     @GZIP
-    public IResponse getUserVideoActionRecordList(VideoActionRecord accessRecord, IRequest iRequest) {
+    public IResponse getUserVideoActionRecords(VideoActionRecord accessRecord, IRequest iRequest) {
         return userService.findUserVideoActionRecordList(accessRecord, iRequest);
     }
 
@@ -354,11 +360,28 @@ public class UserApiController extends BaseController {
      * photoActionRecords
      * photo_action_record_count
      */
-    @RequestMapping(params = "method=getUserPhotoActionRecordList")
+    @RequestMapping(params = "method=getUserPhotoActionRecords")
     @ResponseBody
     @GZIP
-    public IResponse getUserPhotoActionRecordList(PhotoActionRecord accessRecord, IRequest iRequest) {
+    public IResponse getUserPhotoActionRecords(PhotoActionRecord accessRecord, IRequest iRequest) {
         return userService.findUserPhotoActionRecordList(accessRecord, iRequest);
+    }
+
+    /**
+     * 查询用户对相册的动作记录
+     *
+     * @param accessRecord
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * albumActionRecords
+     * album_action_record_count
+     */
+    @RequestMapping(params = "method=getUserAlbumActionRecords")
+    @ResponseBody
+    @GZIP
+    public IResponse getUserAlbumActionRecords(AlbumActionRecord accessRecord, IRequest iRequest) {
+        return userService.findUserAlbumActionRecordList(accessRecord, iRequest);
     }
 
     /**
@@ -371,10 +394,10 @@ public class UserApiController extends BaseController {
      * commentActionRecords
      * comment_action_record_count
      */
-    @RequestMapping(params = "method=getUserCommentActionRecordList")
+    @RequestMapping(params = "method=getUserCommentActionRecords")
     @ResponseBody
     @GZIP
-    public IResponse getUserCommentActionRecordList(CommentActionRecord accessRecord, IRequest iRequest) {
+    public IResponse getUserCommentActionRecords(CommentActionRecord accessRecord, IRequest iRequest) {
         return userService.findUserCommentActionRecordList(accessRecord, iRequest);
     }
 
@@ -392,10 +415,10 @@ public class UserApiController extends BaseController {
      * videoActionRecords
      * video_action_record_count
      */
-    @RequestMapping(params = "method=getUserActionRecordList")
+    @RequestMapping(params = "method=getUserActionRecords")
     @ResponseBody
     @GZIP
-    public IResponse getUserActionRecordList(ActionRecord accessRecord, IRequest iRequest) {
+    public IResponse getUserActionRecords(ActionRecord accessRecord, IRequest iRequest) {
         if (accessRecord != null) {
             accessRecord.setCreation(null);
         }
@@ -406,6 +429,7 @@ public class UserApiController extends BaseController {
             response.putAttr(articleResp.getAttr());
             response.putAttr(userService.findUserVideoActionRecordList(accessRecord, iRequest).getAttr());
             response.putAttr(userService.findUserPhotoActionRecordList(accessRecord, iRequest).getAttr());
+            response.putAttr(userService.findUserAlbumActionRecordList(accessRecord, iRequest).getAttr());
         }
         return response;
     }
@@ -458,6 +482,23 @@ public class UserApiController extends BaseController {
     public IResponse deleteUserPhotoAccessDetail(Photo photo, IRequest iRequest) {
         IResponse response = new IResponse();
         response.putAttr("photo", photo);
+        return response;
+    }
+
+    /**
+     * 删除用户访问相册的历史记录
+     *
+     * @param album
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     */
+    @AccessRecord(type = AccessRecord.Types.PHOTO, key = "album", action = AccessRecord.Actions.DELETE)
+    @RequestMapping(params = "method=deleteUserAlbumAccessDetail")
+    @ResponseBody
+    public IResponse deleteUserAlbumAccessDetail(Album album, IRequest iRequest) {
+        IResponse response = new IResponse();
+        response.putAttr("album", album);
         return response;
     }
 

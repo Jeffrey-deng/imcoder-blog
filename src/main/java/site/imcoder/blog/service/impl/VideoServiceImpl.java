@@ -11,11 +11,13 @@ import site.imcoder.blog.dao.ISiteDao;
 import site.imcoder.blog.dao.IUserDao;
 import site.imcoder.blog.dao.IVideoDao;
 import site.imcoder.blog.entity.*;
+import site.imcoder.blog.entity.rewrite.VideoSetting;
 import site.imcoder.blog.service.*;
 import site.imcoder.blog.service.message.IRequest;
 import site.imcoder.blog.service.message.IResponse;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
+import site.imcoder.blog.setting.GlobalConstants;
 
 import javax.annotation.Resource;
 import java.io.IOException;
@@ -237,6 +239,11 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
         }
         IResponse authResp = authService.validateUserPermissionUtil(db_video.getUser(), db_video.getPermission(), iRequest);
         if (authResp.isSuccess()) {
+            boolean is_special_man = iRequest.isHasLoggedIn() && (iRequest.getLoginUser().getUid().equals(db_video.getUser().getUid()) || iRequest.isManagerRequest());
+            response.putAttr("is_special_man", is_special_man);
+            if (db_video.getSetting().getDisable_view() && !is_special_man) {
+                return response.setStatus(STATUS_FORBIDDEN, "此视频当前被临时关闭或等待管理员审核").putAttr("forbidden_type", "setting_disable_view");
+            }
             if (iRequest.isHasNotLoggedIn() || !iRequest.getLoginUser().getUid().equals(db_video.getUser().getUid())) {
                 db_video.setOriginName(null);
             }
@@ -350,7 +357,7 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
     }
 
     /**
-     * 保存上传的视频
+     * 更新上传的视频
      *
      * @param videoFile
      * @param video
@@ -563,6 +570,62 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
     }
 
     /**
+     * 更新视频设置
+     *
+     * @param video    - 设置videoSetting属性
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403：没有权限，404: 封面未找到, 500: 服务器错误
+     * video - video对象
+     */
+    @Override
+    public IResponse updateVideoSetting(Video video, IRequest iRequest) {
+        IResponse response = new IResponse();
+        if (iRequest.isHasNotLoggedIn()) {
+            response.setStatus(STATUS_NOT_LOGIN);
+        } else if (video == null || !IdUtil.containValue(video.getVideo_id()) || video.getSetting() == null) {
+            response.setStatus(STATUS_PARAM_ERROR);
+        } else {
+            IResponse videoResp = findVideo(video, iRequest);
+            response.setStatus(videoResp);
+            if (response.isSuccess()) {
+                Video db_video = videoResp.getAttr("video");
+                if (iRequest.equalsLoginUser(db_video.getUser()) || iRequest.isManagerRequest()) {
+                    VideoSetting vs = video.getSetting();
+                    VideoSetting db_vs = db_video.getSetting();
+                    if (vs.getDisable_view() == null) {
+                        vs.setDisable_view(db_vs.getDisable_view());
+                    }
+                    if (vs.getDisable_send_comment() == null) {
+                        vs.setDisable_send_comment(db_vs.getDisable_send_comment());
+                    }
+                    if (vs.getDisable_list_comment() == null) {
+                        vs.setDisable_list_comment(db_vs.getDisable_list_comment());
+                    }
+                    if (vs.getDisable_embed() == null) {
+                        vs.setDisable_embed(db_vs.getDisable_embed());
+                    }
+                    if (vs.getDisable_download() == null) {
+                        vs.setDisable_download(db_vs.getDisable_download());
+                    }
+                    if (vs.getRotate() == null) {
+                        vs.setRotate(db_vs.getRotate());
+                    }
+                    if (vs.getEnable_loop() == null) {
+                        vs.setEnable_loop(db_vs.getEnable_loop());
+                    }
+                    response.setStatus(convertRowToHttpCode(videoDao.updateVideoSetting(video)));
+                    db_video.setSetting(vs);
+                    response.putAttr("video", db_video);
+                } else {
+                    response.setStatus(STATUS_FORBIDDEN);
+                }
+            }
+        }
+        return response;
+    }
+
+    /**
      * 查询视频的历史用户动作记录
      *
      * @param video
@@ -690,7 +753,7 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             if (video.getSource_type() == null) {
                 video.setSource_type(0);
             }
-            if (video.getClick_count() == 0) {
+            if (video.getClick_count() != 0) {
                 video.setClick_count(0);
             }
             if (video.getDescription() == null) {
@@ -708,8 +771,31 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             if (video.getRefer() == null) {
                 video.setRefer(EMPTY);
             }
-            if (video.getRotate() == null) {
-                video.setRotate(0);
+            VideoSetting vs = video.getSetting();
+            if (vs == null) {
+                vs = new VideoSetting();
+                video.setSetting(vs);
+            }
+            if (vs.getDisable_view() == null) {
+                vs.setDisable_view(false);
+            }
+            if (vs.getDisable_send_comment() == null) {
+                vs.setDisable_send_comment(false);
+            }
+            if (vs.getDisable_list_comment() == null) {
+                vs.setDisable_list_comment(false);
+            }
+            if (vs.getDisable_embed() == null) {
+                vs.setDisable_embed(false);
+            }
+            if (vs.getDisable_download() == null) {
+                vs.setDisable_download(false);
+            }
+            if (vs.getRotate() == null) {
+                vs.setRotate(0);
+            }
+            if (vs.getEnable_loop() == null) {
+                vs.setEnable_loop(false);
             }
         }
     }
@@ -748,8 +834,8 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             if (video.getRefer() == null) {
                 video.setRefer(db_video.getRefer());
             }
-            if (video.getRotate() == null) {
-                video.setRotate(db_video.getRotate());
+            if (video.getSetting() == null) {
+                video.setSetting(db_video.getSetting());
             }
         }
     }

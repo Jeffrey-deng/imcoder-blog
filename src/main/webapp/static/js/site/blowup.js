@@ -37,48 +37,47 @@
         var $elements = $(options.selector);
 
         // If the target element is not an image
-        // if (!$elements.is("img")) {
-        //     console.log("%c Blowup.js Error: " + "%cTarget element is not an image.",
+        // if (!$elements.is('img')) {
+        //     console.log('%c Blowup.js Error: ' + "%cTarget element is not an image.",
         //         "background: #FCEBB6; color: #F07818; font-size: 17px; font-weight: bold;",
         //         "background: #FCEBB6; color: #F07818; font-size: 17px;");
         //     return;
         // }
 
         // Modify target image
-        // $elements.css("cursor", $options.cursor ? "crosshair" : "none");
+        // $elements.css('cursor', $options.cursor ? 'crosshair' : 'none');
 
         // Create magnification lens element
-        var lens = document.createElement("div");
+        var lens = document.createElement('div');
         lens.id = "blowupCanvas";
 
         // Attack the element to the body
-        document.getElementById("blowupCanvas") || $("body").append(lens);
+        document.getElementById('blowupCanvas') || $('body').append(lens);
 
         // Updates styles
-        var $blowupCanvas = $("#blowupCanvas");
+        var $blowupCanvas = $('#blowupCanvas');
 
         $blowupCanvas.css({
-            "position": "absolute",
+            'position': "absolute",
             "visibility": "hidden",
-            "pointer-events": "none",
-            "zIndex": options.zIndex,
-            "width": options.width,
-            "height": options.height,
-            "border": options.border,
-            "background": options.background,
-            "border-radius": options.round ? "50%" : "none",
-            "box-shadow": options.shadow,
-            "background-repeat": "no-repeat",
+            'pointer-events': "none",
+            'z-index': options.zIndex,
+            'width': options.width,
+            'height': options.height,
+            'border': options.border,
+            'background': options.background,
+            'border-radius': options.round ? '50%' : 'none',
+            'box-shadow': options.shadow,
+            'background-repeat': 'no-repeat',
         });
 
 
-        var $IMAGE_URL = "", NATIVE_IMG = new Image(), $el = null, el_pageX, el_pageY;
+        var $IMAGE_URL = '', NATIVE_IMG = new Image(), $el = null, el_pageX, el_pageY;
 
         // Show magnification lens
         var mouseenter_handler = function (e) {
-            $blowupCanvas.css("visibility", "visible");
-            $IMAGE_URL = e.target.src;
-            NATIVE_IMG.src = $IMAGE_URL;
+            $blowupCanvas.css('visibility', 'visible');
+            NATIVE_IMG.src = $IMAGE_URL = e.target.src;
             $el = $(e.target);
         };
 
@@ -87,8 +86,7 @@
             e = e ? e : window.event;
             var obj = e.srcElement ? e.srcElement : e.target;
             if (NATIVE_IMG.src != obj.src) {
-                $IMAGE_URL = obj.src;
-                NATIVE_IMG.src = $IMAGE_URL;
+                NATIVE_IMG.src = $IMAGE_URL = obj.src;
             }
             $el = $(obj);
             el_pageX = e.pageX;
@@ -98,7 +96,7 @@
 
         // Hide magnification lens
         var mouseleave_handler = function (e) {
-            $blowupCanvas.css("visibility", "hidden");
+            $blowupCanvas.css('visibility', 'hidden');
             // NATIVE_IMG = null;
             $el = null;
             el_pageX = null;
@@ -118,17 +116,17 @@
             var zoomX = -Math.floor(relX / $el.width() * (NATIVE_IMG.width * options.scale) - options.width / 2);
             var zoomY = -Math.floor(relY / $el.height() * (NATIVE_IMG.height * options.scale) - options.height / 2);
 
-            var backPos = zoomX + "px " + zoomY + "px";
-            var backgroundSize = NATIVE_IMG.width * options.scale + "px " + NATIVE_IMG.height * options.scale + "px";
+            var backPos = zoomX + 'px ' + zoomY + 'px';
+            var backgroundSize = NATIVE_IMG.width * options.scale + 'px ' + NATIVE_IMG.height * options.scale + 'px';
 
             // Apply styles to lens
             $blowupCanvas.css({
                 left: lensX,
                 top: lensY,
-                "background-image": "url(" + $IMAGE_URL + ")",
-                "background-size": backgroundSize,
-                "background-position": backPos,
-                "visibility": "visible"
+                'background-image': 'url(\'' + $IMAGE_URL + '\')',
+                'background-size': backgroundSize,
+                'background-position': backPos,
+                'visibility': 'visible'
             });
         };
 
@@ -140,7 +138,7 @@
                 }
             } else if (window.detachEvent) {    // IE浏览器
                 return function (elem, type, handler) {
-                    elem.detachEvent("on" + type, handler);
+                    elem.detachEvent('on' + type, handler);
                 }
             }
         })();
@@ -153,7 +151,7 @@
                 }
             } else if (window.detachEvent) {    // IE浏览器
                 return function (elem, type, handler) {
-                    elem.attachEvent("on" + type, handler);
+                    elem.attachEvent('on' + type, handler);
                 }
             }
         })();
@@ -166,9 +164,9 @@
             });
         } else {
             $elements.each(function (i, elem) {
-                addHandler(elem, "mouseenter", mouseenter_handler);
-                addHandler(elem, "mousemove", mousemove_handler);
-                addHandler(elem, "mouseleave", mouseleave_handler);
+                addHandler(elem, 'mouseenter', mouseenter_handler);
+                addHandler(elem, 'mousemove', mousemove_handler);
+                addHandler(elem, 'mouseleave', mouseleave_handler);
             });
         }
 
@@ -182,14 +180,14 @@
                 });
             } else {
                 $elements.each(function (i, elem) {
-                    removeHandler(elem, "mouseenter", mouseenter_handler);
-                    removeHandler(elem, "mousemove", mousemove_handler);
-                    removeHandler(elem, "mouseleave", mouseleave_handler);
+                    removeHandler(elem, 'mouseenter', mouseenter_handler);
+                    removeHandler(elem, 'mousemove', mousemove_handler);
+                    removeHandler(elem, 'mouseleave', mouseleave_handler);
                 });
             }
             $blowupCanvas.remove();
             NATIVE_IMG = null;
-            $IMAGE_URL = "";
+            $IMAGE_URL = '';
         };
 
         var refresh = function () {

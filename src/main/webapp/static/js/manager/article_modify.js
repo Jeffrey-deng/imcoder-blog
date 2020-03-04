@@ -2,12 +2,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'common_utils', 'login_handle', 'toolbar', 'edit_tool', 'edit_handle'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'globals', 'common_utils', 'login_handle', 'toolbar', 'edit_tool', 'edit_handle'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, common_utils, login_handle, toolbar, edit_tool, edit_handle);
+        factory(window.jQuery, null, $(document).ready, toastr, globals, common_utils, login_handle, toolbar, edit_tool, edit_handle);
     }
-})(function ($, bootstrap, domReady, toastr, common_utils, login_handle, toolbar, edit_tool, edit_handle) {
+})(function ($, bootstrap, domReady, toastr, globals, common_utils, login_handle, toolbar, edit_tool, edit_handle) {
 
     var pointer = {
         managerHandleForm: null,
@@ -48,7 +48,7 @@
         };
         mainEditorContext.invoke('editor.wrapCommand', handleFn)($mainEditable);
         summaryEditorContext.invoke('editor.wrapCommand', handleFn)($summaryEditable);
-        toastr.success("修改完成，请查看！");
+        toastr.success('修改完成，请查看！');
     };
 
     var restoreImgRelativePath = function () {
@@ -68,7 +68,7 @@
         };
         mainEditorContext.invoke('editor.wrapCommand', handleFn)($mainEditable);
         summaryEditorContext.invoke('editor.wrapCommand', handleFn)($summaryEditable);
-        toastr.success("修改完成，请查看！");
+        toastr.success('修改完成，请查看！');
     };
 
     function formatImgShow(runFormat) {
@@ -85,7 +85,7 @@
                 $editable.find('p.img-format img').removeClass('img-thumbnail').unwrap('p');
             }
         })($mainEditable, runFormat);
-        toastr.success("修改完成，请查看！");
+        toastr.success('修改完成，请查看！');
     }
 
     domReady(function () {
@@ -102,73 +102,60 @@
         edit_handle.on(edit_handle.config.event.articleSaveCompleted, function (e, article, mark) {
 
         });
-        edit_handle.request.saveArticle = function (article, mark, success) {
-            var postData = article;
+        edit_handle.request.saveArticle = function (postData, mark, success) {
             postData.mark = mark;
-            return $.post("manager.api?method=modify_article_content", postData, function (response) {
-                if (response.status == 200) {
-                    success && success.call(response, response.data.article);
-                } else if (success) {
-                    toastr.error(response.message, (mark == "new" ? "保存" : "更新") + "文章失败");
-                    console.warn("Error Code: " + response.status);
-                }
-            });
+            return globals.request.post(globals.api.manager.modifyArticleContent, postData, success, ['article'], success && ((mark == 'new' ? '保存' : '更新') + '文章失败'));
         };
         edit_handle.init({
             "mark": "update",
             "updateAid": common_utils.parseURL(document.location.href).params.aid,
-            "selector":{
+            "selector": {
                 "form": "#article_form",
                 "successModal": "#resultTipsModal",
                 "mainEditor": "#article_edit",
                 "summaryEditor": "#article_summary",
                 "copyArticleLinkBtn": "#resultTipsModal .copy_article_link_btn"
-            },
-            "path_params": {
-                "basePath": $('#basePath').attr('href'),
-                "staticPath": $('#staticPath').attr('href'),
-                "cloudPath": $('#cloudPath').attr('href')
             }
         });
 
-        pointer.managerHandleForm.on("click", config.selector.queryArticleBtn, function (e) {
+        pointer.managerHandleForm.on('click', config.selector.queryArticleBtn, function (e) {
             var inputAid = pointer.managerHandleForm.find(config.selector.queryArticleInput).val();
             if (/^[a-zA-Z0-9]+$/.test(inputAid)) {
-                edit_handle.request.loadArticle(inputAid, function (article) {
+                edit_handle.request.loadArticle(inputAid).final(function (article) {
                     pointer.currArticle = article;
                     edit_handle.initArticleUpdateForm(article);
                     toastr.success(article.title, '成功加载以下文章');
-                }).fail(function (xhr, ts) {
-                    toastr.error(ts, "加载文章[" + config.updateAid + "]失败");
-                    console.error("加载[" + config.updateAid + "]文章失败: " + ts);
+                    edit_handle.trigger(edit_handle.config.event.articleLoadCompleted, article);
+                }, function (status, message, type) {
+                    toastr.error(message, '加载文章[' + config.updateAid + ']失败');
                 });
             } else {
-                toastr.error("请输入正确的文章id！");
+                toastr.error('请输入正确的文章id！');
             }
         });
 
-        pointer.managerHandleForm.on("click", config.selector.changeArticleImgCDNPrefixBtn, function (e) {
+        pointer.managerHandleForm.on('click', config.selector.changeArticleImgCDNPrefixBtn, function (e) {
             pointer.inputCDNHostModal.modal({backdrop: 'static', keyboard: false});
         });
 
-        pointer.inputCDNHostModal.on("click", ".modal-btn-cdn-host-submit", function (e) {
-            var cdnHost = pointer.inputCDNHostModal.find(".modal-input-cdn-host").val();
+        pointer.inputCDNHostModal.on('click', '.modal-btn-cdn-host-submit', function (e) {
+            var cdnHost = pointer.inputCDNHostModal.find('.modal-input-cdn-host').val();
             changeImgCDNHost(cdnHost);
             pointer.inputCDNHostModal.modal('hide');
         });
 
-        pointer.managerHandleForm.on("click", config.selector.setArticleImgPathRelativeBtn, function (e) {
+        pointer.managerHandleForm.on('click', config.selector.setArticleImgPathRelativeBtn, function (e) {
             restoreImgRelativePath();
         });
 
-        pointer.managerHandleForm.on("click", config.selector.setArticleImgFormatBtn, function (e) {
+        pointer.managerHandleForm.on('click', config.selector.setArticleImgFormatBtn, function (e) {
             var self = $(this);
-            var runFormat = self.attr("data-has-format") != "true";
+            var runFormat = self.attr('data-has-format') != "true";
             formatImgShow(runFormat);
             if (runFormat) {
-                self.attr("data-has-format", "true").val("还原修改");
+                self.attr('data-has-format', 'true').val('还原修改');
             } else {
-                self.attr("data-has-format", "false").val("格式化图片展示");
+                self.attr('data-has-format', 'false').val('格式化图片展示');
             }
         });
 

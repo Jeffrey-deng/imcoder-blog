@@ -6,124 +6,89 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'toastr', 'jquery_steps', 'jquery_validate', 'jquery_validate_messages_zh'], factory);
+        define(['jquery', 'bootstrap', 'toastr', 'globals', 'common_utils', 'jquery_steps', 'jquery_validate', 'jquery_validate_messages_zh'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, toastr, $.fn.steps, $.validate, null);
+        factory(window.jQuery, null, toastr, globals, common_utils);
     }
-})(function ($, bootstrap, toastr) {
+})(function ($, bootstrap, toastr, globals, common_utils) {
 
-    function register() {
-        var data = $('#form').serialize();
-        $.ajax({
-            url: 'user.api?method=register',
-            type: 'POST',
-            data: data,
-            success: function (response) {
-                if (response.status == 200) {
-                    var data = response.data;
-                    var username = $('#username').val();
-                    var jumpLogin = "auth/login?identity_type=1&identifier=" + username;
-                    $("#span_username").html(username);
-                    $('#a_jump').attr("href", jumpLogin);
-                    $('#TipsModal').modal();
-                    setTimeout(function () {
-                        window.location.href = jumpLogin;
-                    }, 2000);
-                } else {
-                    toastr.error(response.message, '注册错误');
-                    console.log("Error Code: " + response.status);
-                }
-            },
-            error: function (XMLHttpRequest, textStatus, errorThrown) {
-                toastr.error("注册错误,可能服务器出问题了！", "提示");
-            }
+    function register(postData) {
+        globals.request.post(globals.api.register, postData, true, '注册失败，代码{code}').final(function (data) {
+            let username = $('#username').val(), jumpLoginUrl = ('auth/login?identity_type=1&identifier=' + username).toURL(),
+                $jumpModal = $('#registerSuccessModal');
+            $jumpModal.find('.user-name').text(username);
+            $jumpModal.find('.user-jump-link').url('href', jumpLoginUrl);
+            $jumpModal.modal();
+            setTimeout(function () {
+                window.location.href = jumpLoginUrl;
+            }, 2000);
         });
     }
 
     $(document).ready(function () {
 
-        //自定义验证用户名方法
-        $.validator.addMethod("checkUsername", function (value, element, params) {
-            var errormsg = '';
-            var result = true;
-            var reg = /^[a-zA-Z0-9][\w\.-]{0,20}$/;//正则
+        let $form = $('#form');
+
+        // 自定义验证用户名方法
+        $.validator.addMethod('checkUsername', function (value, element, params) {
+            let errorMessage = '', available = true;
             if (value.length > 21 || value.length === 0) {
-                errormsg = "长度应在1至20个字符之间";
-                result = false;
+                errorMessage = "长度应在1至20个字符之间";
+                available = false;
             } else if (/^[0-9]+$/.test(value)) {
-                errormsg = "用户名不能为纯数字";
-                result = false;
-            } else if (reg.test(value)) {
-                $.ajax({
-                    url: "auth.api?method=checkUsername",
-                    type: 'POST',
+                errorMessage = "用户名不能为纯数字";
+                available = false;
+            } else if (globals.re.username.test(value)) {
+                globals.request.ajax({
+                    type: 'post',
                     async: false,
-                    data: {"username": value},
-                    success: function (response) {
-                        if (response.status == 200) {
-                            var data = response.data;
-                            if (data.type == 1) {
-                                errormsg = "该用户名已经被使用了";
-                                result = false;
-                            } else if (data.type == 0) {
-                                result = true;
-                            }
-                        } else {
-                            errormsg = "参数错误~ 有bug";
-                            result = false;
-                        }
-                    },
-                    error: function () {
-                        errormsg = "服务器错误";
-                        result = false;
+                }, globals.api.checkUsernameIsAvailable, {'username': value}, false, ['type']).final(function (type) {
+                    if (type == 0) {
+                        available = true;
+                    } else {
+                        errorMessage = "该用户名已经被使用了";
+                        available = false;
                     }
+                }, function (status, message, type) {
+                    errorMessage = type == 1 ? '参数错误~ 有bug' : message;
+                    available = false;
                 });
             } else {
-                errormsg = "用户名只能包括字母、数字、横线、下划线、英文句号";
-                result = false;
+                errorMessage = "用户名只能包括字母、数字、横线、下划线、英文句号";
+                available = false;
             }
-            $.validator.messages.checkUsername = errormsg;
-            return this.optional(element) || result;
+            $.validator.messages.checkUsername = errorMessage;
+            return this.optional(element) || available;
         });
-        //自定义验证邮箱方法
-        $.validator.addMethod("checkEmail", function (value, element, params) {
-            var errormsg = '';
-            var result = true;
+        // 自定义验证邮箱方法
+        $.validator.addMethod('checkEmail', function (value, element, params) {
+            let errorMessage = '', available = true;
             if (value.length > 62) {
-                errormsg = "最多只能有62个字符";
-                result = false;
+                errorMessage = "最多只能有62个字符";
+                available = false;
             } else {
-                $.ajax({
-                    url: "auth.api?method=checkEmail",
-                    type: 'POST',
+                globals.request.ajax({
+                    type: 'post',
                     async: false,
-                    data: {"email": value},
-                    success: function (response) {
-                        if (response.status == 200) {
-                            var data = response.data;
-                            if (data.type == 1) {
-                                errormsg = "该邮箱已经被使用了";
-                                result = false;
-                            } else if (data.type == 0) {
-                                result = true;
-                            }
-                        } else {
-                            errormsg = "参数错误~ 有bug";
-                            result = false;
-                        }
-                    },
-                    error: function () {
-                        errormsg = "服务器错误";
-                        result = false;
+                }, globals.api.checkEmailIsAvailable, {'email': value}, false, ['type']).final(function (type) {
+                    if (type == 0) {
+                        available = true;
+                    } else {
+                        errorMessage = "该邮箱已经被使用了";
+                        available = false;
                     }
+                }, function (status, message, type) {
+                    errorMessage = type == 1 ? '参数错误~ 有bug' : message;
+                    available = false;
                 });
             }
-            $.validator.messages.checkEmail = errormsg;
-            return this.optional(element) || result;
+            $.validator.messages.checkEmail = errorMessage;
+            return this.optional(element) || available;
         });
-        //初始化
-        $("#form").validate({
+
+        // 绑定validate
+        $form.validate({
             errorPlacement: function (error, element) {
                 element.before(error);
             },
@@ -152,45 +117,51 @@
                     maxlength: 200
                 }
             },
-            success: function (label) {
-                if ($(label).attr("id") == "username-error")
-                    label.html(" 此用户名未被使用 √").addClass("valid");
-                if ($(label).attr("id") == "email-error")
-                    label.html(" 此邮箱未被使用 √ <i>（邮箱可用来修改密码）</i>").addClass("valid");
+            success: function ($label) {
+                let labelId = $label.attr('id'), availableNotify;
+                if (labelId == 'username-error') {
+                    availableNotify = ' 此用户名未被使用 √';
+                } else if (labelId == 'email-error') {
+                    availableNotify = ' 此邮箱未被使用 √ <i>（邮箱可用来修改密码）</i>';
+                }
+                if (availableNotify) {
+                    $label.html(availableNotify).addClass('valid');
+                }
             },
             onfocus: true,
             onkeyup: false //关闭防止提交很多ajax
         });
-        //step
-        $("#form").steps({
+
+        // 绑定step
+        $form.steps({
             bodyTag: "fieldset",
             onStepChanging: function (event, currentIndex, newIndex) {
                 if (currentIndex > newIndex) {
                     return true;
                 }
-                var form = $(this);
+                let $form = $(this);
                 if (currentIndex < newIndex) {
-                    //进入下一页前清除掉下一页由于未填写导致的错误信息
-                    $(".body:eq(" + newIndex + ") label.error", form).remove();
-                    $(".body:eq(" + newIndex + ") .error", form).removeClass("error");
+                    // 进入下一页前清除掉下一页由于未填写导致的错误信息
+                    $(".body:eq(' + newIndex + ') label.error", $form).remove();
+                    $(".body:eq(' + newIndex + ') .error", $form).removeClass('error');
                 }
-                form.validate().settings.ignore = ":disabled,:hidden";
-                return form.valid();
+                $form.validate().settings.ignore = ":disabled,:hidden";
+                return $form.valid();
             },
             onStepChanged: function (event, currentIndex, priorIndex) {
+                let $form = $(this);
                 if (currentIndex === 2 && priorIndex === 3) {
-                    $(this).steps("previous");
+                    $form.steps('previous');
                 }
             },
             onFinishing: function (event, currentIndex) {
-                var form = $(this);
-                form.validate().settings.ignore = ":disabled";
-                return form.valid();
+                let $form = $(this);
+                $form.validate().settings.ignore = ":disabled";
+                return $form.valid();
             },
             onFinished: function (event, currentIndex) {
-                register();
+                register($form.serialize());
             }
-
         });
 
     });

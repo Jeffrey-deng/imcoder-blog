@@ -5,19 +5,19 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'common_utils', 'login_handle', 'toolbar', 'album_page_handle'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'globals', 'common_utils', 'login_handle', 'toolbar', 'album_page_handle'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, common_utils, login_handle, toolbar, album_page_handle);
+        factory(window.jQuery, null, $(document).ready, toastr, globals, common_utils, login_handle, toolbar, album_page_handle);
     }
-})(function ($, bootstrap, domReady, toastr, common_utils, login_handle, toolbar, album_page_handle) {
+})(function ($, bootstrap, domReady, toastr, globals, common_utils, login_handle, toolbar, album_page_handle) {
 
     //字符串的每一字符的范围
     var randomColorArr = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'];
 
     function getRandomColor() {
         //颜色字符串
-        var colorValue = "";
+        var colorValue = '';
         //产生一个六位的字符串
         for (var i = 0; i < 6; i++) {
             //15是范围上限，0是范围下限，两个函数保证产生出来的随机数是整数
@@ -45,7 +45,7 @@
                 if (wrapper.type != 1) { // 不做匹配的标签跳过
                     continue;
                 }
-                if (wrapper.scope != "0" && wrapper.scope != url_album_id) { // 当该标签设置作用域为相册时，检查
+                if (wrapper.scope != '0' && wrapper.scope != url_album_id) { // 当该标签设置作用域为相册时，检查
                     continue;
                 }
                 var hitWrapper = null;
@@ -129,7 +129,7 @@
 
     // 从照片列表中查询出标签列表，并按照用户设置的权重排序，并用filter参数过滤
     function takeOutTags(photos, sourceTagWrappers, config) {
-        var isExtend = (config.load_condition.extend != "false" && sourceTagWrappers && sourceTagWrappers.length > 0);
+        var isExtend = (config.load_condition.extend != 'false' && sourceTagWrappers && sourceTagWrappers.length > 0);
         var wrappers = [];
         if (sourceTagWrappers && sourceTagWrappers.length > 0) {
             for (var x in sourceTagWrappers) {
@@ -156,7 +156,7 @@
             isFilterTags = true;
             filterTagRegex = new RegExp(config.load_condition.filter);
         }
-        if (config.load_condition.hasOwnProperty("filter")) {
+        if (config.load_condition.hasOwnProperty('filter')) {
             delete config.load_condition.filter;
         }
         config.isFilterTags = isFilterTags;
@@ -343,7 +343,7 @@
 
     domReady(function () {
 
-        var albumConfig = common_utils.getLocalConfig("album", {
+        var albumConfig = globals.getLocalConfig('album', {
             "album_page": {
                 "full_background": false,
                 "default_col": {
@@ -363,28 +363,28 @@
             }
         });
         if (albumConfig.album_page.full_background) {
-            $("body").css("background-image", $("#first").css("background-image"));
-            $("#first").css("background-image", "");
+            $('body').css('background-image', $('#first').css('background-image'));
+            $('#first').css('background-image', '');
         }
 
         var params = common_utils.parseURL(window.location.href).params;
         var pageSize = params.size ? params.size : albumConfig.album_page.default_size;
         var pageNum = params.page ? params.page : 1;
         var col = params.col;
-        var fromAlbumDetailPage = (params.from && params.album_id && (params.from.indexOf("album_detail") != -1));
+        var fromAlbumDetailPage = (params.from && params.album_id && (params.from.indexOf('album_detail') != -1));
         var load_condition = {};
-        var cloud_photo_preview_args = "";
+        var cloud_photo_preview_args = '';
         var open_preview_compress = albumConfig.photo_page.preview_compress;
 
-        var titleStr = "";
+        var titleStr = '';
         $.each(params, function (key, value) {
-            if (key != "size" && key != "page" && key != "method" && key != "col") {
+            if (key != 'size' && key != 'page' && key != 'method' && key != 'col') {
                 load_condition[key] = value && decodeURIComponent(decodeURIComponent(value));
-                titleStr += "&" + key + "=" + load_condition[key];
+                titleStr += '&' + key + '=' + load_condition[key];
             }
         });
         if (titleStr) {
-            $("head").find("title").text(titleStr.substring(1) + " | 标签索引 - 相册");
+            $('head').find('title').text(titleStr.substring(1) + ' | 标签索引 - 相册');
         }
 
         // 重写一个支持特殊符号做id的选择器
@@ -393,166 +393,154 @@
             var jsArr = album_page_handle.config.jsSpecialChars;
             var jqueryArr = album_page_handle.config.jquerySpecialChars;
             $.each(jsArr, function (i, char) {
-                encodeId = encodeId.replace(new RegExp("\\" + char, "g"), "\\" + char);
+                encodeId = encodeId.replace(new RegExp('\\' + char, 'g'), '\\' + char);
             });
             $.each(jqueryArr, function (i, char) {
-                encodeId = encodeId.replace(new RegExp(char, "g"), "\\" + char);
+                encodeId = encodeId.replace(new RegExp(char, 'g'), '\\' + char);
             });
-            return $("#" + album_page_handle.config.selector.album_id_prefix + encodeId);
+            return $('#' + album_page_handle.config.selector.album_id_prefix + encodeId);
         };
         var calls = [];
         album_page_handle.init({
-            jsSpecialChars: ["\\", "^", "$", "*", "?", ".", "+", "(", ")", "[", "]", "|", "{", "}"],
+            jsSpecialChars: ["\\", "^", "$", "*", "?", ".", "+", "(', ')", "[", "]", "|", "{", "}"],
             jquerySpecialChars: ["~", "`", "@", "#", "%", "&", "=", "'", "\"", ":", ";", "<", ">", ",", "/"],
             callback: {
                 "loadAlbums_callback": function (config, success) { // 加载相册列表的回调
-                    common_utils.notify({
-                        "progressBar": false,
-                        "hideDuration": 0,
-                        "showDuration": 0,
-                        "timeOut": 0,
-                        "closeButton": false
-                    }).success("正在加载数据", "", "notify_photos_loading");
-                    var object = $.extend(true, {"query_size": 0}, config.load_condition);
-                    if (object["query_start"] === undefined) {
-                        if (object["topic.ptwid"] ||
-                            object["topic.name"] ||
-                            ((object["uid"] || object["album_id"]))) {
-                            object.query_start = -1;
+                    globals.notify().progress('正在加载数据', '', 'notify_photos_loading');
+                    let condition = $.extend(true, {"query_size": 0}, config.load_condition), context = this;
+                    if (condition["query_start"] === undefined) {
+                        if (condition["topic.ptwid"] ||
+                            condition["topic.name"] ||
+                            ((condition["uid"] || condition["album_id"]))) {
+                            condition.query_start = -1;
                         }
                     }
-                    if (object.from) {
-                        object.base = object.from;
+                    if (condition.from) {
+                        condition.base = condition.from;
                     } else {
-                        object.base = "album_tags_square";
+                        condition.base = "album_tags_square";
                     }
                     if (!config.load_condition.extend) {   // 加载数据时extend默认为true, 显示指定为false时，不加载tagWrappers，同时不会按tag_wrapper排序
-                        object.extend = "true";
+                        condition.extend = "true";
                     }
-                    object.from = "album_tags_square"; // extend=true + from=album_tags_square 将返回tagWrappers列表
-                    $.get("photo.api?method=getPhotoList", object, function (response) {
-                        if (response.status == 200) {
-                            var data = response.data;
-                            common_utils.getNotify("notify_photos_loading").find(".toast-message").text("正在计算数据");
-                            fromAlbumDetailPage && (config.load_condition.from = "album_detail_tags");
-                            cloud_photo_preview_args = data.cloud_photo_preview_args;
-                            var photos = data.photos;
-                            if (!photos) {
-                                common_utils.removeNotify("notify_photos_loading");
-                                return;
-                            }
-                            var isNotExtend = config.load_condition.extend == "false";
-                            var tagInfos = null;
-                            var dfd = $.Deferred();
-                            if (isNotExtend || data.tagWrappers) {
+                    condition.from = "album_tags_square"; // extend=true + from=album_tags_square 将返回tagWrappers列表
+                    return globals.request.get(globals.api.getPhotoList, condition, true, '加载照片列表失败').final(function (data) {
+                        globals.getNotify('notify_photos_loading').find('.toast-message').text('正在计算数据');
+                        fromAlbumDetailPage && (config.load_condition.from = "album_detail_tags");
+                        cloud_photo_preview_args = data.cloud_photo_preview_args;
+                        let photos = data.photos;
+                        if (!photos) {
+                            globals.removeNotify('notify_photos_loading');
+                            return;
+                        }
+                        let isNotExtend = config.load_condition.extend == "false";
+                        let tagInfos = null;
+                        let dfd = $.Deferred();
+                        globals.getNotify('notify_photos_loading').find('.toast-message').text('正在计算排序');
+                        if (isNotExtend || data.tagWrappers) {
+                            config.tagWrappers = data.tagWrappers;
+                            tagInfos = takeOutTags(data.photos, data.tagWrappers, config);
+                            dfd.resolve(tagInfos);
+                        } else {
+                            let params = {};
+                            params.uid = config.load_condition.uid || 0;
+                            params.type = 1;
+                            globals.request.get(globals.api.getTagWrapperList, params, true, ['tagWrappers']).final(function (tagWrappers) {
+                                data.tagWrappers = tagWrappers
+                            }, function () {
+                                data.tagWrappers = [];
+                            }).always(function () {
                                 config.tagWrappers = data.tagWrappers;
                                 tagInfos = takeOutTags(data.photos, data.tagWrappers, config);
                                 dfd.resolve(tagInfos);
-                            } else {
-                                common_utils.getNotify("notify_photos_loading").find(".toast-message").text("正在计算排序");
-                                var params = {};
-                                params.uid = config.load_condition.uid || 0;
-                                params.type = 1;
-                                $.get("photo.api?method=getTagWrappers", params, function (twResp) {
-                                    if (twResp.status != 200) {
-                                        data.tagWrappers = [];
-                                    } else {
-                                        config.tagWrappers = twResp.data.tagWrappers;
-                                        data.tagWrappers = twResp.data.tagWrappers;
-                                    }
-                                    tagInfos = takeOutTags(data.photos, data.tagWrappers, config);
-                                    dfd.resolve(tagInfos);
-                                });
-                            }
-                            dfd.done(function (tagInfos) {
-                                common_utils.removeNotify("notify_photos_loading");
-                                success({"albums": tagInfos});
-                                if (tagInfos.length == 0) {
-                                    common_utils.notify({
-                                        "progressBar": false,
-                                        "hideDuration": 0,
-                                        "showDuration": 0,
-                                        "timeOut": 10000,
-                                        "closeButton": false
-                                    }).success("抱歉，未找到您要的内容", "", "notify_tags_loading_empty");
-                                }
                             });
-                        } else {
-                            common_utils.removeNotify("notify_photos_loading");
-                            toastr.error(response.message, "加载相册失败!");
-                            console.warn("Error Code: " + response.status);
                         }
+                        dfd.done(function (tagInfos) {
+                            globals.removeNotify('notify_photos_loading');
+                            success.call(context, {"albums": tagInfos});
+                            if (tagInfos.length == 0) {
+                                globals.notify({
+                                    "progressBar": false,
+                                    "hideDuration": 0,
+                                    "showDuration": 0,
+                                    "timeOut": 10000,
+                                    "closeButton": false
+                                }).success('抱歉，未找到您要的内容', '', 'notify_tags_loading_empty');
+                            }
+                        });
+                    }, function () {
+                        globals.removeNotify('notify_photos_loading');
                     });
                 },
                 "generatePhotoPreviewUrl": function (source, hitCol) { // 生成预览图片url的函数
                     if (open_preview_compress && cloud_photo_preview_args) {
-                        return source + cloud_photo_preview_args.replace("{col}", hitCol);
+                        return source + cloud_photo_preview_args.replace('{col}', hitCol);
                     } else {
                         return source;
                     }
                 },
                 "actionForEditAlbum": function (album) {
                     var album_node = this.utils.getAlbumDom(album.album_id);
-                    album_node.find("img").click();
+                    album_node.find('img').click();
                 },
                 "makeupNode_callback": function (album_node, album) {
                     var context = this;
                     var config = context.config;
                     var album_href_suffix = config.album_href_suffix;
                     if (album_href_suffix == undefined) {
-                        album_href_suffix = "";
+                        album_href_suffix = '';
                         config.realTagValue = null;
                         config.album_href_tags_regex = null;
                         $.each(config.load_condition, function (key, value) {
                             if (!value) {
                                 return true;
                             }
-                            if (key == "extend") {
+                            if (key == 'extend') {
                                 return true;
                             }
-                            if (key == "tags") {
-                                config.realTagValue = value.replace(/^<|>$/g, "");
-                                if (config.load_condition.extend == "false") {
-                                    config.album_href_tags_regex = encodeURIComponent(toolbar.utils.encodeRegexSearch("tags", "@ANOTHER#" + value));
+                            if (key == 'tags') {
+                                config.realTagValue = value.replace(/^<|>$/g, '');
+                                if (config.load_condition.extend == 'false') {
+                                    config.album_href_tags_regex = encodeURIComponent(toolbar.utils.encodeRegexSearch('tags', '@ANOTHER#' + value));
                                 } else {
                                     var supportRegex = (config.tagWrappers && config.tagWrappers.filter(function (wrapper) {
                                         return wrapper.name == config.realTagValue;
                                     }).length > 0) ? false : true;
                                     if (supportRegex) {
-                                        config.album_href_tags_regex = encodeURIComponent(toolbar.utils.encodeRegexSearch("tags", "@ANOTHER#" + value));
+                                        config.album_href_tags_regex = encodeURIComponent(toolbar.utils.encodeRegexSearch('tags', '@ANOTHER#' + value));
                                     } else { // // 如果tags不支持正则匹配，则去掉条件
                                         config.album_href_tags_regex = null;
                                     }
                                 }
                             } else {
-                                album_href_suffix += "&" + key + "=" + value;
+                                album_href_suffix += '&' + key + '=' + value;
                             }
 
                         });
                         config.album_href_suffix = album_href_suffix;
                     }
-                    var a = album_node.querySelector("a");
+                    var a = album_node.querySelector('a');
                     if (album.extend != true && config.album_href_tags_regex && config.realTagValue != album.album_id) {
-                        a.href = config.album_href_prefix + config.album_href_tags_regex.replace(new RegExp(encodeURIComponent("@ANOTHER"), "g"), "<" + album.album_id + ">") + album_href_suffix;
+                        a.href = (config.album_href_prefix + config.album_href_tags_regex.replace(new RegExp(encodeURIComponent('@ANOTHER'), 'g'), '<' + album.album_id + '>') + album_href_suffix).toURL();
                     } else {
-                        a.href = config.album_href_prefix + "<" + album.album_id + ">" + album_href_suffix;
+                        a.href = (config.album_href_prefix + '<' + album.album_id + '>' + album_href_suffix).toURL();
                     }
                     if (album.extend) { // 是否是用户特殊标注的标签
-                        a.href = a.href + "&extend=true";
+                        a.href = (a.href + '&extend=true').toURL();
                     }
-                    a.title = (album_href_suffix || config.album_href_tags_regex) ? ("查看该条件下的" + album.album_id + "标签") : "点击查看照片";
-                    var span = album_node.querySelector("span");
-                    span.title = (album_href_suffix || config.album_href_tags_regex) ? ("查看该条件下的" + album.album_id + "标签") : "点击查看照片";
-                    span.innerText = span.innerText + "（" + album.count + "张）";
+                    a.title = (album_href_suffix || config.album_href_tags_regex) ? ('查看该条件下的' + album.album_id + '标签') : '点击查看照片';
+                    var span = album_node.querySelector('span');
+                    span.title = (album_href_suffix || config.album_href_tags_regex) ? ('查看该条件下的' + album.album_id + '标签') : '点击查看照片';
+                    span.innerText = span.innerText + '（' + album.count + '张）';
                     if (album.extend && album.description) {
-                        a.setAttribute("title", a.title + "\nexplain：" + album.description);
+                        a.setAttribute('title', a.title + '\nexplain：' + album.description);
                     }
                     // 颜色
                     if (albumConfig.tags_square_page.tag_wrapper_diff_color && album.color) {
-                        var img = album_node.querySelector("img");
-                        img.style.boxShadow = "0 0 12px " + album.color;
+                        let img = album_node.querySelector('img');
+                        img.style.boxShadow = '0 0 12px ' + album.color;
                     }
-                    album_node.setAttribute("data-weight", album.weight);
+                    album_node.setAttribute('data-weight', album.weight);
                 },
                 "photosOnLoad_callback": function (masonryInstance) {
                     var context = this;
@@ -563,11 +551,6 @@
                     }
                     return;
                 }
-            },
-            path_params: {
-                "basePath": $("#basePath").attr("href"),
-                "cloudPath": $("#cloudPath").attr("href"),
-                "staticPath": $("#staticPath").attr("href")
             },
             selector: {
                 "albumsContainer_id": "masonryContainer",
@@ -590,14 +573,14 @@
         var lastSearchKey = null;   //上一次搜索的key
         var nextViewIndex = 0;  //当前准备查看的搜索结果数组index
         toolbar.rewriteSearch({
-            placeholder: (isHomePage ? "输入关键字搜索标签" : "搜索本页面标签"),
+            placeholder: (isHomePage ? '输入关键字搜索标签' : '搜索本页面标签'),
             model_action: function (key) {
                 lastSearchKey = key;
                 var context = this;
                 key = key.trim();
                 if (!isHomePage) {
-                    if (key == "") {
-                        toastr.info("请输入！", "", {"progressBar": false});
+                    if (key == '') {
+                        toastr.info('请输入！', '', {"progressBar": false});
                         return;
                     } else {
                         var openNewFilterPage = false;
@@ -608,25 +591,25 @@
                         if (openNewFilterPage) {
                             var isAppendCurrentConditionTest = new RegExp("^\\s*(filter|f)" +
                                 context.config.special_value_separator.toString().replace(/\//g, "") +
-                                ".+?" + context.config.special_pair_separator.toString().replace(/\//g, "") + "{0,1}\\s*$");
+                                ".+?" + context.config.special_pair_separator.toString().replace(/\//g, "") + '{0,1}\\s*$');
                             if (isAppendCurrentConditionTest.test(key)) {
                                 var currSearch = decodeURI(document.location.search);
-                                key = (currSearch && (currSearch + "&")).replace(/^\?/, '') + key;
+                                key = (currSearch && (currSearch + '&')).replace(/^\?/, '') + key;
                             }
                             context.config.callback.tags_square_search.call(context, key);
                             return false;
                         }
                     }
-                    common_utils.notify({
+                    globals.notify({
                         "progressBar": false,
                         "hideDuration": 0,
                         "showDuration": 0,
                         "timeOut": 0,
                         "closeButton": false
-                    }).success("正在查找。。", "", "search_tags_in_album");
+                    }).success('正在查找。。', '', 'search_tags_in_album');
 
                     // 还原el
-                    var match = key.match(new RegExp(context.config.special_replace_prefix + "\\d{1}", "g"));
+                    var match = key.match(new RegExp(context.config.special_replace_prefix + '\\d{1}', 'g'));
                     if (match) {
                         for (var i = 0; i < match.length; i++) {
                             key = key.replace(match[i], context.config.elMap[match[i]]);
@@ -634,15 +617,15 @@
                     }
 
                     var results = [];
-                    var filterKey = new RegExp(key, "i");
+                    var filterKey = new RegExp(key, 'i');
                     $.each(album_page_handle.pointer.albums, function (i, cache) {
                         if (filterKey.test(cache.album_id)) {
                             results.push(cache);
                         }
                     });
                     if (results.length == 0) {
-                        common_utils.removeNotify("search_tags_in_album");
-                        toastr.info("该相册内未找到该标签！", "", {"progressBar": false});
+                        globals.removeNotify('search_tags_in_album');
+                        toastr.info('该相册内未找到该标签！', '', {"progressBar": false});
                         return;
                     }
 
@@ -655,15 +638,15 @@
                     }
                     var pageNum = album_page_handle.utils.getAlbumPageNum(results[nextViewIndex].album_id);
                     var indexAlbum = function (masonryInstance) {
-                        common_utils.removeNotify("search_tags_in_album");
+                        globals.removeNotify('search_tags_in_album');
                         $.each(results, function (i, result) {
-                            album_page_handle.utils.getAlbumDom(result.album_id).find(".album_name span")
-                                .css("background-color", "#faebcc");
+                            album_page_handle.utils.getAlbumDom(result.album_id).find('.album_name span')
+                                .css('background-color', '#faebcc');
                         });
                         setTimeout(function () {
-                            var span = album_page_handle.utils.getAlbumDom(results[nextViewIndex].album_id).find(".album_name span");
+                            var span = album_page_handle.utils.getAlbumDom(results[nextViewIndex].album_id).find('.album_name span');
                             var scroll = span.offset().top - $(window).height() * (2 / 3);
-                            $("html,body").animate({scrollTop: scroll}, 300);
+                            $('html,body').animate({scrollTop: scroll}, 300);
                             nextViewIndex++;
                         }, 70);
                         calls.splice(calls.indexOf(indexAlbum), 1);
@@ -678,7 +661,7 @@
             setDefaultMapping: true
         });
 
-        var tags_condition_href = document.location.href.replace(/(^.*p\/tags_square\??)/, "").replace(/&filter=.*$/, "").replace(/&page=\d+/, "");
-        $(".album_options .option_tags_condition").attr("href", "p/dashboard?model=photo" + (tags_condition_href ? ("&" + tags_condition_href) : ""));
+        var tags_condition_href = document.location.href.replace(/(^.*p\/tags_square\??)/, "").replace(/&filter=.*$/, "").replace(/&page=\d+/, '');
+        $('.album_options .option_tags_condition').url('href', 'p/dashboard?model=photo' + (tags_condition_href ? ('&' + tags_condition_href) : ''));
     });
 });

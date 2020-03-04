@@ -32,6 +32,9 @@
         <typeAlias type="site.imcoder.blog.entity.ActionRecord" alias="actionRecord"/>
         <typeAlias type="site.imcoder.blog.entity.AccessDetail" alias="accessDetail"/>
         <typeAlias type="site.imcoder.blog.entity.Subtitle" alias="subtitle"/>
+        <typeAlias type="site.imcoder.blog.entity.rewrite.ArticleSetting" alias="articleSetting"/>
+        <typeAlias type="site.imcoder.blog.entity.rewrite.PhotoSetting" alias="photoSetting"/>
+        <typeAlias type="site.imcoder.blog.entity.rewrite.VideoSetting" alias="videoSetting"/>
     </typeAliases>
 
     <!-- 注册类型转换器 -->

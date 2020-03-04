@@ -175,10 +175,10 @@ public class MessageApiController extends BaseController {
      * commentActionRecords
      * comment_action_record_count
      */
-    @RequestMapping(params = "method=getCommentActionRecordList")
+    @RequestMapping(params = "method=getCommentActionRecords")
     @ResponseBody
     @GZIP
-    public IResponse getCommentActionRecordList(Comment comment, IRequest iRequest) {
+    public IResponse getCommentActionRecords(Comment comment, IRequest iRequest) {
         return messageService.findCommentActionRecordList(comment, iRequest);
     }
 

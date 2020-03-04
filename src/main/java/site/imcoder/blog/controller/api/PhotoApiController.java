@@ -1,6 +1,7 @@
 package site.imcoder.blog.controller.api;
 
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -14,6 +15,8 @@ import site.imcoder.blog.common.type.PermissionType;
 import site.imcoder.blog.common.type.TagWrapperType;
 import site.imcoder.blog.controller.BaseController;
 import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFill;
+import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFillFormatter;
 import site.imcoder.blog.controller.resolver.annotation.BindNullIfEmpty;
 import site.imcoder.blog.entity.*;
 import site.imcoder.blog.service.IAlbumService;
@@ -22,7 +25,9 @@ import site.imcoder.blog.service.message.IRequest;
 import site.imcoder.blog.service.message.IResponse;
 
 import javax.annotation.Resource;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Locale;
 
 /**
  * description: 相册控制器
@@ -125,6 +130,21 @@ public class PhotoApiController extends BaseController {
     @ResponseBody
     public IResponse updateAlbum(Album album, IRequest iRequest) {
         return albumService.updateAlbum(album, iRequest);
+    }
+
+    /**
+     * 点赞相册
+     *
+     * @param album    - 只需传album_id
+     * @param undo     - true: 取消赞，false: 赞
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
+     */
+    @RequestMapping(params = "method=likeAlbum")
+    @ResponseBody
+    public IResponse likeAlbum(Album album, @RequestParam(defaultValue = "false") boolean undo, IRequest iRequest) {
+        return albumService.likeAlbum(album, undo, iRequest);
     }
 
     /**
@@ -233,7 +253,7 @@ public class PhotoApiController extends BaseController {
             if (photo != null && IdUtil.containValue(photo.getUid())) {
                 queryTagWrapper.setUid(photo.getUid());
             }
-            photoListResp.putAttr("tagWrappers", albumService.findPhotoTagWrappers(queryTagWrapper, iRequest).getAttr("tagWrappers"));
+            photoListResp.putAttr("tagWrappers", albumService.findPhotoTagWrapperList(queryTagWrapper, iRequest).getAttr("tagWrappers"));
         }
         return photoListResp;
     }
@@ -378,6 +398,35 @@ public class PhotoApiController extends BaseController {
     }
 
     /**
+     * 下载照片
+     *
+     * @param photo    - 只需传photo_id
+     * @param model
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
+     */
+    @RequestMapping(params = "method=downloadPhoto")
+    public String downloadPhoto(Photo photo, Model model, IRequest iRequest) {
+        IResponse photoResp = albumService.findPhoto(photo, iRequest);
+        String redirectUrl = "";
+        if (photoResp.isSuccess()) {
+            Photo db_photo = photoResp.getAttr("photo");
+            Field pathField = null;
+            try {
+                pathField = Photo.class.getDeclaredField("path");
+            } catch (NoSuchFieldException e) {
+                e.printStackTrace();
+            }
+            URLPrefixFill annotation = pathField.getAnnotation(URLPrefixFill.class);
+            URLPrefixFillFormatter fillFormatter = new URLPrefixFillFormatter(annotation);
+            db_photo.setPath(fillFormatter.print(db_photo.getPath(), Locale.getDefault()));
+            redirectUrl = db_photo.getPath();
+        }
+        return getViewPage(photoResp, "redirect:" + redirectUrl);
+    }
+
+    /**
      * 查找用户特殊配置标签
      *
      * @param tagWrapper
@@ -385,10 +434,10 @@ public class PhotoApiController extends BaseController {
      * @return IResponse:
      * tagWrappers
      */
-    @RequestMapping(params = "method=getTagWrappers")
+    @RequestMapping(params = "method=getTagWrapperList")
     @ResponseBody
-    public IResponse getTagWrappers(PhotoTagWrapper tagWrapper, IRequest iRequest) {
-        return albumService.findPhotoTagWrappers(tagWrapper, iRequest);
+    public IResponse getTagWrapperList(PhotoTagWrapper tagWrapper, IRequest iRequest) {
+        return albumService.findPhotoTagWrapperList(tagWrapper, iRequest);
     }
 
     /**
@@ -400,10 +449,10 @@ public class PhotoApiController extends BaseController {
      * tagWrappers
      * topicTagWrappers
      */
-    @RequestMapping(params = "method=getTagWrappersByPhoto")
+    @RequestMapping(params = "method=getTagWrapperListByPhoto")
     @ResponseBody
-    public IResponse getTagWrappersByPhoto(Photo photo, IRequest iRequest) {
-        return albumService.findPhotoTagWrappers(photo, iRequest);
+    public IResponse getTagWrapperListByPhoto(Photo photo, IRequest iRequest) {
+        return albumService.findPhotoTagWrapperList(photo, iRequest);
     }
 
     /**
@@ -495,21 +544,21 @@ public class PhotoApiController extends BaseController {
         topic.setTopic(null);
         topic.setType(TagWrapperType.MARK.value);
         IResponse queryResp = albumService.findPhotoTagWrapper(topic, iRequest);
-        PhotoTagWrapper queryTagWrapper = queryResp.getAttr("tagWrapper");
-        if (queryResp.isSuccess() && loginUser != null && queryTagWrapper.getUid().equals(loginUser.getUid())) {
+        PhotoTagWrapper dbTagWrapper = queryResp.getAttr("tagWrapper");
+        if (queryResp.isSuccess() && dbTagWrapper.getUid().equals(loginUser.getUid())) {
             boolean needUpdate = false;
-            if (queryTagWrapper.getTopic() == 0) {
-                queryTagWrapper.setTopic(1);
+            if (dbTagWrapper.getTopic() == 0) {
+                dbTagWrapper.setTopic(1);
                 needUpdate = true;
             }
-            if (topic.getScope() != null && topic.getScope() > 0 && !topic.getScope().equals(queryTagWrapper.getScope())) {
+            if (topic.getScope() != null && topic.getScope() > 0 && !topic.getScope().equals(dbTagWrapper.getScope())) {
                 IResponse albumResp = albumService.findAlbumInfo(new Album(topic.getScope()), iRequest);
                 if (albumResp.isSuccess()) {
                     Album album = albumResp.getAttr("album");
                     if (album.getUser().getUid().equals(loginUser.getUid())) {
-                        if (!queryTagWrapper.getScope().equals(topic.getScope()) || queryTagWrapper.getPermission() != album.getPermission()) {
-                            queryTagWrapper.setScope(topic.getScope());
-                            queryTagWrapper.setPermission(album.getPermission());
+                        if (!dbTagWrapper.getScope().equals(topic.getScope()) || !dbTagWrapper.getPermission().equals(album.getPermission())) {
+                            dbTagWrapper.setScope(topic.getScope());
+                            dbTagWrapper.setPermission(album.getPermission());
                             needUpdate = true;
                         }
                     } else {
@@ -519,17 +568,17 @@ public class PhotoApiController extends BaseController {
                     return albumResp;
                 }
             } else if (topic.getScope() != null && topic.getScope().equals(0L)) {
-                if (!queryTagWrapper.getScope().equals(0L)) {
-                    queryTagWrapper.setScope(0L);
+                if (!dbTagWrapper.getScope().equals(0L)) {
+                    dbTagWrapper.setScope(0L);
                     needUpdate = true;
                 }
-                if (topic.getPermission() != null && topic.getPermission() != queryTagWrapper.getPermission()) {
-                    queryTagWrapper.setPermission(topic.getPermission());
+                if (topic.getPermission() != null && !topic.getPermission().equals(dbTagWrapper.getPermission())) {
+                    dbTagWrapper.setPermission(topic.getPermission());
                     needUpdate = true;
                 }
             }
             if (needUpdate) {
-                albumService.updatePhotoTagWrapper(queryTagWrapper, iRequest);
+                albumService.updatePhotoTagWrapper(dbTagWrapper, iRequest);
             }
             return queryResp;
         } else if (Utils.isNotEmpty(topic.getName())) {
@@ -597,11 +646,29 @@ public class PhotoApiController extends BaseController {
      * photo_action_record_count
      */
     @LoginRequired
-    @RequestMapping(params = "method=getPhotoActionRecordList")
+    @RequestMapping(params = "method=getPhotoActionRecords")
     @ResponseBody
     @GZIP
-    public IResponse getPhotoActionRecordList(Photo photo, IRequest iRequest) {
+    public IResponse getPhotoActionRecords(Photo photo, IRequest iRequest) {
         return albumService.findPhotoActionRecordList(photo, iRequest);
+    }
+
+    /**
+     * 查询相册的用户动作记录
+     *
+     * @param album
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * albumActionRecords
+     * album_action_record_count
+     */
+    @LoginRequired
+    @RequestMapping(params = "method=getAlbumActionRecords")
+    @ResponseBody
+    @GZIP
+    public IResponse getAlbumActionRecords(Album album, IRequest iRequest) {
+        return albumService.findAlbumActionRecordList(album, iRequest);
     }
 
     /**

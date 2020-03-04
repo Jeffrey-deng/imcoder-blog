@@ -123,7 +123,7 @@ public class Utils {
         return name;
     }
 
-    //截取str的倒数第num个“separator”之后的字符串
+    // 截取str的倒数第num个“separator”之后的字符串
     public static String getSubStr(String str, int num, String separator) {
         String result = "";
         int i = 0;
@@ -472,7 +472,18 @@ public class Utils {
      * 复制对象
      *
      * @param obj
-     * @param clazz 指定对象的class
+     * @param <T>
+     * @return
+     */
+    public static <T> T copyBeanByJson(Object obj) {
+        return copyBeanByJson(obj, obj.getClass());
+    }
+
+    /**
+     * 复制对象
+     *
+     * @param obj
+     * @param clazz - 改变class的作用，例如可将DTO对象复制成VO对象
      * @param <T>
      * @return
      */
@@ -497,7 +508,7 @@ public class Utils {
      * 复制集合类的
      *
      * @param obj
-     * @param collectionClazz 指定集合的class
+     * @param collectionClazz 指定集合的class，（改变class，例如可以将List复制成Set）
      * @param clazz           指定集合内容的class
      * @param <T>
      * @return
@@ -519,7 +530,6 @@ public class Utils {
         return null;
     }
 
-
     /**
      * 复制list
      *
@@ -529,20 +539,7 @@ public class Utils {
      * @return
      */
     public static <T> T copyListByJson(Object obj, Class clazz) {
-        ObjectMapper objectMapper = null;
-        try {
-            objectMapper = new ObjectMapper();
-            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            objectMapper.configure(MapperFeature.USE_ANNOTATIONS, false);   // 禁用所有注解
-            // objectMapper.setAnnotationIntrospector(new IgnoreMaskAnnotationIntrospector()); // 禁用特定注解
-            JavaType javaType = objectMapper.getTypeFactory().constructParametricType(List.class, clazz);
-            return objectMapper.readValue(objectMapper.writeValueAsString(obj), javaType);
-        } catch (JsonProcessingException e) {
-            logger.error("copyListByJson find exception: " + e.toString() + ", is not ignore some annotation ?");
-        } catch (IOException e) {
-            logger.error("copyListByJson find exception: " + e.toString());
-        }
-        return null;
+        return copyCollectionByJson(obj, List.class, clazz);
     }
 
 }

@@ -80,7 +80,7 @@ public class RedirectController extends BaseController {
             tagWrapper.setType(TagWrapperType.SEARCH.value);
             // 查询tagWrapper
             if (casting.equals("up")) { // 向上转型
-                IResponse tagWrappersResp = albumService.findPhotoTagWrappers(tagWrapper, iRequest);
+                IResponse tagWrappersResp = albumService.findPhotoTagWrapperList(tagWrapper, iRequest);
                 if (tagWrappersResp.isSuccess()) {
                     List<PhotoTagWrapper> wrappers = tagWrappersResp.getAttr("tagWrappers");
                     PhotoTagWrapper matchWrapper = null;
@@ -154,7 +154,7 @@ public class RedirectController extends BaseController {
                 }
             } else if (casting.equals("down")) {    // 向下转型
                 tagWrapper.setName(tags);
-                IResponse tagWrappersResp = albumService.findPhotoTagWrappers(tagWrapper, iRequest);
+                IResponse tagWrappersResp = albumService.findPhotoTagWrapperList(tagWrapper, iRequest);
                 if (tagWrappersResp.isFail()) {
                     page = PAGE_SERVER_ERROR;
                 } else {

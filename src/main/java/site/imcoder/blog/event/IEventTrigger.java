@@ -159,10 +159,9 @@ public interface IEventTrigger {
 
     /**
      * 删除收藏事件
-     *
-     * @param article
+     *  @param article
      * @param user
      */
-    public void deleteCollection(Article article, User user);
+    public void removeCollection(Article article, User user);
 
 }

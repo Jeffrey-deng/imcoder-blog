@@ -5,6 +5,7 @@ import site.imcoder.blog.controller.formatter.timeformat.TimeFormat;
 import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFill;
 import site.imcoder.blog.controller.formatter.urlprefix.impl.VideoURLPrefixFiller;
 import site.imcoder.blog.controller.propertyeditors.annotation.EmojiConvert;
+import site.imcoder.blog.entity.rewrite.VideoSetting;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -132,11 +133,6 @@ public class Video implements Serializable {
     private int permission;
 
     /**
-     * 旋转角度，【0，90，180，270】
-     */
-    private Integer rotate;
-
-    /**
      * 登录用户是否访问过该视频
      */
     private Boolean accessed;
@@ -150,6 +146,11 @@ public class Video implements Serializable {
      * 登录用户是否评论过该频
      */
     private Boolean commented;
+
+    /**
+     * 视频的一些追加设置
+     */
+    private VideoSetting setting;
 
     public Video() {
 
@@ -327,14 +328,6 @@ public class Video implements Serializable {
         this.permission = permission;
     }
 
-    public Integer getRotate() {
-        return rotate;
-    }
-
-    public void setRotate(Integer rotate) {
-        this.rotate = rotate;
-    }
-
     public Boolean getAccessed() {
         return accessed;
     }
@@ -359,4 +352,11 @@ public class Video implements Serializable {
         this.commented = commented;
     }
 
+    public VideoSetting getSetting() {
+        return setting;
+    }
+
+    public void setSetting(VideoSetting setting) {
+        this.setting = setting;
+    }
 }

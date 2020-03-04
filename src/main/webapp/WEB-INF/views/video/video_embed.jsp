@@ -6,7 +6,8 @@
 <%@ taglib prefix="s" uri="http://www.springframework.org/tags" %>
 <%
     String path = request.getContextPath();
-    String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String hostPath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String basePath = Config.get(ConfigConstants.SITE_ADDR);
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
@@ -20,7 +21,6 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
-    <base href="<%=basePath%>" target="_self">
     <title>${video.name} - ${video.user.nickname} | ImCoder博客's 视频</title>
     <meta name="description" content="${fn:escapeXml(video.description)}">
     <meta name="keywords" content="${video.tags},ImCoder's 博客,视频">
@@ -48,21 +48,28 @@
             display: block;
         }
 
-        #player-wrapper .audio-player.video-player+.plyr__poster {
-            opacity: 1!important;
+        #player-wrapper .audio-player.video-player + .plyr__poster {
+            opacity: 1 !important;
+        }
+
+        .plyr__captions {
+            z-index: 1;
+        }
+
+        .plyr__controls .plyr__time--current {
+            margin-left: 6px;
         }
 
         .plyr__controls .plyr__time--duration {
             margin-left: 0px;
         }
 
-        .plyr__time+.plyr__time::before {
+        .plyr__time + .plyr__time::before {
             margin-right: 5px;
-            margin-left: 5px;
         }
 
         .plyr__controls .plyr__volume {
-            margin-left: 5px;
+            margin-left: 0px;
         }
 
         #player-wrapper .audio-wrapper {
@@ -105,6 +112,7 @@
             position: absolute;
             bottom: 0;
             width: 100%;
+            height: unset;
             transition: opacity .3s ease-in-out, transform .3s ease-in-out;
         }
 
@@ -162,9 +170,30 @@
         #video_info_form {
             display: none;
         }
+
+        .plyr__video-embed-disable .plyr__video-wrapper.plyr__video-embed, .plyr__video-embed-disable .plyr__video-wrapper.plyr__video-wrapper--fixed-ratio {
+            padding-bottom: unset !important;
+            height: unset;
+        }
+
+        .plyr__video-embed-disable .plyr__video-embed iframe, .plyr__video-embed-disable .plyr__video-wrapper--fixed-ratio iframe {
+            border: unset;
+            left: unset;
+            position: unset;
+            top: unset;
+        }
+
+        .plyr--paused.plyr__poster-enabled .plyr__video-embed .plyr__poster {
+            display: none;
+        }
+
+        .plyr--stopped.plyr__poster-enabled .plyr__video-embed .plyr__poster {
+            display: unset;
+        }
+
     </style>
 </head>
-<body uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>">
+<body uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>" data-is-special-man="${is_special_man}">
 
 <form id="video_info_form">
     <input type="hidden" name="video_id" value="<s:eval expression="video.video_id"/>"/>

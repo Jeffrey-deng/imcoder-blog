@@ -7,12 +7,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'toastr', 'macy', 'common_utils', 'login_handle'], factory);
+        define(['jquery', 'bootstrap', 'toastr', 'macy', 'globals', 'common_utils', 'login_handle'], factory);
     } else {
         // Browser globals
-        window.album_page_handle = factory(window.jQuery, null, toastr, Macy, common_utils, login_handle);
+        window.album_page_handle = factory(window.jQuery, null, toastr, Macy, globals, common_utils, login_handle);
     }
-})(function ($, bootstrap, toastr, Macy, common_utils, login_handle) {
+})(function ($, bootstrap, toastr, Macy, globals, common_utils, login_handle) {
 
     var pointer = {
         albums: null,
@@ -21,14 +21,11 @@
     var config = {
         callback: {
             "loadAlbums_callback": function (config, success) { // 加载相册列表的回调
-                var object = {};
-                $.get("photo.api?method=getAlbumList", object, function (response) {
-                    if (response.status == 200) {
-                        success(response.data);
-                    } else {
-                        toastr.error(response.message, "加载相册失败!");
-                        console.warn("Error Code: " + response.status);
-                    }
+                let condition = {}, context = this;
+                condition.logic_conn = "or";
+                condition.query_size = 500;
+                return globals.request.get(globals.api.getAlbumList, condition, true, '加载相册列表失败').final(function (data) {
+                    success.call(context, data);
                 });
             },
             "generatePhotoPreviewUrl": function (source, hitCol) { // 生成预览图片url的函数
@@ -44,6 +41,9 @@
             "paginationClick_callback": function (paginationNode) {
                 return;
             },
+            "pageJumpCompleted_callback": function (pageNum) { // 页面跳转完成
+                return;
+            },
             "photosOnLoad_callback": function (masonryInstance) {
                 return;
             }
@@ -54,11 +54,7 @@
             "pageJumpCompleted": "page.jump.completed",
             "pageLoadCompleted": "page.load.completed"
         },
-        path_params: {
-            "basePath": "https://imcoder.site/",
-            "cloudPath": "https://cloud.imcoder.site/",
-            "staticPath": "https://static.imcoder.site/"
-        },
+        path_params: globals.path_params,
         selector: {
             "albumsContainer_id": "masonryContainer",
             "page_nav": ".page-navigator",
@@ -84,7 +80,7 @@
     };
 
     var init = function (options) {
-        common_utils.extendNonNull(true, config, options);
+        $.extendNotNull(true, config, options);
         loadAlbums(config, function (data) {
 
             pointer.albums = data.albums;
@@ -95,32 +91,32 @@
             }
             config.page_params.pageCount = utils.calcPageCount();
 
-            $(config.selector.page_nav).on("click", "a", function (e) {
+            $(config.selector.page_nav).on('click', 'a', function (e) {
                 var _self = e.currentTarget;
                 var className = _self.parentNode.className;
-                if (className == "page-left") {
+                if (className == 'page-left') {
                     jumpPage(config.page_params.pageNum - 1);
-                } else if (className == "page-right") {
+                } else if (className == 'page-right') {
                     jumpPage(config.page_params.pageNum + 1);
-                } else if (className != "separator") {
+                } else if (className != 'separator') {
                     jumpPage(_self.getAttribute('jumpPage'))
                 }
                 config.callback.paginationClick_callback.call(context, _self.parentNode);
                 context.trigger(config.event.pagePaginationClick, _self.parentNode);
                 return false;
             });
-            $("#" + config.selector.albumsContainer_id)
-                .on("click", ".album_name", function (e) {
-                    var album = utils.getAlbumByCache(e.currentTarget.parentNode.getAttribute("data-id"));
+            $('#' + config.selector.albumsContainer_id)
+                .on('click', '.album_name', function (e) {
+                    var album = utils.getAlbumByCache(e.currentTarget.parentNode.getAttribute('data-id'));
                     config.callback.actionForEditAlbum.call(context, album);
                     context.trigger(config.event.actionForEditAlbum, album);
                 })
                 .on({
                     "dragstart": function (e) {
-                        var uid = e.currentTarget.parentNode.parentNode.getAttribute("data-uid");
+                        var uid = e.currentTarget.parentNode.parentNode.getAttribute('data-uid');
                         var isAuthor = login_handle.equalsLoginUser(uid);
-                        var tips = isAuthor ? "松开鼠标打开编辑窗口~" : "松开鼠标查看相册信息~";
-                        pointer.notify_drag = toastr.success(tips, "", {
+                        var tips = isAuthor ? '松开鼠标打开编辑窗口~' : '松开鼠标查看相册信息~';
+                        pointer.notify_drag = toastr.success(tips, '', {
                             "progressBar": false,
                             "timeOut": 0,
                             "closeButton": false
@@ -128,11 +124,11 @@
                     },
                     "dragend": function (e) {
                         toastr.remove(pointer.notify_drag, true);
-                        var album = utils.getAlbumByCache(e.currentTarget.parentNode.parentNode.getAttribute("data-id"));
+                        var album = utils.getAlbumByCache(e.currentTarget.parentNode.parentNode.getAttribute('data-id'));
                         config.callback.actionForEditAlbum.call(context, album);
                         context.trigger(config.event.actionForEditAlbum, album);
                     }
-                }, "img");
+                }, 'img');
 
             initWaterfallFlow();
 
@@ -147,24 +143,24 @@
             });
 
             // log
-            console.log("init params: ");
-            console.log("   { albumCount: " + pointer.albums.length +
+            console.log('init params: ');
+            console.log('   { albumCount: ' + pointer.albums.length +
                 ", pageSize: " + config.page_params.pageSize +
                 ", col: " + config.page_params.col +
                 ", pageNum: " + config.page_params.pageNum + " }"
             );
-            console.log("search params: ");
-            var search = "";
+            console.log('search params: ');
+            var search = '';
             if (config.load_condition) {
                 $.each(config.load_condition, function (key, value) {
-                    if (value && key != "method" && key != "size" && key != "col" && key != "page" && key != "check") {
-                        search += ", " + key + ": " + value;
+                    if (value && key != 'method' && key != 'size' && key != 'col' && key != 'page' && key != 'check') {
+                        search += ', ' + key + ': ' + value;
                     }
                 });
-                search = "{ " + (search && search.substring(2)) + " }";
+                search = '{ ' + (search && search.substring(2)) + ' }';
                 config.search_params = search;
             }
-            console.log("   " + search);
+            console.log('   ' + search);
         });
     };
 
@@ -172,106 +168,107 @@
         config.callback.loadAlbums_callback.call(context, config, success);
     };
 
-    var jumpPage = function (pagenum) {
+    var jumpPage = function (pageNum) {
         config.page_params.pageCount = utils.calcPageCount();
         var albums = pointer.albums,
             pageSize = config.page_params.pageSize;
 
-        pagenum = utils.revisePageNum(pagenum);
-        config.page_params.pageNum = pagenum;
+        pageNum = utils.revisePageNum(pageNum);
+        config.page_params.pageNum = pageNum;
 
-        pointer.notify_pageloading = toastr.success("加载中～", "第" + config.page_params.pageNum + "页", {
+        pointer.notify_pageloading = toastr.success('加载中～', '第' + config.page_params.pageNum + '页', {
             "progressBar": false,
             "timeOut": 0,
             "closeButton": false
         });
 
         // 组装该页的html
-        assembleCurrentPageHtml(pagenum);
+        assembleCurrentPageHtml(pageNum);
 
         // 瀑布流重新计算
         pointer.masonryInstance.recalculate(true);
         $.each($('#' + config.selector.albumsContainer_id).children(), function (i, dom) {
-            var img = dom.querySelector("img");
-            var width = dom.getAttribute("data-width");
-            var height = dom.getAttribute("data-height");
+            var img = dom.querySelector('img');
+            var width = dom.getAttribute('data-width');
+            var height = dom.getAttribute('data-height');
             if (img && !img.naturalHeight && width && height) {
                 var scale = img.offsetWidth / width;
-                img.style.height = (height * scale) + "px";
+                img.style.height = (height * scale) + 'px';
             }
         });
         pointer.masonryInstance.recalculate(true);
         pointer.masonryInstance.recalculateOnImageLoad(true);
 
         var params = common_utils.parseURL(document.location.href).params;
-        var search = "";
+        var search = '';
         $.each(params, function (key, value) {
-            if (key != "page") {
-                search += "&" + key + "=" + value;
+            if (key != 'page') {
+                search += '&' + key + '=' + value;
             }
         });
-        (pagenum != 1) && (search += "&page=" + pagenum);
-        search = search ? ("?" + search.substring(1)) : "";
+        (pageNum != 1) && (search += '&page=' + pageNum);
+        search = search ? ('?' + search.substring(1)) : '';
         history.replaceState(
             {"mark": "page"},
             document.title,
             location.pathname + search
         );
-        context.trigger(config.event.pageJumpCompleted, pagenum); // 页码跳转完成事件
+        config.callback.pageJumpCompleted_callback.call(context, pageNum); // 页码跳转完成事件
+        context.trigger(config.event.pageJumpCompleted, pageNum);
     };
 
-    var assembleCurrentPageHtml = function (pagenum) {
-        var albums = pointer.albums,
+    var assembleCurrentPageHtml = function (pageNum) {
+        let albums = pointer.albums,
             pageSize = config.page_params.pageSize,
-            start = (pagenum - 1) * pageSize,
+            start = (pageNum - 1) * pageSize,
             end = start + (albums.length - start < pageSize ? albums.length - start - 1 : pageSize - 1),
             pageCount = config.page_params.pageCount,
             fragment = document.createDocumentFragment();
 
-        for (var i = start; i <= end; i++) {
+        for (let i = start; i <= end; i++) {
             fragment.appendChild(utils.createAlbumNode(albums[i]));
         }
 
-        var $albumsContainer = $('#' + config.selector.albumsContainer_id);
+        let $albumsContainer = $('#' + config.selector.albumsContainer_id);
         // empty()会移除子元素上的所有事件和数据data
-        // 只用 albumsContainer.innerHTML = ""; 会有内存泄露，因为数据还在JQuery里存着
+        // 只用 albumsContainer.innerHTML = ''; 会有内存泄露，因为数据还在JQuery里存着
         $albumsContainer.html(fragment);
-        utils.replaceLoadErrorImgToDefault($albumsContainer);
+        common_utils.bindImgErrorHandler($albumsContainer.find('img'), config.path_params.cloudPath + config.img_load_error_default);
 
         // 分页
-        var navigator_fragment = document.createDocumentFragment();
-        var separator = utils.createNavLiNode("...", false);
-        separator.removeAttribute("title");
+        let navigator_fragment = document.createDocumentFragment();
+        let separator = utils.createNavLiNode('...', false);
+        separator.removeAttribute('title');
         separator.className = "separator";
-        var half = document.body.clientWidth >= 768 ? 6 : 3;
-        if (pagenum != 1 && pageCount > 1) {
-            var page_left = utils.createNavLiNode("« ", false);
+        let half = document.body.clientWidth >= 768 ? 6 : 3;
+        if (pageNum != 1 && pageCount > 1) {
+            let page_left = utils.createNavLiNode('« ', false);
             page_left.title = "前一页";
             page_left.className = "page-left";
             navigator_fragment.appendChild(page_left);
         }
-        if (pagenum - half > 1 + 1) {
+        if (pageNum - half > 1 + 1) {
             navigator_fragment.appendChild(utils.createNavLiNode(1, false));
             navigator_fragment.appendChild(separator);
         }
-        for (var i = (pagenum - half > 1 + 1) ? (pagenum - half) : 1, max = pagenum; i < max; i++) {
+        for (let i = (pageNum - half > 1 + 1) ? (pageNum - half) : 1, max = pageNum; i < max; i++) {
             navigator_fragment.appendChild(utils.createNavLiNode(i, false));
         }
-        navigator_fragment.appendChild(utils.createNavLiNode(pagenum, true));
-        for (var i = (pagenum + 1), max = (pagenum + half < pageCount - 1 ? (pagenum + half) : pageCount); i <= max; i++) {
+        navigator_fragment.appendChild(utils.createNavLiNode(pageNum, true));
+        for (let i = (pageNum + 1), max = (pageNum + half < pageCount - 1 ? (pageNum + half) : pageCount); i <= max; i++) {
             navigator_fragment.appendChild(utils.createNavLiNode(i, false));
         }
-        if (pagenum + half < pageCount - 1) {
+        if (pageNum + half < pageCount - 1) {
             navigator_fragment.appendChild(separator.cloneNode(true));
             navigator_fragment.appendChild(utils.createNavLiNode(pageCount, false));
         }
-        if (pagenum != pageCount && pageCount > 1) {
-            var page_right = utils.createNavLiNode(" »", false);
+        if (pageNum != pageCount && pageCount > 1) {
+            let page_right = utils.createNavLiNode(' »', false);
             page_right.title = "后一页";
             page_right.className = "page-right";
             navigator_fragment.appendChild(page_right);
         }
-        var $page_nav_dom = $(config.selector.page_nav);
+        let $page_nav_dom = $(config.selector.page_nav);
         $page_nav_dom.html(navigator_fragment);
         utils.calcNavLocation();
     };
@@ -326,7 +323,7 @@
         pointer.masonryInstance.runOnImageLoad(function () {
             var breakCnt = 2; // 跳过第一次运行时默认的complete和load
             if (config.masonry_recalculate_mark !== null) {
-                if (!config.hasOwnProperty("masonry_recalculate_mark")) {
+                if (!config.hasOwnProperty('masonry_recalculate_mark')) {
                     config.masonry_recalculate_mark = 1;
                 }
                 if (config.masonry_recalculate_mark <= breakCnt) {
@@ -338,9 +335,9 @@
             }
             var nodes = $('#' + config.selector.albumsContainer_id).children();
             $.each(nodes, function (i, dom) {
-                var img = dom.querySelector("img");
+                var img = dom.querySelector('img');
                 if (img && img.style.height) {
-                    img.style.height = "";
+                    img.style.height = '';
                 }
             });
             pointer.masonryInstance.recalculate(true);
@@ -354,29 +351,29 @@
 
     var utils = {
         "createAlbumNode": function (album) {
-            var div = document.createElement("div");
+            var div = document.createElement('div');
             div.id = (config.selector.album_id_prefix + album.album_id);
             div.className = "album";
-            // div.setAttribute("data-order", photo.count);
-            div.setAttribute("data-id", album.album_id);
-            div.setAttribute("data-uid", album.user ? album.user.uid : '');
-            div.setAttribute("data-cover", album.cover.path);
-            album.cover.width && div.setAttribute("data-width", album.cover.width);
-            album.cover.height && div.setAttribute("data-height", album.cover.height);
+            // div.setAttribute('data-order', photo.count);
+            div.setAttribute('data-id', album.album_id);
+            div.setAttribute('data-uid', album.user ? album.user.uid : '');
+            div.setAttribute('data-cover', album.cover.path);
+            album.cover.width && div.setAttribute('data-width', album.cover.width);
+            album.cover.height && div.setAttribute('data-height', album.cover.height);
 
-            var a = document.createElement("a");
+            var a = document.createElement('a');
             a.target = "_blank";
-            a.href = config.album_href_prefix + album.album_id;
+            a.href = (config.album_href_prefix + album.album_id).toURL();
             div.appendChild(a);
-            var img = document.createElement("img");
-            img.setAttribute("src", config.callback.generatePhotoPreviewUrl.call(context, album.cover.path, config.page_params.real_col[config.hitColKey]));
+            var img = document.createElement('img');
+            img.setAttribute('src', config.callback.generatePhotoPreviewUrl.call(context, album.cover.path, config.page_params.real_col[config.hitColKey]));
             //img.className = "img-thumbnail";
             a.appendChild(img);
 
-            var nameDiv = document.createElement("div");
+            var nameDiv = document.createElement('div');
             nameDiv.className = "album_name";
             div.appendChild(nameDiv);
-            var span = document.createElement("span");
+            var span = document.createElement('span');
             span.title = "点击编辑相册信息";
             span.innerText = album.name;
             nameDiv.appendChild(span);
@@ -405,11 +402,11 @@
         },
         "updateAlbumInPage": function (album) {
             var album_source = utils.getAlbumByCache(album.album_id);
-            common_utils.extendNonNull(album_source, album);
+            $.extendNotNull(album_source, album);
             var dom = utils.getAlbumDom(album.album_id);
-            dom.attr("data-cover", album.cover.path).attr("data-width", album.cover.width).attr("data-height", album.cover.height)
-                .find("img").attr("src", album.cover.path).attr("title", album.description);
-            dom.find(".album_name span").text(album.name);
+            dom.attr('data-cover', album.cover.path).attr('data-width', album.cover.width).attr('data-height', album.cover.height)
+                .find('img').attr('src', album.cover.path).attr('title', album.description);
+            dom.find('.album_name span').text(album.name);
         },
         "deleteAlbumInPage": function (album_id) {
             utils.getAlbumDom(album_id).remove();
@@ -421,14 +418,14 @@
             utils.calcNavLocation();
         },
         "getAlbumDom": function (album_id) {
-            return $("#" + config.selector.album_id_prefix + album_id);
+            return $('#' + config.selector.album_id_prefix + album_id);
         },
         "createNavLiNode": function (pageNum, isActive) {
-            var li = document.createElement("li");
-            li.className = isActive ? "current" : "";
-            li.title = "第" + pageNum + "页";
-            var a = document.createElement("a");
-            a.setAttribute("jumpPage", pageNum);
+            var li = document.createElement('li');
+            li.className = isActive ? 'current' : '';
+            li.title = '第' + pageNum + '页';
+            var a = document.createElement('a');
+            a.setAttribute('jumpPage', pageNum);
             a.innerHTML = pageNum;
             li.appendChild(a);
             return li;
@@ -437,14 +434,14 @@
             var right = $(config.selector.page_nav).parent();
             var left = right.prev();
             if (document.body.clientWidth >= 768) {
-                left.css("width", "").css("display", "inline-block");
-                right.css("width", "").css("display", "inline-block");
+                left.css('width', "").css('display', 'inline-block');
+                right.css('width', "").css('display', 'inline-block');
                 var maxWidth = right.parent().width() - left.width();
                 var right_width = right.width();
-                right.css("margin-left", (maxWidth - right_width) / 2)
+                right.css('margin-left', (maxWidth - right_width) / 2)
             } else {
-                left.css("width", "100%").css("display", "block");
-                right.css("margin-left", "").css("width", "100%").css("display", "block");
+                left.css('width', '100%').css('display', 'block');
+                right.css('margin-left', "").css('width', '100%').css('display', 'block');
             }
         },
         "calcRealCol": function () { // 计算每种分辨率下实际的列数
@@ -512,13 +509,6 @@
                 }
             });
             return pageNum;
-        },
-        "replaceLoadErrorImgToDefault": function (parentNode) { // 图片加载失败显示默认图片
-            $(parentNode).find("img").one("error", function (e) {
-                $(this)
-                    .attr("src", config.path_params.cloudPath + config.img_load_error_default)
-                    .attr("title", "该图片加载失败~");
-            });
         }
     };
 
@@ -531,10 +521,10 @@
         "assembleCurrentPageHtml": assembleCurrentPageHtml,
         "utils": utils,
         "initWaterfallFlow": initWaterfallFlow,
-        "on": common_utils.on,
-        "once": common_utils.once,
-        "trigger": common_utils.trigger,
-        "off": common_utils.off
+        "on": globals.on,
+        "once": globals.once,
+        "trigger": globals.trigger,
+        "off": globals.off
     };
 
     return context;

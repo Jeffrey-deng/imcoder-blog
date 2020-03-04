@@ -6,6 +6,32 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
 
 ## develop log
 
+#### 2020.05.29
+
+use globals pointer, globals ajax api，use full URL.
+    
+    (1) site back-end
+    1、support more setting for creation.
+    >
+    （2）site front-end
+    1、replace to new site background.
+    2、use globals pointer, globals ajax api，use full URL.
+    >
+    （3）user module
+    1、user profile card set frosted background-image.
+    2、fix update head photo bug.
+    3、support lazy loading for letter chat modal.
+    >
+    （4）video module
+    1、new video download style.
+    2、update plyr version.
+    3、add progress bar for uploading video.
+    >
+    （5）message service
+    1、support comment lazy loading.
+    2、add comment loading and disable-list notify bar.
+    3、rename comment properties field.
+
 #### 2020.02.04
 
 use RESTFul style for url、new primary key style.
@@ -39,7 +65,8 @@ use RESTFul style for url、new primary key style.
     5、add users's photo-tag-wrapper manager page.
     6、support set auto mount by tagWrapper.name or photo.tags for album.
     7、enhance the blowup function、add photo rotate/flip.
-    8、add some animation effects、photo node wrap link tag.
+    8、support shortcut keys for blowup/rotate/flip.
+    9、add some animation effects、photo node wrap link tag.
     >
     （5）video module
     1、add upload mp3 file support.

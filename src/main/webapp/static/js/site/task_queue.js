@@ -31,7 +31,7 @@
         // handle the next object
         function handleNextTask() {
             // if the current deferred task has resolved and there are more tasks
-            if (deferred.state() == "resolved" && tasks.length > 0) {
+            if (deferred.state() == 'resolved' && tasks.length > 0) {
                 // grab a task
                 var task = tasks.shift();
                 // set the deferred to be deferred returned from the handler
@@ -44,7 +44,6 @@
                 if (tasks.length >= 0) {
                     deferred.fail(function () {
                         tasks = [];
-                        return;
                     });
                     deferred.done(handleNextTask);
                 }

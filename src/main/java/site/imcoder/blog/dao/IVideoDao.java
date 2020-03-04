@@ -116,4 +116,11 @@ public interface IVideoDao {
      */
     public int updateSubtitle(Subtitle subtitle);
 
+    /**
+     * 更新视频设置
+     *
+     * @param video
+     * @return
+     */
+    public int updateVideoSetting(Video video);
 }

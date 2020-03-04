@@ -75,10 +75,12 @@ public class VideoController extends BaseController {
     public String embed(@PathVariable @PrimaryKeyConvert Long id, @RequestParam(defaultValue = "true") boolean save_access_record, Model model, IRequest iRequest) {
         IResponse videoResp = videoService.findVideo(new Video(id), iRequest);
         if (videoResp.isSuccess()) {
-            model.addAttribute("video", videoResp.getAttr("video"));
+            model.addAllAttributes(videoResp.getAttr());
             if (!save_access_record) { // 拒绝保存访问记录
                 model.addAttribute(AccessRecord.DEFAULT_RECORD_REWRITE_KEY, false);
             }
+        }else if (videoResp.equalsStatus(STATUS_FORBIDDEN) && "setting_disable_view".equals(videoResp.getAttr("forbidden_type"))) {
+            model.addAttribute(KEY_ERROR_INFO, videoResp.getMessage());
         }
         return getViewPage(videoResp, "/video/video_embed");
     }
@@ -97,7 +99,6 @@ public class VideoController extends BaseController {
     public String openVideoDetail(@PathVariable(required = false) @PrimaryKeyConvert Long id,
                                   @RequestParam(defaultValue = "0") @PrimaryKeyConvert Long cover_id,
                                   Model model, IRequest iRequest) {
-        Video video = null;
         int flag = STATUS_SUCCESS;
         Video videoArgs = null;
         if (IdUtil.containValue(id)) {
@@ -113,12 +114,12 @@ public class VideoController extends BaseController {
             IResponse videoResp = videoService.findVideo(videoArgs, iRequest);
             flag = videoResp.getStatus();
             if (videoResp.isSuccess()) {
-                video = videoResp.getAttr("video");
+                model.addAllAttributes(videoResp.getAttr());
+            } else if (videoResp.equalsStatus(STATUS_FORBIDDEN) && "setting_disable_view".equals(videoResp.getAttr("forbidden_type"))) {
+                model.addAttribute(KEY_ERROR_INFO, videoResp.getMessage());
             }
         }
-        if (flag == STATUS_SUCCESS) {
-            model.addAttribute("video", video);
-        } else if (flag == STATUS_NOT_LOGIN) {
+        if (flag == STATUS_NOT_LOGIN) {
             model.addAttribute("http_code", 403);
         }
         return getViewPage(flag, "/video/video_detail");

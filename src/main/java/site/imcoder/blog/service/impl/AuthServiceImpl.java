@@ -141,6 +141,9 @@ public class AuthServiceImpl extends BaseService implements IAuthService {
             } else {
                 UserAuth userAuthToken = null;
                 UserAuthType userAuthType = UserAuthType.valueOf(userAuth.getIdentity_type());
+                if (userAuthType == null) {
+                    return response.setStatus(STATUS_PARAM_ERROR, "identity_type输入错误");
+                }
                 switch (userAuthType) {
                     case UID:
                     case USERNAME:

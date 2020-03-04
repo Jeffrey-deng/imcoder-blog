@@ -81,7 +81,7 @@ public class ManagerApiController extends BaseController {
      * @return
      */
     @LoginRequired
-    @RequestMapping(params = "method=modify_article_info")
+    @RequestMapping(params = "method=modifyArticleInfo")
     @ResponseBody
     public IResponse modifyArticleInfo(Article article, Category category, IRequest iRequest) {
         article.setCategory(category);
@@ -100,9 +100,9 @@ public class ManagerApiController extends BaseController {
      * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此文章，500: 失败
      */
     @LoginRequired
-    @RequestMapping(params = "method=modify_article_content")
+    @RequestMapping(params = "method=modifyArticleContent")
     @ResponseBody
-    public IResponse articleModifyContent(Article article, @RequestParam(defaultValue = "false") boolean inform, IRequest iRequest) {
+    public IResponse modifyArticleContent(Article article, @RequestParam(defaultValue = "false") boolean inform, IRequest iRequest) {
         iRequest.putAttr("inform", inform);
         iRequest.putAttr("modifyByManager", true);
         return articleService.updateArticle(article, iRequest);
@@ -115,7 +115,7 @@ public class ManagerApiController extends BaseController {
      * @return
      */
     @LoginRequired
-    @RequestMapping(params = "method=reload_cache")
+    @RequestMapping(params = "method=reloadCache")
     @ResponseBody
     public IResponse reloadCache(IRequest iRequest) {
         return managerService.reloadCache(iRequest);
@@ -125,7 +125,7 @@ public class ManagerApiController extends BaseController {
      * 重新读取配置文件
      */
     @LoginRequired
-    @RequestMapping(params = "method=reload_config")
+    @RequestMapping(params = "method=reloadConfig")
     @ResponseBody
     public IResponse reloadConfig(IRequest iRequest) {
         return managerService.reloadConfig(iRequest);
@@ -135,7 +135,7 @@ public class ManagerApiController extends BaseController {
      * 重新读取配置文件
      */
     @LoginRequired
-    @RequestMapping(params = "method=update_config")
+    @RequestMapping(params = "method=updateConfig")
     @ResponseBody
     public IResponse updateConfig(String key, String value, IRequest iRequest) {
         return managerService.updateConfig(key, value, iRequest);
@@ -200,7 +200,7 @@ public class ManagerApiController extends BaseController {
      * @param iRequest
      */
     @LoginRequired(content = "")
-    @RequestMapping(params = "method=load_log")
+    @RequestMapping(params = "method=loadLogFile")
     @ResponseBody
     @GZIP
     public void loadLogFile(@RequestParam(defaultValue = "error") String type, HttpServletResponse response, IRequest iRequest) {
@@ -276,9 +276,9 @@ public class ManagerApiController extends BaseController {
      * @return
      */
     @LoginRequired
-    @RequestMapping(params = "method=upgradeService")
+    @RequestMapping(params = "method=upgradeSystem")
     @ResponseBody
-    public IResponse upgradeService(String version, IRequest iRequest) {
+    public IResponse upgradeSystem(String version, IRequest iRequest) {
         return managerService.upgradeService(version, iRequest);
     }
 

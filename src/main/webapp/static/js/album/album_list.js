@@ -6,16 +6,16 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'common_utils', 'login_handle', 'period_cache', 'album_handle', 'album_page_handle'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'globals', 'common_utils', 'login_handle', 'period_cache', 'album_handle', 'album_page_handle'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, common_utils, login_handle, PeriodCache, album_handle, album_page_handle);
+        factory(window.jQuery, null, $(document).ready, toastr, globals, common_utils, login_handle, PeriodCache, album_handle, album_page_handle);
     }
-})(function ($, bootstrap, domReady, toastr, common_utils, login_handle, PeriodCache, album_handle, album_page_handle) {
+})(function ($, bootstrap, domReady, toastr, globals, common_utils, login_handle, PeriodCache, album_handle, album_page_handle) {
 
     domReady(function () {
 
-        var albumConfig = common_utils.getLocalConfig("album", {
+        var albumConfig = globals.getLocalConfig('album', {
             "album_page": {
                 "full_background": false,
                 "default_col": {
@@ -30,21 +30,21 @@
             "photo_page": {
                 "preview_compress": true
             }
-        });
+        }), $firstArea = $(globals.selector.firstArea);
         if (albumConfig.album_page.full_background) {
-            $("body").css("background-image", $("#first").css("background-image"));
-            $("#first").css("background-image", "");
+            $('body').css('background-image', $firstArea.css('background-image'));
+            $firstArea.css('background-image', '');
         }
 
-        //var album_id = $('#album_size').attr('album_id');
-        var hostUser = $('#first h1').attr('hostUser');
+        // var album_id = $('#album_size').attr('data-album-id');
+        var hostUser = $firstArea.find('.slogan-name').attr('data-user-id');
 
         var params = common_utils.parseURL(window.location.href).params;
         var pageSize = params.size ? params.size : albumConfig.album_page.default_size;
         var pageNum = params.page ? params.page : 1;
         var col = params.col && parseInt(params.col);
         var checkAlbumId = params.check ? params.check : 0;
-        var cloud_photo_preview_args = "";
+        var cloud_photo_preview_args = '';
         var open_preview_compress = albumConfig.photo_page.preview_compress;
 
         //从本地缓存中得到相册基本信息组连接
@@ -61,7 +61,7 @@
                     if (response.status == 200) {
                         var data = response.data;
                         var videoCovers = data.album.photos.filter(function (photo) {
-                            return photo.image_type.indexOf("video") != -1;
+                            return photo.image_type.indexOf('video') != -1;
                         });
                         var new_object_value = {
                             "album_id": key,
@@ -78,35 +78,25 @@
         album_page_handle.init({
             callback: {
                 "loadAlbums_callback": function (config, success) { // 加载相册列表的回调
-                    common_utils.notify({
-                        "progressBar": false,
-                        "hideDuration": 0,
-                        "showDuration": 0,
-                        "timeOut": 0,
-                        "closeButton": false
-                    }).success("正在加载数据", "", "notify_albums_loading");
-                    $.get("photo.api?method=getAlbumList", config.load_condition, function (response) {
-                        common_utils.removeNotify("notify_albums_loading");
-                        if (response.status == 200) {
-                            var data = response.data;
-                            if (data.albums.length == 0 && !login_handle.equalsLoginUser(hostUser)) {
-                                $("#main .album_options").remove();
-                                $("#" + config.selector.albumsContainer_id).html(
-                                    '<h2 style="font-size: 1.25em;" class="post-title" itemprop="name headline">此用户还没有创建相册，或者你没有权限查看</h2>'
-                                ).parent().addClass("post-container");
-                            } else {
-                                cloud_photo_preview_args = data.cloud_photo_preview_args;
-                                success(data);
-                            }
+                    globals.notify().progress('正在加载数据', '', 'notify_albums_loading');
+                    let condition = $.extend(true, {}, config.load_condition), context = this;
+                    return globals.request.get(globals.api.getAlbumList, condition, true, '加载相册列表失败').always(function () {
+                        globals.removeNotify('notify_albums_loading');
+                    }).final(function (data) {
+                        if (data.albums.length == 0 && !login_handle.equalsLoginUser(hostUser)) {
+                            $('#main .album_options').remove();
+                            $('#' + config.selector.albumsContainer_id).html(
+                                '<h2 style="font-size: 1.25em;" class="post-title" itemprop="name headline">此用户还没有创建相册，或者你没有权限查看</h2>'
+                            ).parent().addClass('post-container');
                         } else {
-                            toastr.error(response.message, "加载相册失败!");
-                            console.warn("Error Code: " + response.status);
+                            cloud_photo_preview_args = data.cloud_photo_preview_args;
+                            success.call(context, data);
                         }
                     });
                 },
                 "generatePhotoPreviewUrl": function (source, hitCol) { // 生成预览图片url的函数
                     if (open_preview_compress && cloud_photo_preview_args) {
-                        return source + cloud_photo_preview_args.replace("{col}", hitCol);
+                        return source + cloud_photo_preview_args.replace('{col}', hitCol);
                     } else {
                         return source;
                     }
@@ -121,20 +111,15 @@
                     });
                 },
                 "makeupNode_callback": function (album_node, album) {
-                    var a = album_node.querySelector("a");
+                    var a = album_node.querySelector('a');
                     a.title = album.description;
-                    var span = album_node.querySelector("span");
+                    var span = album_node.querySelector('span');
                     if (login_handle.equalsLoginUser(album.user.uid)) {
                         span.title = "点击编辑相册";
                     } else {
                         span.title = "点击查看相册信息";
                     }
                 }
-            },
-            path_params: {
-                "basePath": $("#basePath").attr("href"),
-                "cloudPath": $("#cloudPath").attr("href"),
-                "staticPath": $("#staticPath").attr("href")
             },
             selector: {
                 "albumsContainer_id": "masonryContainer",
@@ -156,11 +141,6 @@
         });
 
         album_handle.init({
-            path_params: {
-                "basePath": $("#basePath").attr("href"),
-                "cloudPath": $("#cloudPath").attr("href"),
-                "staticPath": $("#staticPath").attr("href")
-            },
             selector: {
                 "createAlbumModal": "#createAlbumModal",
                 "updateAlbumModal": "#updateAlbumModal"
@@ -177,23 +157,23 @@
                     } else {
                         album_page_handle.utils.updateAlbumInPage(album);
                     }
-                    PeriodCache.utils.removeCache("user_albums_cache", login_handle.getCurrentUserId());
-                    PeriodCache.utils.removeCache("user_albums_cache", "0_" + login_handle.getCurrentUserId());
+                    PeriodCache.utils.removeCache('user_albums_cache', login_handle.getCurrentUserId());
+                    PeriodCache.utils.removeCache('user_albums_cache', '0_' + login_handle.getCurrentUserId());
                 },
-                "deleteCompleted": function (params) {  // 在相册删除完成后回调
-                    album_page_handle.utils.deleteAlbumInPage(params.album_id);
+                "deleteCompleted": function (postData) {  // 在相册删除完成后回调
+                    album_page_handle.utils.deleteAlbumInPage(postData.album_id);
                 },
                 "beforeCreateModalOpen": function (createModal, openCreateModal_callback) {  // 创建窗口打开前回调
                     openCreateModal_callback();
                     // 加载上传参数及配置，判断该用户是否允许上传
-                    $.get("photo.api?method=getUploadConfigInfo", function (response) {
+                    $.get(globals.api.getPhotoUploadConfigInfo, function (response) {
                         if (response && response.status == 200) {
                             var createConfigInfo = response.data;
                             album_handle.config.createConfigInfo = createConfigInfo;
                             if (!createConfigInfo || createConfigInfo.isAllowUpload) {
                                 // 允许上传才打开上传按钮
-                                createModal.find('button[name="createAlbum_trigger"]').removeAttr("disabled");
-                                common_utils.removeNotify("notify-no-allow-create");
+                                createModal.find('button[name="createAlbum_trigger"]').removeAttr('disabled');
+                                globals.removeNotify('notify-no-allow-create');
                             } else {
                                 var users = null;
                                 switch (createConfigInfo.allowUploadLowestLevel) {
@@ -204,12 +184,12 @@
                                         users = "管理员";
                                         break
                                 }
-                                common_utils.notify({timeOut: 0}).info("系统当前配置为只允许<br>【<b>" + users + "</b>】上传照片", "您暂时不能上传", "notify-no-allow-create");
+                                globals.notify({timeOut: 0}).info('系统当前配置为只允许<br>【<b>' + users + '</b>】上传照片', '您暂时不能上传', 'notify-no-allow-create');
                                 // 禁用上传按钮
-                                createModal.find('button[name="createAlbum_trigger"]').attr("disabled", "disabled");
+                                createModal.find('button[name="createAlbum_trigger"]').attr('disabled', 'disabled');
                             }
                         } else {
-                            toastr.error("加载上传配置失败", "错误");
+                            toastr.error('加载上传配置失败', '错误');
                         }
                     });
                 },
@@ -219,10 +199,10 @@
             }
         });
         // 要删除的相册中包含视频时提示用户
-        album_handle.on(album_handle.config.event.beforeDelete, function (e, params) {
-            var albumSizeInfo = PeriodCache.utils.getCacheValue(album_size_cache_conn.groupConfig.groupName, params.album_id);
+        album_handle.on(album_handle.config.event.beforeDelete, function (e, postData) {
+            var albumSizeInfo = PeriodCache.utils.getCacheValue(album_size_cache_conn.groupConfig.groupName, postData.album_id);
             if (albumSizeInfo.videoCount) {
-                if (!window.confirm("你删除的相册包含" + albumSizeInfo.videoCount + "个视频，确定要继续吗？（建议先删除视频）")) {
+                if (!window.confirm('你删除的相册包含' + albumSizeInfo.videoCount + '个视频，确定要继续吗？（建议先删除视频）')) {
                     return false;
                 }
             }

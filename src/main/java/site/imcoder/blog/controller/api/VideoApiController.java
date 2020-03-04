@@ -1,6 +1,7 @@
 package site.imcoder.blog.controller.api;
 
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -11,18 +12,24 @@ import site.imcoder.blog.Interceptor.annotation.LoginRequired;
 import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.controller.BaseController;
 import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
+import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFill;
+import site.imcoder.blog.controller.formatter.urlprefix.URLPrefixFillFormatter;
+import site.imcoder.blog.controller.propertyeditors.converter.EscapeEmojiPropertyFieldConverter;
 import site.imcoder.blog.controller.resolver.annotation.BindNullIfEmpty;
 import site.imcoder.blog.entity.AccessDetail;
 import site.imcoder.blog.entity.Photo;
 import site.imcoder.blog.entity.Subtitle;
 import site.imcoder.blog.entity.Video;
+import site.imcoder.blog.entity.rewrite.VideoSetting;
 import site.imcoder.blog.service.IAlbumService;
 import site.imcoder.blog.service.IVideoService;
 import site.imcoder.blog.service.message.IRequest;
 import site.imcoder.blog.service.message.IResponse;
 
 import javax.annotation.Resource;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Locale;
 
 /**
  * 视频控制器
@@ -83,6 +90,13 @@ public class VideoApiController extends BaseController {
                 photoResp.setStatus(STATUS_FORBIDDEN, "此封面你没有权限使用~");
             }
         } else {
+            Photo cover = video.getCover(); // fix 嵌套时PropertiesEditor失效 bug
+            if (cover != null) {
+                EscapeEmojiPropertyFieldConverter escapeEmojiConverter = EscapeEmojiPropertyFieldConverter.getInstance();
+                cover.setName(escapeEmojiConverter.convert(cover.getName(), null, null));
+                cover.setDescription(escapeEmojiConverter.convert(cover.getDescription(), null, null));
+                cover.setOriginName(escapeEmojiConverter.convert(cover.getOriginName(), null, null));
+            }
             photoResp = albumService.savePhoto(coverFile, video.getCover(), iRequest);
         }
         if (photoResp.isSuccess()) {
@@ -234,6 +248,62 @@ public class VideoApiController extends BaseController {
     }
 
     /**
+     * 下载视频
+     *
+     * @param video    - 只需传video_id
+     * @param model
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
+     */
+    @RequestMapping(params = "method=downloadVideo")
+    public String downloadVideo(Video video, Model model, IRequest iRequest) {
+        IResponse videoResp = videoService.findVideo(video, iRequest);
+        String redirectUrl = "";
+        if (videoResp.isSuccess()) {
+            Video db_video = videoResp.getAttr("video");
+            if (db_video.getSource_type() != 2) {
+                if (!db_video.getSetting().getDisable_download() || (Boolean) videoResp.getAttr("is_special_man")) {
+                    Field pathField = null;
+                    try {
+                        pathField = Video.class.getDeclaredField("path");
+                    } catch (NoSuchFieldException e) {
+                        e.printStackTrace();
+                    }
+                    URLPrefixFill annotation = pathField.getAnnotation(URLPrefixFill.class);
+                    URLPrefixFillFormatter fillFormatter = new URLPrefixFillFormatter(annotation);
+                    db_video.setPath(fillFormatter.print(db_video.getPath(), Locale.getDefault()));
+                    redirectUrl = db_video.getPath();
+                } else {
+                    videoResp.setStatus(STATUS_FORBIDDEN, "此视频被设置为禁止下载").putAttr("forbidden_type", "setting_disable_download");
+                    model.addAttribute(KEY_ERROR_INFO, videoResp.getMessage());
+                }
+            } else {
+                videoResp.setStatus(STATUS_PARAM_ERROR, "此视频为引用类型，不支持下载");
+                model.addAttribute(KEY_ERROR_INFO, videoResp.getMessage());
+            }
+        }
+        return getViewPage(videoResp, "redirect:" + redirectUrl);
+    }
+
+    /**
+     * 更新视频设置
+     *
+     * @param video        - 只需传video_id
+     * @param videoSetting - 设置videoSetting属性
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
+     * video - video
+     */
+    @RequestMapping(params = "method=updateVideoSetting")
+    @ResponseBody
+    public IResponse updateVideoSetting(Video video, @BindNullIfEmpty VideoSetting videoSetting, IRequest iRequest) {
+        video.setSetting(videoSetting);
+        return videoService.updateVideoSetting(video, iRequest);
+    }
+
+    /**
      * 查询视频的用户动作记录
      *
      * @param video
@@ -244,10 +314,10 @@ public class VideoApiController extends BaseController {
      * video_action_record_count
      */
     @LoginRequired
-    @RequestMapping(params = "method=getVideoActionRecordList")
+    @RequestMapping(params = "method=getVideoActionRecords")
     @ResponseBody
     @GZIP
-    public IResponse getVideoActionRecordList(Video video, IRequest iRequest) {
+    public IResponse getVideoActionRecords(Video video, IRequest iRequest) {
         return videoService.findVideoActionRecordList(video, iRequest);
     }
 

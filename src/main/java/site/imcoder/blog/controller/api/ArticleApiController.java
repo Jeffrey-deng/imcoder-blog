@@ -126,10 +126,10 @@ public class ArticleApiController extends BaseController {
      * @return IResponse:
      * articles
      */
-    @RequestMapping(params = "method=getTopArticles")
+    @RequestMapping(params = "method=getTopArticleList")
     @ResponseBody
-    public IResponse getTopArticles(@RequestParam(defaultValue = "0") int size, IRequest iRequest) {
-        return articleService.findTopArticles(size, iRequest);
+    public IResponse getTopArticleList(@RequestParam(defaultValue = "0") int size, IRequest iRequest) {
+        return articleService.findTopArticleList(size, iRequest);
     }
 
     /**
@@ -247,10 +247,10 @@ public class ArticleApiController extends BaseController {
      * article
      */
     @LoginRequired
-    @RequestMapping(params = "method=getArticleActionRecordList")
+    @RequestMapping(params = "method=getArticleActionRecords")
     @ResponseBody
     @GZIP
-    public IResponse getArticleActionRecordList(Article article, IRequest iRequest) {
+    public IResponse getArticleActionRecords(Article article, IRequest iRequest) {
         return articleService.findArticleActionRecordList(article, iRequest);
     }
 

@@ -109,6 +109,11 @@ public class Photo implements Serializable {
     private String refer;
 
     /**
+     * 排序权重
+     */
+    private Long sort;
+
+    /**
      * 点击量
      */
     private int click_count;
@@ -122,11 +127,6 @@ public class Photo implements Serializable {
      * 评论量
      */
     private int comment_count;
-
-    /**
-     * 排序权重
-     */
-    private Long sort;
 
     /**
      * 登录用户是否访问过该照片
@@ -278,6 +278,14 @@ public class Photo implements Serializable {
         this.refer = refer;
     }
 
+    public Long getSort() {
+        return sort;
+    }
+
+    public void setSort(Long sort) {
+        this.sort = sort;
+    }
+
     public int getClick_count() {
         return click_count;
     }
@@ -300,14 +308,6 @@ public class Photo implements Serializable {
 
     public void setComment_count(int comment_count) {
         this.comment_count = comment_count;
-    }
-
-    public Long getSort() {
-        return sort;
-    }
-
-    public void setSort(Long sort) {
-        this.sort = sort;
     }
 
     public Boolean getAccessed() {

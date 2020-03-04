@@ -82,6 +82,17 @@ public interface IAlbumService {
     public IResponse updateAlbum(Album album, IRequest iRequest);
 
     /**
+     * 点赞相册
+     *
+     * @param album    - 只需传album_id
+     * @param undo     - 是否取消赞
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
+     */
+    public IResponse likeAlbum(Album album, boolean undo, IRequest iRequest);
+
+    /**
      * 删除相册
      *
      * @param album    相册ID，相册名
@@ -193,7 +204,7 @@ public interface IAlbumService {
     /**
      * 点赞照片
      *
-     * @param photo    - 只需传video_id
+     * @param photo    - 只需传photo_id
      * @param undo     - 是否取消赞
      * @param iRequest
      * @return IResponse:
@@ -209,7 +220,7 @@ public interface IAlbumService {
      * @return IResponse:
      * tagWrappers
      */
-    public IResponse findPhotoTagWrappers(PhotoTagWrapper tagWrapper, IRequest iRequest);
+    public IResponse findPhotoTagWrapperList(PhotoTagWrapper tagWrapper, IRequest iRequest);
 
     /**
      * 依据照片对象的tags查询出用户设置的特殊标签
@@ -220,7 +231,7 @@ public interface IAlbumService {
      * tagWrappers
      * topicTagWrappers
      */
-    public IResponse findPhotoTagWrappers(Photo photo, IRequest iRequest);
+    public IResponse findPhotoTagWrapperList(Photo photo, IRequest iRequest);
 
     /**
      * 查找一个照片中的tags匹配的由用户设置的特殊配置标签
@@ -283,6 +294,18 @@ public interface IAlbumService {
      * @return
      */
     public IResponse deleteAlbumPhotoRelation(AlbumPhotoRelation albumPhotoRelation, IRequest iRequest);
+
+    /**
+     * 查询相册的历史用户动作记录
+     *
+     * @param album
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * albumActionRecords
+     * album_action_record_count
+     */
+    public IResponse findAlbumActionRecordList(Album album, IRequest iRequest);
 
     /**
      * 查询照片的历史用户动作记录

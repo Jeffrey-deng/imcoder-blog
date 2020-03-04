@@ -45,9 +45,9 @@ public class AuthApiController extends BaseController {
      * @return ResponseEntity
      * type - 1: 该凭证已存在，0：此凭证可用
      */
-    @RequestMapping(params = "method=checkEmail")
+    @RequestMapping(params = "method=checkEmailIsAvailable")
     @ResponseBody
-    public IResponse checkEmail(String email, IRequest iRequest) {
+    public IResponse checkEmailIsAvailable(String email, IRequest iRequest) {
         UserAuth userAuth = new UserAuth();
         userAuth.setIdentity_type(UserAuthType.EMAIL.value);
         userAuth.setIdentifier(email);
@@ -62,9 +62,9 @@ public class AuthApiController extends BaseController {
      * @return ResponseEntity
      * type - 1: 该凭证已存在，0：此凭证可用
      */
-    @RequestMapping(params = "method=checkUsername")
+    @RequestMapping(params = "method=checkUsernameIsAvailable")
     @ResponseBody
-    public IResponse checkUsername(String username, IRequest iRequest) {
+    public IResponse checkUsernameIsAvailable(String username, IRequest iRequest) {
         UserAuth userAuth = new UserAuth();
         userAuth.setIdentity_type(UserAuthType.USERNAME.value);
         userAuth.setIdentifier(username);

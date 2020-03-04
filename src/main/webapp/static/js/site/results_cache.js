@@ -44,7 +44,7 @@
     // Default cache key generator (works with Booleans, Strings, Numbers and Dates)
     // You will need to create your own key generator if you work with Arrays.
     ResultsCache.prototype._cacheKeyGenerator = function (args) {
-        return Array.prototype.slice.call(arguments).join("|");
+        return Array.prototype.slice.call(arguments).join('|');
     };
 
     return ResultsCache;

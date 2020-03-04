@@ -4,7 +4,8 @@
 <%@ page isErrorPage="true" %>
 <%
     String path = request.getContextPath();
-    String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String hostPath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String basePath = Config.get(ConfigConstants.SITE_ADDR);
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
@@ -18,7 +19,6 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <base href="<%=basePath%>" target="_self">
     <title>500 - ImCoder's 博客</title>
     <meta name="keywords" content="500,ImCoder's 博客">
     <meta name="description" content="500,ImCoder's 博客">

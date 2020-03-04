@@ -48,6 +48,7 @@ public class PhotoController extends BaseController {
      * @param iRequest
      * @return
      */
+    @AccessRecord(type = AccessRecord.Types.ALBUM, key = "album")
     @RequestMapping(value = "/p/album/{album_id}")
     public String openAlbum(@PathVariable @PrimaryKeyConvert Long album_id, Model model, IRequest iRequest) {
         Album album = new Album();

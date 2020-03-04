@@ -7,13 +7,39 @@
     <!-- 插入视频 -->
     <insert id="saveVideo" parameterType="video">
         insert into video (video_id, uid, cover_id, name, description, tags, source_type, path, code, width, height,
-        size, video_type, upload_time, originName, refer, permission, rotate, click_count, like_count, comment_count)
+        size, video_type, upload_time, originName, refer, permission, click_count, like_count, comment_count)
         values
         (#{video_id},
         #{user.uid},#{cover.photo_id},#{name},#{description},#{tags},#{source_type},#{path},#{code},#{width},#{height},#{size},#{video_type},
         #{upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
-        ,#{originName}, #{refer}, #{permission}, #{rotate}, #{click_count}, #{like_count}, #{comment_count})
+        ,#{originName}, #{refer}, #{permission}, #{click_count}, #{like_count}, #{comment_count})
     </insert>
+
+    <!-- Mybatis会自动转换boolean与tinyint -->
+    <insert id="saveVideoSetting" parameterType="video">
+        insert into video_setting (video_id, disable_view, disable_send_comment, disable_list_comment, disable_embed, disable_download, rotate, enable_loop)
+        values
+        (#{video_id},
+        #{setting.disable_view},
+        #{setting.disable_send_comment},
+        #{setting.disable_list_comment},
+        #{setting.disable_embed},
+        #{setting.disable_download},
+        #{setting.rotate},
+        #{setting.enable_loop})
+    </insert>
+
+    <update id="updateVideoSetting" parameterType="video">
+        update video_setting set
+        disable_view = #{setting.disable_view},
+        disable_send_comment = #{setting.disable_send_comment},
+        disable_list_comment = #{setting.disable_list_comment},
+        disable_embed = #{setting.disable_embed},
+        disable_download = #{setting.disable_download},
+        rotate = #{setting.rotate},
+        enable_loop = #{setting.enable_loop}
+        where video_id = #{video_id}
+    </update>
 
     <resultMap id="videoResultMap" type="video">
         <id column="video_id" property="video_id"/>
@@ -32,7 +58,6 @@
         <result column="originName" property="originName"/>
         <result column="refer" property="refer"/>
         <result column="permission" property="permission"/>
-        <result column="rotate" property="rotate"/>
         <result column="click_count" property="click_count"/>
         <result column="like_count" property="like_count"/>
         <result column="comment_count" property="comment_count"/>
@@ -53,6 +78,15 @@
             <result column="p_height" property="height"/>
             <result column="image_type" property="image_type"/>
         </association>
+        <association property="setting" javaType="videoSetting">
+            <result column="vs_disable_view" property="disable_view"/>
+            <result column="vs_disable_send_comment" property="disable_send_comment"/>
+            <result column="vs_disable_list_comment" property="disable_list_comment"/>
+            <result column="vs_disable_embed" property="disable_embed"/>
+            <result column="vs_disable_download" property="disable_download"/>
+            <result column="vs_rotate" property="rotate"/>
+            <result column="vs_enable_loop" property="enable_loop"/>
+        </association>
         <collection property="subtitles" javaType="ArrayList" column="st_id" ofType="subtitle">
             <id column="st_id" property="st_id"/>
             <result column="st_name" property="name"/>
@@ -68,9 +102,16 @@
     <select id="findVideoById" parameterType="video" resultMap="videoResultMap">
         select v.video_id, v.uid , u.nickname, u.sex, u.head_photo, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
-        v.upload_time, v.originName, v.refer, v.permission, v.rotate, v.click_count, v.like_count, v.comment_count,
+        v.upload_time, v.originName, v.refer, v.permission, v.click_count, v.like_count, v.comment_count,
+        (case when vs.disable_view is not null and vs.disable_view > 0 then true else false end) as vs_disable_view,
+        (case when vs.disable_send_comment is not null and vs.disable_send_comment > 0 then true else false end) as vs_disable_send_comment,
+        (case when vs.disable_list_comment is not null and vs.disable_list_comment > 0 then true else false end) as vs_disable_list_comment,
+        (case when vs.disable_embed is not null and vs.disable_embed > 0 then true else false end) as vs_disable_embed,
+        (case when vs.disable_download is not null and vs.disable_download > 0 then true else false end) as vs_disable_download,
+        vs.rotate as vs_rotate,
+        (case when vs.enable_loop is not null and vs.enable_loop > 0 then true else false end) as vs_enable_loop,
         st.st_id, st.uid as st_uid, st.video_id as st_video_id, st.name as st_name, st.lang as st_lang, st.mime_type as st_mime_type, st.path as st_path, st.upload_time as st_upload_time
-        from (( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id) left join video_subtitle st on v.video_id = st.video_id
+        from (((video v left join user u on v.uid = u.uid) left join photo p on v.cover_id = p.photo_id) left join video_setting vs on v.video_id = vs.video_id) left join video_subtitle st on v.video_id = st.video_id
         <where>
             <choose>
                 <when test="video_id != null and video_id > 0">
@@ -90,17 +131,24 @@
         <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
         select v.video_id, v.uid , u.nickname, u.sex, u.head_photo, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
-        v.upload_time, v.refer, v.permission, v.rotate, v.click_count, v.like_count, v.comment_count,
+        v.upload_time, v.refer, v.permission, v.click_count, v.like_count, v.comment_count,
         <if test="is_login">
             (case when v.uid = #{loginUser.uid} then v.originName else null end) as originName,
         </if>
+        (case when vs.disable_view is not null and vs.disable_view > 0 then true else false end) as vs_disable_view,
+        (case when vs.disable_send_comment is not null and vs.disable_send_comment > 0 then true else false end) as vs_disable_send_comment,
+        (case when vs.disable_list_comment is not null and vs.disable_list_comment > 0 then true else false end) as vs_disable_list_comment,
+        (case when vs.disable_embed is not null and vs.disable_embed > 0 then true else false end) as vs_disable_embed,
+        (case when vs.disable_download is not null and vs.disable_download > 0 then true else false end) as vs_disable_download,
+        vs.rotate as vs_rotate,
+        (case when vs.enable_loop is not null and vs.enable_loop > 0 then true else false end) as vs_enable_loop,
         st.st_id, st.uid as st_uid, st.video_id as st_video_id, st.name as st_name, st.lang as st_lang, st.mime_type as st_mime_type, st.path as st_path, st.upload_time as st_upload_time
         <if test="is_login">
             , (case when (ar.liked is not null and ar.liked > 0) then true else false end) as liked
             , (case when (ar.commented is not null and ar.commented > 0) then true else false end) as commented
             , (case when (ad.var_id is not null) then true else false end) as accessed
         </if>
-        from ((( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id) left join video_subtitle st on v.video_id = st.video_id)
+        from (((( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id) left join video_setting vs on v.video_id = vs.video_id) left join video_subtitle st on v.video_id = st.video_id)
         <if test="is_login">
             left join video_action_record ar on (ar.video_id = v.video_id and ar.uid = #{loginUser.uid}) left join video_access_detail ad on ar.var_id = ad.var_id
         </if>
@@ -155,17 +203,24 @@
         <bind name="is_as_user_history_query" value="is_base_user_history or (is_login and is_and_logic_conn and video != null and video.accessed)"/>
         select v.video_id, v.uid , u.nickname, u.sex, u.head_photo, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
-        v.upload_time, v.refer, v.permission, v.rotate, v.click_count, v.like_count, v.comment_count,
+        v.upload_time, v.refer, v.permission, v.click_count, v.like_count, v.comment_count,
         <if test="is_login">
             (case when v.uid = #{loginUser.uid} then v.originName else null end) as originName,
         </if>
+        (case when vs.disable_view is not null and vs.disable_view > 0 then true else false end) as vs_disable_view,
+        (case when vs.disable_send_comment is not null and vs.disable_send_comment > 0 then true else false end) as vs_disable_send_comment,
+        (case when vs.disable_list_comment is not null and vs.disable_list_comment > 0 then true else false end) as vs_disable_list_comment,
+        (case when vs.disable_embed is not null and vs.disable_embed > 0 then true else false end) as vs_disable_embed,
+        (case when vs.disable_download is not null and vs.disable_download > 0 then true else false end) as vs_disable_download,
+        vs.rotate as vs_rotate,
+        (case when vs.enable_loop is not null and vs.enable_loop > 0 then true else false end) as vs_enable_loop,
         st.st_id, st.uid as st_uid, st.video_id as st_video_id, st.name as st_name, st.lang as st_lang, st.mime_type as st_mime_type, st.path as st_path, st.upload_time as st_upload_time
         <if test="is_login">
             , (case when (ar.liked is not null and ar.liked > 0) then true else false end) as liked
             , (case when (ar.commented is not null and ar.commented > 0) then true else false end) as commented
             , (case when (ad.var_id is not null) then true else false end) as accessed
         </if>
-        from (((video v left join user u on v.uid = u.uid) left join photo p on v.cover_id = p.photo_id) left join video_subtitle st on v.video_id = st.video_id)
+        from ((((video v left join user u on v.uid = u.uid) left join photo p on v.cover_id = p.photo_id) left join video_setting vs on v.video_id = vs.video_id) left join video_subtitle st on v.video_id = st.video_id)
         <if test="is_login">
             left join video_action_record ar on (ar.video_id = v.video_id and ar.uid = #{loginUser.uid}) left join video_access_detail ad on ar.var_id = ad.var_id
         </if>
@@ -276,9 +331,6 @@
                             <bind name="search_like_video_video_refer" value="'%' + video.refer  + '%'"/>
                             or v.refer like #{search_like_video_video_refer}
                         </if>
-                        <if test="video.rotate != null">
-                            or v.rotate = #{video.rotate}
-                        </if>
                         <if test="is_login">
                             <if test="!is_base_user_likes and video.liked">
                                 or (ar.liked is not null and ar.liked > 0)
@@ -350,9 +402,6 @@
                         <if test="video.refer != null and video.refer != ''">
                             <bind name="search_like_video_video_refer" value="'%' + video.refer  + '%'"/>
                             and v.refer like #{search_like_video_video_refer}
-                        </if>
-                        <if test="video.rotate != null">
-                            and v.rotate = #{video.rotate}
                         </if>
                         <if test="is_login">
                             <if test="!is_base_user_likes and video.liked">
@@ -454,8 +503,7 @@
 
     <update id="updateVideo" parameterType="video">
         update video set cover_id = #{cover.photo_id}, name = #{name}, description = #{description}, tags = #{tags}, source_type = #{source_type}, path = #{path},
-         code = #{code}, width = #{width}, height = #{height}, size = #{size}, video_type = #{video_type}, originName = #{originName}, refer = #{refer}, permission = #{permission},
-         rotate = #{rotate}
+         code = #{code}, width = #{width}, height = #{height}, size = #{size}, video_type = #{video_type}, originName = #{originName}, refer = #{refer}, permission = #{permission}
         where video_id = #{video_id}
     </update>
 

@@ -130,7 +130,7 @@ public interface IArticleService {
      * @return IResponse:
      * articles
      */
-    public IResponse findTopArticles(int size, IRequest iRequest);
+    public IResponse findTopArticleList(int size, IRequest iRequest);
 
     /**
      * description:获得排行榜列表

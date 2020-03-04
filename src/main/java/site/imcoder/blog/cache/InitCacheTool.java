@@ -200,7 +200,7 @@ public class InitCacheTool {
      * @return
      */
     public List<Entry<String, Integer>> initTagCount(boolean checkPermission, Map<Long, Article> articleBuffer, Long uid, Cache cache) {
-        boolean isFindUser = IdUtil.containValue(uid) ? true : false;
+        boolean isFindUser = IdUtil.containValue(uid);
         int feed_flow_allow_show_lowest_level = Config.getInt(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL);
         Map<String, Integer> map = new HashMap<String, Integer>();
         for (Article article : articleBuffer.values()) {

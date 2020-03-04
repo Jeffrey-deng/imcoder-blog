@@ -1,5 +1,6 @@
 package site.imcoder.blog.entity;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
 import site.imcoder.blog.controller.formatter.timeformat.TimeFormat;
 import site.imcoder.blog.controller.propertyeditors.annotation.EmojiConvert;
@@ -16,9 +17,10 @@ import java.util.List;
  * @author Jeffrey.Deng
  * @date 2018/1/5
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Album implements Serializable {
 
-    private static final long serialVersionUID = 5400452065266800725L;
+    private static final long serialVersionUID = -3316669022900948268L;
 
     /**
      * 相册ID
@@ -58,7 +60,12 @@ public class Album implements Serializable {
     /**
      * 查看权限 0：公开 ， 1：好友， 2：私有
      */
-    private int permission;
+    private Integer permission;
+
+    /**
+     * 该相册下照片集合
+     */
+    private List<Photo> photos;
 
     /**
      * <pre>
@@ -72,19 +79,44 @@ public class Album implements Serializable {
     private String mount;
 
     /**
+     * 一行显示图片的数量
+     */
+    private Integer show_col;
+
+    /**
      * 照片数量
      */
     private int size;
 
     /**
-     * 一行显示图片的数量
+     * 点击量
      */
-    private int show_col;
+    private int click_count;
 
     /**
-     * 该相册下照片集合
+     * 点赞量
      */
-    private List<Photo> photos;
+    private int like_count;
+
+    /**
+     * 评论量
+     */
+    private int comment_count;
+
+    /**
+     * 登录用户是否访问过该相册
+     */
+    private Boolean accessed;
+
+    /**
+     * 登录用户是否赞过相册
+     */
+    private Boolean liked;
+
+    /**
+     * 登录用户是否评论过相册
+     */
+    private Boolean commented;
 
     public Album() {
     }
@@ -105,7 +137,7 @@ public class Album implements Serializable {
      */
     public void addPhoto(Photo photo) {
         if (photos == null) {
-            photos = new ArrayList<Photo>();
+            photos = new ArrayList<>();
         }
         photos.add(photo);
     }
@@ -184,11 +216,11 @@ public class Album implements Serializable {
         this.create_time = create_time;
     }
 
-    public int getPermission() {
+    public Integer getPermission() {
         return permission;
     }
 
-    public void setPermission(int permission) {
+    public void setPermission(Integer permission) {
         this.permission = permission;
     }
 
@@ -208,11 +240,60 @@ public class Album implements Serializable {
         this.size = size;
     }
 
-    public int getShow_col() {
+    public Integer getShow_col() {
         return show_col;
     }
 
-    public void setShow_col(int column) {
-        this.show_col = column;
+    public void setShow_col(Integer show_col) {
+        this.show_col = show_col;
     }
+
+    public int getClick_count() {
+        return click_count;
+    }
+
+    public void setClick_count(int click_count) {
+        this.click_count = click_count;
+    }
+
+    public int getLike_count() {
+        return like_count;
+    }
+
+    public void setLike_count(int like_count) {
+        this.like_count = like_count;
+    }
+
+    public int getComment_count() {
+        return comment_count;
+    }
+
+    public void setComment_count(int comment_count) {
+        this.comment_count = comment_count;
+    }
+
+    public Boolean getAccessed() {
+        return accessed;
+    }
+
+    public void setAccessed(Boolean accessed) {
+        this.accessed = accessed;
+    }
+
+    public Boolean getLiked() {
+        return liked;
+    }
+
+    public void setLiked(Boolean liked) {
+        this.liked = liked;
+    }
+
+    public Boolean getCommented() {
+        return commented;
+    }
+
+    public void setCommented(Boolean commented) {
+        this.commented = commented;
+    }
+
 }

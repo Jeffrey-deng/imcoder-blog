@@ -41,7 +41,7 @@
                 , file_ex_codes = (
                     "NOT_FOUND_ERR SECURITY_ERR ABORT_ERR NOT_READABLE_ERR ENCODING_ERR "
                     + "NO_MODIFICATION_ALLOWED_ERR INVALID_STATE_ERR SYNTAX_ERR"
-                ).split(" ")
+                ).split(' ')
                 , file_ex_code = file_ex_codes.length
                 , real_URL = view.URL || view.webkitURL || view
                 , real_create_object_URL = real_URL.createObjectURL
@@ -63,12 +63,12 @@
             if (!real_URL.createObjectURL) {
                 URL = view.URL = function (uri) {
                     var
-                        uri_info = document.createElementNS("http://www.w3.org/1999/xhtml", "a")
+                        uri_info = document.createElementNS('http://www.w3.org/1999/xhtml', 'a')
                         , uri_origin
                         ;
                     uri_info.href = uri;
                     if (!("origin" in uri_info)) {
-                        if (uri_info.protocol.toLowerCase() === "data:") {
+                        if (uri_info.protocol.toLowerCase() === 'data:') {
                             uri_info.origin = null;
                         } else {
                             uri_origin = uri.match(origin);
@@ -87,23 +87,23 @@
                     type = "application/octet-stream";
                 }
                 if (blob instanceof FakeBlob) {
-                    data_URI_header = "data:" + type;
-                    if (blob.encoding === "base64") {
-                        return data_URI_header + ";base64," + blob.data;
-                    } else if (blob.encoding === "URI") {
-                        return data_URI_header + "," + decodeURIComponent(blob.data);
+                    data_URI_header = 'data:' + type;
+                    if (blob.encoding === 'base64') {
+                        return data_URI_header + ';base64,' + blob.data;
+                    } else if (blob.encoding === 'URI') {
+                        return data_URI_header + ',' + decodeURIComponent(blob.data);
                     }
                     if (btoa) {
-                        return data_URI_header + ";base64," + btoa(blob.data);
+                        return data_URI_header + ';base64,' + btoa(blob.data);
                     } else {
-                        return data_URI_header + "," + encodeURIComponent(blob.data);
+                        return data_URI_header + ',' + encodeURIComponent(blob.data);
                     }
                 } else if (real_create_object_URL) {
                     return real_create_object_URL.call(real_URL, blob);
                 }
             };
             URL.revokeObjectURL = function (object_URL) {
-                if (object_URL.substring(0, 5) !== "data:" && real_revoke_object_URL) {
+                if (object_URL.substring(0, 5) !== 'data:' && real_revoke_object_URL) {
                     real_revoke_object_URL.call(real_URL, object_URL);
                 }
             };
@@ -111,35 +111,30 @@
                 var bb = this.data;
                 // decode data to a binary string
                 if (Uint8Array && (data instanceof ArrayBuffer || data instanceof Uint8Array)) {
-                    var
-                        str = ""
-                        , buf = new Uint8Array(data)
-                        , i = 0
-                        , buf_len = buf.length
-                        ;
+                    var str = '', buf = new Uint8Array(data), i = 0, buf_len = buf.length;
                     for (; i < buf_len; i++) {
                         str += String.fromCharCode(buf[i]);
                     }
                     bb.push(str);
-                } else if (get_class(data) === "Blob" || get_class(data) === "File") {
+                } else if (get_class(data) === 'Blob' || get_class(data) === 'File') {
                     if (FileReaderSync) {
                         var fr = new FileReaderSync;
                         bb.push(fr.readAsBinaryString(data));
                     } else {
                         // async FileReader won't work as BlobBuilder is sync
-                        throw new FileException("NOT_READABLE_ERR");
+                        throw new FileException('NOT_READABLE_ERR');
                     }
                 } else if (data instanceof FakeBlob) {
-                    if (data.encoding === "base64" && atob) {
+                    if (data.encoding === 'base64' && atob) {
                         bb.push(atob(data.data));
-                    } else if (data.encoding === "URI") {
+                    } else if (data.encoding === 'URI') {
                         bb.push(decodeURIComponent(data.data));
-                    } else if (data.encoding === "raw") {
+                    } else if (data.encoding === 'raw') {
                         bb.push(data.data);
                     }
                 } else {
-                    if (typeof data !== "string") {
-                        data += ""; // convert unsupported types to strings
+                    if (typeof data !== 'string') {
+                        data += ''; // convert unsupported types to strings
                     }
                     // decode UTF-16 to binary string
                     bb.push(unescape(encodeURIComponent(data)));
@@ -149,7 +144,7 @@
                 if (!arguments.length) {
                     type = null;
                 }
-                return new FakeBlob(this.data.join(""), type, "raw");
+                return new FakeBlob(this.data.join(""), type, 'raw');
             };
             FBB_proto.toString = function () {
                 return "[object BlobBuilder]";
@@ -176,7 +171,7 @@
         }(view));
 
     view.Blob = function (blobParts, options) {
-        var type = options ? (options.type || "") : "";
+        var type = options ? (options.type || '') : '';
         var builder = new BlobBuilder();
         if (blobParts) {
             for (var i = 0, len = blobParts.length; i < len; i++) {
@@ -200,8 +195,8 @@
         };
     view.Blob.prototype = getPrototypeOf(new view.Blob());
 }(
-    typeof self !== "undefined" && self
-    || typeof window !== "undefined" && window
+    typeof self !== 'undefined' && self
+    || typeof window !== 'undefined' && window
     || this
 ));
 
@@ -209,111 +204,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'toastr'], factory);
+        define(['jquery', 'toastr', 'globals'], factory);
     } else {
         // Browser globals
-        window.common_utils = factory(window.jQuery, toastr);
+        window.common_utils = factory(window.jQuery, toastr, globals);
     }
-})(function ($, toastr) {
-
-    //吐司 设置
-    toastr.options = {
-        "closeButton": true,
-        "debug": false,
-        "progressBar": false,
-        "positionClass": "toast-bottom-left",
-        "showDuration": "400",
-        "hideDuration": "1000",
-        "timeOut": "3500",
-        "hideOnHover": false,
-        "extendedTimeOut": "1000",
-        "showEasing": "swing",
-        "hideEasing": "linear",
-        "showMethod": "fadeIn",
-        "hideMethod": "fadeOut",
-        "iconClasses": {
-            error: 'toast-error',
-            info: 'toast-info-no-icon',
-            success: 'toast-success',
-            warning: 'toast-warning-no-icon'
-        }
-    };
-
-    /**
-     * 修改Jquery.extend方法，让如果某属性options为null而target中该属性有值就不覆盖
-     * @returns {*|{}}
-     */
-    var extendNonNull = function () {
-        var jQuery = $ || window.jQuery;
-        var src, copyIsArray, copy, name, options, clone,
-            target = arguments[0] || {},
-            i = 1,
-            length = arguments.length,
-            deep = false;
-
-        // Handle a deep copy situation
-        if (typeof target === "boolean") {
-            deep = target;
-
-            // skip the boolean and the target
-            target = arguments[i] || {};
-            i++;
-        }
-
-        // Handle case when target is a string or something (possible in deep copy)
-        if (typeof target !== "object" && !jQuery.isFunction(target)) {
-            target = {};
-        }
-
-        // extend jQuery itself if only one argument is passed
-        if (i === length) {
-            target = this;
-            i--;
-        }
-
-        for (; i < length; i++) {
-            // Only deal with non-null/undefined values
-            if ((options = arguments[i]) != null) {
-                // Extend the base object
-                for (name in options) {
-                    src = target[name];
-                    copy = options[name];
-
-                    // Prevent never-ending loop
-                    if (target === copy) {
-                        continue;
-                    }
-
-                    // Recurse if we're merging plain objects or arrays
-                    if (deep && copy && ( jQuery.isPlainObject(copy) || (copyIsArray = jQuery.isArray(copy)) )) {
-                        if (copyIsArray) {
-                            copyIsArray = false;
-                            clone = src && jQuery.isArray(src) ? src : [];
-                        } else {
-                            clone = src && jQuery.isPlainObject(src) ? src : {};
-                        }
-
-                        // Never move original objects, clone them
-                        target[name] = jQuery.extend(deep, clone, copy);
-
-                        // Don't bring in undefined values
-                    } else if (copy !== undefined) {
-                        // Don't bring in null values either, if we already have non-null ones. // modify by jeffrey.deng
-                        if (copy === null) {
-                            if (target[name] === undefined) {
-                                target[name] = copy;
-                            }
-                        } else {
-                            target[name] = copy;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Return the modified object
-        return target;
-    };
+})(function ($, toastr, globals) {
 
     var parseURL = function (url) {
         var a = document.createElement('a');
@@ -354,14 +250,14 @@
     var removeParamForURL = function (name, url) {
         var location = null;
         if (url) {
-            location = document.createElement("a");
+            location = document.createElement('a');
             location.href = url;
         } else {
             location = document.location;
         }
         if (location.search) {
-            var ns = location.search.replace(new RegExp("[&?]" + name + "=[^&#]*"), "").replace(/^&/, "?");
-            return location.origin + location.pathname + (ns == "?" ? "" : ns) + location.hash;
+            var ns = location.search.replace(new RegExp('[&?]' + name + '=[^&#]*'), "").replace(/^&/, '?');
+            return location.origin + location.pathname + (ns == '?' ? '' : ns) + location.hash;
         } else {
             return location.href;
         }
@@ -378,20 +274,20 @@
     var setParamForURL = function (name, value, url) {
         var location = null;
         if (url) {
-            location = document.createElement("a");
+            location = document.createElement('a');
             location.href = url;
         } else {
             location = document.location;
         }
         var ns = null;
-        if (location.search && location.search != "?") {
-            if (new RegExp("([&?])" + name + "=" + "([^&#]*)").test(location.search)) {
-                ns = location.search.replace((RegExp.$1 + name + "=" + (RegExp.$2 || "")), (RegExp.$1 + name + "=" + value));
+        if (location.search && location.search != '?') {
+            if (new RegExp('([&?])' + name + '=' + '([^&#]*)').test(location.search)) {
+                ns = location.search.replace((RegExp.$1 + name + '=' + (RegExp.$2 || '')), (RegExp.$1 + name + '=' + value));
             } else {
-                ns = location.search + "&" + name + "=" + value;
+                ns = location.search + '&' + name + '=' + value;
             }
         } else {
-            ns = "?" + name + "=" + value;
+            ns = '?' + name + '=' + value;
         }
         return location.origin + location.pathname + ns + location.hash;
     };
@@ -399,10 +295,10 @@
     var cookieUtil = {
         // get the cookie of the key is name
         get: function (name) {
-            var cookies = "; " + document.cookie, cookieName = "; " + encodeURIComponent(name) + "=",
+            var cookies = '; ' + document.cookie, cookieName = '; ' + encodeURIComponent(name) + "=",
                 cookieStart = cookies.indexOf(cookieName), cookieValue = null;
             if (cookieStart > -1) {
-                var cookieEnd = cookies.indexOf(";", cookieStart + cookieName.length - 1);
+                var cookieEnd = cookies.indexOf(';', cookieStart + cookieName.length - 1);
                 if (cookieEnd == -1) {
                     cookieEnd = cookies.length;
                 }
@@ -412,21 +308,21 @@
         },
         // set the name/value pair to browser cookie
         set: function (name, value, expires, path, domain, secure) {
-            var cookieText = encodeURIComponent(name) + "=" + encodeURIComponent(value);
+            var cookieText = encodeURIComponent(name) + '=' + encodeURIComponent(value);
             if (expires) {
                 // set the expires time , then the browser will save it to disk
                 var expiresTime = new Date();
                 expiresTime.setTime(expires);
-                cookieText += "; expires=" + expiresTime.toGMTString();
+                cookieText += '; expires=' + expiresTime.toGMTString();
             }
             if (path) {
-                cookieText += "; path=" + path;
+                cookieText += '; path=' + path;
             }
             if (domain) {
-                cookieText += "; domain=" + domain;
+                cookieText += '; domain=' + domain;
             }
             if (secure) {
-                cookieText += "; secure";
+                cookieText += '; secure';
             }
             document.cookie = cookieText;
         },
@@ -453,20 +349,20 @@
     };
 
     var encodeHTML = function (html) {
-        var temp = document.createElement("div");
+        var temp = document.createElement('div');
         /**
          * textContent: 赋值时会在innerHTML中添加一个textNode,不会将回车替换为<br>
          * innerText: 赋值时会在innerHTML中将回车替换为<br>
          */
-        temp.textContent == "" ? (temp.textContent = html) : (temp.innerText = html);
+        temp.textContent == '' ? (temp.textContent = html) : (temp.innerText = html);
         var output = temp.innerHTML;
         temp = null;
-        output && (output = output.replace(/"/g, "&quot;").replace(/'/g, "&apos;"));
+        output && (output = output.replace(/"/g, '&quot;').replace(/'/g, '&apos;'));
         return output;
     };
 
     var decodeHTML = function (text) {
-        var temp = document.createElement("div");
+        var temp = document.createElement('div');
         temp.innerHTML = text;
         /**
          * textContent: 取值时直接剔除标签并转义
@@ -500,9 +396,9 @@
             var canvas = document.createElement('canvas');
             var ctx = canvas.getContext('2d');
             // 创建属性节点
-            var anw = document.createAttribute("width");
+            var anw = document.createAttribute('width');
             anw.nodeValue = w;
-            var anh = document.createAttribute("height");
+            var anh = document.createAttribute('height');
             anh.nodeValue = h;
             canvas.setAttributeNode(anw);
             canvas.setAttributeNode(anh);
@@ -573,7 +469,7 @@
     };
 
     var formatDate = function (date, fmt) {
-        if (typeof date == "number") {
+        if (typeof date == 'number') {
             date = new Date(date);
         }
         var o = {
@@ -586,10 +482,10 @@
             "S": date.getMilliseconds()              //毫秒
         };
         if (/(y+)/.test(fmt))
-            fmt = fmt.replace(RegExp.$1, (date.getFullYear() + "").substr(4 - RegExp.$1.length));
+            fmt = fmt.replace(RegExp.$1, (date.getFullYear() + '').substr(4 - RegExp.$1.length));
         for (var k in o)
-            if (new RegExp("(" + k + ")").test(fmt))
-                fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
+            if (new RegExp("(' + k + ')").test(fmt))
+                fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (('00' + o[k]).substr(('' + o[k]).length)));
         return fmt;
     };
 
@@ -600,40 +496,43 @@
      * @returns {string}
      */
     function paddingZero(num, length) {
-        return (Array(length).join("0") + num).substr(-length);
+        return (Array(length).join('0') + num).substr(-length);
     }
 
     /**
      * 将文本中的链接替换为A标签
      * @param {String} content
-     * @param {Boolean=} needWrap - 是否将换行符转化为<br>, 默认false
-     * @param {String=} className - 标签的class，默认不设置
+     * @param {String|Function|=} className - 标签的class，默认不设置 || 或者为回调方法，传入自行处理的函数
      * @returns {string|XML|*}
      */
-    function convertLinkToHtmlTag(content, needWrap, className) {
-        (needWrap === undefined || needWrap === null) && (needWrap = false);
+    function convertLinkToHtmlTag(content, className) {
         if (!content) {
             return content;
         }
+        var isUseCall = typeof className == 'function', func;
+        if (isUseCall) {
+            func = className;
+        }
         // 补全标签
-        content = $("<div/>").html(content).html();
+        content = $('<div/>').html(content).html();
         // 将链接转化为a标签
         var reMap = {};
         var replacementIndex = 0;
         content = content.replace(/<script[\s\S]*?>[\s\S]*?<\/script>|<(a|img|iframe|embed|video|audio)[\s\S]*?>([^<]*?<\/\1>)?/gi, function (match) {
-            var key = "【$RE_(*&$_MATCH_^_REPACEMENT_%$_" + (replacementIndex++) + "】"; // 首尾中文符号，避开[\x21-\x7e]更合适
+            var key = '【$RE_(*&$_MATCH_^_REPACEMENT_%$_' + (replacementIndex++) + '】'; // 首尾中文符号，避开[\x21-\x7e]更合适
             reMap[key] = match;
             return key;
         });
         // \x为16进制的ascii码，\x21-\x7e代码所有非控制字符（33到126），这里为!到`间除了<>，既除了标签
         content = content.replace(/(https?:\/\/[a-z0-9\.:]+(\/[\x21-\x3b\x3d\x3f-\x7e]*)?(\?[\x21-\x3b\x3d\x3f-\x7e]*)?)/gi, function (match, url) {
-            return '<a' + (className ? (' class="' + className + '"') : '') + ' target="_blank" href="' + url + '">' + url + '</a>';
+            if (isUseCall) {
+                return func.call(url, url);
+            } else {
+                return '<a' + (className ? (' class="' + className + '"') : '') + ' target="_blank" href="' + url + '">' + url + '</a>';
+            }
         });
         for (var reKey in reMap) {
             content = content.replace(reKey, reMap[reKey]);
-        }
-        if (needWrap) {
-            content = "<p>" + content.replace(/\n/g, "</p><p>") + "</p>"
         }
         return content;
     }
@@ -641,38 +540,46 @@
     /**
      * 将文本中的图片链接替换为IMG标签
      * @param {String} content
-     * @param {String=} className - 标签的class，默认不设置
-     * @param {Boolean=} setNotOnlyImgClass - 是否当全部内容仅仅只是一个图片链接时, 设置一个为not-only-img的class, 默认false
+     * @param {String|Function|=} className - 标签的class，默认不设置 || 或者为回调方法，传入自行处理的函数
+     * @param {Boolean=} setNotOnlyImgClass - 是否当全部内容不仅仅只是一个图片链接时, 设置一个为not-only-img的class, 默认false
      * @returns {string|XML|*}
      */
     function convertImageLinkToHtmlTag(content, className, setNotOnlyImgClass) {
-        (setNotOnlyImgClass === undefined || setNotOnlyImgClass === null) && (setNotOnlyImgClass = false);
         if (!content) {
             return content;
         }
+        var isUseCall = typeof className == 'function', func;
+        if (isUseCall) {
+            func = className;
+        }
+        (setNotOnlyImgClass === undefined || setNotOnlyImgClass === null) && (setNotOnlyImgClass = false);
         // 补全标签
-        content = $("<div/>").html(content).html();
+        content = $('<div/>').html(content).html();
         // 将图片链接转化为img标签
         var reMap = {};
         var replacementIndex = 0;
         content = content.replace(/<script[\s\S]*?>[\s\S]*?<\/script>|<(a|img|iframe|embed|video|audio)[\s\S]*?>([^<]*?<\/\1>)?/gi, function (match) {
-            var key = "【$RE_(*&$_MATCH_^_REPACEMENT_%$_" + (replacementIndex++) + "】"; // 首尾中文符号，避开[\x21-\x7e]更合适
+            var key = '【$RE_(*&$_MATCH_^_REPACEMENT_%$_' + (replacementIndex++) + '】'; // 首尾中文符号，避开[\x21-\x7e]更合适
             reMap[key] = match;
             return key;
         });
         // \x为16进制的ascii码，\x21-\x7e代码所有非控制字符（33到126），这里为!到`间除了<>，既除了标签
         content = content.replace(/(https?:\/\/[a-z0-9\.:]+\/[\x21-\x3b\x3d\x3f-\x7e]*\.(gif|jpe?g|png|bmp|svg|ico)(\?[\x21-\x3b\x3d\x3f-\x7e]*)?)/gi, function (match, url) {
-            if (setNotOnlyImgClass && content != url) {
-                return '<img class="' + (className ? (className + ' ') : '') + 'not-only-img" src="' + match + '">';
+            if (isUseCall) {
+                return func.call(url, url);
             } else {
-                return '<img' + (className ? (' class="' + className + '"') : '') + ' src="' + match + '">';
+                if (setNotOnlyImgClass && content != url) {
+                    return '<img class="' + (className ? (className + ' ') : '') + 'not-only-img" src="' + match + '">';
+                } else {
+                    return '<img' + (className ? (' class="' + className + '"') : '') + ' src="' + match + '">';
+                }
             }
         });
-        for (var reKey in reMap) {
+        for (let reKey in reMap) {
             content = content.replace(reKey, reMap[reKey]);
         }
         if (setNotOnlyImgClass && /^\s*<img[^>]*?>\s*$/.test(content)) {
-            content = content.replace(/\s*not-only-img/gi, "");
+            content = content.replace(/\s*not-only-img/gi, '');
         }
         return content;
     }
@@ -684,7 +591,7 @@
      * @returns {string=}
      */
     var formatJson = function format(txt, compress) {
-        if (typeof txt == "string") {
+        if (typeof txt == 'string') {
             if (/^\s*$/.test(txt)) {
                 toastr.error('数据为空,无法格式化! ');
                 return;
@@ -695,7 +602,7 @@
                 toastr.error('数据源语法错误,格式化失败! 错误信息: ' + e.description, 'err');
                 return;
             }
-        } else if (typeof txt == "object") {
+        } else if (typeof txt == 'object') {
             var data = txt;
         } else {
             return;
@@ -737,70 +644,28 @@
         return draw.join('');
     };
 
-    // div 自适应高度
-    $.fn.autoTextareaHeight = function (options) {
-        var defaults = {
-            maxHeight: null,//文本框是否自动撑高，默认：null，不自动撑高；如果自动撑高必须输入数值，该值作为文本框自动撑高的最大高度
-            minHeight: $(this).height(), //默认最小高度，也就是文本框最初的高度，当内容高度小于这个高度的时候，文本以这个高度显示
-            runOnce: false // false 为绑定事件 true 为 计算一次高度，不绑定事件
-        };
-        var opts = $.extend({}, defaults, options);
-        var updateHeight = function () {
-            var height, style = this.style;
-            this.style.height = opts.minHeight + 'px';
-            if (this.scrollHeight >= opts.minHeight) {
-                if (opts.maxHeight && this.scrollHeight > opts.maxHeight) {
-                    height = opts.maxHeight;
-                    style.overflowY = 'scroll';
-                } else {
-                    height = this.scrollHeight;
-                    style.overflowY = 'hidden';
-                }
-                style.height = height + 'px';
-            }
-        };
-        if (opts.runOnce) {
-            $(this).each(function () {
-                updateHeight.call(this);
-            });
-        } else {
-            $(this).each(function () {
-                $(this).bind("input paste cut keydown keyup focus blur", function () {
-                    updateHeight.call(this);
-                });
-            });
-        }
-    };
-
     /**
-     * 把新添加的事件Event，添加到队列的第一个位置，调整执行顺序
+     * 得到真实并精确的元素宽高
      *
-     * @param {String} eventType - 事件名称
-     * @param {Object|Function} eventData 数据或处理函数
-     * @param {Function=} handler eventData有值时选填
-     * @returns {*}
+     * @param {Element|jQuery} elem - element或jQuery对象
+     * @returns {{width: (number), height: (number)}}
      */
-    $.fn.onfirst = function (eventType, eventData, handler) {
-        var indexOfDot = eventType.indexOf(".");
-        var eventNameSpace = indexOfDot > 0 ? eventType.substring(indexOfDot) : "";
-        eventType = indexOfDot > 0 ? eventType.substring(0, indexOfDot) : eventType;
-        handler = handler == undefined ? eventData : handler;
-        eventData = typeof eventData == "function" ? {} : eventData;
-        return this.each(function () {
-            var $this = $(this);
-            var currentAttrListener = this["on" + eventType];
-            if (currentAttrListener) {
-                $this.bind(eventType, function (e) {
-                    return currentAttrListener(e.originalEvent);
-                });
-                this["on" + eventType] = null;
-            }
-            $this.bind(eventType + eventNameSpace, eventData, handler);
-            var allEvents = $this.data("events") || $._data($this[0], "events");
-            var typeEvents = allEvents[eventType];
-            var newEvent = typeEvents.pop();
-            typeEvents.unshift(newEvent);
-        });
+    var getElemRealPrecisionSize = function (elem) {
+        elem instanceof $ && (elem = elem[0]);
+        let computedStyle = getComputedStyle(elem),
+            rect = ('getBoundingClientRect' in elem) ? elem.getBoundingClientRect() : {
+                    'width': parseFloat(computedStyle['width']),
+                    'height': parseFloat(computedStyle['height'])
+                },
+            realWidth, realHeight;
+        realWidth = rect.width - parseFloat(computedStyle['paddingLeft']) - parseFloat(computedStyle['paddingRight'])
+            - parseFloat(computedStyle['borderLeftWidth']) - parseFloat(computedStyle['borderRightWidth']);
+        realHeight = rect.height - parseFloat(computedStyle['paddingTop']) - parseFloat(computedStyle['paddingBottom'])
+            - parseFloat(computedStyle['borderTopWidth']) - parseFloat(computedStyle['borderBottomWidth']);
+        return {
+            'width': realWidth,
+            'height': realHeight
+        }
     };
 
     /**
@@ -855,28 +720,29 @@
      * @param {Number=} box_height - 最大高度，不填默认为raw_height，取值-1标识不限制高度
      * @param {Boolean=}  fill - 是否填充，设为true则将尽量填满box
      * @param {String=} before_css_transform_value - 该element原来的css-transform值，为了防止其他的transform被覆盖，可传入该值
-     * @returns {transform: (string), width: (string), height: (string), margin-top: (string), margin-left: (string)} css
+     * @returns {{transform: (string), width: (string), height: (string), margin-top: (string), margin-left: (string)}} css
      */
     var calcElementRotateStyle = function (angle, raw_width, raw_height, box_width, box_height, fill, before_css_transform_value) {
-        angle = parseInt(angle) % 360;
+        angle = parseInt(angle);
         box_width = box_width || raw_width;
         box_height = box_height || raw_height;
         fill = fill || false;
         before_css_transform_value = before_css_transform_value === 'none' ? '' : before_css_transform_value;
-        before_css_transform_value = before_css_transform_value && before_css_transform_value.replace(/\s*rotate\([^)]*\)\s*/g, "");
-        var transform_value, width_value, height_value, max_width_value, max_height_value, margin_top_value, margin_left_value,
+        before_css_transform_value = before_css_transform_value && before_css_transform_value.replace(/\s*rotate\([^)]*\)\s*/g, '');
+        var balance_angle = Math.abs(angle) % 360,
+            transform_value, width_value, height_value, max_width_value, max_height_value, margin_top_value, margin_left_value,
             eyeRawWidth, eyeRawHeight; // 用户实际看到的宽高比
-        switch (angle) {
+        switch (balance_angle) {
             case 0:
             case 180:
                 eyeRawWidth = raw_width;
                 eyeRawHeight = raw_height;
-                width_value = "";
-                height_value = "";
-                max_width_value = "";
-                max_height_value = "";
-                margin_top_value = "";
-                margin_left_value = "";
+                width_value = '';
+                height_value = '';
+                max_width_value = '';
+                max_height_value = '';
+                margin_top_value = '';
+                margin_left_value = '';
                 break;
             case 90:
             case 270:
@@ -884,30 +750,42 @@
                 eyeRawHeight = raw_width;
                 var newHeight = (box_height == -1 || (!fill && eyeRawHeight < box_height)) ? eyeRawHeight : box_height,
                     newWidth = eyeRawWidth / eyeRawHeight * newHeight;
-                if (fill && box_height == -1 && box_width != -1) {
+                if (box_height == -1) {
+                    if (fill) {
+                        if (box_width != -1) {  // 如果填充，且只限制宽度，不限制高度，则填满宽度，计算出高度
+                            newWidth = box_width;
+                        } else {  // 如果填充，且同时不限制宽度与高度，则平铺
+                            newWidth = eyeRawWidth;
+                        }
+                    } else {
+                        if (box_width != -1) {  // 如果不填充，且只限制宽度，不限制高度，则尽量选取小的宽度
+                            newWidth = eyeRawWidth < box_width ? eyeRawWidth : box_width;
+                        } else {  // 如果不填充，且同时不限制宽度与高度，则平铺
+                            newWidth = eyeRawWidth;
+                        }
+                    }
+                    newHeight = eyeRawHeight / eyeRawWidth * newWidth;
+                }
+                if (box_width != -1 && newWidth > box_width) {  // 再一次检查宽度是否可用
                     newWidth = box_width;
                     newHeight = eyeRawHeight / eyeRawWidth * newWidth;
                 }
                 var newMarginTop;
                 var newMarginLeft;
-                if (box_width != -1 && newWidth > box_width) {
-                    newWidth = box_width;
-                    newHeight = eyeRawHeight / eyeRawWidth * newWidth;
-                }
                 newMarginTop = 0 - ((newWidth - newHeight) / 2);
                 newMarginLeft = (newWidth - newHeight) / 2;
                 //
-                width_value = newHeight + "px";
-                height_value = newWidth + "px";
+                width_value = newHeight + 'px';
+                height_value = newWidth + 'px';
                 max_width_value = "unset";
                 max_height_value = "unset";
-                margin_top_value = newMarginTop + "px";
-                margin_left_value = newMarginLeft + "px";
+                margin_top_value = newMarginTop + 'px';
+                margin_left_value = newMarginLeft + 'px';
                 break;
         }
-        transform_value = (angle == 0 ? "" : ("rotate(" + angle + "deg)"));
+        transform_value = (angle == 0 ? '' : ('rotate(' + angle + 'deg)'));
         if (before_css_transform_value) {
-            transform_value = (transform_value ? (transform_value + " ") : "") + before_css_transform_value;
+            transform_value = (transform_value ? (transform_value + ' ') : '') + before_css_transform_value;
         }
         return {
             "transform": transform_value,
@@ -928,7 +806,7 @@
      *  <pre>
      *  var str = "path:\"Jeffrey\";name:{Jeffrey},attr:${Jeffrey},desc:“Jeffrey”";
      *  var result = replaceByEL(str, function(index, key){
-     *      return "replace_" + key + "_" + index;
+     *      return "replace_" + key + '_' + index;
      *  });
      *  result: "path:replace_Jeffrey_1;name:replace_Jeffrey_2,attr:replace_Jeffrey_3,desc:replace_Jeffrey_4" </pre>
      * @author Jeffrey.deng
@@ -946,14 +824,14 @@
         if (sepLeft && sepLeft instanceof RegExp) {
             regex = sepLeft;
         } else if (sepLeft && sepRight) {
-            regex = new RegExp(sepLeft + "([\s\S]*?)" + sepRight, "g")
+            regex = new RegExp(sepLeft + '([\s\S]*?)' + sepRight, 'g')
         } else {
             regex = /\$\{([\s\S]*?)\}|\{([\s\S]*?)\}|"([\s\S]*?)"|“([\s\S]*?)”|”([\s\S]*?)“/g;
         }
         var result;
         var lastMatchEndIndex = 0;
         var partArr = [];
-        var key = "";
+        var key = '';
         var keyIndex = 0;
         while ((result = regex.exec(str)) != null) {
             for (var i = 1; i < result.length; i++) {
@@ -987,7 +865,7 @@
         // handle the next object
         function handleNextTask() {
             // if the current deferred task has resolved and there are more tasks
-            if (deferred.state() == "resolved" && tasks.length > 0) {
+            if (deferred.state() == 'resolved' && tasks.length > 0) {
                 // grab a task
                 var task = tasks.shift();
                 // set the deferred to be deferred returned from the handler
@@ -1000,7 +878,6 @@
                 if (tasks.length >= 0) {
                     deferred.fail(function () {
                         tasks = [];
-                        return;
                     });
                     deferred.done(handleNextTask);
                 }
@@ -1043,10 +920,10 @@
             xhr.send();
         } catch (e) {
             if (tryTimes++ == 3) {
-                console.warn("url: " + url + " 下载失败，exception: ", e);
+                console.warn('url: ' + url + ' 下载失败，exception: ', e);
                 callback(null, null);
             } else {
-                console.warn("url: " + url + " 下载失败，重试中，exception: ", e);
+                console.warn('url: ' + url + ' 下载失败，重试中，exception: ', e);
                 ajaxDownload(url, callback, args, tryTimes);
             }
         }
@@ -1074,8 +951,8 @@
             if (document.all) {
                 aLink.click(); //IE
             } else {
-                var evt = document.createEvent("MouseEvents");
-                evt.initEvent("click", true, true);
+                var evt = document.createEvent('MouseEvents');
+                evt.initEvent('click', true, true);
                 aLink.dispatchEvent(evt); // 其它浏览器
             }
             window.URL.revokeObjectURL(aLink.href);
@@ -1085,7 +962,7 @@
 
     var downloadUrlFile = function (url, fileName) {
         var aLink = document.createElement('a');
-        if (fileName) {
+        if (fileName || fileName == '') {
             aLink.download = fileName;
         } else {
             aLink.download = url.substring(url.lastIndexOf('/') + 1);
@@ -1097,8 +974,8 @@
         if (document.all) {
             aLink.click(); //IE
         } else {
-            var evt = document.createEvent("MouseEvents");
-            evt.initEvent("click", true, true);
+            var evt = document.createEvent('MouseEvents');
+            evt.initEvent('click', true, true);
             aLink.dispatchEvent(evt); // 其它浏览器
         }
         document.body.removeChild(aLink);
@@ -1123,7 +1000,7 @@
                 "makeNames_callback": function (arr, location_info, options) {
                     var names = {};
                     var time = new Date().getTime();
-                    names.zipName = "pack_" + time;
+                    names.zipName = 'pack_' + time;
                     names.folderName = names.zipName;
                     names.infoName = null;
                     names.infoValue = null;
@@ -1133,18 +1010,20 @@
                 },
                 "beforeFilesDownload_callback": function (files, names, location_info, options, zip, main_folder) {
                 },
+                "beforeFileDownload_callback": function (file, location_info, options, zipFileLength, zip, main_folder, folder) {
+                },
                 "eachFileOnload_callback": function (blob, file, location_info, options, zipFileLength, zip, main_folder, folder) {
                 },
                 "allFilesOnload_callback": function (files, names, location_info, options, zip, main_folder) {
                 },
                 "beforeZipFileDownload_callback": function (zip_blob, files, names, location_info, options, zip, main_folder) {
-                    downloadBlobFile(zip_blob, names.zipName + ".zip");
+                    downloadBlobFile(zip_blob, names.zipName + '.zip');
                 }
             }
         };
 
         var ajaxDownloadAndZipFiles = function (files, names, location_info, options) {
-            var notify_start = toastr.success("正在打包～", names.zipName, {
+            let notify_start = toastr.success('正在打包～', names.zipName, {
                 "progressBar": false,
                 "hideDuration": 0,
                 "showDuration": 0,
@@ -1152,117 +1031,121 @@
                 "closeButton": false
             });
             if (files && files.length > 0) {
-                var zip = new JSZip();
-                var main_folder = zip.folder(names.folderName);
-                var zipFileLength = 0;
-                var maxIndex = files.length;
-                var paddingZeroLength = (files.length + "").length;
+                let zip = new JSZip();
+                let main_folder = zip.folder(names.folderName);
+                let zipFileLength = 0;
+                let maxIndex = files.length;
+                let paddingZeroLength = (files.length + '').length;
                 if (names.infoName) {
                     main_folder.file(names.infoName, names.infoValue);
                 }
                 options.callback.beforeFilesDownload_callback(files, names, location_info, options, zip, main_folder);
-                var downloadFile = function (file, resolveCallback) {
-                    ajaxDownload(file.url, function (blob, file) {
-                        var folder = file.location ? main_folder.folder(file.location) : main_folder;
-                        var isSave = options.callback.eachFileOnload_callback(blob, file, location_info, options, zipFileLength, zip, main_folder, folder);
-                        if (isSave != false) {
-                            if (file.fileName) {
-                                folder.file(file.fileName, blob);
-                            } else {
-                                var suffix = names.suffix || file.url.substring(file.url.lastIndexOf('.') + 1);
-                                file.fileName = names.prefix + "_" + paddingZero(file.folder_sort_index, paddingZeroLength) + "." + suffix;
-                                folder.file(file.fileName, blob);
-                            }
+                let downloadFile = function (file, resolveCallback) {
+                    return $.Deferred(function (dfd) {
+                        let folder = file.location ? main_folder.folder(file.location) : main_folder;
+                        let isSave = options.callback.beforeFileDownload_callback(file, location_info, options, zipFileLength, zip, main_folder, folder);
+                        if (isSave !== false) {
+                            ajaxDownload(file.url, function (blob, file) {
+                                let isSave = options.callback.eachFileOnload_callback(blob, file, location_info, options, zipFileLength, zip, main_folder, folder);
+                                if (isSave != false) {
+                                    if (file.fileName) {
+                                        folder.file(file.fileName, blob);
+                                    } else {
+                                        let suffix = names.suffix || file.url.substring(file.url.lastIndexOf('.') + 1);
+                                        file.fileName = names.prefix + '_' + paddingZero(file.folder_sort_index, paddingZeroLength) + '.' + suffix;
+                                        folder.file(file.fileName, blob);
+                                    }
+                                }
+                                dfd.resolveWith(file, [blob, folder, isSave]);
+                            }, file);
+                        } else {
+                            dfd.resolveWith(file, [null, folder, false]);
                         }
+                    }).done(function (blob, folder, isSave) {
                         zipFileLength++;
-                        notify_start.find(".toast-message").text("正在打包～ 第 " + zipFileLength + " 张");
-                        resolveCallback && resolveCallback();   // resolve延迟对象
+                        notify_start.find('.toast-message').text('正在打包～ 第 ' + zipFileLength + ' 张' + (isSave ? "" : "跳过"));
+                        resolveCallback && resolveCallback();   // resolve回调
                         if (zipFileLength >= maxIndex) {
-                            options.callback.allFilesOnload_callback(files, names, location_info, options, zip, main_folder);
-                            zip.generateAsync({type: "blob"}).then(function (content) {
-                                options.callback.beforeZipFileDownload_callback(content, files, names, location_info, options, zip, main_folder);
-                            });
+                            let isDownloadZip = options.callback.allFilesOnload_callback(files, names, location_info, options, zip, main_folder);
+                            if (isDownloadZip !== false) {
+                                zip.generateAsync({type: "blob"}).done(function (content) {
+                                    options.callback.beforeZipFileDownload_callback(content, files, names, location_info, options, zip, main_folder);
+                                    toastr.success('下载完成！', names.zipName);
+                                });
+                            }
                             toastr.remove(notify_start, true);
-                            toastr.success("下载完成！", names.zipName, {"progressBar": false});
                         }
-                    }, file);
+                    });
                 };
                 if (maxIndex < options.useQueueDownloadThreshold) {
                     // 并发数在useQueueDownloadThreshold内，直接下载
-                    for (var i = 0; i < maxIndex; i++) {
+                    for (let i = 0; i < maxIndex; i++) {
                         downloadFile(files[i]);
                     }
                 } else {
                     // 并发数在useQueueDownloadThreshold之上，采用队列下载
-                    var queue = new TaskQueue(function (file) {
+                    let queue = new TaskQueue(function (file) {
                         if (file) {
-                            var dfd = $.Deferred();
-                            downloadFile(file, function () {
-                                dfd.resolve();
-                            });
-                            return dfd;
+                            return downloadFile(file);
                         }
                     });
-                    for (var j = 0; j < maxIndex; j++) {
+                    for (let j = 0; j < maxIndex; j++) {
                         queue.append(files[j]);
                     }
                 }
             } else {
                 toastr.remove(notify_start, true);
-                toastr.error("未解析到图片！", "错误", {"progressBar": false});
+                toastr.error('未解析到图片！', '错误', {"progressBar": false});
             }
         };
 
         try {
             options = $.extend(true, options, config);
-            var location_info = options.callback.parseLocationInfo_callback(options);
-            var files = options.callback.parseFiles_callback(location_info, options);
+            let location_info = options.callback.parseLocationInfo_callback(options);
+            let files = options.callback.parseFiles_callback(location_info, options);
             if (!(files && files.promise)) {
                 files = $.when(files);
             }
             files.done(function (files) {
                 if (files && files.length > 0) {
-                    if (!options.isNeedConfirmDownload || confirm("是否下载 " + files.length + " 个文件")) {
-                        var names = options.callback.makeNames_callback(files, location_info, options);
+                    if (!options.isNeedConfirmDownload || confirm('是否下载 ' + files.length + ' 个文件')) {
+                        let names = options.callback.makeNames_callback(files, location_info, options);
+                        options.location_info = location_info;
+                        options.files = files;
+                        options.names = names;
                         ajaxDownloadAndZipFiles(files, names, location_info, options);
                     }
                 } else {
-                    toastr.error("未找到图片~", "");
+                    toastr.error('未找到图片~', '');
                 }
             }).fail(function (text) {
-                toastr.error(text, "程序放弃下载");
+                toastr.error(text, '程序放弃下载');
             });
         } catch (e) {
-            console.warn("批量下载照片 出现错误！, exception: ", e);
-            toastr.error("批量下载照片 出现错误！", "");
+            console.warn('批量下载照片 出现错误！, exception: ', e);
+            toastr.error('批量下载照片 出现错误！', '');
         }
     };
 
     /**
      * 上传贴图
-     * @param {Array}images
-     * @param {String}classNames
-     * @param {Function}call
+     * @param {Array} images
+     * @param {String} classNames
+     * @param {Function} call
      */
     var postImage = function (images, classNames, call) {
-        var uploadNotifyElement = context.notify({
-            "progressBar": false,
-            "hideDuration": 0,
-            "showDuration": 0,
-            "timeOut": 0,
-            "closeButton": false,
+        var $uploadNotifyElement = globals.notify({
             "iconClass": "toast-success-no-icon",
-            "hideOnHover": false
-        }).success("正在上传第 1 张~", "", "notify_post_image_uploading");
+        }).progress('正在上传第 1 张~', '', 'notify_post_image_uploading');
         var imageArr = [];
-        var imageHtml = "";
+        var imageHtml = '';
         var taskQueue = new context.TaskQueue(function (task) {
             var dfd = $.Deferred();
             var formData = new FormData();
-            formData.append("file", task.file);
-            uploadNotifyElement.find(".toast-message").text("正在上传第 " + (task.index + 1) + " 张~");
+            formData.append('file', task.file);
+            $uploadNotifyElement.content('正在上传第 ' + (task.index + 1) + ' 张~');
             $.ajax({
-                url: "cloud.api?method=postImage",
+                url: globals.api.postImage,
                 data: formData,
                 type: "POST",
                 contentType: false,
@@ -1272,25 +1155,25 @@
                     if (response.status == 200) {
                         var data = response.data;
                         imageArr.push(data);
-                        imageHtml += '<img ' + (classNames ? ('class="' + classNames + '" ') : "") + 'src="' + data.image_cdn_path +
+                        imageHtml += '<img ' + (classNames ? ('class="' + classNames + '" ') : '') + 'src="' + data.image_cdn_path +
                             '" data-raw-width="' + data.raw_width + '" data-raw-height="' + data.raw_height + '" data-relative-path="' + data.image_path + '">\n';
-                        // imageHtml += config.path_params.cloudPath + data.image_path + "\n";
+                        // imageHtml += config.path_params.cloudPath + data.image_path + '\n';
                         dfd.resolve();
                     } else {
                         dfd.reject(response.message);
-                        toastr.error(response.message, "错误", {"progressBar": false});
-                        console.warn("Error Code: " + response.status);
+                        toastr.error(response.message, '错误', {"progressBar": false});
+                        console.warn('Error Code: ' + response.status);
                     }
                     if ((response.status != 200 || task.isLastOne) && imageHtml) {
-                        context.removeNotify("notify_post_image_uploading");
+                        globals.removeNotify('notify_post_image_uploading');
                         call(imageHtml, imageArr, response.status == 200);
                     }
                 },
                 error: function (XHR, TS) {
-                    context.removeNotify("notify_post_image_uploading");
+                    globals.removeNotify('notify_post_image_uploading');
                     dfd.reject(TS);
-                    toastr.error(TS, "错误", {"progressBar": false});
-                    console.warn("Error Code: " + TS);
+                    toastr.error(TS, '错误', {"progressBar": false});
+                    console.warn('Error Code: ' + TS);
                 }
             });
             return dfd;
@@ -1305,168 +1188,6 @@
     };
 
     /**
-     * 提示通知
-     * @type {{}}
-     */
-    var notifyPool = {};
-
-    var notifyObject = (function () {
-        var notify_options = {};
-        var context = {
-            "config": function (json) {
-                notify_options = $.extend(true, {}, json);
-                return context;
-            },
-            "default": function (json) {
-                json && toastr.options(json);
-            },
-            "lastNotifyName": null,
-            "success": function (content, title, notifyName) {
-                context.lastNotifyName = notifyName = notifyName || "default";
-                var toastElement = toastr.success(content, title, notify_options).attr("data-name", notifyName);
-                notifyPool[notifyName] = toastElement;
-                return toastElement;
-            },
-            "error": function (content, title, notifyName) {
-                context.lastNotifyName = notifyName = notifyName || "default";
-                var toastElement = toastr.error(content, title, notify_options).attr("data-name", notifyName);
-                notifyPool[notifyName] = toastElement;
-                return toastElement;
-            },
-            "info": function (content, title, notifyName) {
-                context.lastNotifyName = notifyName = notifyName || "default";
-                var toastElement = toastr.info(content, title, notify_options).attr("data-name", notifyName);
-                notifyPool[notifyName] = toastElement;
-                return toastElement;
-            }
-        };
-        return context;
-    })();
-
-    /**
-     * 返回通知对象
-     * @param {Object|Boolean} options - json为配置，boolean设置为true则为继承上次通知配置
-     * @returns notifyObject - {config, default, lastNotifyName, success, error, info}
-     */
-    var notify = function (options) {
-        var extendLast = (typeof options == "boolean" ? options : false);
-        if (!extendLast) {
-            if (options) {
-                notifyObject.config(options);
-            } else {
-                notifyObject.config({});
-            }
-        }
-        return notifyObject;
-    };
-
-    /**
-     * 移除通知
-     * @param notifyName 为空则删除所有通知
-     */
-    var removeNotify = function (notifyName) {
-        if (!notifyName) {
-            notifyPool = {};
-            toastr.clear();
-        } else if (notifyPool.hasOwnProperty(notifyName)) {
-            if (notifyPool[notifyName]) {
-                toastr.remove(notifyPool[notifyName], true);
-            }
-            delete notifyPool[notifyName];
-        }
-        $('#toast-container').find('.toast[data-name="' + notifyName + '"]').each(function (i, toastElement) {
-            toastr.remove($(toastElement), true);
-        });
-    };
-
-    /**
-     * 得到通知jquery对象
-     * @param {String} notifyName
-     * @param {Boolean=} force
-     *  - 为true利用jquery选择器查找，100%查到所有的，可能返回多个（notifyName名称相同）
-     *  - 为false从记录中查找，只会返回一个
-     *  - 两个都会删除隐藏的通知对象
-     * @returns {*}
-     */
-    var getNotify = function (notifyName, force) {
-        if (force) {
-            var toastElements = $('#toast-container').find('.toast[data-name="' + notifyName + '"]').filter(function (toastElement, i) {
-                if ($(toastElement).is(':visible')) {
-                    return true;
-                } else {
-                    toastr.remove($(toastElement), true);
-                    return false;
-                }
-            });
-            return toastElements.length != 0 ? toastElements : null;
-        } else {
-            var notify = notifyPool[notifyName];
-            if (notify && !force && !notify.is(':visible')) {
-                notify = null;
-                delete notifyPool[notifyName];
-                toastr.remove(notify, true);
-            }
-            return notify;
-        }
-    };
-
-    /**
-     * 客户端本地配置
-     * @param {String|Object=} module - 模块名称，当取所有配置时，此处可填所有配置的默认值
-     * @param {Object=} defaultValue - module模块的默认值
-     * @returns {*} 当module为传入的模块名称时，返回该模块配置；当module传入的是所有配置默认值或为空时，返回所有配置；
-     */
-    var getLocalConfig = function (module, defaultValue) {
-        if (config_upgrade_start && !config_upgrade_completed) {
-            if (!getNotify("notify_upgrade_config")) {
-                notify({
-                    "progressBar": false,
-                    "timeOut": 10000,
-                    "onclick": function () {
-                        document.location.href = document.location.href;
-                    }
-                }).info("刷新页面应用新配置~", "Upgraded new local config", "notify_upgrade_config");
-            }
-            return (typeof module == "string") ? defaultValue : (module || {});
-        }
-        var localConfig = localStorage.getItem("blog_local_config");
-        if (!localConfig) {
-            localConfig = {};
-            localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
-        } else {
-            localConfig = JSON.parse(localConfig);
-        }
-        if (defaultValue) {
-            localConfig[module] = $.extend(true, defaultValue, localConfig[module]);
-            localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
-        } else if (typeof module == "object") {
-            localConfig = $.extend(true, module, localConfig);
-            localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
-        }
-        return (typeof module == "string") ? localConfig[module] : localConfig;
-    };
-
-    /**
-     * 保存配置
-     * @param moduleName
-     * @param moduleValue
-     */
-    var setLocalConfig = function (moduleName, moduleValue) {
-        var localConfig = getLocalConfig();
-        if (typeof moduleName == "string") {
-            if (localConfig[moduleName]) {
-                localConfig[moduleName] = $.extend(true, localConfig[moduleName], moduleValue);
-            } else {
-                localConfig[moduleName] = moduleValue;
-            }
-            localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
-        } else if (typeof moduleName == "object") {
-            $.extend(true, localConfig, moduleName);
-            localStorage.setItem("blog_local_config", JSON.stringify(localConfig));
-        }
-    };
-
-    /**
      * 接受异步返回结果，参数接在方法名后
      * 兼容异步返回和直接返回
      *
@@ -1474,85 +1195,48 @@
      * @returns {Function} asyncFunc
      */
     var wrapAsyncResult = function (func) {
-        var context = this;
+        let context = this;
         return function () {
-            var deferred = func.apply(context, arguments);
+            let deferred = func.apply(context, arguments);
             if (!(deferred && deferred.promise)) {
-                deferred = $.when(deferred);
+                deferred = $.when(deferred); // $when返回的是执行过deferred.promise()的
             }
             return $.Deferred(function (dfd) {
                 deferred.done(function () {
-                    dfd.resolveWith(this === deferred.promise() ? context : this, arguments);
+                    dfd.resolveWith((this === window || this === deferred || this === deferred.promise()) ? context : this, arguments);
                 }).fail(function () {
-                    dfd.rejectWith(this === deferred.promise() ? context : this, arguments);
+                    dfd.rejectWith((this === window || this === deferred || this === deferred.promise()) ? context : this, arguments);
                 });
             });
         };
     };
 
     /**
-     * 绑定事件
+     * 图片加载失败显示默认图片
      *
-     * @param {String} eventName
-     * @param {Function} func
-     * @param {Boolean} bindFirst - 调整执行顺序，添加到队列的第一个位置
+     * @param {jQuery|Element|String} $images - 图片对象或选择器
+     * @param {String|Function} errorReplaceUrl - 错误图片链接或函数
      */
-    var on = function (eventName, func, bindFirst) {
-        const context = this;
-        if (bindFirst == true) {
-            $(context).onfirst(eventName, func);
+    var bindImgErrorHandler = function ($images, errorReplaceUrl) {
+        $images instanceof $ || ($images = $($images));
+        let replaceFunc;
+        if (typeof errorReplaceUrl == 'function') {
+            replaceFunc = errorReplaceUrl;
         } else {
-            $(context).on(eventName, func);
+            replaceFunc = function (e) {
+                let $self = $(this), src = $self[0].src, title = $self[0].title;
+                $self.attr('src', errorReplaceUrl).attr('data-backup-src', src).attr('data-backup-title', title)
+                    .attr('title', '该图片加载失败~').toggleClass('img-load-error', true);
+            };
         }
-        return context;
-    };
-
-    /**
-     * 绑定事件，仅执行一次
-     *
-     * @param {String} eventName
-     * @param {Function} func
-     * @param {Boolean} bindFirst - 调整执行顺序，添加到队列的第一个位置
-     */
-    var once = function (eventName, func, bindFirst) {
-        const context = this;
-        const funcWrapper = function () {
-            try {
-                func.apply(this, arguments);
-            } finally {
-                off.call(context, eventName, funcWrapper);
+        $images.each(function () {
+            if (!this.complete) {
+                $(this).one('error.replace', replaceFunc);
             }
-        };
-        on.call(context, eventName, funcWrapper, bindFirst);
-        return context;
+        });
     };
-
-    /**
-     * 触发事件，参数接在事件名后
-     *
-     * @param {String} eventName
-     * @returns 事件返回值
-     */
-    var trigger = function (eventName) {
-        const context = this;
-        return $(context).triggerHandler(eventName, Array.prototype.slice.call(arguments, 1));
-    };
-
-    /**
-     * 取消事件绑定
-     *
-     * @param {String} eventName
-     * @param {Function} func
-     */
-    var off = function (eventName, func) {
-        const context = this;
-        $(context).off(eventName, func);
-        return context;
-    };
-
 
     var context = {
-        "extendNonNull": extendNonNull,
         "cookieUtil": cookieUtil,
         "parseURL": parseURL,
         "removeParamForURL": removeParamForURL,
@@ -1569,6 +1253,7 @@
         "convertLinkToHtmlTag": convertLinkToHtmlTag,
         "convertImageLinkToHtmlTag": convertImageLinkToHtmlTag,
         "formatJson": formatJson,
+        "getElemRealPrecisionSize": getElemRealPrecisionSize,
         "isOnScreen": isOnScreen,
         "calcElementRotateStyle": calcElementRotateStyle,
         "replaceByEL": replaceByEL,
@@ -1579,85 +1264,9 @@
         "downloadUrlFile": downloadUrlFile,
         "zipRemoteFilesAndDownload": zipRemoteFilesAndDownload,
         "postImage": postImage,
-        "notify": notify,
-        "removeNotify": removeNotify,
-        "getNotify": getNotify,
-        "getLocalConfig": getLocalConfig,
-        "setLocalConfig": setLocalConfig,
         "wrapAsyncResult": wrapAsyncResult,
-        "on": on,
-        "once": once,
-        "trigger": trigger,
-        "off": off
+        "bindImgErrorHandler": bindImgErrorHandler
     };
-
-
-    // 检查是否需要升级配置
-    var config_upgrade_start = false;
-    var config_upgrade_completed = false; // 配置应用完成标记
-    var require_node = document.getElementById("require_node");
-    if (require_node) {
-        var urlArgs = require_node.getAttribute("urlArgs");
-        var last_upgrade_url = localStorage.getItem("blog_last_upgrade_url");
-        if (urlArgs && last_upgrade_url != urlArgs) {
-            config_upgrade_start = true;
-            // js等主线程执行完成才会执行异步线程，既在这之前需要"阻止"网页在加载新配置完成之前使用旧配置
-            $.ajax({
-                "type": "GET",
-                "url": "site.api?method=getConfigUpgrade",
-                "global": false,    // 去掉全局事件
-                "success": function (response) {
-                    if (response.status == 200 && typeof response.data.config == "object") {
-                        var config = response.data.config;
-                        var localConfig = JSON.parse(localStorage.getItem("blog_local_config") || "{}");
-                        var needUpgrade = config.version > (localConfig.version || "0");    // 版本是否需要升级
-                        if (needUpgrade) {
-                            if (config.force == true) {
-                                localStorage.setItem("blog_local_config", JSON.stringify(config));
-                            } else {
-                                config.force = false;
-                                setLocalConfig(config);
-                            }
-                        }
-                        localStorage.setItem("blog_last_upgrade_url", urlArgs);
-                        config_upgrade_completed = true;
-                        var info = getNotify("notify_upgrade_config");
-                        if (info && needUpgrade) {
-                            info.find(".toast-message").html("刷新页面应用新配置 <b>v" + config.version + "</b> ~");
-                        } else {
-                            removeNotify("notify_upgrade_config");  // 不是新版本
-                        }
-                    } else {
-                        // 如果加载失败
-                        removeNotify("notify_upgrade_config");
-                        config_upgrade_completed = true;
-                        if (response.status != 404) {
-                            console.warn("Error Code: " + response.status);
-                            notify({
-                                "progressBar": false,
-                                "timeOut": 10000,
-                                "onclick": function () {
-                                    document.location.href = document.location.href;
-                                }
-                            }).error("刷新页面恢复旧配置~", "升级新配置失败", "notify_upgrade_config_fail");
-                        }
-                    }
-                },
-                "error": function (XHR, textStatus) {
-                    removeNotify("notify_upgrade_config");
-                    config_upgrade_completed = true;
-                    console.warn("Error Code: " + textStatus);
-                    notify({
-                        "progressBar": false,
-                        "timeOut": 10000,
-                        "onclick": function () {
-                            document.location.href = document.location.href;
-                        }
-                    }).error("刷新页面恢复旧配置~", "升级新配置失败/" + textStatus, "notify_upgrade_config_fail");
-                }
-            });
-        }
-    }
 
     return context;
 });

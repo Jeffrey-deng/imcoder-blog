@@ -5,12 +5,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'common_utils'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'globals', 'common_utils'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, common_utils);
+        factory(window.jQuery, null, $(document).ready, toastr, globals, common_utils);
     }
-})(function ($, bootstrap, domReady, toastr, common_utils) {
+})(function ($, bootstrap, domReady, toastr, globals, common_utils) {
 
     var articles = null;
 
@@ -42,8 +42,8 @@
             var article = articles[i];
             html += '<tbody><tr style="height: 50px;" aid="' + article.aid + '">';
             html += '<td name="modifyModal_trigger" style="cursor: pointer;" title="' + article.title + '"><b>' + article.aid + '</b></td>';
-            html += '<td><a href="a/detail/' + article.aid + '" target="_blank"><b>' + article.title + '</b></a></td>';
-            html += '<td><a href="u/' + article.author.uid + '/home"  target="_blank"><i>' + article.author.nickname + '（' + article.author.uid + '）</i></a></td>';
+            html += '<td><a href="' + ('a/detail/' + article.aid).toURL() + '" target="_blank"><b>' + article.title + '</b></a></td>';
+            html += '<td><a href="' + ('u/' + article.author.uid + '/home').toURL() + '"  target="_blank"><i>' + article.author.nickname + '（' + article.author.uid + '）</i></a></td>';
             html += '<td>' + article.category.atname + '</td>';
             html += '<td>' + article.create_time + '</td>';
             html += '<td>' + article.click_count + '</td>';
@@ -54,15 +54,15 @@
         $('#article_tds').html(html);
 
         $('#article_tds td').click(function () {
-            var aid = $(this).parent().attr("aid");
+            var aid = $(this).parent().attr('aid');
             var article = getArticle(aid, articles);
         });
         $('#article_tds a').click(function (e) {
             var tagA = e.currentTarget;
-            var domA = document.createElement("a");
-            domA.setAttribute("href", tagA.getAttribute("href"));
-            domA.setAttribute("target", tagA.getAttribute("target"));
-            domA.setAttribute("style", "display:none;");
+            var domA = document.createElement('a');
+            domA.setAttribute('href', tagA.getAttribute('href'));
+            domA.setAttribute('target', tagA.getAttribute('target'));
+            domA.setAttribute('style', 'display:none;');
             document.body.appendChild(domA);
             domA.click();
             document.body.removeChild(domA);
@@ -90,23 +90,23 @@
         if (params.uid) {
             uid = params.uid;
         }
-        common_utils.notify({
+        globals.notify({
             "progressBar": false,
             "hideDuration": 0,
             "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
-        }).success("正在加载数据", "", "notify_articles_loading");
-        $.get("article.api?method=getArticleList", (uid && uid != '0') ? {"author.uid": uid} : {}, function (response) {
-            common_utils.removeNotify("notify_articles_loading");
+        }).success('正在加载数据', '', 'notify_articles_loading');
+        $.get(globals.api.getArticleList, (uid && uid != '0') ? {"author.uid": uid} : {}, function (response) {
+            globals.removeNotify('notify_articles_loading');
             articles = response.data.articles;
             $('#articleCount').html(articles.length);
             if (articles.length == 0) {
-                common_utils.notify({
+                globals.notify({
                     "progressBar": false,
                     "timeOut": 10000,
                     "closeButton": false
-                }).success("该用户未发表文章，或者你没有权限查看", "", "notify_articles_loading_empty");
+                }).success('该用户未发表文章，或者你没有权限查看', '', 'notify_articles_loading_empty');
             } else {
                 assembleCurrentTableHtml(articles, 1, 20);
             }

@@ -259,11 +259,11 @@ public class ArticleDaoImpl extends CommonDao implements IArticleDao {
      * @param loginUser
      * @return List<Article>
      */
-    public List<Article> findTopsList(int size, User loginUser) {
+    public List<Article> findTopArticleList(int size, User loginUser) {
         Map<String, Object> map = new HashMap<String, Object>();
         map.put("size", size);
         map.put("loginUser", loginUser);
-        return this.getSqlSession().selectList("article.findTopsList", map);
+        return this.getSqlSession().selectList("article.findTopArticleList", map);
     }
 
     /**

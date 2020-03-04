@@ -9,7 +9,8 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%
     String path = request.getContextPath();
-    String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String hostPath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String basePath = Config.get(ConfigConstants.SITE_ADDR);
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
@@ -21,7 +22,6 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <base href="<%=basePath%>" target="_self">
     <title>Cloud - ImCoder</title>
     <meta name="keywords" content="Cloud,ImCoder,ImCoder's 博客,blog">
     <meta name="description" content="Cloud,ImCoder,ImCoder's 博客,blog">
@@ -147,14 +147,7 @@
                         </form>
                         <br/>
                         <div class="progress">
-                            <div id="progress-bar"
-                                 class="progress-bar"
-                                 role="progressbar"
-                                 aria-valuenow="0"
-                                 aria-valuemin="0"
-                                 aria-valuemax="100" style="min-width: 2em;">
-                                0%
-                            </div>
+                            <div id="progress-bar" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="min-width: 2em;">0%</div>
                         </div>
                     </div>
                 </div>
@@ -221,8 +214,7 @@
             </td>
         </tr>
         <tr>
-            <td colspan="2">
-                Powered by
+            <td colspan="2">Powered by
                 <a href="<%=basePath%>" target="_blank">ImCoder</a> &
                 <a href="https://www.aliyun.com/product/oss" target="_blank">OSS</a> &
                 <a href="https://github.com/ali-sdk/ali-oss" target="_blank">ali-oss</a></td>

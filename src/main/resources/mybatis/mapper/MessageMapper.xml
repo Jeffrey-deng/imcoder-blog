@@ -9,42 +9,42 @@
 
     <!-- 保存私信 -->
     <insert id="saveLetter" parameterType="letter" useGeneratedKeys="true" keyProperty="leid" keyColumn="leid">
-        insert into letter (s_uid,r_uid,content,send_time)
-        values (#{s_uid},#{r_uid},#{content},#{send_time})
+        insert into letter (s_uid, r_uid, content, send_time)
+        values (#{s_uid}, #{r_uid}, #{content}, #{send_time})
     </insert>
 
     <!-- 查询某一条私信 -->
     <select id="findLetter" parameterType="letter" resultMap="letterMap">
-        select leid,s_uid,r_uid,content,send_time,status,
-        u.uid as chatuid,nickname,email,description,head_photo,ug.gid,ug.group_name
+        select leid, s_uid, r_uid, content, send_time, status,
+        u.uid as chatuid, nickname, head_photo, sex, ug.gid, ug.group_name
         from letter l left join
-        ( user u left join user_group ug on u.gid=ug.gid ) on l.s_uid=u.uid
+        (user u left join user_group ug on u.gid = ug.gid) on l.s_uid = u.uid
         <where>
-            l.leid=#{leid} limit 1
+            l.leid = #{leid} limit 1
         </where>
 
     </select>
 
     <!-- 查询所有私信列表  read_status=0未读/1全部 -->
     <select id="findLetterList" parameterType="hashMap" resultMap="letterMap">
-        select leid,s_uid,r_uid,content,send_time,status,
-        u.uid as chatuid,nickname,email,description,head_photo,ug.gid,ug.group_name
+        select leid, s_uid, r_uid, content, send_time, status,
+        u.uid as chatuid, nickname, head_photo, sex, ug.gid, ug.group_name
         from letter l left join
-        ( user u left join user_group ug on u.gid=ug.gid ) on l.s_uid=u.uid
+        (user u left join user_group ug on u.gid = ug.gid) on l.s_uid = u.uid
         <where>
-            l.r_uid=#{user.uid}
-            <if test="read_status==0">
+            l.r_uid = #{user.uid}
+            <if test="read_status == 0">
                 and status = 0
             </if>
         </where>
-        <if test="read_status==1">
+        <if test="read_status == 1">
             UNION All
-            select leid,s_uid,r_uid,content,send_time,status,
-            u.uid as chatuid,nickname,email,description,head_photo,ug.gid,ug.group_name
+            select leid, s_uid, r_uid, content, send_time, status,
+            u.uid as chatuid, nickname, head_photo, sex, ug.gid, ug.group_name
             from letter l left join
-            ( user u left join user_group ug on u.gid=ug.gid ) on l.r_uid=u.uid
+            (user u left join user_group ug on u.gid = ug.gid) on l.r_uid = u.uid
             <where>
-                l.s_uid=#{user.uid}
+                l.s_uid = #{user.uid}
             </where>
         </if>
         order by leid desc
@@ -74,9 +74,8 @@
         <association property="chatUser" javaType="user">
             <result column="chatuid" property="uid"/>
             <result column="nickname" property="nickname"/>
-            <result column="email" property="email"/>
-            <result column="description" property="description"/>
             <result column="head_photo" property="head_photo"/>
+            <result column="sex" property="sex"/>
             <association property="userGroup" javaType="userGroup">
                 <result column="gid" property="gid"/>
                 <result column="group_name" property="group_name"/>
@@ -90,15 +89,14 @@
 
     <!-- 保存评论 -->
     <insert id="saveComment" parameterType="comment">
-        insert into comment (cid, main_type, main_id,uid,r_cid,content,send_time,anonymous, like_count)
-        values (#{cid}, #{mainType},#{mainId},#{user.uid},#{parentId},#{content},#{send_time},#{anonymous},
-        #{like_count})
+        insert into comment (cid, creation_type, creation_id,uid,r_cid,content,send_time,anonymous, like_count)
+        values (#{cid}, #{creationType},#{creationId},#{user.uid},#{parentId},#{content},#{send_time},#{anonymous},#{like_count})
     </insert>
 
     <!-- 根据条件查询评论列表 -->
     <select id="findCommentList" parameterType="hashMap" resultMap="commentMap">
         <bind name="is_login" value="loginUser != null and loginUser.isHasLoggedIn()"/>
-        select c.cid, c.main_type, c.main_id, c.r_cid, c.content, c.send_time, c.anonymous, c.like_count,
+        select c.cid, c.creation_type, c.creation_id, c.r_cid, c.content, c.send_time, c.anonymous, c.like_count,
         cu.uid as comment_user_uid, cu.nickname as comment_user_nickname, cu.head_photo as comment_user_head_photo, cu.sex as comment_user_sex
         , (case when (ar.liked is not null and ar.liked > 0) then true else false end) as liked
         from (comment c left join user cu on c.uid = cu.uid)
@@ -108,12 +106,12 @@
         <if test="not is_login">
             left join comment_action_record ar on (ar.cid = c.cid and ar.uid = 0 and ar.ip = #{loginUser.userStatus.last_login_ip})
         </if>
-        where c.main_id = #{condition.mainId} and c.main_type = #{condition.mainType}
+        where c.creation_id = #{condition.creationId} and c.creation_type = #{condition.creationType}
     </select>
 
     <!-- 根据cid查询评论 -->
     <select id="findComment" parameterType="comment" resultMap="commentMap">
-        select c.cid, c.main_type, c.main_id, c.r_cid, c.content, c.send_time, c.anonymous, c.like_count,
+        select c.cid, c.creation_type, c.creation_id, c.r_cid, c.content, c.send_time, c.anonymous, c.like_count,
         cu.uid as comment_user_uid, cu.nickname as comment_user_nickname, cu.head_photo as comment_user_head_photo, cu.sex as comment_user_sex
         from comment c left join user cu on c.uid = cu.uid
         where c.cid = #{cid}
@@ -121,7 +119,7 @@
 
     <!-- 删除评论 -->
     <update id="deleteComment_1" parameterType="comment">
-        update comment set content='*已删除*' where cid = #{cid}
+        update comment set content='*已删除*', anonymous = 1 where cid = #{cid}
     </update>
     <delete id="deleteComment_2" parameterType="comment">
         delete from comment where cid = #{cid}
@@ -138,8 +136,8 @@
 
     <resultMap id="commentMap" type="comment">
         <id column="cid" property="cid"/>
-        <result column="main_type" property="mainType"/>
-        <result column="main_id" property="mainId"/>
+        <result column="creation_type" property="creationType"/>
+        <result column="creation_id" property="creationId"/>
         <result column="r_cid" property="parentId"/>
         <result column="content" property="content"/>
         <result column="send_time" property="send_time"/>

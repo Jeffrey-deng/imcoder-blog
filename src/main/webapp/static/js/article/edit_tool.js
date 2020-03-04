@@ -1,13 +1,17 @@
+/**
+ * 扩展summernote的功能，写了一些插件
+ * @author Jeffrey.deng
+ */
 (function (factory) {
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'summernote', 'store2', 'common_utils', 'login_handle', 'edit_tool_plugin'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'summernote', 'store2', 'globals', 'common_utils', 'login_handle', 'edit_tool_plugin'], factory);
     } else {
         // Browser globals
-        window.edit_tool = factory(window.jQuery, null, $(document).ready, toastr, null, store, common_utils, login_handle, null);
+        window.edit_tool = factory(window.jQuery, null, $(document).ready, toastr, null, store, globals, common_utils, login_handle, null);
     }
-})(function ($, bootstrap, domReady, toastr, summernote, store, common_utils, login_handle, edit_tool_plugin) {
+})(function ($, bootstrap, domReady, toastr, summernote, store, globals, common_utils, login_handle, edit_tool_plugin) {
 
     var pointer = {
         mainEditor: null,
@@ -23,7 +27,7 @@
     };
 
     var init = function (options) {
-        common_utils.extendNonNull(true, config, options);
+        $.extendNotNull(true, config, options);
         pointer.mainEditor = $(config.selector.mainEditor);
         pointer.summaryEditor = $(config.selector.summaryEditor);
         initEditor();
@@ -79,8 +83,8 @@
                 self.initialize = function () {
                     var $container, body, footer;
                     $container = options.dialogsInBody ? $(document.body) : $editor;
-                    body = '<div class="form-group note-form-group">'+
-                        '<textarea class="form-control note-form-control note-code-insert-editor" style="auto;height: 400px;" wrap="off" rows="12"></textarea>'+
+                    body = '<div class="form-group note-form-group">' +
+                        '<textarea class="form-control note-form-control note-code-insert-editor" style="auto;height: 400px;" wrap="off" rows="12"></textarea>' +
                         '</div>';
                     footer = '<button class="btn btn-default note-btn note-btn-default note-btn-code-insert-cancel" data-dismiss="modal">' + lang.codeInsert.dialogCancel + '</button>' +
                         '<button class="btn btn-primary note-btn note-btn-primary note-btn-code-insert-submit">' + lang.codeInsert.dialogSubmit + '</button>';
@@ -94,14 +98,14 @@
                     self.bindEvent();
                 };
                 self.alertSuccess = function (text) {
-                    var alterId = "note-alert-" + new Date().getTime();
+                    var alterId = 'note-alert-' + new Date().getTime();
                     $editor.find('.note-status-output').html('<div class="alert alert-success" id="' + alterId + '">' + text + '</div>');
                     setTimeout(function () {
                         $editor.find('#' + alterId).remove();
                     }, 2500);
                 };
                 self.alertError = function (text) {
-                    var alterId = "note-alert-" + new Date().getTime();
+                    var alterId = 'note-alert-' + new Date().getTime();
                     $editor.find('.note-status-output').html('<div class="alert alert-danger" id="' + alterId + '">' + text + '</div>');
                     setTimeout(function () {
                         $editor.find('#' + alterId).remove();
@@ -119,7 +123,7 @@
                     ui.showDialog(self.$dialog);
                 };
                 self.bindEvent = function () {
-                    self.$dialog.find('.note-btn-code-insert-submit').on("click", function () {
+                    self.$dialog.find('.note-btn-code-insert-submit').on('click', function () {
                         self.saveCodeInsert();
                     });
                 };
@@ -128,24 +132,24 @@
                     // 创建节点
                     var pre = document.createElement('pre');
                     pre.className = "user-defined-code";
-                    pre.setAttribute("style", "word-wrap:normal");
+                    pre.setAttribute('style', 'word-wrap:normal');
                     var code = document.createElement('code');
-                    code.setAttribute("style", "white-space:pre;overflow-x:auto;word-wrap:normal");
+                    code.setAttribute('style', 'white-space:pre;overflow-x:auto;word-wrap:normal');
                     // 得到编辑区的值 并转义
                     code.innerHTML = common_utils.encodeHTML($codeInsertEditor.val());
                     pre.appendChild(code);
                     // 添加换行
                     var fragment = document.createDocumentFragment();
-                    fragment.appendChild(document.createElement("br"));
+                    fragment.appendChild(document.createElement('br'));
                     fragment.appendChild(pre);
-                    fragment.appendChild(document.createElement("br"));
+                    fragment.appendChild(document.createElement('br'));
                     // 插入节点
                     context.invoke('restoreRange'); // 还原range
                     context.invoke('insertNode', fragment);
                     // 关闭
                     ui.hideDialog(self.$dialog);
-                    // toastr.info("代码在编辑区可能会变形，这不是最终的显示效果", "提示");
-                    $codeInsertEditor.val("");
+                    // toastr.info('代码在编辑区可能会变形，这不是最终的显示效果', '提示');
+                    $codeInsertEditor.val('');
                 };
             }
         });
@@ -239,11 +243,11 @@
                         var fnrCode = context.invoke('code');
                         var fnrFind = $toolbar.find('.note-findnreplace-find').val();
                         var fnrReplace = $toolbar.find('.note-findnreplace-replace').val();
-                        var fnrCount = (fnrCode.match(new RegExp(fnrFind, "gi")) || []).length;
+                        var fnrCount = (fnrCode.match(new RegExp(fnrFind, 'gi')) || []).length;
                         var $findnreplace_info = $toolbar.find('.note-findnreplace-info');
                         if (fnrFind) {
-                            $findnreplace_info.text(fnrCount + lang.findnreplace.findResult + "`" + fnrFind + "`");
-                            var fnrReplaced = fnrCode.replace(new RegExp("(" + fnrFind + ")", "gi"), '<u class="note-findnreplace" style="' + options.findnreplace.highlight + '">$1</u>');
+                            $findnreplace_info.text(fnrCount + lang.findnreplace.findResult + '`' + fnrFind + '`');
+                            var fnrReplaced = fnrCode.replace(new RegExp("(' + fnrFind + ')", 'gi'), '<u class="note-findnreplace" style="' + options.findnreplace.highlight + '">$1</u>');
                             $note.summernote('code', fnrReplaced);
                         } else
                             $findnreplace_info.html('<span class="text-danger">' + lang.findnreplace.findError + '</span>');
@@ -254,11 +258,11 @@
                         var fnrCode = context.invoke('code');
                         var fnrFind = $toolbar.find('.note-findnreplace-find').val();
                         var fnrReplace = $toolbar.find('.note-findnreplace-replace').val();
-                        var fnrCount = (fnrCode.match(new RegExp(fnrFind, "gi")) || []).length;
+                        var fnrCount = (fnrCode.match(new RegExp(fnrFind, 'gi')) || []).length;
                         var $findnreplace_info = $toolbar.find('.note-findnreplace-info');
                         if (fnrFind) {
-                            $findnreplace_info.text(fnrCount + lang.findnreplace.findResult + "`" + fnrFind + "`" + lang.findnreplace.replaceResult + "`" + fnrReplace + "`");
-                            var fnrReplaced = fnrCode.replace(new RegExp(fnrFind, "gi"), fnrReplace);
+                            $findnreplace_info.text(fnrCount + lang.findnreplace.findResult + '`' + fnrFind + '`' + lang.findnreplace.replaceResult + '`' + fnrReplace + '`');
+                            var fnrReplaced = fnrCode.replace(new RegExp(fnrFind, 'gi'), fnrReplace);
                             $note.summernote('code', fnrReplaced);
                         } else {
                             if (fnrReplace) {
@@ -347,7 +351,7 @@
                     var $container, body, footer;
                     $container = options.dialogsInBody ? $(document.body) : $editor;
                     body = "<div class='form-group'><label>" + lang.sDrafts.provideName + "</label><input class='note-draftName form-control' type='text' /></div>";
-                    footer = "<button class='btn btn-primary note-link-btn'>" + lang.sDrafts.save + "</button>";
+                    footer = "<button class='btn btn-primary note-link-btn'>" + lang.sDrafts.save + '</button>';
                     self.$dialog = ui.dialog({
                         className: 'sDraftsSave-dialog',
                         title: lang.sDrafts.save,
@@ -389,14 +393,14 @@
                     self.alertSuccess(lang.sDrafts.saved + ': ' + (name || isoDate));
                 };
                 self.alertSuccess = function (text) {
-                    var alterId = "note-alert-" + new Date().getTime();
+                    var alterId = 'note-alert-' + new Date().getTime();
                     $editor.find('.note-status-output').html('<div class="alert alert-success" id="' + alterId + '">' + text + '</div>');
                     setTimeout(function () {
                         $editor.find('#' + alterId).remove();
                     }, 2500);
                 };
                 self.alertError = function (text) {
-                    var alterId = "note-alert-" + new Date().getTime();
+                    var alterId = 'note-alert-' + new Date().getTime();
                     $editor.find('.note-status-output').html('<div class="alert alert-danger" id="' + alterId + '">' + text + '</div>');
                     setTimeout(function () {
                         $editor.find('#' + alterId).remove();
@@ -434,7 +438,7 @@
                         body: "<div></div>",
                         footer: "<div></div>"
                     }).render().appendTo($container);
-                    self.$dialog.on("click", '.note-draft', function (e) {
+                    self.$dialog.on('click', '.note-draft', function (e) {
                         e.preventDefault();
                         var data, div, key;
                         e.preventDefault;
@@ -450,7 +454,7 @@
                         }
                         ui.hideDialog(self.$dialog);
                     });
-                    self.$dialog.on("click", 'a.delete-draft', function (e) {
+                    self.$dialog.on('click', 'a.delete-draft', function (e) {
                         e.preventDefault();
                         var data, key, $draftLi;
                         if (confirm(lang.sDrafts.youSure)) {
@@ -468,7 +472,7 @@
                             }
                         }
                     });
-                    self.$dialog.on("click", 'button.deleteAll', function (e) {
+                    self.$dialog.on('click', 'button.deleteAll', function (e) {
                         var $selfButton, key;
                         $selfButton = $(this);
                         if (confirm(lang.sDrafts.youSure)) {
@@ -477,7 +481,7 @@
                             }
                             self.drafts = {};
                             return self.$dialog.find('ul.list-group').hide('slow', function () {
-                                $(this).replaceWith("<h4>" + lang.sDrafts.nosavedDrafts + "</h4>");
+                                $(this).replaceWith('<h4>' + lang.sDrafts.nosavedDrafts + '</h4>');
                                 $selfButton.hide('slow');
                             });
                         }
@@ -499,24 +503,24 @@
                     for (key in self.drafts) {
                         var draft = self.drafts[key];
                         var fDate = options.sDrafts.dateFormat && typeof options.sDrafts.dateFormat === 'function' ? options.sDrafts.dateFormat(draft.sDate) : draft.sDate;
-                        htmlList += "<li class='list-group-item'><a class='note-draft' data-draft='" + key + "'>" + draft.name + " - <small>" + fDate + "</small></a>" +
-                            "<a class='label label-danger pull-right delete-draft' data-draft='" + key + "'>" + lang.sDrafts.deleteDraft + "</a></li>";
+                        htmlList += "<li class='list-group-item'><a class='note-draft' data-draft='" + key + "'>" + draft.name + ' - <small>' + fDate + "</small></a>" +
+                            "<a class='label label-danger pull-right delete-draft' data-draft='" + key + "'>" + lang.sDrafts.deleteDraft + '</a></li>';
                     }
-                    var body = htmlList ? "<h4>" + lang.sDrafts.select + "</h4><ul class='list-group'>" + htmlList + "</ul>" : "<h4>" + lang.sDrafts.nosavedDrafts + "</h4>";
-                    var footer = htmlList ? "<button class='btn btn-primary deleteAll'>" + lang.sDrafts.deleteAll + "</button>" : "";
+                    var body = htmlList ? "<h4>" + lang.sDrafts.select + "</h4><ul class='list-group'>" + htmlList + "</ul>" : "<h4>" + lang.sDrafts.nosavedDrafts + '</h4>';
+                    var footer = htmlList ? "<button class='btn btn-primary deleteAll'>" + lang.sDrafts.deleteAll + "</button>" : '';
                     self.$dialog.find('.modal-body').html(body);
                     self.$dialog.find('.modal-footer').html(footer);
                     ui.showDialog(self.$dialog);
                 };
                 self.alertSuccess = function (text) {
-                    var alterId = "note-alert-" + new Date().getTime();
+                    var alterId = 'note-alert-' + new Date().getTime();
                     $editor.find('.note-status-output').html('<div class="alert alert-success" id="' + alterId + '">' + text + '</div>');
                     setTimeout(function () {
                         $editor.find('#' + alterId).remove();
                     }, 2500);
                 };
                 self.alertError = function (text) {
-                    var alterId = "note-alert-" + new Date().getTime();
+                    var alterId = 'note-alert-' + new Date().getTime();
                     $editor.find('.note-status-output').html('<div class="alert alert-danger" id="' + alterId + '">' + text + '</div>');
                     setTimeout(function () {
                         $editor.find('#' + alterId).remove();
@@ -549,7 +553,7 @@
                         //     width: 800,
                         //     height: 800,
                         // });
-                        alert("需要自己实现");
+                        alert('需要自己实现');
                     });
                 }
             }
@@ -602,7 +606,7 @@
             imageSetToCover: {
                 icon: '',
                 setImageToCoverCall: function ($img, context) {
-                    alert("需要自己实现");
+                    alert('需要自己实现');
                 }
             }
         });
@@ -668,22 +672,22 @@
                         click: function (e) {
                             e.preventDefault();
                             var detail = context.invoke('code');
-                            context.invoke('code', detail + "<br>Next Line");
-                            self.alertSuccess("Next Line Ready");
+                            context.invoke('code', detail + '<br>Next Line');
+                            self.alertSuccess('Next Line Ready');
                             options.newLineAdd.afterNewLineAddCall.call(self, context);
                         }
                     });
                     return button.render();
                 });
                 self.alertSuccess = function (text) {
-                    var alterId = "note-alert-" + new Date().getTime();
+                    var alterId = 'note-alert-' + new Date().getTime();
                     $editor.find('.note-status-output').html('<div class="alert alert-success" id="' + alterId + '">' + text + '</div>');
                     setTimeout(function () {
                         $editor.find('#' + alterId).remove();
                     }, 2500);
                 };
                 self.alertError = function (text) {
-                    var alterId = "note-alert-" + new Date().getTime();
+                    var alterId = 'note-alert-' + new Date().getTime();
                     $editor.find('.note-status-output').html('<div class="alert alert-danger" id="' + alterId + '">' + text + '</div>');
                     setTimeout(function () {
                         $editor.find('#' + alterId).remove();
@@ -712,9 +716,9 @@
                 icon: '',
                 uploadImageFromURLCall: function ($img, context) {
                     return $.Deferred(function (dfd) {
-                        // var newImageURL = "";
+                        // var newImageURL = '';
                         // dfd.resolve(newImageURL);
-                        alert("需要自己实现");
+                        alert('需要自己实现');
                     });
                 }
             }
@@ -736,22 +740,22 @@
                             e.preventDefault();
                             var $img = $($editable.data('target'));
                             options.imageUploadFromURL.uploadImageFromURLCall.call(self, $img, context).done(function (newImageURL) {
-                                $img.attr("src", newImageURL);
-                                self.alertSuccess("升级成功~");
+                                $img.attr('src', newImageURL);
+                                self.alertSuccess('升级成功~');
                             });
                         }
                     });
                     return button.render();
                 });
                 self.alertSuccess = function (text) {
-                    var alterId = "note-alert-" + new Date().getTime();
+                    var alterId = 'note-alert-' + new Date().getTime();
                     $editor.find('.note-status-output').html('<div class="alert alert-success" id="' + alterId + '">' + text + '</div>');
                     setTimeout(function () {
                         $editor.find('#' + alterId).remove();
                     }, 2500);
                 };
                 self.alertError = function (text) {
-                    var alterId = "note-alert-" + new Date().getTime();
+                    var alterId = 'note-alert-' + new Date().getTime();
                     $editor.find('.note-status-output').html('<div class="alert alert-danger" id="' + alterId + '">' + text + '</div>');
                     setTimeout(function () {
                         $editor.find('#' + alterId).remove();
@@ -798,21 +802,21 @@
                     return $.Deferred(function (dfd) {
                         // var albums = [];
                         // dfd.resolve(albums);
-                        alert("需要自己实现");
+                        alert('需要自己实现');
                     });
                 },
                 loadAlbumCall: function (album_id, context) {
                     return $.Deferred(function (dfd) {
                         // var album = [];
                         // dfd.resolve(album);
-                        alert("需要自己实现");
+                        alert('需要自己实现');
                     });
                 },
                 buildCloudPhotosInsertHtmlCall: function (album, className, size, context) {
                     return $.Deferred(function (dfd) {
-                        // var photosHtml = "";
+                        // var photosHtml = '';
                         // dfd.resolve(photosHtml);
-                        alert("需要自己实现");
+                        alert('需要自己实现');
                     });
                 },
             }
@@ -835,12 +839,12 @@
                                 var album_select_options_html = '';
                                 if (albums == null || albums.length == 0) {
                                     album_select_options_html = '<option value="0">无相册</option>';
-                                    self.$dialog.find('.note-btn-cloud-photos-insert-submit').attr("disabled", "disabled");
+                                    self.$dialog.find('.note-btn-cloud-photos-insert-submit').attr('disabled', 'disabled');
                                 } else {
                                     $.each(albums, function (index, album) {
                                         album_select_options_html += '<option value="' + album.album_id + '">' + album.name + '</option>';
                                     });
-                                    self.$dialog.find('.note-btn-cloud-photos-insert-submit').removeAttr("disabled");
+                                    self.$dialog.find('.note-btn-cloud-photos-insert-submit').removeAttr('disabled');
                                 }
                                 self.$dialog.find('.note-cloud-photos-insert-album').html(album_select_options_html);
                                 context.invoke('cloudPhotosInsert.show');
@@ -858,17 +862,17 @@
                         var shapeClassName = lang.cloudPhotosInsert.dialogShapeOptions[i];
                         shape += '<option value="' + shapeClassValue + '">' + shapeClassName + '</option>';
                     }
-                    body = '<div class="form-group note-group-cloud-photos-insert-album">'+
-                        '<label class="note-form-label">' + lang.cloudPhotosInsert.dialogAlbumLabel + '</label>'+
-                        '<select class="form-control note-form-control note-cloud-photos-insert-album"></select>'+
-                        '</div>'+
-                        '<div class="form-group note-group-cloud-photos-insert-class">'+
-                        '<label class="note-form-label">' + lang.cloudPhotosInsert.dialogClassLabel + '</label>'+
-                        '<select class="form-control note-form-control note-cloud-photos-insert-class">' + shape + '</select>'+
-                        '</div>'+
-                        '<div class="form-group note-group-cloud-photos-insert-size">'+
-                        '<label class="note-form-label">' + lang.cloudPhotosInsert.dialogSizeLabel + '</label>'+
-                        '<input class="form-control note-form-control note-cloud-photos-insert-size" type="text">'+
+                    body = '<div class="form-group note-group-cloud-photos-insert-album">' +
+                        '<label class="note-form-label">' + lang.cloudPhotosInsert.dialogAlbumLabel + '</label>' +
+                        '<select class="form-control note-form-control note-cloud-photos-insert-album"></select>' +
+                        '</div>' +
+                        '<div class="form-group note-group-cloud-photos-insert-class">' +
+                        '<label class="note-form-label">' + lang.cloudPhotosInsert.dialogClassLabel + '</label>' +
+                        '<select class="form-control note-form-control note-cloud-photos-insert-class">' + shape + '</select>' +
+                        '</div>' +
+                        '<div class="form-group note-group-cloud-photos-insert-size">' +
+                        '<label class="note-form-label">' + lang.cloudPhotosInsert.dialogSizeLabel + '</label>' +
+                        '<input class="form-control note-form-control note-cloud-photos-insert-size" type="text">' +
                         '</div>';
                     footer = '<button class="btn btn-default note-btn note-btn-default note-btn-cloud-photos-insert-cancel" data-dismiss="modal">' + lang.cloudPhotosInsert.dialogCancel + '</button>' +
                         '<button class="btn btn-primary note-btn note-btn-primary note-btn-cloud-photos-insert-submit">' + lang.cloudPhotosInsert.dialogSubmit + '</button>';
@@ -882,14 +886,14 @@
                     self.bindEvent();
                 };
                 self.alertSuccess = function (text) {
-                    var alterId = "note-alert-" + new Date().getTime();
+                    var alterId = 'note-alert-' + new Date().getTime();
                     $editor.find('.note-status-output').html('<div class="alert alert-success" id="' + alterId + '">' + text + '</div>');
                     setTimeout(function () {
                         $editor.find('#' + alterId).remove();
                     }, 2500);
                 };
                 self.alertError = function (text) {
-                    var alterId = "note-alert-" + new Date().getTime();
+                    var alterId = 'note-alert-' + new Date().getTime();
                     $editor.find('.note-status-output').html('<div class="alert alert-danger" id="' + alterId + '">' + text + '</div>');
                     setTimeout(function () {
                         $editor.find('#' + alterId).remove();
@@ -907,7 +911,7 @@
                     ui.showDialog(self.$dialog);
                 };
                 self.bindEvent = function () {
-                    self.$dialog.find('.note-btn-cloud-photos-insert-submit').on("click", function () {
+                    self.$dialog.find('.note-btn-cloud-photos-insert-submit').on('click', function () {
                         var album_id = self.$dialog.find('.note-cloud-photos-insert-album').val();
                         var className = self.$dialog.find('.note-cloud-photos-insert-class').val();
                         var size = self.$dialog.find('.note-cloud-photos-insert-size').val() || 0;
@@ -915,9 +919,9 @@
                     });
                 };
                 self.saveCloudPhotosInsert = function (album_id, className, size) {
-                    if (album_id && album_id != "0") {
+                    if (album_id && album_id != '0') {
                         if (!/^[0-9]+$/.test(size)) {
-                            self.alertError("数量请输入整数");
+                            self.alertError('数量请输入整数');
                         } else {
                             size = parseInt(size);
                             if (size == 0) {
@@ -931,13 +935,13 @@
                                     size = album.size;
                                 }
                                 options.cloudPhotosInsert.buildCloudPhotosInsertHtmlCall.call(self, album, className, size).done(function (photosHtml) {
-                                    var div = document.createElement("div");
+                                    var div = document.createElement('div');
                                     div.className = "album_photos";
                                     div.innerHTML = photosHtml;
                                     context.invoke('restoreRange');
                                     context.invoke('insertNode', div);
                                     ui.hideDialog(self.$dialog);
-                                    self.alertSuccess("共插入" + (size == -1 ? album.size : size) + "张图片", "插入成功");
+                                    self.alertSuccess('共插入' + (size == -1 ? album.size : size) + '张图片', '插入成功');
                                 });
                             });
                         }
@@ -1064,7 +1068,7 @@
                 icon: '',
                 getImageSizeCall: function ($img, context) {
                     return $.Deferred(function (dfd) {
-                        if ($img.attr('data-inside-image') == "true") {
+                        if ($img.attr('data-inside-image') == 'true') {
                             var raw = {};
                             if ($img.width() < 1800) {
                                 raw.width = $img.attr('data-raw-width');
@@ -1072,7 +1076,7 @@
                             } else {
                                 raw.width = 1800;
                                 raw.height = 1800;
-                                toastr.info("图片过大，所以宽度调整为1800px");
+                                toastr.info('图片过大，所以宽度调整为1800px');
                             }
                             dfd.resolve(raw);
                         } else {
@@ -1085,7 +1089,7 @@
                 icon: '',
                 setImageToCoverCall: function ($img, context) {
                     $img.attr('data-cover', 'true');
-                    pointer.summaryEditor.summernote('code', $img.prop("outerHTML"));
+                    pointer.summaryEditor.summernote('code', $img.prop('outerHTML'));
                 }
             },
             imageUploadFromURL: {
@@ -1093,10 +1097,10 @@
                 uploadImageFromURLCall: function ($img, context) {
                     return $.Deferred(function (dfd) {
                         var originalImageUrl = $img.attr('src');
-                        var isInsideImg = $img.attr('data-inside-image') == "true" ? true : false;
+                        var isInsideImg = $img.attr('data-inside-image') == 'true' ? true : false;
                         if (isInsideImg) {
-                            toastr.success("已经是本站服务器图片了，无须再下载！");
-                            dfd.reject("已经是本站服务器图片了，无须再下载！");
+                            toastr.success('已经是本站服务器图片了，无须再下载！');
+                            dfd.reject('已经是本站服务器图片了，无须再下载！');
                             return;
                         }
                         uploadImageFromURL(originalImageUrl, function (data) {
@@ -1104,15 +1108,15 @@
                             var imgLoadUrl = data.image_cdn_url;
                             $img.attr('data-relative-path', data.image_url);
                             $img.attr('data-filename', data.image_url.match(/^.*\/([^/]+)$/)[1]);
-                            $img.attr('data-raw-width', "" + data.width);
-                            $img.attr('data-raw-height', "" + data.height);
+                            $img.attr('data-raw-width', '' + data.width);
+                            $img.attr('data-raw-height', '' + data.height);
                             // 添加不是网络引用图片标记
-                            $img.attr('data-inside-image', "true");
+                            $img.attr('data-inside-image', 'true');
                             dfd.resolve(imgLoadUrl);
                             setTimeout(function () {
-                                if (!window.confirm("点确认完成修改，点取消还原为网络图片")) {
+                                if (!window.confirm('点确认完成修改，点取消还原为网络图片')) {
                                     deleteImage(imgLoadUrl, true, false);
-                                    $img.removeAttr("data-inside-image");
+                                    $img.removeAttr('data-inside-image');
                                     $img.attr('src', originalImageUrl);
                                 }
                             }, 2000);
@@ -1126,12 +1130,12 @@
                 dialogClassName: "note-cloud-photos-insert-dialog",
                 loadAlbumsCall: function (context) {
                     return $.Deferred(function (dfd) {
-                        $.get("photo.api?method=getAlbumList", {"user.uid": login_handle.getCurrentUserId()}, function (response) {
+                        $.get(globals.api.getAlbumList, {"user.uid": login_handle.getCurrentUserId()}, function (response) {
                             if (response.status == 200) {
                                 dfd.resolve(response.data.albums);
                             } else {
-                                toastr.error(response.message, "加载相册列表错误");
-                                console.warn("Error Code: " + response.status);
+                                toastr.error(response.message, '加载相册列表错误');
+                                console.warn('Error Code: ' + response.status);
                                 dfd.reject(response.message);
                             }
                         });
@@ -1139,13 +1143,13 @@
                 },
                 loadAlbumCall: function (album_id, context) {
                     return $.Deferred(function (dfd) {
-                        $.get("photo.api?method=getAlbum", {"id": album_id, "mount": true, "photos": true}, function (response) {
+                        $.get(globals.api.getAlbum, {"id": album_id, "mount": true, "photos": true}, function (response) {
                             if (response.status == 200) {
                                 response.data.album.cdn_path_prefix = response.data.cdn_path_prefix;
                                 dfd.resolve(response.data.album);
                             } else {
-                                toastr.error(response.message, "加载相册错误");
-                                console.warn("Error Code: " + response.status);
+                                toastr.error(response.message, '加载相册错误');
+                                console.warn('Error Code: ' + response.status);
                                 dfd.reject(response.message);
                             }
                         });
@@ -1257,11 +1261,11 @@
                 },
                 onMediaDelete: function ($target, $editable) {
                     // 删除图片
-                    if ($target.prop("tagName") == "IMG") {
+                    if ($target.prop('tagName') == 'IMG') {
                         var $img = $target;
-                        var imgUrl = $img.attr("src");
-                        var isInsideImg = $img.attr('data-inside-image') == "true" ? true : false;
-                        var isCloudImg = $img.attr('data-cloud-image') == "true" ? true : false;
+                        var imgUrl = $img.attr('src');
+                        var isInsideImg = $img.attr('data-inside-image') == 'true' ? true : false;
+                        var isCloudImg = $img.attr('data-cloud-image') == 'true' ? true : false;
                         deleteImage(imgUrl, isInsideImg, isCloudImg);
                     }
                 },
@@ -1293,7 +1297,7 @@
 
     // 批量上次图片
     function uploadImages(files) {
-        var uploadNotifyElement = common_utils.notify({
+        var uploadNotifyElement = globals.notify({
             "progressBar": false,
             "hideDuration": 0,
             "showDuration": 0,
@@ -1301,7 +1305,7 @@
             "closeButton": false,
             "iconClass": "toast-success-no-icon",
             "hideOnHover": false
-        }).success("正在上传第 1 张~", "", "notify_post_image_uploading");
+        }).success('正在上传第 1 张~', '', 'notify_post_image_uploading');
         var taskQueue = new common_utils.TaskQueue(function (task) {
             var dfd = $.Deferred();
             var file = task.file;
@@ -1313,18 +1317,18 @@
             }
             // 检查大小
             if (config.maxUploadSize != -1 && file.size > config.maxUploadSize) {
-                var overSizeError = fileName + " 换个小的，最大" + (config.maxUploadSize / (1024 * 1024)) + "M";
-                toastr.error(overSizeError, "别丢个这么大的图片给我a", {timeOut: 0,progressBar: false});
+                var overSizeError = fileName + ' 换个小的，最大' + (config.maxUploadSize / (1024 * 1024)) + 'M';
+                toastr.error(overSizeError, '别丢个这么大的图片给我a', {timeOut: 0, progressBar: false});
                 dfd.reject(overSizeError);
                 return;
             }
             var formData = new FormData();
-            formData.append("file", file);
-            formData.append("fileName", fileName);
-            formData.append("isImage", "true");
-            uploadNotifyElement.find(".toast-message").text("正在上传第 " + (task.index + 1) + " 张~");
+            formData.append('file', file);
+            formData.append('fileName', fileName);
+            formData.append('isImage', 'true');
+            uploadNotifyElement.find('.toast-message').text('正在上传第 ' + (task.index + 1) + ' 张~');
             $.ajax({
-                url: "article.api?method=uploadAttachment",
+                url: globals.api.uploadAttachment,
                 data: formData,
                 type: "POST",
                 contentType: false,
@@ -1336,34 +1340,34 @@
                         var imgLoadUrl = data.image_cdn_url;
                         // 插入节点
                         pointer.mainEditor.summernote('editor.insertImage', imgLoadUrl, function ($img) {
-                            $img.css('width', "100%");
+                            $img.css('width', '100%');
                             $img.attr('data-filename', data.image_url.match(/^.*\/([^/]+)$/)[1]);
                             $img.attr('data-relative-path', data.image_url);
                             // 设置后台计算的图片实际尺寸
                             // 用于用户可能还原要图片上传前的尺寸
-                            $img.attr('data-raw-width', "" + data.width);
-                            $img.attr('data-raw-height', "" + data.height);
+                            $img.attr('data-raw-width', '' + data.width);
+                            $img.attr('data-raw-height', '' + data.height);
                             // 添加不是网络引用图片标记
-                            $img.attr('data-inside-image', "true");
+                            $img.attr('data-inside-image', 'true');
                             // 继续上传下一张
                             // 写这个回调方法里面会在图片加载完再执行
                             dfd.resolve();
                         });
                     } else {
                         dfd.reject(response.message);
-                        toastr.error(response.message, "错误", {"progressBar": false});
-                        console.warn("Error Code: " + response.status);
+                        toastr.error(response.message, '错误', {"progressBar": false});
+                        console.warn('Error Code: ' + response.status);
                     }
                     if (response.status != 200 || task.isLastOne) {
-                        common_utils.removeNotify("notify_post_image_uploading");
-                        toastr.success("上传服务器完毕, 正在加载", "提示", {"progressBar": true});
+                        globals.removeNotify('notify_post_image_uploading');
+                        toastr.success('上传服务器完毕, 正在加载', '提示', {"progressBar": true});
                     }
                 },
                 error: function (XHR, TS) {
-                    common_utils.removeNotify("notify_post_image_uploading");
+                    globals.removeNotify('notify_post_image_uploading');
                     dfd.reject(TS);
-                    toastr.error(TS, "错误", {"progressBar": false});
-                    console.warn("Error Code: " + TS);
+                    toastr.error(TS, '错误', {"progressBar": false});
+                    console.warn('Error Code: ' + TS);
                 }
             });
             return dfd;
@@ -1379,11 +1383,11 @@
 
     // 互联网图片本地化
     function uploadImageFromURL(internetUrl, call) {
-        if (internetUrl.substr(0, 1) == "/") {
-            internetUrl = window.location.protocol + "//" + window.location.host + internetUrl;
+        if (internetUrl.substr(0, 1) == '/') {
+            internetUrl = window.location.protocol + '//' + window.location.host + internetUrl;
         }
-        var ext = (internetUrl.lastIndexOf(".") == -1 ? ".jpg" : internetUrl.substr(internetUrl.lastIndexOf(".")));
-        var notify_downloading = toastr.info("服务器正在下载图片", "提示", {
+        var ext = (internetUrl.lastIndexOf('.') == -1 ? '.jpg' : internetUrl.substr(internetUrl.lastIndexOf('.')));
+        var notify_downloading = toastr.info('服务器正在下载图片', '提示', {
             "progressBar": false,
             "hideDuration": 0,
             "showDuration": 0,
@@ -1393,23 +1397,23 @@
         $.ajax({
             data: {"fileName": "download" + ext, "url": internetUrl},
             type: "POST",
-            url: "article.api?method=uploadImageFromURL",
+            url: globals.api.uploadImageFromURL,
             dataType: "json",
             success: function (response) {
                 toastr.remove(notify_downloading, true);
                 if (response.status == 200) {
                     var data = response.data;
-                    toastr.success("服务器下载成功,正在加载", "提示", {"progressBar": true});
+                    toastr.success('服务器下载成功,正在加载', '提示', {"progressBar": true});
                     call(data);
                 } else {
-                    toastr.error(response.message, "下载失败");
-                    console.warn("uploadImageFromURL Error Code: " + response.status);
+                    toastr.error(response.message, '下载失败');
+                    console.warn('uploadImageFromURL Error Code: ' + response.status);
                 }
             },
             error: function () {
                 toastr.remove(notify_downloading, true);
-                toastr.error("uploadImageFromURL 服务器错误");
-                console.warn("uploadImageFromURL 服务器错误");
+                toastr.error('uploadImageFromURL 服务器错误');
+                console.warn('uploadImageFromURL 服务器错误');
             }
         });
     }
@@ -1425,31 +1429,31 @@
         if (isInsideImg) {
             // 如果是引用的相册图片 直接返回
             if (isCloudImg) {
-                toastr.success("相册引用图片删除成功！");
-                toastr.success("如需完全删除，请至相册！");
+                toastr.success('相册引用图片删除成功！');
+                toastr.success('如需完全删除，请至相册！');
                 return;
             }
             $.ajax({
-                url: "article.api?method=deleteAttachment",
+                url: globals.api.deleteAttachment,
                 data: {"file_url": imgUrl, "isImage": true},
                 type: "POST",
                 dataType: 'json',
                 success: function (response) {
                     if (response.status == 200) {
-                        toastr.success("图片服务器删除成功！");
+                        toastr.success('图片服务器删除成功！');
                     } else if (response.status == 404) {
-                        toastr.success("网络引用图片删除成功！");
+                        toastr.success('网络引用图片删除成功！');
                     } else {
-                        toastr.error(response.message, "删除失败！");
-                        console.warn("Error Code: " + response.status);
+                        toastr.error(response.message, '删除失败！');
+                        console.warn('Error Code: ' + response.status);
                     }
                 },
                 error: function () {
-                    toastr.error("图片服务器删除失败！ :)");
+                    toastr.error('图片服务器删除失败！ :)');
                 }
             });
         } else {
-            toastr.success("网络引用图片删除成功！");
+            toastr.success('网络引用图片删除成功！');
         }
     }
 

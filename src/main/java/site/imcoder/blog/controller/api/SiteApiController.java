@@ -33,14 +33,18 @@ public class SiteApiController extends BaseController {
     @ResponseBody
     public String getConfigUpgrade() {
         String clientConfigStr = Config.get(ConfigConstants.SITE_CLIENT_CONFIG);
-        int flag = 200;
+        int status;
+        String message;
         if (Utils.isBlank(clientConfigStr)) {
-            flag = 404;
+            status = 404;
+            message = "没有配置";
             clientConfigStr = "null";
         } else {
+            status = 200;
+            message = "成功";
             clientConfigStr = clientConfigStr.replace('\'', '"').replaceFirst("^\"", "").replaceFirst("\"$", "");
         }
-        return String.format("{\"status\": %d, \"data\": {\"config\": %s}}", flag, clientConfigStr);
+        return String.format("{\"status\": %d, \"message\": \"%s\", \"data\": {\"config\": %s}}", status, message, clientConfigStr);
     }
 
 }

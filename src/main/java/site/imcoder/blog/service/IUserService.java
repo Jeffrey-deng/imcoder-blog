@@ -97,7 +97,7 @@ public interface IUserService {
      * @return IResponse:
      * type - 1：已关注，0：未关注
      */
-    public IResponse checkFollow(User hostUser, IRequest iRequest);
+    public IResponse checkIsFollowing(User hostUser, IRequest iRequest);
 
     /**
      * 关注  相互关注则成为好友
@@ -119,7 +119,7 @@ public interface IUserService {
      * status - 200：取消关注成功，401：需要登录，404：无此记录，500: 失败
      * type - 1: 取消关注成功, 2: 取消关注成功并取消好友
      */
-    public IResponse removeFollow(User hostUser, IRequest iRequest);
+    public IResponse unfollow(User hostUser, IRequest iRequest);
 
     /**
      * 查询关注列表
@@ -158,7 +158,7 @@ public interface IUserService {
      * @return IResponse:
      * type - 1：已收藏，0：未收藏
      */
-    public IResponse checkCollection(Article article, IRequest iRequest);
+    public IResponse checkArticleIsCollected(Article article, IRequest iRequest);
 
     /**
      * 收藏文章
@@ -178,7 +178,7 @@ public interface IUserService {
      * @return IResponse:
      * collections - 收藏文章列表
      */
-    public IResponse findCollectList(IRequest iRequest);
+    public IResponse findCollectedArticleList(IRequest iRequest);
 
     /**
      * 取消收藏文章
@@ -187,8 +187,9 @@ public interface IUserService {
      * @param iRequest
      * @return IResponse:
      * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * type - 0: 并没有收藏过该文章, 1: 取消收藏成功
      */
-    public IResponse removeArticleCollection(Article article, IRequest iRequest);
+    public IResponse uncollectArticle(Article article, IRequest iRequest);
 
     /**
      * 更新头像
@@ -239,6 +240,18 @@ public interface IUserService {
      * photo_action_record_count
      */
     public IResponse findUserPhotoActionRecordList(ActionRecord<Photo> queryActionRecord, IRequest iRequest);
+
+    /**
+     * 查询用户对相册的动作记录
+     *
+     * @param queryActionRecord
+     * @param iRequest
+     * @return IResponse:
+     * status - 200：取消成功，401：需要登录，404：无此记录，500: 失败
+     * albumActionRecords
+     * album_action_record_count
+     */
+    public IResponse findUserAlbumActionRecordList(ActionRecord<Album> queryActionRecord, IRequest iRequest);
 
     /**
      * 查询用户对评论的动作记录

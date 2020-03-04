@@ -202,7 +202,7 @@ public abstract class BaseController implements GlobalConstants {
         return request.getQueryString() != null ? request.getQueryString() : "";
     }
 
-    //注册类型转换，每次请求来都会执行，不是启动执行一次！！！
+    // 注册类型转换，每次请求来都会执行，不是启动执行一次！！！
     @InitBinder
     protected void initBinder(WebDataBinder binder) {
         //  binder.registerCustomEditor(Date.class, new CustomDateEditor(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"), true));

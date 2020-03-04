@@ -2,11 +2,11 @@
  * requireJs配置
  */
 (function () {
-    var require_node = document.getElementById("require_node");
-    var url_prefix = require_node.getAttribute("baseUrl") || "https://static.imcoder.site/blog/";
-    var urlArgs = require_node.getAttribute("urlArgs") || null;
-    if (urlArgs && urlArgs != "?") {
-        urlArgs = urlArgs.replace(/^\?/, "");
+    var require_node = document.getElementById('require_node');
+    var url_prefix = require_node.getAttribute('baseUrl') || 'http://localhost:8080/blog/static/';
+    var urlArgs = require_node.getAttribute('urlArgs') || null;
+    if (urlArgs && urlArgs != '?') {
+        urlArgs = urlArgs.replace(/^\?/, '');
     } else {
         urlArgs = false;
     }
@@ -38,6 +38,7 @@
             // "mag": ["lib/magnificent/js/mag.min"],
             // "mag-jquery": ["lib/magnificent/js/mag-jquery.min"],
 
+            "globals": ["js/globals"],
             "album_photo_handle": ["js/album/module/album_photo_handle"],
             "album_photo_page_handle": ["js/album/module/album_photo_page_handle"],
             "album_page_handle": ["js/album/module/album_page_handle"],
@@ -104,125 +105,122 @@
 
     require(["jquery", "toastr"], function ($, toastr) {
         try {
-            var page = document.getElementById("require_node").getAttribute("page");
-            var require_modules_node = document.getElementById("require_modules");
+            var page = document.getElementById('require_node').getAttribute('page');
+            var require_modules_node = document.getElementById('require_modules');
             if (require_modules_node && require_modules_node.innerHTML) {
                 var require_modules_str = require_modules_node.innerHTML;
                 var require_modules = null;
                 try {
                     require_modules = JSON.parse(require_modules_str);
                 } catch (e) {
-                    console.warn("warn: require_modules配置填写错误，应该使用双引号！");
-                    require_modules_str = require_modules_str.replace(/\"/gm, "_*&^_").replace(/\'/gm, "\"").replace(/_\*\&\^_/gm, "\'");
+                    console.warn('warn: require_modules配置填写错误，应该使用双引号！');
+                    require_modules_str = require_modules_str.replace(/\"/gm, '_*&^_').replace(/\'/gm, "\"").replace(/_\*\&\^_/gm, "\'");
                     require_modules = JSON.parse(require_modules_str);
-                    console.log("require_modules：", require_modules);
+                    console.log('require_modules：', require_modules);
                 }
                 require(require_modules);
             } else {
                 switch (page) {
                     case "index":
-                        require(["jquery", "bootstrap", "domReady", "toastr", "stickUp", "common_utils", "login_handle", "toolbar", "index", "sideCol"]);
+                        require(["jquery", "bootstrap", "domReady", "toastr", "stickUp", "globals", "common_utils", "login_handle", "toolbar", "index", "sideCol"]);
                         break;
                     case "register":
-                        require(['jquery', 'bootstrap', 'toastr', 'jquery_steps', 'jquery_validate', 'jquery_validate_messages_zh', 'register']);
+                        require(["jquery", "bootstrap", "toastr", "jquery_steps", "jquery_validate", "jquery_validate_messages_zh", "globals", "register"]);
                         break;
                     case "user_home":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "sideCol", "contact_with", "user_home"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar", "sideCol", "contact_with", "user_home"]);
                         break;
                     case "user_center":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "birthday", "cityselect", "common_utils", "login_handle", "toolbar", "user_center"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "birthday", "cityselect", "globals", "common_utils", "login_handle", "toolbar", "user_center"]);
                         break;
                     case "user_history":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "user_history"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar", "user_history"]);
                         break;
                     case "contact":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "contacts"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar", "contacts"]);
                         break;
                     case "login":
-                        require(["jquery", "bootstrap", "toastr", "common_utils", "login_handle"]);
+                        require(["jquery", "bootstrap", "toastr", "globals", "common_utils", "login_handle"]);
                         break;
                     case "lockscreen":
-                        require(["jquery", "bootstrap", "toastr", "common_utils", "login_handle"]);
-                        break;
-                    case "register":
+                        require(["jquery", "bootstrap", "toastr", "globals", "common_utils", "login_handle"]);
                         break;
                     case "notices":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "notices"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar", "notices"]);
                         break;
                     case "site_board":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "magnificPopup", "common_utils", "login_handle", "toolbar", "comment_plugin", "article_detail", "sideCol", "contact_with"])
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "magnificPopup", "globals", "common_utils", "login_handle", "toolbar", "comment_plugin", "article_detail", "sideCol", "contact_with"])
                         break;
                     case "article_detail":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "magnificPopup", "common_utils", "login_handle", "toolbar", "comment_plugin", "article_detail", "sideCol", "contact_with"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "magnificPopup", "globals", "common_utils", "login_handle", "toolbar", "comment_plugin", "article_detail", "sideCol", "contact_with"]);
                         break;
                     case "article_edit":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "store2", "clipboard", "summernote", "niftymodals", "common_utils", "login_handle", "toolbar", "edit_tool_plugin", "edit_tool", "edit_handle", "article_edit"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "store2", "clipboard", "summernote", "niftymodals", "globals", "common_utils", "login_handle", "toolbar", "edit_tool_plugin", "edit_tool", "edit_handle", "article_edit"]);
                         break;
                     case "album_list":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "common_utils", "login_handle", "toolbar", "period_cache", "album_handle", "album_page_handle", "album_list"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "globals", "common_utils", "login_handle", "toolbar", "period_cache", "album_handle", "album_page_handle", "album_list"]);
                         break;
                     case "album_detail":
                         require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "clipboard",
-                            "magnificPopup", "common_utils", "login_handle", "toolbar", "blowup", "jszip", "period_cache", "album_photo_handle", "album_photo_page_handle", "album_photo_detail", "album_handle"]);
+                            "magnificPopup", "globals", "common_utils", "login_handle", "toolbar", "blowup", "jszip", "period_cache", "album_photo_handle", "album_photo_page_handle", "album_photo_detail", "album_handle"]);
                         break;
                     case "album_photo_dashboard":
                         require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "clipboard",
-                            "magnificPopup", "common_utils", "login_handle", "toolbar", "blowup", "jszip", "period_cache", "results_cache", "album_photo_handle", "album_photo_page_handle", "album_photo_dashboard"]);
+                            "magnificPopup", "globals", "common_utils", "login_handle", "toolbar", "blowup", "jszip", "period_cache", "results_cache", "album_photo_handle", "album_photo_page_handle", "album_photo_dashboard"]);
                         break;
                     case "album_dashboard":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "clipboard",
-                            "common_utils", "login_handle", "toolbar", "jszip", "period_cache", "album_handle", "album_page_handle", "album_dashboard"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "clipboard", "globals", "common_utils", "login_handle", "toolbar", "jszip", "period_cache", "album_handle", "album_page_handle", "album_dashboard"]);
                         break;
                     case "album_tags_square":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "common_utils", "login_handle", "toolbar", "album_page_handle", "album_tags_square"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "globals", "common_utils", "login_handle", "toolbar", "album_page_handle", "album_tags_square"]);
                         break;
                     case "video_list":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "common_utils", "login_handle", "toolbar", "period_cache", "video_handle", "video_list", "album_photo_page_handle", "album_video_plugin"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "macy", "globals", "common_utils", "login_handle", "toolbar", "period_cache", "video_handle", "video_list", "album_photo_page_handle", "album_video_plugin"]);
                         break;
                     case "main_manager":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "main_manage"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar", "main_manage"]);
                         break;
                     case "article_manager":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "article_manager"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar", "article_manager"]);
                         break;
                     case "user_manager":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "user_manager"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar", "user_manager"]);
                         break;
                     case "log_view":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "summernote", "common_utils", "login_handle", "toolbar", "log_view"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "summernote", "globals", "common_utils", "login_handle", "toolbar", "log_view"]);
                         break;
                     case "manager_article_modify":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "store2", "clipboard", "summernote", "niftymodals", "common_utils", "login_handle", "toolbar", "edit_tool_plugin", "edit_tool", "edit_handle", "article_modify"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "store2", "clipboard", "summernote", "niftymodals", "globals", "common_utils", "login_handle", "toolbar", "edit_tool_plugin", "edit_tool", "edit_handle", "article_modify"]);
                         break;
                     case "403":
-                        require(["jquery", "bootstrap", "domReady", "toastr", "common_utils", "login_handle"]);
+                        require(["jquery", "bootstrap", "domReady", "toastr", "globals", "common_utils", "login_handle"]);
                         break;
                     case "text_to_voice":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "text_to_voice"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar", "text_to_voice"]);
                         break;
                     case "article_archives":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "article_archives"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar", "article_archives"]);
                         break;
                     case "article_tags":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar"]);
                         break;
                     case "video_embed":
-                        require(["jquery", "toastr", "Plyr", "video_embed"]);
+                        require(["jquery", "Plyr", "toastr", "globals", "common_utils", "video_embed"]);
                         break;
                     case "photo_detail":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "clipboard", "common_utils", "login_handle", "toolbar", "blowup", "album_photo_handle", "photo_detail"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "clipboard", "globals", "common_utils", "login_handle", "toolbar", "blowup", "album_photo_handle", "photo_detail"]);
                         break;
                     case "video_detail":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "clipboard", "common_utils", "login_handle", "toolbar", "video_handle", "video_detail"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "clipboard", "globals", "common_utils", "login_handle", "toolbar", "video_handle", "video_detail"]);
                         break;
                     case "photo_tag_wrappers":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "common_utils", "login_handle", "toolbar", "period_cache", "photo_tag_wrappers"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar", "period_cache", "photo_tag_wrappers"]);
                         break;
                 }
             }
         } catch (e) {
             console.warn(e);
-            toastr.error("出现error，请刷新！");
+            toastr.error('出现error，请刷新！');
         }
     });
 })();

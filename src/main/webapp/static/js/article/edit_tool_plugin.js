@@ -205,7 +205,7 @@
                     title: $img.attr('title'),
                     alt: $img.attr('alt'),
                 };
-                this.showLinkDialog(imgInfo).then(function (imgInfo) {
+                this.showLinkDialog(imgInfo).done(function (imgInfo) {
                     ui.hideDialog(self.$dialog);
                     var $img = imgInfo.imgDom;
 
@@ -532,9 +532,9 @@
                     role: $img.attr('role'),
                     class: $img.attr('class'),
                     style: $img.attr('style'),
-                    imgLink: $($img).parent().is("a") ? $($img).parent() : null
+                    imgLink: $($img).parent().is('a') ? $($img).parent() : null
                 };
-                this.showImageAttributesDialog(imgInfo).then(function (imgInfo) {
+                this.showImageAttributesDialog(imgInfo).done(function (imgInfo) {
                     ui.hideDialog(self.$dialog);
                     var $img = imgInfo.imgDom;
                     if (options.imageAttributes.removeEmpty) {
@@ -556,7 +556,7 @@
                         $img.attr('style', imgInfo.style);
                         $img.attr('role', imgInfo.role);
                     }
-                    if ($img.parent().is("a")) $img.unwrap();
+                    if ($img.parent().is('a')) $img.unwrap();
                     if (imgInfo.linkHref) {
                         var linkBody = '<a';
                         if (imgInfo.linkClass) linkBody += ' class="' + imgInfo.linkClass + '"';
@@ -611,7 +611,7 @@
                                 if (callbacks.onImageUpload) {
                                     context.triggerEvent('image.upload', this.files);
                                 } else {
-                                    readFileAsDataURL(this.files[0]).then(function (dataURL) {
+                                    readFileAsDataURL(this.files[0]).done(function (dataURL) {
                                         $imageSrc.val(dataURL);
                                     }).fail(function () {
                                         context.triggerEvent('image.upload.error');
@@ -710,7 +710,7 @@
             var cleanText = function (txt, nlO) {
                 var out = txt;
                 if (!options.cleaner.keepClasses) {
-                    var sS = /(\n|\r| class=(")?Mso[a-zA-Z]+(")?)/g;
+                    var sS = /(\n|\r| class=(')?Mso[a-zA-Z]+(')?)/g;
                     out = txt.replace(sS, ' ');
                 }
                 var nL = /(\n)+/g;
@@ -726,7 +726,7 @@
                         out = out.replace(tS, '');
                     }
                     var allowedTags = options.cleaner.keepOnlyTags;
-                    if (typeof(allowedTags) == "undefined") allowedTags = [];
+                    if (typeof(allowedTags) == 'undefined') allowedTags = [];
                     if (allowedTags.length > 0) {
                         allowedTags = (((allowedTags || '') + '').toLowerCase().match(/<[a-z][a-z0-9]*>/g) || []).join('');
                         var tags = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi;
@@ -756,7 +756,7 @@
                             if ($('.note-status-output').length > 0) {
                                 $('.note-status-output').html('<div class="alert alert-success">' + lang.cleaner.not + '</div>');
                                 setTimeout(function () {
-                                    $('.note-status-output').html("");
+                                    $('.note-status-output').html('');
                                 }, 2000);
                             } else
                                 $editor.find('.note-editing-area').append('<div class="alert alert-success" style="' + options.cleaner.notStyle + '">' + lang.cleaner.not + '</div>');
@@ -769,10 +769,10 @@
                 'summernote.init': function () {
                     if ($('.note-status-output').length < 1) {
                         $('.note-statusbar').prepend('<output class="note-status-output"></output>');
-                        $("head").append('<style>.note-statusbar .note-status-output{display:block;padding-top:7px;width:100%;font-size:14px;line-height:1.42857143;height:25px;color:#000}.note-statusbar .pull-right{float:right!important}.note-statusbar .note-status-output .text-muted{color:#777}.note-statusbar .note-status-output .text-primary{color:#286090}.note-statusbar .note-status-output .text-success{color:#3c763d}.note-statusbar .note-status-output .text-info{color:#31708f}.note-statusbar .note-status-output .text-warning{color:#8a6d3b}.note-statusbar .note-status-output .text-danger{color:#a94442}.note-statusbar .alert{margin:-7px 0 0 0;padding:2px 10px;border:1px solid transparent;border-radius:0}.note-statusbar .alert .note-icon{margin-right:5px}.note-statusbar .alert-success{color:#3c763d!important;background-color: #dff0d8 !important;border-color:#d6e9c6}.note-statusbar .alert-info{color:#31708f;background-color:#d9edf7;border-color:#bce8f1}.note-statusbar .alert-warning{color:#8a6d3b;background-color:#fcf8e3;border-color:#faebcc}.note-statusbar .alert-danger{color:#a94442;background-color:#f2dede;border-color:#ebccd1}</style>');
+                        $('head').append('<style>.note-statusbar .note-status-output{display:block;padding-top:7px;width:100%;font-size:14px;line-height:1.42857143;height:25px;color:#000}.note-statusbar .pull-right{float:right!important}.note-statusbar .note-status-output .text-muted{color:#777}.note-statusbar .note-status-output .text-primary{color:#286090}.note-statusbar .note-status-output .text-success{color:#3c763d}.note-statusbar .note-status-output .text-info{color:#31708f}.note-statusbar .note-status-output .text-warning{color:#8a6d3b}.note-statusbar .note-status-output .text-danger{color:#a94442}.note-statusbar .alert{margin:-7px 0 0 0;padding:2px 10px;border:1px solid transparent;border-radius:0}.note-statusbar .alert .note-icon{margin-right:5px}.note-statusbar .alert-success{color:#3c763d!important;background-color: #dff0d8 !important;border-color:#d6e9c6}.note-statusbar .alert-info{color:#31708f;background-color:#d9edf7;border-color:#bce8f1}.note-statusbar .alert-warning{color:#8a6d3b;background-color:#fcf8e3;border-color:#faebcc}.note-statusbar .alert-danger{color:#a94442;background-color:#f2dede;border-color:#ebccd1}</style>');
                     }
                     if (options.cleaner.limitChars != 0 || options.cleaner.limitDisplay != 'none') {
-                        var textLength = $(".note-editable").text().replace(/(<([^>]+)>)/ig, "").replace(/( )/, " ");
+                        var textLength = $('.note-editable').text().replace(/(<([^>]+)>)/ig, "").replace(/( )/, ' ');
                         var codeLength = $('.note-editable').html();
                         var lengthStatus = '';
                         if (textLength.length > options.cleaner.limitChars && options.cleaner.limitChars > 0)
@@ -787,7 +787,7 @@
                 },
                 'summernote.keydown': function (we, e) {
                     if (options.cleaner.limitChars != 0 || options.cleaner.limitDisplay != 'none') {
-                        var textLength = $(".note-editable").text().replace(/(<([^>]+)>)/ig, "").replace(/( )/, " ");
+                        var textLength = $('.note-editable').text().replace(/(<([^>]+)>)/ig, "").replace(/( )/, ' ');
                         var codeLength = $('.note-editable').html();
                         var lengthStatus = '';
                         if (options.cleaner.limitStop == true && textLength.length >= options.cleaner.limitChars) {
@@ -820,11 +820,11 @@
                     if (options.cleaner.action == 'both' || options.cleaner.action == 'paste') {
                         e.preventDefault();
                         var ua = window.navigator.userAgent;
-                        var msie = ua.indexOf("MSIE ");
+                        var msie = ua.indexOf('MSIE ');
                         msie = msie > 0 || !!navigator.userAgent.match(/Trident.*rv\:11\./);
                         var ffox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
                         if (msie)
-                            var text = window.clipboardData.getData("Text");
+                            var text = window.clipboardData.getData('Text');
                         else
                             var text = e.originalEvent.clipboardData.getData(options.cleaner.keepHtml ? 'Text' : 'text/plain');
                         if (text) {
@@ -969,7 +969,7 @@
                 $note = context.layoutInfo.note,
                 options = context.options,
                 lang = options.langInfo;
-            $("head").append('<style>' + options.paperSize.css + '</style>');
+            $('head').append('<style>' + options.paperSize.css + '</style>');
             context.memo('button.paperSize', function () {
                 var button = ui.buttonGroup([
                     ui.button({
@@ -1039,9 +1039,9 @@
      */
     function getUploadcare() {
         function ensureWidget(version) {
-            if (typeof uploadcare == 'undefined') $.getScript([
-                'https://ucarecdn.com/widget/', version, '/uploadcare/uploadcare.min.js'
-            ].join(''))
+            if (typeof uploadcare == 'undefined') {
+                $.getScript(['https://ucarecdn.com/widget/', version, '/uploadcare/uploadcare.min.js'].join(''));
+            }
         }
 
         function createButton(context, opts) {

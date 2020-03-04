@@ -1,6 +1,5 @@
 package site.imcoder.blog.cache;
 
-import org.apache.commons.collections.map.HashedMap;
 import org.apache.log4j.Logger;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Scope;
@@ -20,6 +19,9 @@ import javax.annotation.Resource;
 import java.util.*;
 import java.util.Collection;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * 自定义的缓存数据结构
@@ -131,10 +133,10 @@ public class Cache {
     public void initCache() {
         logger.info("Cache 执行 初始化 ");
 
-        hasUpdateArticle = new HashSet<Long>();
-        hasUpdateUser = new HashSet<Long>();
-        siteBuffer = new HashMap<String, Object>();
-        loginTokensMap = new HashMap<String, String>();
+        hasUpdateArticle = ConcurrentHashMap.newKeySet();
+        hasUpdateUser = ConcurrentHashMap.newKeySet();
+        siteBuffer = new ConcurrentHashMap<>();
+        loginTokensMap = new ConcurrentHashMap<>();
 
         categoryCount = initTool.initCategoryCount();
         followBuffer = initTool.initFollowBuffer();
@@ -145,7 +147,7 @@ public class Cache {
 
         tagCount = initTool.initTagCount(this);
 
-        userHoldCachePool = new HashedMap();
+        userHoldCachePool = new ConcurrentHashMap<>();
 
         siteBuffer.put("total_access_count", siteBuffer.get("article_access_count")); // 总访问量
         siteBuffer.put("today_date_mark", Utils.formatDate(new Date(), "yyyy-MM-dd")); // 标记同一日
@@ -208,12 +210,7 @@ public class Cache {
      * @return
      */
     public synchronized Map<String, Object> getUserHoldCache(User user) {
-        Map<String, Object> myselfCache = userHoldCachePool.get(user.getUid());
-        if (myselfCache == null) {
-            myselfCache = new HashedMap();
-            userHoldCachePool.put(user.getUid(), myselfCache);
-        }
-        return myselfCache;
+        return userHoldCachePool.computeIfAbsent(user.getUid(), key -> new ConcurrentHashMap<>());
     }
 
     /**
@@ -289,7 +286,7 @@ public class Cache {
                     userStatus = new UserStatus();
                     user.setUserStatus(userStatus);
                 }
-                userStats = Utils.copyBeanByJson(_userStats, UserStats.class);
+                userStats = Utils.copyBeanByJson(_userStats);
                 user.setUserStats(userStats);
                 if (security == false && userStatus.getLast_login_ip() == null) {
                     userStatus.setLast_login_ip(_userStatus.getLast_login_ip());
@@ -414,7 +411,7 @@ public class Cache {
                 User newUser = null;
                 try {
                     // PropertyUtils.copyProperties(newUser, fullUser); // 浅复制，不能复制list,array,map
-                    newUser = Utils.copyBeanByJson(fullUser, User.class);
+                    newUser = Utils.copyBeanByJson(fullUser);
                     newUser.setUserAuths(null);
                     newUser.setEmail(null);
                     newUser.setUserSetting(null);
@@ -441,7 +438,7 @@ public class Cache {
                 User newUser = null;
                 try {
                     // PropertyUtils.copyProperties(newUser, fullUser);
-                    newUser = Utils.copyBeanByJson(fullUser, User.class);
+                    newUser = Utils.copyBeanByJson(fullUser);
                     newUser.setUserAuths(null);
                     return newUser;
                 } catch (Exception e) {
@@ -576,8 +573,9 @@ public class Cache {
         return list;
     }
 
+    private ReadWriteLock staticClickRankListLock = new ReentrantReadWriteLock();
     private List<Article> staticClickRankList;
-    private long clickRankListLastViewTime = new Date().getTime();
+    private long clickRankListLastViewTime = System.currentTimeMillis();
     private int clickRankListLastViewSize = 0;
 
     /**
@@ -587,41 +585,44 @@ public class Cache {
      * @return List<Article>
      */
     public List<Article> getHotSortArticle(int size) {
+        staticClickRankListLock.readLock().lock();
         long time = System.currentTimeMillis();
-        synchronized (this) {
+        try {
             if (size == clickRankListLastViewSize && staticClickRankList != null) {
                 if (time - 60 * 1000 * 15 < clickRankListLastViewTime) {
                     return staticClickRankList;
                 }
             }
+        } finally {
+            staticClickRankListLock.readLock().unlock(); // 先释放读锁才能获得写锁
         }
-
-        int feed_flow_allow_show_lowest_level = Config.getInt(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL);
-        List<Article> hotSortArticle = new ArrayList<Article>();
-        for (Article article : articleBuffer.values()) {
-            // 只返回公开文章
-            if (article.getPermission() == PermissionType.PUBLIC.value &&
-                    isFeedFlowAllowShow(true, article.getAuthor(), null, false, false, feed_flow_allow_show_lowest_level)) {
-                hotSortArticle.add(article);
+        staticClickRankListLock.writeLock().lock();
+        try {
+            int feed_flow_allow_show_lowest_level = Config.getInt(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL);
+            List<Article> hotSortArticle = new ArrayList<>();
+            for (Article article : articleBuffer.values()) {
+                // 只返回公开文章
+                if (article.getPermission() == PermissionType.PUBLIC.value &&
+                        isFeedFlowAllowShow(true, article.getAuthor(), null, false, false, feed_flow_allow_show_lowest_level)) {
+                    hotSortArticle.add(article);
+                }
             }
-        }
-        Collections.sort(hotSortArticle, articleHotComparator);
-
-        // 防止 该user 文章数 小于 num
-        if (hotSortArticle.size() < size) {
-            size = hotSortArticle.size();
-        }
-        List<Article> clickRankList = new ArrayList<Article>(size);
-        for (int i = 0; i < size; i++) {
-            clickRankList.add(hotSortArticle.get(i));
-        }
-
-        synchronized (this) {
+            Collections.sort(hotSortArticle, articleHotComparator);
+            // 防止 该user 文章数 小于 num
+            if (hotSortArticle.size() < size) {
+                size = hotSortArticle.size();
+            }
+            List<Article> clickRankList = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                clickRankList.add(hotSortArticle.get(i));
+            }
             clickRankListLastViewTime = time;
             clickRankListLastViewSize = size;
             staticClickRankList = clickRankList;
+            return clickRankList;
+        } finally {
+            staticClickRankListLock.writeLock().unlock();
         }
-        return clickRankList;
     }
 
     /**
@@ -668,8 +669,9 @@ public class Cache {
         }
     }
 
+    private ReadWriteLock staticTimeRankListLock = new ReentrantReadWriteLock();
     private List<Article> staticTimeRankList;
-    private long timeRankListLastViewTime = new Date().getTime();
+    private long timeRankListLastViewTime = System.currentTimeMillis();
     private int timeRankListLastViewSize = 0;
 
     /**
@@ -679,45 +681,47 @@ public class Cache {
      * @return List<Article>
      */
     public List<Article> getTimeSortArticle(int size) {
+        staticTimeRankListLock.readLock().lock();
         if (size == 0) {
             size = Config.getInt(ConfigConstants.ARTICLE_HOME_SIZE_RANK);
         }
         long time = System.currentTimeMillis();
-        synchronized (this) {
+        try {
             if (size == timeRankListLastViewSize && staticTimeRankList != null) {
                 if (time - 60 * 1000 * 10 < timeRankListLastViewTime) {
                     return staticTimeRankList;
                 }
             }
+        } finally {
+            staticTimeRankListLock.readLock().unlock();
         }
-
-        int feed_flow_allow_show_lowest_level = Config.getInt(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL);
-        List<Article> timeSortArticle = new ArrayList<Article>();
-        for (Article article : articleBuffer.values()) {
-            //只返回公开文章
-            if (article.getPermission() == PermissionType.PUBLIC.value &&
-                    isFeedFlowAllowShow(true, article.getAuthor(), null, false, false, feed_flow_allow_show_lowest_level)) {
-                timeSortArticle.add(article);
+        staticClickRankListLock.writeLock().lock();
+        try {
+            int feed_flow_allow_show_lowest_level = Config.getInt(ConfigConstants.FEED_FLOW_ALLOW_SHOW_LOWEST_LEVEL);
+            List<Article> timeSortArticle = new ArrayList<>();
+            for (Article article : articleBuffer.values()) {
+                // 只返回公开文章
+                if (article.getPermission() == PermissionType.PUBLIC.value &&
+                        isFeedFlowAllowShow(true, article.getAuthor(), null, false, false, feed_flow_allow_show_lowest_level)) {
+                    timeSortArticle.add(article);
+                }
             }
-        }
-        Collections.sort(timeSortArticle, articleTimeComparator);
-
-        //防止 该user 文章数 小于 num
-        if (timeSortArticle.size() < size) {
-            size = timeSortArticle.size();
-        }
-        List<Article> newestList = new ArrayList<Article>(size);
-        for (int i = 0; i < size; i++) {
-            newestList.add(timeSortArticle.get(i));
-        }
-
-        synchronized (this) {
+            Collections.sort(timeSortArticle, articleTimeComparator);
+            // 防止 该user 文章数 小于 num
+            if (timeSortArticle.size() < size) {
+                size = timeSortArticle.size();
+            }
+            List<Article> newestList = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                newestList.add(timeSortArticle.get(i));
+            }
             timeRankListLastViewTime = time;
             timeRankListLastViewSize = size;
             staticTimeRankList = newestList;
+            return newestList;
+        } finally {
+            staticClickRankListLock.writeLock().unlock();
         }
-
-        return newestList;
     }
 
     /**
@@ -741,7 +745,7 @@ public class Cache {
         if (visibleList.size() < size) {
             size = visibleList.size();
         }
-        List<Article> newestList = new ArrayList<Article>(size);
+        List<Article> newestList = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             newestList.add(visibleList.get(i));
         }
@@ -764,8 +768,9 @@ public class Cache {
         }
     }
 
+    private ReadWriteLock staticTagRankListLock = new ReentrantReadWriteLock();
     private List<Entry<String, Integer>> staticTagRankList;
-    private long tagRankListLastViewTime = new Date().getTime();
+    private long tagRankListLastViewTime = System.currentTimeMillis();
     private int tagRankListLastViewSize = 0;
 
     /**
@@ -775,40 +780,43 @@ public class Cache {
      * @return
      */
     public List<Entry<String, Integer>> getTagCount(int size) {
+        staticTagRankListLock.readLock().lock();
         List<Entry<String, Integer>> tagList = tagCount;
-        if (size == 0) { // site为0时，返回全部标签
-            return tagList;
-        }
-
         long time = System.currentTimeMillis();
-        synchronized (this) {
+        try {
+            if (size == 0) { // site为0时，返回全部标签
+                return tagList;
+            }
             if (size == tagRankListLastViewSize && staticTagRankList != null) {
                 if (time - 60 * 1000 * 15 < tagRankListLastViewTime) {
                     return staticTagRankList;
                 }
             }
+        } finally {
+            staticTagRankListLock.readLock().unlock();
         }
-
-        List<Entry<String, Integer>> list = new ArrayList<Entry<String, Integer>>();
-        if (tagList.size() < size) {
-            size = tagList.size();
-        }
-        for (int i = 0; i < size; i++) {
-            list.add(tagList.get(i));
-        }
-        Collections.sort(list, new Comparator<Entry<String, Integer>>() {
-            //降序排序
-            public int compare(Entry<String, Integer> o1, Entry<String, Integer> o2) {
-                return -o1.getValue().compareTo(o2.getValue());
+        staticTagRankListLock.writeLock().lock();
+        try {
+            List<Entry<String, Integer>> list = new ArrayList<>();
+            if (tagList.size() < size) {
+                size = tagList.size();
             }
-        });
-
-        synchronized (this) {
+            for (int i = 0; i < size; i++) {
+                list.add(tagList.get(i));
+            }
+            Collections.sort(list, new Comparator<Entry<String, Integer>>() {
+                // 降序排序
+                public int compare(Entry<String, Integer> o1, Entry<String, Integer> o2) {
+                    return -o1.getValue().compareTo(o2.getValue());
+                }
+            });
             tagRankListLastViewTime = time;
             tagRankListLastViewSize = size;
             staticTagRankList = list;
+            return list;
+        } finally {
+            staticTagRankListLock.writeLock().unlock();
         }
-        return list;
     }
 
     /**
@@ -820,7 +828,6 @@ public class Cache {
      * @return
      */
     public List<Entry<String, Integer>> getTagCount(Long uid, int size, List<Article> visibleList) {
-
         List<Entry<String, Integer>> tagList = tagCount;
         Map<Long, Article> articleMap = articleBuffer;
 
@@ -982,7 +989,7 @@ public class Cache {
      * @param user
      */
     public synchronized void updateUser(User user) {
-        this.fillUserStats(user, false);
+        fillUserStats(user, false);
         User cacheUser = getUser(user.getUid(), READ);
         if (cacheUser != null && user.getUserSetting() == null) {
             user.setUserSetting(cacheUser.getUserSetting());

@@ -100,7 +100,7 @@ public interface IArticleDao {
      * @param loginUser
      * @return List<Article>
      */
-    public List<Article> findTopsList(int size, User loginUser);
+    public List<Article> findTopArticleList(int size, User loginUser);
 
     /**
      * 获得排行榜列表

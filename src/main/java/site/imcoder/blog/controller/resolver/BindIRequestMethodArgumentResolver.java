@@ -40,6 +40,7 @@ public class BindIRequestMethodArgumentResolver implements HandlerMethodArgument
 
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
+        // todo 准备修改成从 Cache 中获取，在session中只放标识identifier的uid
         User loginUser = (User) webRequest.getAttribute(GlobalConstants.KEY_LOGIN_USER, RequestAttributes.SCOPE_SESSION);
         if (parameter.getParameterType().equals(IRequest.class)) {
             HttpServletRequest nativeRequest = webRequest.getNativeRequest(HttpServletRequest.class);

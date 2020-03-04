@@ -31,7 +31,7 @@
                 "groupDefaultConfig": this.groupDefaultConfig
             };
         } catch (e) {
-            console.error("你的配置有问题，循环引用？ Exception: ", e);
+            console.error('你的配置有问题，循环引用？ Exception: ', e);
         }
     };
 
@@ -67,7 +67,7 @@
                 var old_object = context.utils.getCache(group, key);
                 var groupConfig = context.utils.getGroupConfig(group);
                 if (!groupConfig) {
-                    console.error("PeriodCache Error: groupConfig don't exist, groupName: " + groupName + "\n\tyou should run create before use get, or run getOrCreateGroup!");
+                    console.error("PeriodCache Error: groupConfig don't exist, groupName: " + groupName + '\n\tyou should run create before use get, or run getOrCreateGroup!');
                     callback.call(null, null);
                     return;
                 }
@@ -102,9 +102,13 @@
                                 }, new_object_value);
                                 callback.call(new_object_value, new_object_value);
                             },
-                            "error": function (XHR, TS) {
+                            "error": function (XHR, TS, MSG) {
+                                let status = XHR.status, message = XHR.statusText;
+                                if (status == 0) {
+                                    message = options.crossDomain ? '跨域访问失败？' : '请求失败，断网了？';
+                                }
+                                console.error('PeriodCache Error: found exception when load data from internet, text: ' + message);
                                 callback.call(null, null);
-                                console.error("PeriodCache Error: found exception when load data from internet, text: " + TS);
                             }
                         });
                     }
@@ -112,11 +116,11 @@
                 }
             } catch (e) {
                 context.utils.setGroup(groupName, null);
-                console.warn("PeriodCache Warn: object has been modified, so the group was cleared, key: " + key + ", exception: ", e);
+                console.warn('PeriodCache Warn: object has been modified, so the group was cleared, key: ' + key + ', exception: ', e);
                 callback.call(null, null);
             }
         } else {
-            console.warn("PeriodCache Warn: The group is not initialized or may have been manually deleted, GroupName: " + groupName);
+            console.warn('PeriodCache Warn: The group is not initialized or may have been manually deleted, GroupName: ' + groupName);
             callback.call(null, null);
         }
     };
@@ -169,7 +173,7 @@
             });
             context.utils.setGroup(group[context.pointer.groupConfig_storeKey].groupName, group);
         } catch (e) {
-            console.warn("PeriodCache Warn: found error when clear timeout keys from cache, groupName: " + groupName + ", exception: ", e);
+            console.warn('PeriodCache Warn: found error when clear timeout keys from cache, groupName: ' + groupName + ', exception: ', e);
         }
     };
 
@@ -183,11 +187,11 @@
          */
         "setGroupConfig": function (groupName, groupConfig, saveToLocal) {
             if (saveToLocal == false) {
-                groupName = typeof groupName == "object" ? groupName[this.context.pointer.groupConfig_storeKey].groupName : groupName;
+                groupName = typeof groupName == 'object' ? groupName[this.context.pointer.groupConfig_storeKey].groupName : groupName;
                 this.context.pointer.groupConfig[groupName] = groupConfig;
                 return;
             }
-            var group = typeof groupName == "object" ? groupName : this.getGroup(groupName);
+            var group = typeof groupName == 'object' ? groupName : this.getGroup(groupName);
             if (group) {
                 var storeConfig = {};
                 storeConfig.groupName = groupConfig.groupName;
@@ -204,7 +208,7 @@
          * @returns {*}
          */
         "getGroupConfig": function (groupName) {
-            groupName = typeof groupName == "object" ? groupName[this.context.pointer.groupConfig_storeKey].groupName : groupName;
+            groupName = typeof groupName == 'object' ? groupName[this.context.pointer.groupConfig_storeKey].groupName : groupName;
             if (groupName) {
                 return this.context.pointer.groupConfig[groupName];
             } else {
@@ -230,7 +234,7 @@
          * @returns {null}
          */
         "getGroup": function (groupName) {
-            if (typeof groupName == "object") {
+            if (typeof groupName == 'object') {
                 return groupName;
             } else {
                 return this.context.pointer.cacheCtx.getItem(groupName);
@@ -244,7 +248,7 @@
          * @param object_value
          */
         "setCache": function (groupName, key, object_header, object_value) {
-            var group = typeof groupName == "object" ? groupName : this.getGroup(groupName);
+            var group = typeof groupName == 'object' ? groupName : this.getGroup(groupName);
             if (group) {
                 var object = {};
                 object.header = object_header;
@@ -274,7 +278,7 @@
          * @returns {*}
          */
         "getCache": function (groupName, key) {
-            var group = typeof groupName == "object" ? groupName : this.getGroup(groupName);
+            var group = typeof groupName == 'object' ? groupName : this.getGroup(groupName);
             if (group) {
                 return group[key];
             } else {
@@ -339,7 +343,7 @@
      *      "groupName": "example1",
      *      "timeOut": 900000,
      *      "reload_udf": function (cacheCtx, groupName, key, object, saveNewObject_callback) {
-     *           $.get("url", {}, function(data){
+     *           $.get('url', {}, function(data){
      *              saveNewObject_callback(data);
      *           });
      *      }

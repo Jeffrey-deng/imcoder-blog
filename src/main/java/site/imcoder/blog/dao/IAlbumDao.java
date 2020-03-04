@@ -60,6 +60,35 @@ public interface IAlbumDao {
     public int deleteAlbum(Album album);
 
     /**
+     * 点击量加1
+     *
+     * @param album
+     * @param step  - 步长，可为负数
+     * @return
+     */
+    public int updateAlbumClickCount(Album album, int step);
+
+
+    /**
+     * 点赞量加1
+     *
+     * @param album
+     * @param step  - 步长，可为负数
+     * @return
+     */
+    public int updateAlbumLikeCount(Album album, int step);
+
+    /**
+     * 评论量加1
+     *
+     * @param album
+     * @param step  - 步长，可为负数
+     * @return
+     */
+    public int updateAlbumCommentCount(Album album, int step);
+
+
+    /**
      * 插入照片
      *
      * @param photo
@@ -191,7 +220,7 @@ public interface IAlbumDao {
      * @param loginUser
      * @return
      */
-    public List<PhotoTagWrapper> findPhotoTagWrappers(PhotoTagWrapper tagWrapper, User loginUser);
+    public List<PhotoTagWrapper> findPhotoTagWrapperList(PhotoTagWrapper tagWrapper, User loginUser);
 
     /**
      * 查询出用户设置的特殊标签

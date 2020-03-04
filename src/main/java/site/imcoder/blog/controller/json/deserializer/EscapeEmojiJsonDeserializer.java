@@ -28,7 +28,7 @@ public class EscapeEmojiJsonDeserializer extends JsonDeserializer<String> {
     private EscapeEmojiPropertyFieldConverter escapeEmojiPropertyFieldConverter = null;
 
     public EscapeEmojiJsonDeserializer() {
-        escapeEmojiPropertyFieldConverter = escapeEmojiPropertyFieldConverter.getInstance();
+        escapeEmojiPropertyFieldConverter = EscapeEmojiPropertyFieldConverter.getInstance();
     }
 
     @Override

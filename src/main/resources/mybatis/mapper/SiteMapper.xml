@@ -194,7 +194,6 @@
                 typeHandler="site.imcoder.blog.dao.typehandler.DateTypeHandler"/>
         <result column="originName" property="originName"/>
         <result column="permission" property="permission"/>
-        <result column="rotate" property="rotate"/>
         <result column="click_count" property="click_count"/>
         <result column="like_count" property="like_count"/>
         <result column="comment_count" property="comment_count"/>
@@ -208,6 +207,15 @@
             <result column="p_path" property="path"/>
             <result column="p_width" property="width"/>
             <result column="p_height" property="height"/>
+        </association>
+        <association property="setting" javaType="videoSetting">
+            <result column="vs_disable_view" property="disable_view"/>
+            <result column="vs_disable_send_comment" property="disable_send_comment"/>
+            <result column="vs_disable_list_comment" property="disable_list_comment"/>
+            <result column="vs_disable_embed" property="disable_embed"/>
+            <result column="vs_disable_download" property="disable_download"/>
+            <result column="vs_rotate" property="rotate"/>
+            <result column="vs_enable_loop" property="enable_loop"/>
         </association>
     </resultMap>
 
@@ -240,8 +248,15 @@
         select v.video_id, v.uid , u.nickname, v.cover_id, p.path as p_path, p.album_id, p.width as p_width, p.height as
         p_height,
         v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
-        v.upload_time, v.originName, v.permission, v.rotate, v.click_count, v.like_count, v.comment_count
-        from ( video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id
+        v.upload_time, v.originName, v.permission, v.click_count, v.like_count, v.comment_count,
+        (case when vs.disable_view is not null and vs.disable_view > 0 then true else false end) as vs_disable_view,
+        (case when vs.disable_send_comment is not null and vs.disable_send_comment > 0 then true else false end) as vs_disable_send_comment,
+        (case when vs.disable_list_comment is not null and vs.disable_list_comment > 0 then true else false end) as vs_disable_list_comment,
+        (case when vs.disable_embed is not null and vs.disable_embed > 0 then true else false end) as vs_disable_embed,
+        (case when vs.disable_download is not null and vs.disable_download > 0 then true else false end) as vs_disable_download,
+        vs.rotate as vs_rotate,
+        (case when vs.enable_loop is not null and vs.enable_loop > 0 then true else false end) as vs_enable_loop
+        from ((video v left join user u on v.uid = u.uid ) left join photo p on v.cover_id = p.photo_id) left join video_setting vs on v.video_id = vs.video_id
         <where>
             <if test="_parameter != null and uid > 0">
                 uid = #{uid}

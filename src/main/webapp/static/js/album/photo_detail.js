@@ -2,38 +2,38 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'common_utils', 'login_handle', 'comment_plugin', 'album_photo_handle', 'websocket_util', 'blowup'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'globals', 'common_utils', 'login_handle', 'comment_plugin', 'album_photo_handle', 'websocket_util', 'blowup'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, common_utils, login_handle, comment_plugin, album_photo_handle, websocket_util, blowup);
+        factory(window.jQuery, null, $(document).ready, toastr, globals, common_utils, login_handle, comment_plugin, album_photo_handle, websocket_util, blowup);
     }
-})(function ($, bootstrap, domReady, toastr, common_utils, login_handle, comment_plugin, album_photo_handle, websocket_util, blowup) {
+})(function ($, bootstrap, domReady, toastr, globals, common_utils, login_handle, comment_plugin, album_photo_handle, websocket_util, blowup) {
 
-    var config = {
-        selector: {
+    var selector = globals.extend(globals.selector, {
+        'photo_detail': {
             "firstHeaderArea": "#first",
             "mainArea": "#main",
             "photoNode": "#show-img",
             "photoDetailInfo": ".photo-detail-info",
             "openEditBtn": ".photo-detail-info .photo-detail-open-edit",
             "photoLikeArea": ".photo-detail-info .photo-detail-like"
-        },
-        path_params: {
-            "basePath": $('#basePath').attr('href'),
-            "staticPath": $('#staticPath').attr('href'),
-            "cloudPath": $('#cloudPath').attr('href')
-        },
-        pagePhotoId: $(".photo-detail-info").attr("data-photo-id") || "0",
-        hostUserId: $("#first .photo-name").attr("hostUid") || 0,
-        hostUserNickname: $(".photo-detail-info .photo-detail-user-nickname .photo-detail-user-nickname-value").text(),
-        pageAlbumId: $("#first .photo-name").attr("albumId") || "0",
-        pageAlbumName: $(".photo-detail-info .photo-detail-album-name a.photo-source-album").attr("data-album-name"),
+        }
+    }).photo_detail;
+
+    var config = {
+        selector: selector,
+        path_params: globals.path_params,
+        pagePhotoId: $(selector.photoDetailInfo).attr('data-photo-id') || '0',
+        hostUserId: $(selector.firstHeaderArea).find('.photo-name').attr('data-user-id') || 0,
+        hostUserNickname: $(selector.photoDetailInfo).find('.photo-detail-user-nickname .photo-detail-user-nickname-value').text(),
+        pageAlbumId: $(selector.firstHeaderArea).find('.photo-name').attr('data-album-id') || '0',
+        pageAlbumName: $(selector.photoDetailInfo).find('.photo-detail-album-name a.photo-source-album').attr('data-album-name'),
         img_load_error_default: "res/img/img_load_error_default.jpg",
         initTopic: null
     };
 
     var init = function () {
-        if (/^.*（(\d+)×(\d+)）$/.test($(config.selector.photoDetailInfo).find(".photo-detail-size").text())) {
+        if (/^.*（(\d+)×(\d+)）$/.test($(config.selector.photoDetailInfo).find('.photo-detail-size').text())) {
             config.photoWidth = parseInt(RegExp.$1);
             config.photoHeight = parseInt(RegExp.$2);
         }
@@ -56,77 +56,91 @@
                 }
             });
             return index;
-        },
-        "replaceLoadErrorImgToDefault": function (parentNode) { // 图片加载失败显示默认图片
-            $(parentNode).find("img").one("error", function (e) {
-                $(this)
-                    .attr("src", config.path_params.cloudPath + config.img_load_error_default)
-                    .attr("title", "该图片加载失败~");
-            });
         }
     };
 
-    var request = {
-        "loadVideoByCover": function (cover_id, callback) {
-            return $.get("video.api?method=getVideo", {"cover_id": cover_id}, function (response) {
-                if (response && response.status == 200) {
-                    callback && callback(response.data.video);
-                }
-            });
-        },
-        "loadPhotoTagWrappers": function (photo_id, callback) {
-            return $.get("photo.api?method=getTagWrappersByPhoto", {"photo_id": photo_id}, function (response) {
-                if (response.status == 200) {
-                    callback && callback(response.data);
-                }
-            });
-        },
-        "loadPhotoList": function (condition, call) {
-            return $.get("photo.api?method=getPhotoList", condition, function (response) {
-                if (response.status == 200) {
-                    call && call(response.data.photos);
-                }
-            });
-        },
-        "loadAlbumInfo": function (album_id, call) {
-            return $.get("photo.api?method=getAlbum", {"id": album_id, "photos": false}, function (response) {
-                if (response.status == 200) {
-                    call && call(response.data.album, response);
-                }
-            });
-        },
-        "likePhoto": function (photo_id, undo, call) {
-            var post_param = {};
-            post_param.photo_id = photo_id;
-            post_param.undo = undo;
-            return $.post("photo.api?method=likePhoto", post_param, function (response) {
-                if (response.status == 200) {
-                    call && call(response.data.photo, response.data.type, response);
-                } else if (call) {
-                    toastr.error(response.message, "点赞失败");
-                    console.warn("Error Code: " + response.status);
-                }
-            });
+    const request = globals.extend(globals.request, {
+        photo_detail: {
+            'loadAlbumInfo': function (album_id, success) {
+                let postData = {"id": album_id, "photos": false};
+                return globals.request.get(globals.api.getAlbum, postData, success, ['album'], false);
+            },
+            'loadPhotoList': function (condition, success) {
+                return globals.request.get(globals.api.getPhotoList, condition, success, ['photos'], false);
+            },
+            'likePhoto': function (photo_id, undo, success) {
+                let postData = {"photo_id": photo_id, 'undo': undo};
+                return globals.request.post(globals.api.likePhoto, postData, success, ['photo', 'type'], success && '点赞失败');
+            },
+            'loadVideoByCover': function (cover_id, success) {
+                let postData = {"cover_id": cover_id};
+                return globals.request.get(globals.api.getVideo, postData, success, ['video'], false);
+            },
+            'loadPhotoTagWrapperList': function (photo_id, success) {
+                let postData = {"photo_id": photo_id};
+                return globals.request.get(globals.api.getTagWrapperListByPhoto, postData, success, ['tagWrappers', 'topicTagWrappers'], false);
+            },
         }
-    };
+    }).photo_detail;
 
     // 切换显示模式功能
     var switchPhotoShowSize = function () {
-        var switchElem = $(config.selector.photoDetailInfo).find(".photo-detail-show-size a");
-        var imgElem = $(config.selector.photoNode);
+        let $switchElem = $(config.selector.photoDetailInfo).find('.photo-detail-show-size a');
+        let $imgElem = $(config.selector.photoNode);
+        let initComputedStyle = getComputedStyle($imgElem[0]), maxHeight = parseFloat(initComputedStyle.maxHeight);
+        let transitionEventLock = true; // 锁，用来保证只有转换显示模式时才触发transition事件
+        let changeShowMode = function (mode) {
+            switch (mode) {
+                case "fit":
+                    $imgElem.css({
+                        'max-width': '100%',
+                        'max-height': '',
+                        'width': 'unset',
+                        'height': '',
+                    });
+                    break;
+                case "tile":
+                    $imgElem.css({
+                        'max-width': 'unset',
+                        'max-height': 'unset',
+                        'width': 'unset',
+                        'height': '',
+                    });
+                    break;
+                case "fill":
+                    $imgElem.css({
+                        'max-width': '100%',
+                        'max-height': 'unset',
+                        'width': '100%',
+                        'height': '',
+                    });
+                    break;
+            }
+        };
         var switchFunc = function () {
-            imgElem.parent().css({
+            transitionEventLock = true;
+            $imgElem.parent().css({
                 'height': '',
                 'overflow': ''
             });
-            imgElem.css({
+            $imgElem.css({
                 'width': '',
                 'height': '',
                 'margin-top': '',
+                'margin-left': '',
                 'transform': ''
             });
-            var fromValue = switchElem.attr("data-show-size") || "fit";
-            var toValue = "";
+            $imgElem.attr({
+                'data-rotate': '0',
+                'data-flip-horizontal': 'false',
+                'data-flip-vertical': 'false',
+            });
+            let fromValue = $switchElem.attr('data-show-size') || 'fit';
+            // 实现动画效果
+            changeShowMode(fromValue);  // 由于前面宽度被重置了，这里重新设置当前模式的值来获取宽高
+            $imgElem.width($imgElem.width());   // 显示标识修改前的宽高值以触发动画
+            $imgElem.height($imgElem.height());
+            let toValue = '';
             switch (fromValue) {
                 case "fit":
                     toValue = "tile";
@@ -138,55 +152,87 @@
                     toValue = "fit";
                     break;
             }
+            let width, height, maxWidth = $imgElem.parent().width(), w2h_scale = config.photoWidth / config.photoHeight;
             switch (toValue) {
                 case "fit":
-                    imgElem.css("max-height", "");
-                    imgElem.css("max-width", "100%");
-                    imgElem.css("width", "unset");
-                    switchElem.attr("data-show-size", "fit").text("适应⬇").attr("title", "点击切换为`平铺`显示");
-                    imgElem.attr("title", "点击切换为`平铺`显示");
+                    height = config.photoHeight > maxHeight ? maxHeight : config.photoHeight;
+                    width = w2h_scale * height;
+                    if (width > maxWidth) {
+                        width = maxWidth;
+                        height = width / w2h_scale;
+                    }
+                    $imgElem.css({  // 先用具体宽高值设置，等动画结束再删除
+                        'max-height': 'unset',
+                        'max-width': 'unset',
+                        'width': width + 'px',
+                        'height': height + 'px',
+                    });
+                    $switchElem.attr('data-show-size', 'fit').text('适应⬇').attr('title', '点击切换为`平铺`显示');
+                    $imgElem.attr('title', '点击切换为`平铺`显示').toggleClass('img-show-tile img-show-fill', false).toggleClass('img-show-fit', true);
                     document.documentElement.scrollTop = 0;
                     break;
                 case "tile":
-                    imgElem.css("max-height", "unset");
-                    imgElem.css("max-width", "unset");
-                    imgElem.css("width", "unset");
-                    switchElem.attr("data-show-size", "tile").text("平铺⬇").attr("title", "点击切换为`填充`显示");
-                    imgElem.attr("title", "点击切换为`填充`显示");
+                    width = config.photoWidth;
+                    height = config.photoHeight;
+                    $imgElem.css({
+                        'max-width': 'unset',
+                        'max-height': 'unset',
+                        'width': width + 'px',
+                        'height': height + 'px',
+                    });
+                    $switchElem.attr('data-show-size', 'tile').text('平铺⬇').attr('title', '点击切换为`填充`显示');
+                    $imgElem.attr('title', '点击切换为`填充`显示').toggleClass('img-show-fit img-show-fill', false).toggleClass('img-show-tile', true);
                     break;
                 case "fill":
-                    imgElem.css("max-height", "unset");
-                    imgElem.css("max-width", "100%");
-                    imgElem.css("width", "100%");
-                    switchElem.attr("data-show-size", "fill").text("填充⬇").attr("title", "点击切换为`适应`显示");
-                    imgElem.attr("title", "点击切换为`适应`显示");
+                    width = maxWidth;
+                    height = width / w2h_scale;
+                    $imgElem.css({
+                        'max-width': 'unset',
+                        'max-height': 'unset',
+                        'width': width + 'px',
+                        'height': height + 'px',
+                    });
+                    $switchElem.attr('data-show-size', 'fill').text('填充⬇').attr('title', '点击切换为`适应`显示');
+                    $imgElem.attr('title', '点击切换为`适应`显示').toggleClass('img-show-fit img-show-tile', false).toggleClass('img-show-fill', true);
                     break;
             }
+            transitionEventLock = false;
         };
-        switchElem.on('click', switchFunc);
-        imgElem.on('click', switchFunc);
+        $switchElem.on('click', switchFunc);
+        $imgElem.on('click', switchFunc);
+        $imgElem.on('transitionend webkitTransitionEnd', function () {
+            if (!transitionEventLock) { // 动画结束，删除显示设置的宽高值
+                let toValue = $switchElem.attr('data-show-size');
+                changeShowMode(toValue);
+                transitionEventLock = true;
+            }
+        });
     };
 
     // 图片旋转功能、图片翻转功能
     var bindPhotoTransform = function () {
         var rotatePhoto = function (switch_angle) {
-            var $img = $(config.selector.photoNode),
+            var balance_angle = Math.abs(switch_angle) % 360,
+                $img = $(config.selector.photoNode),
                 $imgContainer = $img.parent(),
                 photo = {'width': config.photoWidth, 'height': config.photoHeight},
-                showMode = $(config.selector.photoDetailInfo).find(".photo-detail-show-size a").attr('data-show-size') || 'fit',
+                showMode = $(config.selector.photoDetailInfo).find('.photo-detail-show-size a').attr('data-show-size') || 'fit',
                 computedStyle = getComputedStyle($img[0]),
-                boxWidth = $imgContainer.width(),
+                boxWidth = showMode == 'tile' ? -1 : $imgContainer.width(),
                 boxHeight = showMode == 'fit' ? parseFloat(computedStyle.maxHeight) : -1;
             var css = common_utils.calcElementRotateStyle(switch_angle, photo.width, photo.height, boxWidth, boxHeight, showMode == 'tile' ? false : true, $img.prop('style').transform);
-            delete css['margin-left'];
-            if (switch_angle == 90 || switch_angle == 270) {
+            if (balance_angle == 90 || balance_angle == 270) {
                 css['max-height'] = 'unset';
                 $imgContainer.css({
-                    'height': css.width,
                     'overflow': 'hidden'
                 });
+                $imgContainer.height(css['width']); // 由于$imgContainer有个border宽度，所以这样设置自动加上border_width
                 if (showMode == 'tile') {
                     $imgContainer.css('overflow-x', 'auto');
+                }
+                if ($imgContainer.width() > parseFloat(css['height'])) {
+                    delete css['margin-left']; // 居中
+                    // css['margin-left'] = ((($imgContainer.width() - parseFloat(css['height'])) / 2) +  parseFloat(css['margin-left'])) + 'px';
                 }
             } else {
                 css['max-height'] = '';
@@ -209,14 +255,14 @@
         };
         var flipPhoto = function (switch_horizontal, switch_vertical) {
             var $img = $(config.selector.photoNode),
-                css_transform_value = $img.prop('style').transform ? $img.prop('style').transform.replace(/\s*rotate[XY]\([^)]*\)\s*/g, "") : "";
+                css_transform_value = $img.prop('style').transform ? $img.prop('style').transform.replace(/\s*rotate[XY]\([^)]*\)\s*/g, "") : '';
             if (switch_horizontal) {
-                css_transform_value += " rotateY(180deg)"; // scaleX(-1)
+                css_transform_value += ' rotateY(180deg)'; // scaleX(-1)
             }
             if (switch_vertical) {
-                css_transform_value += " rotateX(180deg)"; // scaleY(-1)
+                css_transform_value += ' rotateX(180deg)'; // scaleY(-1)
             }
-            $img.css("transform", css_transform_value);
+            $img.css('transform', css_transform_value);
             $img.attr('data-flip-horizontal', switch_horizontal).attr('data-flip-vertical', switch_vertical);
         };
         // 图片变形快捷键事件
@@ -224,7 +270,7 @@
             var theEvent = e || window.event;
             var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
             var tagName = e.target.tagName;
-            if (!e.target.isContentEditable && tagName !== "INPUT" && tagName !== "TEXTAREA") { // S键或F键
+            if (!e.target.isContentEditable && tagName !== 'INPUT' && tagName !== 'TEXTAREA') { // S键或F键
                 var $img;
                 switch (code) {
                     case 81:    // Q键 - 向左旋转90°
@@ -233,9 +279,9 @@
                         var before_angle = parseInt($img.attr('data-rotate') || '0'),
                             switch_angle = before_angle;
                         if (code === 81) {
-                            switch_angle = Math.abs(before_angle + 270) % 360;
+                            switch_angle = before_angle - 90; // Math.abs(before_angle + 270) % 360;
                         } else {
-                            switch_angle = Math.abs(before_angle + 90) % 360;
+                            switch_angle = before_angle + 90; // Math.abs(before_angle + 90) % 360;
                         }
                         rotatePhoto(switch_angle);
                         break;
@@ -260,7 +306,7 @@
     // 放大镜功能
     var bindBlowup = function () {
         if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
-            var blowupConfig = common_utils.getLocalConfig("album", {
+            var blowupConfig = globals.getLocalConfig('album', {
                 "photo_page": {
                     "blow_up": {
                         "width": 600,
@@ -282,11 +328,11 @@
                         height: blowupConfig.height,
                         scale: blowupConfig.scale
                     });
-                    toastr.success("Z: 开关，X: 缩小，C: 放大", "已开启放大镜，热键如下", {"progressBar": false, "timeOut": 4200});
+                    toastr.success('Z: 开关，X: 缩小，C: 放大', '已开启放大镜，热键如下', {"progressBar": false, "timeOut": 4200});
                 } else {
                     blowup.destroy();
                     blowup = null;
-                    toastr.success("已关闭放大镜", "", {"progressBar": false});
+                    toastr.success('已关闭放大镜', '', {"progressBar": false});
                 }
                 isBlowup = open;
             };
@@ -294,7 +340,7 @@
                 var theEvent = e || window.event;
                 var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
                 var tagName = e.target.tagName;
-                if (!e.target.isContentEditable && tagName !== "INPUT" && tagName !== "TEXTAREA") { // S键或F键
+                if (!e.target.isContentEditable && tagName !== 'INPUT' && tagName !== 'TEXTAREA') { // S键或F键
                     if (!isBlowup) {
                         switch (code) { // Z键 - 打开放大镜
                             case 90:
@@ -341,11 +387,6 @@
                     "uploadModal": "#uploadPhotoModal",
                     "updateModal": "#updatePhotoModal"
                 },
-                path_params: {
-                    "basePath": $("#basePath").attr("href"),
-                    "cloudPath": $("#cloudPath").attr("href"),
-                    "staticPath": $("#staticPath").attr("href")
-                },
                 callback: {
                     "updateCompleted": function (context, photo) {
                         comment_plugin.config.currentTopic = null;
@@ -375,7 +416,7 @@
                                             });
                                         }
                                     }
-                                    common_utils.extendNonNull(photo_source, photo);
+                                    $.extendNotNull(photo_source, photo);
                                     if (!photo.topic || photo.topic.ptwid == null) {
                                         photo_source.topic = photo.topic;
                                     }
@@ -383,7 +424,7 @@
                             });
                         }
                     },
-                    "deleteCompleted": function (context, params) {
+                    "deleteCompleted": function (context, postData) {
                     },
                     "beforeUploadModalOpen": function (context, uploadModal, openUploadModal_callback) {
                         var album_id = context.config.albumId;
@@ -397,7 +438,7 @@
                         queue.append(function () {
                             // 如果图片为视频的封面，则添加视频链接
                             const video_id = 0;
-                            if (video_id && video_id != "0") {
+                            if (video_id && video_id != '0') {
                                 let $videoLinkText = updateModal.find('span[name="video_id"]');
                                 if ($videoLinkText.length == 0) {
                                     updateModal.find('span[name="photo_id"]').closest('.form-group').after(
@@ -409,7 +450,7 @@
                                 } else {
                                     $videoLinkText.closest('.form-group').show(0);
                                 }
-                                $videoLinkText.text(video_id).parent().attr("href", "video/detail/" + video_id);
+                                $videoLinkText.text(video_id).parent().url('href', 'video/detail/' + video_id);
                             } else {
                                 updateModal.find('span[name="video_id"]').closest('.form-group').hide(0);
                             }
@@ -425,8 +466,8 @@
                                     );
                                     $albumLinkText = updateModal.find('span[name="album_id"]');
                                 }
-                                var album_url = "p/album/" + photo.album_id + "?check=" + photo.photo_id;
-                                $albumLinkText.text(photoDetailConfig.pageAlbumName).parent().attr("href", album_url);
+                                var album_url = 'p/album/' + photo.album_id + '?check=' + photo.photo_id;
+                                $albumLinkText.text(photoDetailConfig.pageAlbumName).parent().url('href', album_url);
                                 dfd.resolve();
                             });
                         });
@@ -441,8 +482,8 @@
                                     );
                                     $userLinkText = updateModal.find('span[name="user_id"]');
                                 }
-                                var user_home_url = "u/" + photo.uid + "/home";
-                                $userLinkText.text(photoDetailConfig.hostUserNickname).parent().attr("href", user_home_url);
+                                var user_home_url = 'u/' + photo.uid + '/home';
+                                $userLinkText.text(photoDetailConfig.hostUserNickname).parent().url('href', user_home_url);
                                 dfd.resolve();
                             });
                         });
@@ -452,58 +493,62 @@
                         });
                     }
                 },
-                "downloadType": /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ? "url" : "ajax"
+                "downloadType": /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ? 'url' : "ajax"
+            });
+            album_photo_handle.on(album_photo_handle.config.event.tagClick, function (_e, tag, photo_id, clickEvt) {
+                clickEvt.preventDefault();
+                window.open('p/tag/' + encodeURIComponent(tag) + '?uid=' + photoDetailConfig.hostUserId);
             });
             // 绑定特殊标签的扩展点击反应事件
             album_photo_handle.on(album_photo_handle.config.event.tagExtendClick, function (_e, tag, photo_id, clickEvt, keyEvt) {
                 switch (true) {
                     case /^#?mount@(.*)/i.test(tag): // 挂载
-                        window.open("p/album/" + RegExp.$1 + "?check=" + photo_id);
+                        window.open('p/album/' + RegExp.$1 + '?check=' + photo_id);
                         break;
                     case /^#?weibo@(.*)/i.test(tag): // 微博用户
                         var weiboUserKey = RegExp.$1;
                         if (/\d{8,}/.test(weiboUserKey)) {
-                            window.open("https://weibo.com/u/" + weiboUserKey);
+                            window.open('https://weibo.com/u/' + weiboUserKey);
                         } else {
-                            window.open("https://weibo.com/" + weiboUserKey);
+                            window.open('https://weibo.com/' + weiboUserKey);
                         }
                         break;
                     case /^#?weibo-(.*)/i.test(tag): // 微博详情
-                        window.open("https://m.weibo.cn/detail/" + RegExp.$1);
+                        window.open('https://m.weibo.cn/detail/' + RegExp.$1);
                         break;
                     case /^#?ytb-(.*)/i.test(tag): // Youtube
-                        window.open("https://www.youtube.com/watch?v=" + RegExp.$1);
+                        window.open('https://www.youtube.com/watch?v=' + RegExp.$1);
                         break;
                     default: // 默认打开当前相册的该标签
-                        window.open("p/dashboard?model=photo&album_id=" + photoDetailConfig.pageAlbumId + "&tags=<" + tag + ">&from=album_detail");
+                        window.open('p/dashboard?model=photo&album_id=' + photoDetailConfig.pageAlbumId + '&tags=<' + tag + '>&from=album_detail');
                 }
             });
             // 打开编辑照片按钮绑定
             openEditBtn.on('click', function (e) {
-                album_photo_handle.loadPhoto(photoDetailConfig.pagePhotoId, function (photo) {
+                album_photo_handle.request.loadPhoto(photoDetailConfig.pagePhotoId, function (photo) {
                     if (photo && photo.uid == photoDetailConfig.hostUserId) {
                         album_photo_handle.openUpdatePhotoModal(photo);
                     } else {
-                        toastr.error("没有权限~");
+                        toastr.error('没有权限~');
                     }
                 })
             });
         }
         // 点赞的小玩意
         $(photoDetailConfig.selector.photoLikeArea).on('click', function () {
-            var $valueNode = $(this).find(".photo-detail-like-count");
-            var undo = $valueNode.parent().hasClass("photo-has-liked");
-            request.likePhoto(config.pagePhotoId, undo, function (photo, type, response) {
-                var newValue = photo.like_count;
+            var $valueNode = $(this).find('.photo-detail-like-count');
+            var undo = $valueNode.parent().hasClass('photo-has-liked');
+            request.likePhoto(config.pagePhotoId, undo, function (photo, type) {
+                var newValue = photo.like_count, response = this;
                 if (type == 1) {
                     if (undo) {
-                        toastr.success("已移除赞~");
+                        toastr.success('已移除赞~');
                     } else {
                         if (login_handle.validateLogin()) {
-                            toastr.success("点击查看赞过的列表", "已添加到赞", {
+                            toastr.success('点击查看赞过的列表', "已添加到赞", {
                                 "timeOut": 12000,
                                 "onclick": function () {
-                                    window.open("u/likes/photos");
+                                    window.open('u/likes/photos'.toURL());
                                 }
                             });
                         }
@@ -529,9 +574,9 @@
             });
         });
         // 修改tag链接
-        $(photoDetailConfig.selector.photoDetailInfo).on("click", ".photo-detail-tags a", function (e) {
+        $(photoDetailConfig.selector.photoDetailInfo).on('click', '.photo-detail-tags a', function (e) {
             e.preventDefault();
-            window.open(e.currentTarget.href + "?uid=" + photoDetailConfig.hostUserId);
+            window.open(e.currentTarget.href + '?uid=' + photoDetailConfig.hostUserId);
         });
         // $(comment_plugin.config.selector.commentListArea).magnificPopup({
         //     type: 'image',
@@ -548,38 +593,38 @@
     // 应用挂载的相册信息到当前页面
     var applyMountAlbumInfoToPageIfHas = function () {
         var pageDetailInfoNode = $(config.selector.photoDetailInfo);
-        pageDetailInfoNode.find(".photo-detail-album-name a").each(function (i, node) {
+        pageDetailInfoNode.find('.photo-detail-album-name a').each(function (i, node) {
             var $self = $(node);
-            if (!$self.hasClass("photo-source-album")) {
+            if (!$self.hasClass('photo-source-album')) {
                 $self.remove();
             }
         });
         request.loadAlbumInfo(config.pageAlbumId, function (album) {
-            config.pageAlbumName = album.name || ("album" + album.album_id);
-            var $node = pageDetailInfoNode.find(".photo-detail-album-name a.photo-source-album");
-            $node.attr("data-album-id", album.album_id);
-            $node.attr("data-album-name", config.pageAlbumName);
-            $node.attr("title", album.description || config.pageAlbumName);
-            $node.attr("href", "p/album/" + album.album_id + "?check=" + config.pagePhotoId);
-            $node.attr("target", "_blank");
+            config.pageAlbumName = album.name || ('album' + album.album_id);
+            var $node = pageDetailInfoNode.find('.photo-detail-album-name a.photo-source-album');
+            $node.attr('data-album-id', album.album_id);
+            $node.attr('data-album-name', config.pageAlbumName);
+            $node.attr('title', album.description || config.pageAlbumName);
+            $node.url('href', 'p/album/' + album.album_id + '?check=' + config.pagePhotoId);
+            $node.attr('target', '_blank');
             $node.text(config.pageAlbumName);
         });
-        pageDetailInfoNode.find(".photo-detail-tags a").each(function (i, node) {
+        pageDetailInfoNode.find('.photo-detail-tags a').each(function (i, node) {
             var $self = $(node);
-            var tag = $self.attr("data-photo-tag");
+            var tag = $self.attr('data-photo-tag');
             if (/mount@(.+)/.test(tag)) {
                 var album_id = RegExp.$1;
                 if (album_id != config.pageAlbumId) {
                     request.loadAlbumInfo(album_id, function (album) {
-                        var album_name = album.name || ("album" + album.album_id);
+                        var album_name = album.name || ('album' + album.album_id);
                         var $node = $(document.createElement('a'));
-                        $node.attr("data-album-id", album.album_id);
-                        $node.attr("data-album-name", album_name);
-                        $node.attr("title", album.description || album_name);
-                        $node.attr("href", "p/album/" + album.album_id + "?check=" + config.pagePhotoId);
-                        $node.attr("target", "_blank");
+                        $node.attr('data-album-id', album.album_id);
+                        $node.attr('data-album-name', album_name);
+                        $node.attr('title', album.description || album_name);
+                        $node.url('href', 'p/album/' + album.album_id + '?check=' + config.pagePhotoId);
+                        $node.attr('target', '_blank');
                         $node.text(album_name);
-                        pageDetailInfoNode.find(".photo-detail-album-name").append($node);
+                        pageDetailInfoNode.find('.photo-detail-album-name').append($node);
                     });
                 }
             }
@@ -589,19 +634,19 @@
     // 应用视频信息到当前页面
     var applyVideoInfoToPageIfHas = function () {
         var pageDetailInfoNode = $(config.selector.photoDetailInfo);
-        var imageType = pageDetailInfoNode.find(".photo-detail-image-type").text();
-        pageDetailInfoNode.find(".photo-detail-video").hide()
-            .find(".photo-detail-video-name a")
-            .text("");
-        if (imageType && imageType.indexOf("video") != -1) {
+        var imageType = pageDetailInfoNode.find('.photo-detail-image-type').text();
+        pageDetailInfoNode.find('.photo-detail-video').hide()
+            .find('.photo-detail-video-name a')
+            .text('');
+        if (imageType && imageType.indexOf('video') != -1) {
             request.loadVideoByCover(config.pagePhotoId, function (video) {
-                pageDetailInfoNode.find(".photo-detail-video").show()
-                    .find(".photo-detail-video-name a")
-                    .text(video.name || ("video_" + video.video_id))
-                    .attr("data-video-id", video.video_id)
-                    .attr("title", video.name || ("video_" + video.video_id))
-                    .attr("href", "video/detail/" + video.video_id);
-                pageDetailInfoNode.find(".photo-detail-handle-area").css("margin-top", "5px");
+                pageDetailInfoNode.find('.photo-detail-video').show()
+                    .find('.photo-detail-video-name a')
+                    .text(video.name || ('video_' + video.video_id))
+                    .attr('data-video-id', video.video_id)
+                    .attr('title', video.name || ('video_' + video.video_id))
+                    .url('href', 'video/detail/' + video.video_id);
+                pageDetailInfoNode.find('.photo-detail-handle-area').css('margin-top', '5px');
             });
         }
     };
@@ -609,82 +654,84 @@
     // 应用照片信息到当前页面
     var applyPhotoInfoToPage = function (photo) {
         $(config.selector.photoNode)
-            .attr("src", photo.path)
-            .off("error").one("error", function (e) {
-            $(this).attr("src", config.path_params.cloudPath + config.img_load_error_default);
+            .attr('src', photo.path)
+            .off('error').one('error', function (e) {
+            $(this).attr('src', config.path_params.cloudPath + config.img_load_error_default);
         });
-        var photoName = photo.name || ("photo_" + photo.photo_id);
+        var photoName = photo.name || ('photo_' + photo.photo_id);
         var photoDetailInfoNode = $(config.selector.photoDetailInfo);
-        photoDetailInfoNode.find(".photo-detail-name a")
+        photoDetailInfoNode.find('.photo-detail-name a')
             .text(photoName)
-            .attr("title", photoName)
-            .attr("href", "p/detail/" + photo.photo_id);
-        photoDetailInfoNode.find(".photo-detail-desc").html(common_utils.convertLinkToHtmlTag(photo.description));
-        photoDetailInfoNode.find(".photo-detail-size").text(photo.size + "KB（" + photo.width + "×" + photo.height + "）");
-        photoDetailInfoNode.find(".photo-detail-refer a").text(photo.refer).attr("href", photo.refer);
-        photoDetailInfoNode.find(".photo-detail-image-type").text(photo.image_type);
-        photoDetailInfoNode.find(".photo-detail-click-count-value").text(photo.click_count);
-        photoDetailInfoNode.find(".photo-detail-like-count").text(photo.like_count)
+            .attr('title', photoName)
+            .url('href', 'p/detail/' + photo.photo_id);
+        photoDetailInfoNode.find('.photo-detail-desc').html(common_utils.convertLinkToHtmlTag(photo.description));
+        photoDetailInfoNode.find('.photo-detail-size').text(photo.size + 'KB（' + photo.width + '×' + photo.height + '）');
+        photoDetailInfoNode.find('.photo-detail-refer a').text(photo.refer).url('href', photo.refer);
+        photoDetailInfoNode.find('.photo-detail-image-type').text(photo.image_type);
+        photoDetailInfoNode.find('.photo-detail-click-count-value').text(photo.click_count);
+        photoDetailInfoNode.find('.photo-detail-like-count').text(photo.like_count)
             .parent().toggleClass('photo-has-liked', photo.liked).toggleClass('like-wrapper-has-liked', photo.liked);
         if (photo.tags != null && photo.tags.length > 0) {
-            var tagHtml = "";
-            $.each(photo.tags.split("#"), function (i, tag) {
+            var tagHtml = '';
+            $.each(photo.tags.split('#'), function (i, tag) {
                 if (tag) {
-                    tagHtml += '<a target="_blank" href="p/tag/' + encodeURIComponent(tag) + '" data-photo-tag="' + tag + '">#' + tag + '#</a>&nbsp;&nbsp;';
+                    tagHtml += '<a target="_blank" href="' + ('p/tag/' + encodeURIComponent(tag)).toURL() + '" data-photo-tag="' + tag + '">#' + tag + '#</a>&nbsp;&nbsp;';
                 }
             });
-            photoDetailInfoNode.find(".photo-detail-tags").html(tagHtml);
+            photoDetailInfoNode.find('.photo-detail-tags').html(tagHtml);
         } else {
-            photoDetailInfoNode.find(".photo-detail-tags").html("");
+            photoDetailInfoNode.find('.photo-detail-tags').html('');
         }
 
-        var albumNameNode = photoDetailInfoNode.find(".photo-detail-album-name a.photo-source-album");
-        if (photo.album_id != albumNameNode.attr("data-album-id")) {
-            config.pageAlbumName = "album_" + photo.album_id;
+        var albumNameNode = photoDetailInfoNode.find('.photo-detail-album-name a.photo-source-album');
+        if (photo.album_id != albumNameNode.attr('data-album-id')) {
+            config.pageAlbumName = 'album_' + photo.album_id;
         } else {
-            config.pageAlbumName = albumNameNode.attr("data-album-name");
+            config.pageAlbumName = albumNameNode.attr('data-album-name');
         }
         albumNameNode
             .text(config.pageAlbumName)
-            .attr("title", config.pageAlbumName)
-            .attr("data-album-id", photo.album_id)
-            .attr("data-album-name", config.pageAlbumName)
-            .attr("href", "p/album/" + photo.album_id + "?check=" + photo.photo_id);
+            .attr('title', config.pageAlbumName)
+            .attr('data-album-id', photo.album_id)
+            .attr('data-album-name', config.pageAlbumName)
+            .url('href', 'p/album/' + photo.album_id + '?check=' + photo.photo_id);
         if (photo.topic && photo.topic.ptwid) {
-            if (photoDetailInfoNode.find(".photo-detail-topic").length == 0) {
-                photoDetailInfoNode.find(".photo-detail-tags").after('<div class="form-group"><label class="col-sm-2 control-label">合&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;集</label>'
+            if (photoDetailInfoNode.find('.photo-detail-topic').length == 0) {
+                photoDetailInfoNode.find('.photo-detail-tags').after('<div class="form-group"><label class="col-sm-2 control-label">合&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;集</label>'
                     + '<div class="col-sm-10"><span class="help-block photo-detail-topic"><a target="_blank"></a>&nbsp;&nbsp;</span></div></div>');
             }
-            photoDetailInfoNode.find(".photo-detail-topic a")
-                .text("#" + photo.topic.name + "#")
-                .attr("href", "p/topic/" + photo.topic.ptwid)
-                .attr("title", photo.topic.description || photo.topic.name)
+            photoDetailInfoNode.find('.photo-detail-topic a')
+                .text('#' + photo.topic.name + '#')
+                .url('href', 'p/topic/' + photo.topic.ptwid)
+                .attr('title', photo.topic.description || photo.topic.name)
                 .parent().parent().parent().show();
         } else {
-            photoDetailInfoNode.find(".photo-detail-topic").parent().parent().hide();
+            photoDetailInfoNode.find('.photo-detail-topic').parent().parent().hide();
         }
         config.pagePhotoId = photo.photo_id;
         config.pageAlbumId = photo.album_id;
+        config.photoWidth = photo.width;
+        config.photoHeight = photo.height;
         // 评论
-        comment_plugin.config.mainId = config.pagePhotoId;
+        comment_plugin.config.creationId = config.pagePhotoId;
         config.tagWrappers = null;
         comment_plugin.pointer.topicTagWrappers = null;
         var commentLabelId = comment_plugin.config.currentTopic || config.pagePhotoId;
-        $(comment_plugin.config.selector.commentListArea).find('.single-comment-label').attr("title", config.pagePhotoId).find("a").attr("data-topic", config.pagePhotoId);
-        $(comment_plugin.config.selector.commentListArea).find('.photo-comment-bar a[data-topic="' + commentLabelId + '"]').parent().trigger("click");
+        $(comment_plugin.config.selector.commentListArea).find('.single-comment-label').attr('title', config.pagePhotoId).find('a').attr('data-topic', config.pagePhotoId);
+        $(comment_plugin.config.selector.commentListArea).find('.photo-comment-bar a[data-topic="' + commentLabelId + '"]').parent().trigger('click');
         // 页面meta
-        var tabTitle = config.pagePhotoId + (photo.name ? ("_" + photo.name) : "") + " | ImCoder博客's 相册";
+        var tabTitle = config.pagePhotoId + (photo.name ? ('_' + photo.name) : '') + " | ImCoder博客's 相册";
         history.replaceState(
             null,
             tabTitle,
-            document.location.href.replace(/\/[^/]+$/, "/" + config.pagePhotoId)
+            document.location.href.replace(/\/[^/]+$/, '/' + config.pagePhotoId)
         );
         document.title = tabTitle;
-        var headNode = $("head");
-        headNode.find('meta[name="description"]').attr("content", photo.description);
-        headNode.find('meta[name="keywords"]').attr("content", photo.tags);
-        $(config.selector.firstHeaderArea).find(".photo-name").text(photoName);
-        $("#navbar-collapse > ul:nth-child(1) > li.active > a").text(photo.photo_id);
+        var headNode = $('head');
+        headNode.find('meta[name="description"]').attr('content', photo.description);
+        headNode.find('meta[name="keywords"]').attr('content', photo.tags);
+        $(config.selector.firstHeaderArea).find('.photo-name').text(photoName);
+        $('#navbar-collapse > ul:nth-child(1) > li.active > a').text(photo.photo_id);
         // 视频信息
         applyVideoInfoToPageIfHas();
         // 应用挂载的相册信息到当前页面
@@ -705,7 +752,7 @@
         if (index == -1) {  // 当前合集照片列表中未找到该图片，不运行
             return
         }
-        if (direction == "left") {
+        if (direction == 'left') {
             (index - 1 < 0) ? (index = topicPhotos.length - 1) : (index--);
         } else {
             (index + 1 == topicPhotos.length) ? (index = 0) : (index++);
@@ -718,34 +765,34 @@
 
     // 显示照片相关标签
     var buildPhotoRelationTagHtml = function (tagWrappers) {
-        var groupNode = $(config.selector.photoDetailInfo).find(".form-group-relation-tags");
+        var groupNode = $(config.selector.photoDetailInfo).find('.form-group-relation-tags');
         if (groupNode.length == 0) {
-            groupNode = $($.parseHTML('<div class="form-group form-group-relation-tags" style="display: none">' +
+            groupNode = $($.parseHTML('<div class="form-group form-group-relation-tags" style="display: none;">' +
                 '    <label class="col-sm-2 control-label">相关标签</label>' +
                 '    <div class="col-sm-10">' +
                 '        <span class="help-block photo-detail-relation-tags"></span>' +
                 '    </div>' +
                 '</div>'));
-            $(config.selector.photoDetailInfo).find(".photo-detail-info-main .area-set-left").append(groupNode);
+            $(config.selector.photoDetailInfo).find('.photo-detail-info-main .area-set-left').append(groupNode);
         }
         var isHas = false;
         if (tagWrappers && tagWrappers.length > 0) {
-            var tagsHtml = "";
+            var tagsHtml = '';
             tagWrappers.forEach(function (wrapper) {
                 if (wrapper.type == 1) {
                     isHas = true;
                     var tag = wrapper.name;
                     var title = wrapper.description || wrapper.name;
-                    var link = "p/tags_square?tags=<" + tag + ">&extend=true&uid=" + config.hostUserId + "&filter=" + tag;
+                    var link = ('p/tags_square?tags=<' + tag + '>&extend=true&uid=' + config.hostUserId + '&filter=' + tag).toURL();
                     tagsHtml += '<a target="_blank" href="' + link + '" data-photo-tag="' + tag + '" title="' + title + '">#' + tag + '#</a>&nbsp;&nbsp;';
                 }
             });
-            groupNode.find(".photo-detail-relation-tags").html(tagsHtml);
+            groupNode.find('.photo-detail-relation-tags').html(tagsHtml);
         }
         if (isHas) {
             groupNode.show();
         } else {
-            groupNode.hide().find(".photo-detail-relation-tags").html("");
+            groupNode.hide().find('.photo-detail-relation-tags').html('');
         }
     };
 
@@ -753,50 +800,46 @@
     var buildPhotoTopicCommentBarHtml = function (topicTagWrappers, topic, isTopic) {
         var photo_id = config.pagePhotoId;
         var $commentListArea = $(comment_plugin.config.selector.commentListArea);
-        var html = '<ul class="post-meta photo-comment-bar-wrapper"><ol class="page-navigator photo-comment-bar">';
-        var singleCommentLabelHtml = '单张评论：<li class="' + ( isTopic ? "" : "current " ) + 'single-comment-label comment-label" ' +
-            'title="' + photo_id + '"><a data-topic="' + photo_id + '" href="p/detail/' + photo_id + '" target="_blank">' + photo_id + '</a></li>';
+        var html = '<ul class="photo-comment-bar-wrapper"><ol class="photo-comment-bar">';
+        var singleCommentLabelHtml = '单张评论：<li class="' + (isTopic ? '' : 'current ') + 'single-comment-label comment-label" ' +
+            'title="' + photo_id + '"><a data-topic="' + photo_id + '" href="' + ('p/detail/' + photo_id).toURL() + '" target="_blank">' + photo_id + '</a></li>';
         var topicCommentLabelHtml = '合集评论：';
         $.each(topicTagWrappers, function (i, tagWrapper) {
-            topicCommentLabelHtml += '<li class="' + ((isTopic && topic == tagWrapper.ptwid) ? "current " : "") +
+            topicCommentLabelHtml += '<li class="' + ((isTopic && topic == tagWrapper.ptwid) ? 'current ' : '') +
                 'topic-comment-label comment-label" title="右键打开' + tagWrapper.name + '">' +
-                '<a data-topic="' + tagWrapper.ptwid + '" data-topic-name="' + tagWrapper.name + '" href="p/topic/' + tagWrapper.ptwid + '" target="_blank">' +
+                '<a data-topic="' + tagWrapper.ptwid + '" data-topic-name="' + tagWrapper.name + '" href="' + ('p/topic/' + tagWrapper.ptwid).toURL() + '" target="_blank">' +
                 tagWrapper.name + '</a></li>';
         });
         html = html + singleCommentLabelHtml + topicCommentLabelHtml;
         $commentListArea.prepend(html);
         // 修改地址栏
         if (!isTopic && config.initTopic) {
-            $commentListArea.find('.photo-comment-bar a[data-topic="' + config.initTopic + '"]').parent().trigger("click");
+            $commentListArea.find('.photo-comment-bar a[data-topic="' + config.initTopic + '"]').parent().trigger('click');
             config.initTopic = null;
         } else {
             var link = document.location.href;
             if (isTopic) {
-                link = common_utils.setParamForURL("from", "photo_topic", common_utils.setParamForURL("topic.ptwid", topic, link));
+                link = common_utils.setParamForURL('from', "photo_topic", common_utils.setParamForURL('topic.ptwid', topic, link));
             } else {
-                link = common_utils.removeParamForURL("from", common_utils.removeParamForURL("topic.ptwid", link));
+                link = common_utils.removeParamForURL('from', common_utils.removeParamForURL('topic.ptwid', link));
             }
             history.replaceState(
                 null,
                 document.title,
                 link
             );
-            var notHashLink = link.replace(/#.*$/, "");
-            $commentListArea.find('a[data-action-type^="comment_"]').each(function (i, node) { // hash锚点设置前缀
-                node.href = notHashLink + '#' + node.getAttribute("data-action-type");
-            });
         }
     };
 
     // 合集相关的事件
     var bindPhotoTopicEvent = function () {
-        $(comment_plugin.config.selector.commentListArea).on("click", ".photo-comment-bar .comment-label", function (e) {
+        $(comment_plugin.config.selector.commentListArea).on('click', '.photo-comment-bar .comment-label', function (e) {
             e.preventDefault();
             var cache = comment_plugin.pointer;
             var commentLabel = $(this);
-            var isTopic = commentLabel.hasClass("topic-comment-label");
-            commentLabel.parent().children().removeClass("current");
-            commentLabel.addClass("current");
+            var isTopic = commentLabel.hasClass('topic-comment-label');
+            commentLabel.parent().children().removeClass('current');
+            commentLabel.addClass('current');
             if (isTopic) {
                 if (!comment_plugin.config.currentTopic) { // 备份好当前单张评论的数据
                     if (!cache.photoComments) {
@@ -804,27 +847,27 @@
                     }
                     cache.photoComments[config.pagePhotoId] = cache.comments;
                 }
-                comment_plugin.config.currentTopic = commentLabel.find("a").attr("data-topic");
-                comment_plugin.config.mainType = 3;
-                comment_plugin.config.mainId = comment_plugin.config.currentTopic;
+                comment_plugin.config.currentTopic = commentLabel.find('a').attr('data-topic');
+                comment_plugin.config.creationType = 4;
+                comment_plugin.config.creationId = comment_plugin.config.currentTopic;
             } else {
                 comment_plugin.config.currentTopic = null;
-                comment_plugin.config.mainType = 1;
-                comment_plugin.config.mainId = config.pagePhotoId;
+                comment_plugin.config.creationType = 1;
+                comment_plugin.config.creationId = config.pagePhotoId;
             }
-            var mainId = comment_plugin.config.mainId;
+            var creationId = comment_plugin.config.creationId;
             if (isTopic) { // 合集
                 // 加载合集评论
                 if (!cache.topicComments) {
                     cache.topicComments = {};
                 }
-                if (cache.topicComments[mainId]) {
-                    cache.comments = cache.topicComments[mainId];
+                if (cache.topicComments[creationId]) {
+                    cache.comments = cache.topicComments[creationId];
                     comment_plugin.buildCommentAreaHtml();
                 } else {
                     comment_plugin.loadCommentList(function (comments) {
                         cache.comments = comments;
-                        cache.topicComments[mainId] = comments;
+                        cache.topicComments[creationId] = comments;
                         comment_plugin.buildCommentAreaHtml();
                     });
                 }
@@ -832,43 +875,40 @@
                 if (!cache.topicPhotos) {
                     cache.topicPhotos = {};
                 }
-                if (!cache.topicPhotos[mainId]) {
-                    var topicName = commentLabel.find("a").attr("data-topic-name");
+                if (!cache.topicPhotos[creationId]) {
+                    var topicName = commentLabel.find('a').attr('data-topic-name');
                     var condition = {
                         "uid": config.hostUserId,
-                        "tags": "<" + topicName + ">", // 这里不能用topic.ptwid查询，因为一张图片只属于一个topic，所以查询出的列表不会包含当前照片
+                        "tags": "<" + topicName + '>', // 这里不能用topic.ptwid查询，因为一张图片只属于一个topic，所以查询出的列表不会包含当前照片
                         "query_start": -1,
                         "query_size": 0
                     };
                     request.loadPhotoList(condition, function (photos) {
-                        cache.topicPhotos[mainId] = photos;
-                        var nameDom = $(config.selector.photoDetailInfo).find(".photo-detail-name a");
-                        var photoName = nameDom.attr("title");
-                        nameDom.text("[ " + (utils.findPhotoIndexInList(cache.topicPhotos[mainId], config.pagePhotoId) + 1) + " / " + cache.topicPhotos[mainId].length + " ] " + photoName);
+                        cache.topicPhotos[creationId] = photos;
+                        let $nameDom = $(config.selector.photoDetailInfo).find('.photo-detail-name a'), photoName = $nameDom.attr('title');
+                        $nameDom.text('[ ' + (utils.findPhotoIndexInList(cache.topicPhotos[creationId], config.pagePhotoId) + 1) + ' / ' + cache.topicPhotos[creationId].length + ' ] ' + photoName);
                     });
                 } else {
-                    var nameDom = $(config.selector.photoDetailInfo).find(".photo-detail-name a");
-                    var photoName = nameDom.attr("title");
-                    nameDom.text("[ " + (utils.findPhotoIndexInList(cache.topicPhotos[mainId], config.pagePhotoId) + 1) + " / " + cache.topicPhotos[mainId].length + " ] " + photoName);
+                    let $nameDom = $(config.selector.photoDetailInfo).find('.photo-detail-name a'), photoName = $nameDom.attr('title');
+                    $nameDom.text('[ ' + (utils.findPhotoIndexInList(cache.topicPhotos[creationId], config.pagePhotoId) + 1) + ' / ' + cache.topicPhotos[creationId].length + ' ] ' + photoName);
                 }
             } else { // 单张评论
                 // 加载照片评论
                 if (!cache.photoComments) {
                     cache.photoComments = {};
                 }
-                if (cache.photoComments[mainId]) {
-                    cache.comments = cache.photoComments[mainId];
+                if (cache.photoComments[creationId]) {
+                    cache.comments = cache.photoComments[creationId];
                     comment_plugin.buildCommentAreaHtml();
                 } else {
                     comment_plugin.loadCommentList(function (comments) {
                         cache.comments = comments;
-                        cache.photoComments[mainId] = comments;
+                        cache.photoComments[creationId] = comments;
                         comment_plugin.buildCommentAreaHtml();
                     });
                 }
-                var nameDom = $(config.selector.photoDetailInfo).find(".photo-detail-name a");
-                var photoName = nameDom.attr("title");
-                nameDom.text(photoName || "在相册内查看");
+                var nameDom = $(config.selector.photoDetailInfo).find('.photo-detail-name a'), photoName = nameDom.attr('title');
+                nameDom.text(photoName || '在相册内查看');
             }
         });
         // 照片切换按钮事件
@@ -878,19 +918,19 @@
                     && comment_plugin.pointer.topicPhotos
                     && comment_plugin.pointer.topicPhotos[comment_plugin.config.currentTopic]
                     && comment_plugin.pointer.topicPhotos[comment_plugin.config.currentTopic].length > 1) {
-                    $(this).find(".topic-arrow").css("display", "block");
+                    $(this).find('.topic-arrow').css('display', 'block');
                 }
             },
             "mouseleave": function () {
-                $(this).find(".topic-arrow").css("display", "none");
+                $(this).find('.topic-arrow').css('display', 'none');
             }
-        }).on("click", ".topic-arrow-left", function () {
+        }).on('click', '.topic-arrow-left', function () {
             $(config.selector.photoNode).removeClass('animated bounceInLeft bounceInRight').addClass('animated bounceInLeft');
-            switchTopicPhoto("left");
-        }).on("click", ".topic-arrow-right", function () {
+            switchTopicPhoto('left');
+        }).on('click', '.topic-arrow-right', function () {
             $(config.selector.photoNode).removeClass('animated bounceInLeft bounceInRight').addClass('animated bounceInRight');
-            switchTopicPhoto("right");
-        }).on("animationend webkitAnimationEnd", config.selector.photoNode, function () {
+            switchTopicPhoto('right');
+        }).on('animationend webkitAnimationEnd', config.selector.photoNode, function () {
             $(this).removeClass('animated bounceInLeft bounceInRight');
         });
     };
@@ -912,26 +952,26 @@
                     }
                 },
                 "onShown": function () {
-                    $(this).css("opacity", "1");
+                    $(this).css('opacity', '1');
                 },
                 "onHidden": function (toastElement, closeType) {
-                    if (closeType != 0 && toastElement.hasClass("wsMessage") && !toastElement.hasClass("not-sync-ws-message")) {
+                    if (closeType != 0 && toastElement.hasClass('wsMessage') && !toastElement.hasClass('not-sync-ws-message')) {
                         websocket_util.post({
                             "mapping": "transfer_data_in_tabs",
                             "metadata": {
                                 "handle": "remove_ws_message",
-                                "ws_message_id": parseInt(toastElement.attr("data-wsid"))
+                                "ws_message_id": parseInt(toastElement.attr('data-wsid'))
                             }
                         });
                     }
                 }
             };
             // 收到新评论，取消login.js中的默认处理
-            websocket_util.onPush("receive_comment", function (e, wsMessage, wsEvent) {
+            websocket_util.onPush('receive_comment', function (e, wsMessage, wsEvent) {
                 var comment = wsMessage.metadata.comment;
                 var notify_opts = null;
                 var msg = null;
-                switch (comment.mainType) {
+                switch (comment.creationType) {
                     case 1:
                         var photo = wsMessage.metadata.photo;
                         notify_opts = $.extend({}, notify_ws_opts, {
@@ -940,7 +980,7 @@
                                 if (photo.photo_id == config.pagePhotoId) {   // 当前照片页就是这个照片的详情页
                                     comment_plugin.utils.scrollToSpecialComment(comment);
                                 } else {
-                                    window.open("p/detail/" + photo.photo_id + "#comment_" + comment.cid);
+                                    window.open(('p/detail/' + photo.photo_id + '#comment_' + comment.cid).toURL());
                                 }
                             }
                         });
@@ -950,13 +990,13 @@
                         }
                         msg = null;
                         if (comment.parentId == 0) {
-                            msg = comment.user.nickname + " 对你的照片<br><b>“" + photo.photo_id + "”</b><br>发表了评论~";
+                            msg = comment.user.nickname + ' 对你的照片<br><b>“' + photo.photo_id + '”</b><br>发表了评论~';
                         } else {
-                            msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
+                            msg = '<b>“' + comment.user.nickname + '”</b><br>回复了你的评论~';
                         }
                         e.stopImmediatePropagation(); // 阻止login中绑定的事件, stopImmediatePropagation能阻止委托事件
                         break;
-                    case 3:
+                    case 4:
                         var tagWrapper = wsMessage.metadata.tagWrapper;
                         var hasInsert = false;
                         notify_opts = $.extend({}, notify_ws_opts, {
@@ -971,15 +1011,15 @@
                                     });
                                     topicLabelNode.trigger('click');
                                 } else {
-                                    window.open("p/tag/" + tagWrapper.name + "#comment_" + comment.cid);
+                                    window.open(('p/tag/' + tagWrapper.name + '#comment_' + comment.cid).toURL());
                                 }
                             }
                         });
                         msg = null;
                         if (comment.parentId == 0) {
-                            msg = comment.user.nickname + " 对你的照片合集<br><b>“" + tagWrapper.name + "”</b><br>发表了评论~";
+                            msg = comment.user.nickname + ' 对你的照片合集<br><b>“' + tagWrapper.name + '”</b><br>发表了评论~';
                         } else {
-                            msg = "<b>“" + comment.user.nickname + "”</b><br>回复了你的评论~";
+                            msg = '<b>“' + comment.user.nickname + '”</b><br>回复了你的评论~';
                         }
                         if (comment_plugin.config.currentTopic == tagWrapper.ptwid) {
                             comment_plugin.utils.appendCommentInPage(comment);
@@ -989,9 +1029,9 @@
                         break;
                 }
                 if (msg) {
-                    common_utils.notify(notify_opts)
-                        .success(msg, "", "receive_comment" + "_" + comment.cid)
-                        .addClass("wsMessage receive_comment").attr("data-wsid", wsMessage.id).attr("data-cid", comment.cid);
+                    globals.notify(notify_opts)
+                        .success(msg, '', 'receive_comment' + '_' + comment.cid)
+                        .addClass('wsMessage receive_comment').attr('data-wsid', wsMessage.id).attr('data-cid', comment.cid);
                 }
             }, true); // 插入到事件队列第一个
         }
@@ -1009,34 +1049,29 @@
             }
         }
         if (!comment_plugin.pointer.topicTagWrappers) {
-            request.loadPhotoTagWrappers(config.pagePhotoId, function (data) {
-                config.tagWrappers = data.tagWrappers;
-                comment_plugin.pointer.topicTagWrappers = data.topicTagWrappers;
-                buildPhotoTopicCommentBarHtml(comment_plugin.pointer.topicTagWrappers, comment_plugin.config.mainId, comment_plugin.config.currentTopic ? true : false);
+            request.loadPhotoTagWrapperList(config.pagePhotoId, function (tagWrappers, topicTagWrappers) {
+                config.tagWrappers = tagWrappers;
+                comment_plugin.pointer.topicTagWrappers = topicTagWrappers;
+                buildPhotoTopicCommentBarHtml(comment_plugin.pointer.topicTagWrappers, comment_plugin.config.creationId, !!comment_plugin.config.currentTopic);
                 buildPhotoRelationTagHtml(config.tagWrappers);
             });
         } else {
-            buildPhotoTopicCommentBarHtml(comment_plugin.pointer.topicTagWrappers, comment_plugin.config.mainId, comment_plugin.config.currentTopic ? true : false);
+            buildPhotoTopicCommentBarHtml(comment_plugin.pointer.topicTagWrappers, comment_plugin.config.creationId, !!comment_plugin.config.currentTopic);
             buildPhotoRelationTagHtml(config.tagWrappers);
         }
     });
     // 评论模块初始化
     comment_plugin.init({
         currentTopic: undefined,
-        mainType: 1, // 1代表照片评论
-        mainIdVariableName: "mainId",
-        mainId: config.pagePhotoId,
+        creationType: 1, // 1代表照片评论
+        creationIdVariableName: "creationId",
+        creationId: config.pagePhotoId,
         hostUserId: config.hostUserId,
         autoScrollOnPageOpen: true, // 开启在页面打开时根据url的#hash值自动滚到对应位置
-        path_params: {
-            "basePath": $('#basePath').attr('href'),
-            "staticPath": $('#staticPath').attr('href'),
-            "cloudPath": $('#cloudPath').attr('href')
-        }
     });
 
-    var descNode = $(config.selector.photoDetailInfo).find(".photo-detail-desc");
-    descNode.html(common_utils.convertLinkToHtmlTag(descNode.html(), false));
+    var descNode = $(config.selector.photoDetailInfo).find('.photo-detail-desc');
+    descNode.html(common_utils.convertLinkToHtmlTag(descNode.html()));
 
     domReady(function () {
         // init
@@ -1054,10 +1089,10 @@
                     }, 350);
                     break;
             }
-            history.replaceState({"mark": "page"}, common_utils.removeParamForURL("mark"));
+            history.replaceState({"mark": "page"}, common_utils.removeParamForURL('mark'));
         }
         var params = common_utils.parseURL(document.location.href).params;
-        if (params["from"] == "photo_topic" && params["topic.ptwid"]) {
+        if (params["from"] == 'photo_topic' && params["topic.ptwid"]) {
             config.initTopic = params["topic.ptwid"];
         }
         // 注册监控服务器的未读评论消息推送

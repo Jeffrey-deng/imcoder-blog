@@ -2,12 +2,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'cityselect', 'birthday', 'common_utils', 'login_handle', 'cropper', 'websocket_util'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'cityselect', 'birthday', 'globals', 'common_utils', 'login_handle', 'cropper', 'websocket_util'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, null, null, common_utils, login_handle, null, websocket_util);
+        factory(window.jQuery, null, $(document).ready, toastr, null, null, globals, common_utils, login_handle, null, websocket_util);
     }
-})(function ($, bootstrap, domReady, toastr, cityselect, birthday, common_utils, login_handle, cropper, websocket_util) {
+})(function ($, bootstrap, domReady, toastr, cityselect, birthday, globals, common_utils, login_handle, cropper, websocket_util) {
 
     //将表单中的参数拼装成可用json格式  serialize方式不能应付‘&’字符这种
     window.getFormJson = function (form) {
@@ -52,7 +52,7 @@
             var profileInfo = getFormJson(profileForm[0]);
             profileInfo.address = addressGroup.find('.prov').val() + '/' + addressGroup.find('.city').val() + '/' + addressGroup.find('.dist').val();
             profileInfo.birthday = birthdayGroup.find('.sel_year').val() + '/' + birthdayGroup.find('.sel_month').val() + '/' + birthdayGroup.find('.sel_day').val();
-            profileInfo.uid = $("#user-long-id").text();
+            profileInfo.uid = $('#user-long-id').text();
             update_profile(profileInfo);
         });
         $('#reset_profile').click(function () {
@@ -64,47 +64,47 @@
     }
 
     function assignToProfileForm(user) {
-        var profileForm = $("#profile_form");
-        $("#user-long-id").text(user.uid);
-        $("#user-short-id").text(common_utils.convertRadix10to62(user.uid));
-        profileForm.find('input[name="nickname"]').val(user.nickname);
-        profileForm.find('input[name="description"]').val(user.description);
-        profileForm.find('input[name="qq"]').val(user.qq);
-        profileForm.find('input[name="weibo"]').val(user.weibo);
-        profileForm.find('input[name="site"]').val(user.site);
-        profileForm.find('input[name="phone"]').val(user.phone);
-        profileForm.find('textarea[name="description"]').html(user.description);
-        profileForm.find('textarea[name="says"]').html(user.says);
-        profileForm.find("input:radio[name='sex']").each(function () {
+        var $profileForm = $('#profile_form');
+        $('#user-long-id').text(user.uid);
+        $('#user-short-id').text(common_utils.convertRadix10to62(user.uid));
+        $profileForm.find('input[name="nickname"]').val(user.nickname);
+        $profileForm.find('input[name="description"]').val(user.description);
+        $profileForm.find('input[name="qq"]').val(user.qq);
+        $profileForm.find('input[name="weibo"]').val(user.weibo);
+        $profileForm.find('input[name="site"]').val(user.site);
+        $profileForm.find('input[name="phone"]').val(user.phone);
+        $profileForm.find('textarea[name="description"]').html(user.description);
+        $profileForm.find('textarea[name="says"]').html(user.says);
+        $profileForm.find("input:radio[name='sex']").each(function () {
             if ($(this).val() == user.sex) {
-                $(this).prop("checked", true);
+                $(this).prop('checked', true);
             }
         });
         if (user.birthday) {
-            var birthSplit = user.birthday.split("/");
-            profileForm.find('.sel_year').val(birthSplit[0]);
-            profileForm.find('.sel_month').val(birthSplit[1]);
-            profileForm.find('.sel_day').val(birthSplit[2]);
+            var birthSplit = user.birthday.split('/');
+            $profileForm.find('.sel_year').val(birthSplit[0]);
+            $profileForm.find('.sel_month').val(birthSplit[1]);
+            $profileForm.find('.sel_day').val(birthSplit[2]);
         }
         if (user.address) {
             var addrSplit = user.address.split('/');
-            $("#address_group").citySelect({
+            $('#address_group').citySelect({
                 prov: addrSplit[0],
                 city: addrSplit[1],
                 dist: addrSplit[2],
                 nodata: "none"
             });
         } else {
-            $("#address_group").citySelect({prov: "湖南", city: "长沙", dist: "岳麓区", nodata: "none"});
+            $('#address_group').citySelect({prov: "湖南", city: "长沙", dist: "岳麓区", nodata: "none"});
         }
         $('#login_ip').html(user.userStatus.last_login_ip);
-        $("#register_time").text(user.userStatus.register_time);
+        $('#register_time').text(user.userStatus.register_time);
         getIpLocation(user.userStatus.last_login_ip);
     }
 
     function load_profile(hostUserId, call) {
         $.ajax({
-            url: 'user.api?method=getUser',
+            url: globals.api.getUser,
             data: {
                 'uid': hostUserId
             },
@@ -113,18 +113,18 @@
                     profile = response.data.user;
                     call && call(profile);
                 } else {
-                    toastr.error(response.message, "加载用户信息失败~");
+                    toastr.error(response.message, '加载用户信息失败~');
                 }
             },
             error: function () {
-                console.log("拉取个人资料失败");
+                console.log('拉取个人资料失败');
             }
         });
     }
 
     function update_profile(profile) {
         $.ajax({
-            url: 'user.api?method=saveProfile',
+            url: globals.api.updateUserProfile,
             type: "POST",
             data: profile,
             success: function (response) {
@@ -132,8 +132,8 @@
                     profile = response.data.user;
                     toastr.success('更新成功~');
                 } else {
-                    toastr.error(response.message, "更新失败~");
-                    console.warn("Error Code: " + response.status);
+                    toastr.error(response.message, '更新失败~');
+                    console.warn('Error Code: ' + response.status);
                 }
             },
             error: function () {
@@ -144,27 +144,27 @@
 
     function getIpLocation(ip) {
         // getIpLocationByTaoBao(ip); https页面不能使用淘宝接口，换成后台Java获取
-        $.get("tool.api?method=getIpLocation", {"ip": ip}, function (response) {
+        $.get(globals.api.getIpLocation, {"ip": ip}, function (response) {
             if (response.status == 200 && response.data.location) {
-                $("#login_ip").html(ip + " , " + response.data.location);
+                $('#login_ip').html(ip + ' , ' + response.data.location);
             } else {
-                $("#login_ip").html(ip);
+                $('#login_ip').html(ip);
             }
         });
     }
 
     function getIpLocationByTaoBao(ip) {
-        $.get("http://ip.taobao.com/service/getIpInfo.php", {"ip": ip}, function (json) {
+        $.get('http://ip.taobao.com/service/getIpInfo.php', {"ip": ip}, function (json) {
             if (json && json.code == 0 && json.data) {
                 var data = json.data;
                 var location = generateIpLocation(data.country, data.region, data.city, data.isp);
-                $("#login_ip").html(ip + " , " + location);
+                $('#login_ip').html(ip + ' , ' + location);
             } else {
-                $("#login_ip").html(ip);
+                $('#login_ip').html(ip);
             }
         }).fail(function () {
-            console.warn("淘宝ip接口获取ip失败");
-            $("#login_ip").html(ip);
+            console.warn('淘宝ip接口获取ip失败');
+            $('#login_ip').html(ip);
         });
     }
 
@@ -172,42 +172,42 @@
     var autonomous = ["内蒙古", "广西", "宁夏", "新疆", "西藏"];
 
     function generateIpLocation(country, region, city, isp) {
-        var location = "";
-        if (isp == "内网") {
+        var location = '';
+        if (isp == '内网') {
             location = "局域网";
             return location;
         }
         location += country;
-        if (country == "中国") {
+        if (country == '中国') {
             if (municipality.indexOf(region) != -1) {
-                location += (region + "市");
+                location += (region + '市');
             } else if (autonomous.indexOf(region) != -1) {
-                location += (region + "自治区");
+                location += (region + '自治区');
             } else {
-                location += (region + "省");
+                location += (region + '省');
             }
-            if (region != city && city != "XX") {
-                location += (city + "市");
+            if (region != city && city != 'XX') {
+                location += (city + '市');
             }
-            if (isp != "XX") {
+            if (isp != 'XX') {
                 location += isp;
             }
-        } else if (country == "美国") {
-            location += (region + "州");
-            if (region != city && city != "XX") {
-                location += (city + "市");
+        } else if (country == '美国') {
+            location += (region + '州');
+            if (region != city && city != 'XX') {
+                location += (city + '市');
             }
-            if (isp != "XX") {
+            if (isp != 'XX') {
                 location += isp;
             }
         } else {
-            if (region != country && region != "XX") {
+            if (region != country && region != 'XX') {
                 location += region;
             }
-            if (region != city && city != "XX") {
+            if (region != city && city != 'XX') {
                 location += city;
             }
-            if (isp != "XX") {
+            if (isp != 'XX') {
                 location += isp;
             }
         }
@@ -220,33 +220,33 @@
             var win_height = $(window).height();
             var win_width = $(window).width();
             if (win_width <= 768) {
-                $(".tailoring-content").css({
-                    "top": (win_height - $(".tailoring-content").outerHeight()) / 2,
+                $('.tailoring-content').css({
+                    "top": (win_height - $('.tailoring-content').outerHeight()) / 2,
                     "left": 0
                 });
             } else {
-                $(".tailoring-content").css({
-                    "top": (win_height - $(".tailoring-content").outerHeight()) / 2,
-                    "left": (win_width - $(".tailoring-content").outerWidth()) / 2
+                $('.tailoring-content').css({
+                    "top": (win_height - $('.tailoring-content').outerHeight()) / 2,
+                    "left": (win_width - $('.tailoring-content').outerWidth()) / 2
                 });
             }
         })();
         // 弹出图片裁剪框
-        $(".profile-head-photo-upload-trigger-modal").on("click", function () {
-            $(".tailoring-container").toggle();
+        $('.profile-head-photo-upload-trigger-modal').on('click', function () {
+            $('.tailoring-container').toggle();
         });
-        $("#head_photo").css("cursor", "pointer").on("click", function () {
-            $(".tailoring-container").toggle();
+        $('#head_photo').css('cursor', 'pointer').on('click', function () {
+            $('.tailoring-container').toggle();
         });
         // 关闭图片裁剪框
-        $(".tailoring-container .close-tailoring").on("click", function () {
+        $('.tailoring-container .close-tailoring').on('click', function () {
             closeTailor();
         });
-        $(".tailoring-container .black-cloth").on("click", function () {
+        $('.tailoring-container .black-cloth').on('click', function () {
             closeTailor();
         });
         // 选择图像
-        $(".tailoring-container").find(".choose-btn input").on("change", function () {
+        $('.tailoring-container').find('.choose-btn input').on('change', function () {
             selectImg(this);
         });
         var photoRawFile = null;
@@ -285,44 +285,44 @@
             }
         });
         //旋转
-        $(".cropper-rotate-btn").on("click", function () {
-            $('#tailoringImg').cropper("rotate", 45);
+        $('.cropper-rotate-btn').on('click', function () {
+            $('#tailoringImg').cropper('rotate', 45);
         });
         //复位
-        $(".cropper-reset-btn").on("click", function () {
-            $('#tailoringImg').cropper("reset");
+        $('.cropper-reset-btn').on('click', function () {
+            $('#tailoringImg').cropper('reset');
         });
         //换向
         var flagX = true;
-        $(".cropper-scaleX-btn").on("click", function () {
+        $('.cropper-scaleX-btn').on('click', function () {
             if (flagX) {
-                $('#tailoringImg').cropper("scaleX", -1);
+                $('#tailoringImg').cropper('scaleX', -1);
                 flagX = false;
             } else {
-                $('#tailoringImg').cropper("scaleX", 1);
+                $('#tailoringImg').cropper('scaleX', 1);
                 flagX = true;
             }
             flagX != flagX;
         });
         //裁剪后的处理
-        $("#sureCut").on("click", function () {
-            if ($("#tailoringImg").attr("src") == null) {
+        $('#sureCut').on('click', function () {
+            if ($('#tailoringImg').attr('src') == null) {
                 return false;
             } else {
-                var notifyCropHeadPhoto = common_utils.notify({
+                var notifyCropHeadPhoto = globals.notify({
                     "closeButton": false,
                     "progressBar": false,
                     "iconClass": "toast-success-no-icon",
                     "timeOut": 0
-                }).success("正在截取中~", "", "notify_crop_head_photo");
+                }).success('正在截取中~', '', 'notify_crop_head_photo');
                 var cas = $('#tailoringImg').cropper('getCroppedCanvas');//获取被裁剪后的canvas
                 var base64url = cas.toDataURL('image/png'); //转换为base64地址形式
-                notifyCropHeadPhoto.find(".toast-message").text("正在压缩中~");
+                notifyCropHeadPhoto.find('.toast-message').text('正在压缩中~');
                 common_utils.canvasDataURL(base64url, {width: 250, quality: 1}, function (compressBase64url) {
-                    common_utils.removeNotify("notify_crop_head_photo");
+                    globals.removeNotify('notify_crop_head_photo');
                     updateHeadPhoto(common_utils.convertBase64UrlToBlob(compressBase64url), photoRawFile, function (head_photo, head_photo_cdn_path) {
-                        $(".profile-head-photo").prop("src", head_photo_cdn_path).attr("data-head-photo", head_photo_cdn_path);
-                        $("#header").find(".navbar-right .user img").prop("src", staticPath + head_photo);
+                        $('.profile-head-photo').prop('src', head_photo_cdn_path).attr('data-head-photo', head_photo_cdn_path);
+                        $('#header').find('.navbar-right .site-login-user img').prop('src', staticPath + head_photo);
                         //关闭裁剪框
                         closeTailor();
                     });
@@ -331,29 +331,29 @@
         });
         //关闭裁剪框
         function closeTailor() {
-            $(".tailoring-container").toggle();
+            $('.tailoring-container').toggle();
         }
 
     };
 
     var updateHeadPhoto = function (photoBlob, photoRawFile, callback) {
         if (!photoBlob) {
-            toastr.error("输入的头像数据为空~");
+            toastr.error('输入的头像数据为空~');
             return;
         }
-        common_utils.notify({
+        globals.notify({
             "progressBar": false,
             "hideDuration": 0,
             "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
-        }).success("正在上传头像~", "", "notify_head_photo_uploading");
-        if (typeof photoBlob != "string") {
+        }).success('正在上传头像~', '', 'notify_head_photo_uploading');
+        if (typeof photoBlob != 'string') {
             var data = new FormData();
-            data.append("imageFile", photoBlob);
-            data.append("imageRawFile", photoRawFile);
+            data.append('imageFile', photoBlob);
+            data.append('imageRawFile', photoRawFile);
             $.ajax({
-                url: "user.api?method=updateHeadPhoto",
+                url: globals.api.updateUserHeadPhoto,
                 data: data,
                 type: "POST",
                 contentType: false,
@@ -361,40 +361,40 @@
                 processData: false,
                 global: false,
                 success: function (response) {
-                    common_utils.removeNotify("notify_head_photo_uploading");
+                    globals.removeNotify('notify_head_photo_uploading');
                     if (response.status == 200) {
                         var data = response.data;
-                        toastr.success("头像上传成功~");
+                        toastr.success('头像上传成功~');
                         callback && callback(data.head_photo, data.head_photo_cdn_path);
                     } else {
-                        toastr.error(response.message, "头像上传失败");
-                        console.warn("upload fail, Error Code: " + response.status);
+                        toastr.error(response.message, '头像上传失败');
+                        console.warn('upload fail, Error Code: ' + response.status);
                     }
                 },
                 error: function (XHR, TS) {
-                    common_utils.removeNotify("notify_head_photo_uploading");
-                    toastr.error(TS, "头像上传失败");
-                    console.warn("upload fail, Error Info: " + TS);
+                    globals.removeNotify('notify_head_photo_uploading');
+                    toastr.error(TS, '头像上传失败');
+                    console.warn('upload fail, Error Info: ' + TS);
                 }
             });
-        } else if (typeof photoBlob == "string") {
-            $.post("user.api?method=updateHeadPhoto", {"head_photo_path": photoBlob}, function (response) {
-                common_utils.removeNotify("notify_head_photo_uploading");
+        } else if (typeof photoBlob == 'string') {
+            $.post(globals.api.updateUserHeadPhoto, {"head_photo_path": photoBlob}, function (response) {
+                globals.removeNotify('notify_head_photo_uploading');
                 if (response.status == 200) {
                     var data = response.data;
-                    toastr.success("头像上传成功~");
+                    toastr.success('头像上传成功~');
                     callback && callback(data.head_photo, data.head_photo_cdn_path);
                 } else {
-                    toastr.error(response.message, "头像上传失败");
-                    console.warn("upload fail, Error Code: " + response.status);
+                    toastr.error(response.message, '头像上传失败');
+                    console.warn('upload fail, Error Code: ' + response.status);
                 }
             }).fail(function (XHR, TS) {
-                common_utils.removeNotify("notify_head_photo_uploading");
-                toastr.error(TS, "头像上传失败");
-                console.warn("upload fail, Error Info: " + TS);
+                globals.removeNotify('notify_head_photo_uploading');
+                toastr.error(TS, '头像上传失败');
+                console.warn('upload fail, Error Info: ' + TS);
             });
         } else {
-            common_utils.removeNotify("notify_head_photo_uploading");
+            globals.removeNotify('notify_head_photo_uploading');
         }
     };
 
@@ -412,7 +412,7 @@
     //如果都通过就启用提交按钮
     function enableSaveAccountBtn() {
         if (mailcheck == true && usernamecheck == true && pwcheck == true) {
-            $('#submit_account').removeAttr("disabled");
+            $('#submit_account').removeAttr('disabled');
         }
     }
 
@@ -439,50 +439,50 @@
             src_username = username;
         });
 
-        $('#submit_account').attr('disabled', "true");
+        $('#submit_account').attr('disabled', 'true');
 
         //发送验证邮件事件
         $('#sendValidateMailBtn').click(function () {
             var _self = $(this);
             sendValidateMail();
             $('#validateMailModal').modal({backdrop: 'static', keyboard: false});
-            _self.attr('disabled', "true").html("发送验证邮件（30s后可再发送）");
+            _self.attr('disabled', 'true').html('发送验证邮件（30s后可再发送）');
             var num = 30;
             var time_inter = window.setInterval(function () {
-                _self.html("发送验证邮件（" + (--num) + "s后可再发送）");
+                _self.html('发送验证邮件（' + (--num) + 's后可再发送）');
             }, 1000);
             setTimeout(function () {
                 window.clearInterval(time_inter);
-                _self.removeAttr("disabled").html("发送验证邮件");
+                _self.removeAttr('disabled').html('发送验证邮件');
             }, 30 * 1000 + 10);
         });
         //检查验证码是否正确事件
         $('#validateMailBtn').click(function () {
             var code = $('#validateMailForm').find('input[name="validateCode"]').eq(0).val().replace(/(^\s*)|(\s*$)/g, '');
             if (code) {
-                $.post("auth.api?method=checkValidateCode", {"code": code}, function (response) {
+                $.post(globals.api.checkValidateCode, {"code": code}, function (response) {
                     if (response.status == 200) {
                         toastr.success('验证成功！');
                         validateCode = code; // 保存，提交请求时再提交
                         $('#validateMailModal').modal('hide');
-                        $('#account_form').find("input").removeAttr("disabled");
-                        $('#submit_account').removeAttr("disabled");
+                        $('#account_form').find('input').removeAttr('disabled');
+                        $('#submit_account').removeAttr('disabled');
                         $('#sendValidateMailBtn').hide();
                     } else {
                         validateCode = null;
                         toastr.error(response.message, response.status);
-                        console.warn("Error Code: " + response.status);
+                        console.warn('Error Code: ' + response.status);
                     }
                 });
             } else {
-                toastr.error("请输入验证码~");
+                toastr.error('请输入验证码~');
             }
         });
         //检查email
         $('#account_form').find('input[name="email"]').blur(function () {
             var span = $(this).parent().next().find('span');
             var email = $(this).val();
-            if (email != null && email != "") {
+            if (email != null && email != '') {
                 //如果还是原来的email就不检查
                 if (email == src_email) {
                     span.html('');
@@ -490,15 +490,14 @@
                     enableSaveAccountBtn();
                     return;
                 }
-                var reg = /^([a-zA-Z0-9]+[_|_|.]?)*[a-zA-Z0-9]+@([a-zA-Z0-9]+[_|_|.]?)*[a-zA-Z0-9]+.[a-zA-Z]{2,5}$/;
-                if (!reg.test(email)) {
+                if (!globals.re.email.test(email)) {
                     span.css('color', 'red');
                     span.html('输入正确邮箱格式');
-                    $('#submit_account').attr('disabled', "true");
+                    $('#submit_account').attr('disabled', 'true');
                     return;
                 }
                 //否则ajax验证
-                $.post("auth.api?method=checkEmail", {"email": email}, function (response) {
+                $.post(globals.api.checkEmailIsAvailable, {"email": email}, function (response) {
                     if (response.status == 200) {
                         var data = response.data;
                         if (data.type == 0) {
@@ -509,12 +508,12 @@
                             span.css('color', 'red');
                             span.html('此邮箱已被使用!');
                             //邮箱地址已占用且所有主不为该用户时，禁用提交按钮
-                            $('#submit_account').attr('disabled', "true");
+                            $('#submit_account').attr('disabled', 'true');
                             mailcheck = false;
                         }
                     } else {
                         toastr.error(response.message, response.status);
-                        console.warn("Error Code: " + response.status);
+                        console.warn('Error Code: ' + response.status);
                     }
                     //检查是否符合开启按钮条件
                     enableSaveAccountBtn();
@@ -522,7 +521,7 @@
             } else {
                 span.css('color', 'red');
                 span.html('邮箱不能为空!');
-                $('#submit_account').attr('disabled', "true");
+                $('#submit_account').attr('disabled', 'true');
                 mailcheck = false;
             }
         });
@@ -531,7 +530,7 @@
         $('#account_form').find('input[name="username"]').blur(function () {
             var span = $(this).parent().next().find('span');
             var username = $(this).val();
-            if (username != null && username != "") {
+            if (username != null && username != '') {
                 //如果还是原来的username就不检查
                 if (username == src_username) {
                     span.html('');
@@ -541,17 +540,17 @@
                 }
                 if (/^[0-9]+$/.test(value)) {
                     span.css('color', 'red');
-                    span.html("用户名不能为纯数字");
-                    $('#submit_account').attr('disabled', "true");
+                    span.html('用户名不能为纯数字');
+                    $('#submit_account').attr('disabled', 'true');
                     return;
-                } else if (!/^[a-zA-Z0-9][\w\.-]{0,20}$/.test(username)) {
+                } else if (!globals.re.username.test(username)) {
                     span.css('color', 'red');
                     span.html('用户名只能包括字母、数字、横线、下划线、英文句号!且不大于20个字符');
-                    $('#submit_account').attr('disabled', "true");
+                    $('#submit_account').attr('disabled', 'true');
                     return;
                 }
-                //否则ajax验证
-                $.post("auth.api?method=checkUsername", {"username": username},function (response) {
+                // 否则ajax验证
+                $.post(globals.api.checkUsernameIsAvailable, {"username": username}, function (response) {
                     if (response.status == 200) {
                         var data = response.data;
                         if (data.type == 0) {
@@ -562,12 +561,12 @@
                             span.css('color', 'red');
                             span.html('此用户名已被使用!');
                             //用户名已占用且所有主不为该用户时，禁用提交按钮
-                            $('#submit_account').attr('disabled', "true");
+                            $('#submit_account').attr('disabled', 'true');
                             usernamecheck = false;
                         }
                     } else {
                         toastr.error(response.message, response.status);
-                        console.warn("Error Code: " + response.status);
+                        console.warn('Error Code: ' + response.status);
                     }
                     //检查是否符合开启按钮条件
                     enableSaveAccountBtn();
@@ -575,7 +574,7 @@
             } else {
                 span.css('color', 'red');
                 span.html('用户名不能为空!');
-                $('#submit_account').attr('disabled', "true");
+                $('#submit_account').attr('disabled', 'true');
                 usernamecheck = false;
             }
         });
@@ -590,10 +589,10 @@
                 span.html('');
                 pwcheck = true;
                 enableSaveAccountBtn();
-            } else if (newpw != "" || confirmpw != "") {
+            } else if (newpw != '' || confirmpw != '') {
                 span.css('color', 'red');
                 span.html('两次密码输入不相同!');
-                $('#submit_account').attr('disabled', "true");
+                $('#submit_account').attr('disabled', 'true');
                 pwcheck = false;
             }
         });
@@ -603,40 +602,40 @@
         });
     }
 
-    //发送验证码邮件
+    // 发送验证码邮件
     function sendValidateMail() {
-        common_utils.notify({
+        globals.notify({
             "progressBar": false,
             "hideDuration": 0,
             "showDuration": 0,
             "timeOut": 0,
             "closeButton": false
-        }).success("服务器正在发送邮件~", "", "notify_validate_code_mail_sending");
+        }).success('服务器正在发送邮件~', '', 'notify_validate_code_mail_sending');
         $.ajax({
-            url: 'auth.api?method=sendValidateCode',
+            url: globals.api.sendValidateCode,
             type: "POST",
             success: function (response) {
-                common_utils.removeNotify("notify_validate_code_mail_sending");
+                globals.removeNotify('notify_validate_code_mail_sending');
                 if (response.status == 200) {
-                    toastr.success("验证邮件发送成功！");
+                    toastr.success('验证邮件发送成功！');
                 } else {
-                    toastr.error(response.message, "错误");
-                    console.warn("Error Code: " + response.status);
+                    toastr.error(response.message, '错误');
+                    console.warn('Error Code: ' + response.status);
                 }
             },
             error: function (XHR, TS) {
-                common_utils.removeNotify("notify_validate_code_mail_sending");
+                globals.removeNotify('notify_validate_code_mail_sending');
                 toastr.error(TS, '验证邮件发送失败！');
             }
         });
     }
 
     function load_userAuthList(call) {
-        $.get("auth.api?method=getUserAuthList", function (response) {
+        $.get(globals.api.getUserAuthList, function (response) {
             if (response.status == 200) {
                 call && call(response.data.userAuths);
             } else {
-                toastr.error("账户凭证信息获取失败", response.message);
+                toastr.error('账户凭证信息获取失败', response.message);
             }
         });
     }
@@ -648,19 +647,19 @@
         data.validateCode = validateCode;
         data.email = form.find('input[name="email"]').val();
         data.username = form.find('input[name="username"]').val();
-        if (form.find('input[name="confirmpw"]').val() != "") {
+        if (form.find('input[name="confirmpw"]').val() != '') {
             data.password = form.find('input[name="confirmpw"]').val();
         }
         $.ajax({
-            url: "auth.api?method=updateAccount",
+            url: globals.api.updateUserAccount,
             type: "POST",
             data: data,
             success: function (response) {
                 if (response.status == 200) {
-                    window.location.href = "auth/login?identity_type=1&identifier=" + form.find('input[name="username"]').val();
+                    window.location.href = ('auth/login?identity_type=1&identifier=' + form.find('input[name="username"]').val()).toURL();
                 } else {
-                    toastr.error(response.message, "保存失败！");
-                    console.warn("Error Code: " + response.status);
+                    toastr.error(response.message, '保存失败！');
+                    console.warn('Error Code: ' + response.status);
                 }
             },
             error: function () {
@@ -679,27 +678,27 @@
     function initContactTab(query_uid, isLoadFriend) {
         load_followings(query_uid, function (followList) {
             var html = buildContactAreaHtml(followList);
-            $("#followings").html(html);
+            $('#followings').html(html);
         });
         load_followers(query_uid, function (fansList) {
             var html = buildContactAreaHtml(fansList);
-            $("#followers").html(html);
+            $('#followers').html(html);
         });
-        bindContactAreaEvent($("#followings"));
-        bindContactAreaEvent($("#followers"));
+        bindContactAreaEvent($('#followings'));
+        bindContactAreaEvent($('#followers'));
         if (isLoadFriend === true) {
             load_friends(function (friendList) {
                 var html = buildContactAreaHtml(friendList);
-                $("#friends").html(html)
+                $('#friends').html(html)
             });
-            bindContactAreaEvent($("#friends"));
+            bindContactAreaEvent($('#friends'));
         }
     }
 
     function load_followings(query_uid, call) {
         console.log('加载关注列表...');
         $.ajax({
-            url: 'user.api?method=getUserFollowings',
+            url: globals.api.getUserFollowings,
             data: {
                 'uid': query_uid
             },
@@ -709,10 +708,10 @@
                     if (followList != null && followList.length > 0) {
                         call && call(followList);
                     }
-                    console.debug('加载关注列表成功！');
+                    console.log('加载关注列表成功！');
                 } else {
-                    toastr.error(response.message, "提示");
-                    console.warn("Error Code: " + response.status);
+                    toastr.error(response.message, '提示');
+                    console.warn('Error Code: ' + response.status);
                 }
             },
             error: function () {
@@ -725,7 +724,7 @@
     function load_followers(query_uid, call) {
         console.log('加载粉丝列表...');
         $.ajax({
-            url: 'user.api?method=getUserFollowers',
+            url: globals.api.getUserFollowers,
             data: {
                 'uid': query_uid
             },
@@ -735,10 +734,10 @@
                     if (fansList != null && fansList.length > 0) {
                         call && call(fansList);
                     }
-                    console.debug('加载粉丝列表成功~');
+                    console.log('加载粉丝列表成功~');
                 } else {
-                    toastr.error(response.message, "提示");
-                    console.warn("Error Code: " + response.status);
+                    toastr.error(response.message, '提示');
+                    console.warn('Error Code: ' + response.status);
                 }
             },
             error: function () {
@@ -751,17 +750,17 @@
     function load_friends(call) {
         console.log('加载好友列表...');
         $.ajax({
-            url: 'user.api?method=getUserFriends',
+            url: globals.api.getUserFriends,
             success: function (response) {
                 if (response.status == 200) {
                     friendList = response.data.users;
                     if (friendList != null && friendList.length > 0) {
                         call && call(friendList);
                     }
-                    console.debug('加载好友列表成功~');
+                    console.log('加载好友列表成功~');
                 } else {
-                    toastr.error(response.message, "提示");
-                    console.warn("Error Code: " + response.status);
+                    toastr.error(response.message, '提示');
+                    console.warn('Error Code: ' + response.status);
                 }
             },
             error: function () {
@@ -775,14 +774,14 @@
         var html = '<div class="wrapper wrapper-content animated fadeInRight">';
         $.each(userList, function (i, user) {
             html += '<div class="col-xs-12 col-sm-6 col-md-4 col-lg-3"><div class="contact-box">';
-            html += '<a class="open-user-home-page" target="_blank" href="u/' + user.uid + '/home">';
+            html += '<a class="open-user-home-page" target="_blank" href="' + ('u/' + user.uid + '/home').toURL() + '">';
             html += '<div class="col-xs-12 col-sm-4"><div class="text-center">';
             html += '<img alt="image" class="img-circle img-responsive contact-head-photo" src="' + user.head_photo + '">';
             html += '<div class="contact-group-name">' + user.userGroup.group_name + '</div></div></div>';
             html += '<div class="col-xs-12 col-sm-8 contact-info-right"><h3 class="contact-nickname">' + user.nickname + '</h3>';
-            html += '<p><i class="fa fa-map-marker"></i><span class="contact-address">' + (user.address || "&nbsp;") + '</span></p>';
-            html += '<p><strong class="contact-description" title="' + common_utils.encodeHTML(user.description) + '">' + (user.description || "&nbsp;") + '</strong></p>';
-            html += '<p><span class="contact-user-site-label">Site:</span><span class="contact-user-site">' + (user.site || "&nbsp;") + '</span></p>';
+            html += '<p><i class="fa fa-map-marker"></i><span class="contact-address">' + (user.address || '&nbsp;') + '</span></p>';
+            html += '<p><strong class="contact-description" title="' + common_utils.encodeHTML(user.description) + '">' + (user.description || '&nbsp;') + '</strong></p>';
+            html += '<p><span class="contact-user-site-label">Site:</span><span class="contact-user-site">' + (user.site || '&nbsp;') + '</span></p>';
             html += '</div><div class="clearfix"></div></a></div></div>';
         });
         html += '</div>';
@@ -791,32 +790,32 @@
 
     function animationHover(o, e) {
         o = $(o), o.hover(function () {
-            o.addClass("animated " + e)
+            o.addClass('animated ' + e)
         }, function () {
             window.setTimeout(function () {
-                o.removeClass("animated " + e)
+                o.removeClass('animated ' + e)
             }, 2e3)
         })
     }
 
     function bindContactAreaEvent(contactTab) {
         contactTab
-            .on("click", ".open-user-home-page", function (e) {
+            .on('click', '.open-user-home-page', function (e) {
                 var _self = $(e.target);
-                if (_self.hasClass("contact-user-site")) {
+                if (_self.hasClass('contact-user-site')) {
                     window.open(_self.text());
                     return false;
                 } else {
                     return true;
                 }
             })
-            .on("mouseenter", ".contact-box", function () {
-                $(this).addClass("animated " + "pulse");
-                // $(this).toggleClass("animated " + "pulse");
-            }).on("mouseleave", ".contact-box", function () {
+            .on('mouseenter', '.contact-box', function () {
+                $(this).addClass('animated ' + 'pulse');
+                // $(this).toggleClass('animated ' + 'pulse');
+            }).on('mouseleave', '.contact-box', function () {
             var _self = $(this);
             window.setTimeout(function () {
-                _self.removeClass("animated " + "pulse")
+                _self.removeClass('animated ' + 'pulse')
             }, 2e3);
         });
     }
@@ -828,32 +827,32 @@
             var clet_html = buildCollectionAreaHtml(cletList);
             $('#collections').html(clet_html);
         });
-        $("#collections").on({
+        $('#collections').on({
             "click": function (e) {
-                var _self = $(this);
+                var $self = $(this);
                 var a = e.target.parentNode;
-                if (a && a.className && a.className.indexOf("unCollectArticle_trigger") != -1) {
-                    if (confirm("你确定要取消收藏吗？")) {
-                        unCollectArticle(_self.attr("data-aid"), function () {
-                            _self.remove();
-                            toastr.success("删除收藏成功~");
+                if (a && a.className && a.className.indexOf('unCollectArticle_trigger') != -1) {
+                    if (confirm('你确定要取消收藏吗？')) {
+                        unCollectArticle($self.attr('data-aid'), function () {
+                            $self.remove();
+                            toastr.success('删除收藏成功~');
                         });
                     }
                 } else {
-                    window.open("a/detail/" + this.getAttribute("data-aid"));
+                    window.open(('a/detail/' + this.getAttribute('data-aid')).toURL());
                 }
             },
             // "mouseenter": function () {
-            //     $(this).addClass("animated " + "pulse");
-            //     // $(this).toggleClass("animated " + "pulse");
+            //     $(this).addClass('animated ' + 'pulse');
+            //     // $(this).toggleClass('animated ' + 'pulse');
             // },
             // "mouseleave": function () {
             //     var _self = $(this);
             //     window.setTimeout(function () {
-            //         _self.removeClass("animated " + "pulse")
+            //         _self.removeClass('animated ' + 'pulse')
             //     }, 2e3);
             // }
-        }, ".collection-box");
+        }, '.collection-box');
     }
 
     function buildCollectionAreaHtml(cletList) {
@@ -871,7 +870,7 @@
     }
 
     function load_collection(call) {
-        $.get("user.api?method=getArticleCollections", function (response) {
+        $.get(globals.api.getCollectedArticleList, function (response) {
             if (response.status == 200) {
                 var collections = response.data.collections;
                 if (collections != null && collections.length > 0) {
@@ -879,7 +878,7 @@
                 }
                 console.log('加载收藏列表成功~');
             } else {
-                console.warn("Error Code: " + response.status);
+                console.warn('Error Code: ' + response.status);
             }
         });
     }
@@ -887,19 +886,19 @@
     function unCollectArticle(aid, call) {
         // 取消收藏
         $.ajax({
-            url: "user.api?method=unCollectArticle",
+            url: globals.api.uncollectArticle,
             type: "POST",
             data: {"aid": aid},
             success: function (response) {
                 if (response.status == 200) {
                     call && call(response.data);
                 } else {
-                    toastr.error(response.message, "删除收藏失败~");
-                    console.warn("Error Code: " + response.status);
+                    toastr.error(response.message, '删除收藏失败~');
+                    console.warn('Error Code: ' + response.status);
                 }
             },
             error: function () {
-                toastr.error("删除收藏失败~");
+                toastr.error('删除收藏失败~');
             }
         });
     }
@@ -915,6 +914,21 @@
     var clearSysMsgOnOpenRunOnceFlag = false;
     var removeLetterUnReadStyleTimer = null;
     var letterContentScrollBottomTimer = null;
+    var site_video_regex = new RegExp('^((?:' + basePath.replace(/:(?=(?:80|443)(?=\/))\d+(?=\/)/, '') + ')?video/)(detail|embed)(/[^?]+(\\?.*)?)$'); // 匹配本站的视频链接，去掉basePath中的80/443端口
+    var batch_load_letter_size = 20;
+    var lazyVideoObserver = new IntersectionObserver(function (entries, observer) {
+        entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+                let $lazyVideoLink = $(entry.target);
+                lazyVideoObserver.unobserve($lazyVideoLink[0]);
+                if (!$lazyVideoLink.hasClass('lazy-video-completed')) {
+                    $lazyVideoLink.addClass('lazy-video-completed');
+                    $lazyVideoLink.after('<div class="lazy-video-preview">' +
+                        '<iframe class="lazy-video-embed" src="' + $lazyVideoLink.attr('data-video-preview-link') + '" data-scale="stay" style="width:100%;"></iframe></div>');
+                }
+            }
+        });
+    });
 
     function initMessageTab(callAfterLoad) {
 
@@ -925,19 +939,19 @@
         // 加载数据
         load_unread(function (data) {
             unreadList = data;
-            $("#messages").find('.folder-list li a[action="listUnreadMsg"]').trigger("click");
+            $('#messages').find('.folder-list li a[action="listUnreadMsg"]').trigger('click');
         });
         load_letter(function (data) {
             letterList = data;
             formatLetterList = formatLetter(letterList);
-            $("#letterCount").html(letterList.length);
-            $("#msgBoxSize").html(letterList.length);
-            asbChatUserList();
+            $('#letterCount').html(letterList.length);
+            $('#msgBoxSize').html(letterList.length);
+            buildChatUserListHtml();
             callAfterLoad && callAfterLoad();
         });
         load_sysMsg(function (data) {
             sysMsgList = data;
-            $("#sysMsgCount").html(sysMsgList.length);
+            $('#sysMsgCount').html(sysMsgList.length);
         });
 
         // 注册监控服务器的未读消息推送
@@ -947,11 +961,11 @@
     // 消息仪表盘的各种事件
     function bindMessageDashboardEvent() {
         // 消息类型侧边栏点击事件
-        $("#messages").find(".folder-list").on("click", "a[action]", function () {
-            $("#messages").find(".folder-list li").css("background-color", "").removeClass("active-li");
-            $(this).parent().css("background-color", "#eee").addClass("active-li"); // 变色
-            var action = $(this).attr("action");
-            var setHash = false;
+        $('#messages').find('.folder-list').on('click', 'a[action]', function () {
+            var $self = $(this), action = $self.attr('action'), setHash = false;
+            // 变色
+            $self.parent().css('background-color', '#eee').toggleClass('active-li', true)
+                .siblings().css('background-color', "").toggleClass('active-li', false);
             switch (action) {
                 case "listUnreadMsg":  // 未读消息
                     if (clearSysMsgOnOpenRunOnceFlag) {
@@ -967,22 +981,22 @@
                                     sysMsg.status = 1;
                                 }
                             });
-                            console.log("已清除未读的系统消息");
+                            console.log('已清除未读的系统消息');
                         });
                         clearSysMsgOnOpenRunOnceFlag = false;
                     }
-                    var count = buildUnreadListAreaHtml(unreadList);
-                    $("#unReadMsgCount").html(count);
-                    $("#batchClearMessageStatusBtn").show();
+                    let count = buildUnreadListAreaHtml(unreadList);
+                    $('#unReadMsgCount').html(count);
+                    $('#batchClearMessageStatusBtn').show();
                     break;
                 case "listLetters":    // 私信消息
-                    $("#batchClearMessageStatusBtn").hide();
+                    $('#batchClearMessageStatusBtn').hide();
                     buildLetterListAreaHtml(letterList);
-                    $("#letterCount").html(letterList.length);
-                    $("#msgBoxSize").html(letterList.length);
+                    $('#letterCount').html(letterList.length);
+                    $('#msgBoxSize').html(letterList.length);
                     break;
                 case "listSysMsgs":    // 系统消息
-                    $("#batchClearMessageStatusBtn").hide();
+                    $('#batchClearMessageStatusBtn').hide();
                     buildSysMsgListAreaHtml(sysMsgList);
                     break;
                 default:
@@ -993,35 +1007,35 @@
             }
             return false;
         });
-        var messageDashboardMain = $("#messageDashboardMain");
+        var $messageDashboardMain = $('#messageDashboardMain');
         // 打开该条的私信对应用户的聊天弹窗
-        messageDashboardMain.on("click", ".showChatModal_trigger", function () {
-            showChatModal(this.getAttribute("uid"));
+        $messageDashboardMain.on('click', '.trigger-show-chat-modal', function () {
+            showChatModal(this.getAttribute('data-uid'));
         });
         // 选择该行消息
-        messageDashboardMain.on("click", ".check-mail", function (e) {
-            if (e.target.tagName.toLowerCase() == "td") {
-                var checkBox = $(this).find("input");
-                if (checkBox.prop("checked")) {
-                    checkBox.prop("checked", false);
+        $messageDashboardMain.on('click', '.check-mail', function (e) {
+            if (e.target.tagName.toLowerCase() == 'td') {
+                var checkBox = $(this).find('input');
+                if (checkBox.prop('checked')) {
+                    checkBox.prop('checked', false);
                 } else {
-                    checkBox.prop("checked", true);
+                    checkBox.prop('checked', true);
                 }
             }
         });
         // 标记消息为已读按钮
-        $("#batchClearMessageStatusBtn").on("click", function () {
+        $('#batchClearMessageStatusBtn').on('click', function () {
             // 系统消息
             var smIds = [];
-            messageDashboardMain.find(".unread-msg.sys-msg-li .check-mail input:checked").each(function (i, checkbox) {
-                smIds.push(parseInt(checkbox.parentNode.parentNode.getAttribute("data-smid")));
+            $messageDashboardMain.find('.unread-msg.sys-msg-li .check-mail input:checked').each(function (i, checkbox) {
+                smIds.push(parseInt(checkbox.parentNode.parentNode.getAttribute('data-smid')));
             });
             clearSysMsgListStatus(smIds, function (smIds) {
                 unreadList.sysMsgs = unreadList.sysMsgs.filter(function (sysMsg) {
                     return smIds.indexOf(sysMsg.smid) == -1;
                 });
-                $("#messages").find('.folder-list li a[action="listUnreadMsg"]').trigger("click");
-                toastr.success("清除未读系统消息成功！");
+                $('#messages').find('.folder-list li a[action="listUnreadMsg"]').trigger('click');
+                toastr.success('清除未读系统消息成功！');
                 $.each(sysMsgList, function (i, sysMsg) {
                     if (smIds.indexOf(sysMsg.smid) != -1) {
                         sysMsg.status = 1;
@@ -1030,8 +1044,8 @@
             });
             // 私信消息
             var userIds = [];
-            messageDashboardMain.find(".unread-msg.letter-li .check-mail input:checked").each(function (i, checkbox) {
-                userIds.push(checkbox.parentNode.parentNode.getAttribute("data-uid"));
+            $messageDashboardMain.find('.unread-msg.letter-li .check-mail input:checked').each(function (i, checkbox) {
+                userIds.push(checkbox.parentNode.parentNode.getAttribute('data-uid'));
             });
             clearLetterListStatus(userIds, function (leIds) {
                 if (leIds.length > 0) {
@@ -1043,23 +1057,23 @@
                             letter.status = 1;
                         }
                     });
-                    $("#messages").find('.folder-list li a[action="listUnreadMsg"]').trigger("click");
-                    toastr.success("标记私信消息为已读成功！");
+                    $('#messages').find('.folder-list li a[action="listUnreadMsg"]').trigger('click');
+                    toastr.success('标记私信消息为已读成功！');
                 }
             });
             if (smIds.length == 0 && userIds.length == 0) {
-                toastr.error("还没有选择，你点什么");
+                toastr.error('还没有选择，你点什么');
             }
         });
         // 删除系统消息按钮
-        $("#batchDeleteMessageBtn").on("click", function () {
+        $('#batchDeleteMessageBtn').on('click', function () {
                 // 系统消息
                 var smIds = [];
-                messageDashboardMain.find(".sys-msg-li .check-mail input:checked").each(function (i, checkbox) {
-                    smIds.push(parseInt(checkbox.parentNode.parentNode.getAttribute("data-smid")));
+                $messageDashboardMain.find('.sys-msg-li .check-mail input:checked').each(function (i, checkbox) {
+                    smIds.push(parseInt(checkbox.parentNode.parentNode.getAttribute('data-smid')));
                 });
                 if (smIds.length > 0) {
-                    if (window.confirm("确定删除" + smIds.length + "条系统消息吗？")) {
+                    if (window.confirm('确定删除' + smIds.length + '条系统消息吗？')) {
                         deleteSysMsgList(smIds, function (smIds) {
                             unreadList.sysMsgs = unreadList.sysMsgs.filter(function (sysMsg) {
                                 return smIds.indexOf(sysMsg.smid) == -1;
@@ -1067,53 +1081,53 @@
                             sysMsgList = sysMsgList.filter(function (sysMsg) {
                                 return smIds.indexOf(sysMsg.smid) == -1;
                             });
-                            $("#messages").find(".folder-list li.active-li a").trigger("click");
+                            $('#messages').find('.folder-list li.active-li a').trigger('click');
                         });
                     }
                 } else {
-                    toastr.error("（删除私信请到聊天弹窗~）", "请先选择要删除的消息~");
+                    toastr.error('（删除私信请到聊天弹窗~）', '请先选择要删除的消息~');
                 }
             }
         );
         // 刷新消息列表按钮
-        $("#refreshMessageListBtn").on("click", function () {
-            common_utils.notify({
+        $('#refreshMessageListBtn').on('click', function () {
+            globals.notify({
                 "closeButton": false,
                 "progressBar": false,
                 "iconClass": "toast-success-no-icon",
                 "timeOut": 0
-            }).success("正在拉取数据中~", "", "notify_refresh_message_list");
-            var activeLiName = $("#messages").find(".folder-list li.active-li a").attr("action") || "listUnreadMsg";
+            }).success('正在拉取数据中~', '', 'notify_refresh_message_list');
+            var activeLiName = $('#messages').find('.folder-list li.active-li a').attr('action') || 'listUnreadMsg';
             load_unread(function (data) {
                 unreadList = data;
-                if (activeLiName == "listUnreadMsg") {
-                    common_utils.removeNotify("notify_refresh_message_list");
-                    toastr.success("刷新消息列表成功~");
-                    $("#messages").find('.folder-list li a[action="listUnreadMsg"]').trigger("click");
+                if (activeLiName == 'listUnreadMsg') {
+                    globals.removeNotify('notify_refresh_message_list');
+                    toastr.success('刷新消息列表成功~');
+                    $('#messages').find('.folder-list li a[action="listUnreadMsg"]').trigger('click');
                 }
             });
             load_letter(function (data) {
                 letterList = data;
-                if (activeLiName == "listLetters") {
-                    common_utils.removeNotify("notify_refresh_message_list");
-                    toastr.success("刷新消息列表成功~");
-                    $("#messages").find('.folder-list li a[action="listLetters"]').trigger("click");
+                if (activeLiName == 'listLetters') {
+                    globals.removeNotify('notify_refresh_message_list');
+                    toastr.success('刷新消息列表成功~');
+                    $('#messages').find('.folder-list li a[action="listLetters"]').trigger('click');
                 } else {
                     formatLetterList = formatLetter(letterList);
-                    $("#letterCount").html(letterList.length);
-                    $("#msgBoxSize").html(letterList.length);
+                    $('#letterCount').html(letterList.length);
+                    $('#msgBoxSize').html(letterList.length);
                 }
-                asbChatUserList();
-                getChatUserLetterUserCard(getCurrentLetterChatUid()).trigger("click");
+                buildChatUserListHtml();
+                getChatUserLetterUserCard(getCurrentLetterChatUid()).trigger('click');
             });
             load_sysMsg(function (data) {
                 sysMsgList = data;
-                if (activeLiName == "listSysMsgs") {
-                    common_utils.removeNotify("notify_refresh_message_list");
-                    toastr.success("刷新消息列表成功~");
-                    $("#messages").find('.folder-list li a[action="listSysMsgs"]').trigger("click");
+                if (activeLiName == 'listSysMsgs') {
+                    globals.removeNotify('notify_refresh_message_list');
+                    toastr.success('刷新消息列表成功~');
+                    $('#messages').find('.folder-list li a[action="listSysMsgs"]').trigger('click');
                 } else {
-                    $("#sysMsgCount").html(sysMsgList.length);
+                    $('#sysMsgCount').html(sysMsgList.length);
                 }
 
             });
@@ -1123,40 +1137,49 @@
     // 私信聊天弹窗的事件
     function bindChatModalEvent() {
         // 打开聊天框
-        $("#openChatModal").click(function () {
+        $('#openChatModal').click(function () {
             showChatModal(null);
         });
-        $("#chat_Modal").on("shown.bs.modal", function () {
+        $('#chat_Modal').on('shown.bs.modal', function () {
             // 聊天内容滚动到底部
             // [0]是从jquery中取得原js对象
-            $("#currentLetterContent")[0].scrollTop = $("#currentLetterContent")[0].scrollHeight + 2000;
-            // $("#currentLetterContent .chat-discussion-end")[0].scrollIntoView(true);
-            $("#sendLetter_area").focus();
+            $('#currentLetterContent')[0].scrollTop = $('#currentLetterContent')[0].scrollHeight + 2000;
+            // $('#currentLetterContent .chat-discussion-end')[0].scrollIntoView(true);
+            // 用户列表也滚动到可视区域
+            let $userCard = getChatUserLetterUserCard(getCurrentLetterChatUid());
+            if ($userCard.length > 0 && ('scrollIntoView' in $userCard[0] || 'scrollIntoViewIfNeeded' in $userCard[0])) {
+                if ('scrollIntoViewIfNeeded' in $userCard[0]) {
+                    $userCard[0].scrollIntoViewIfNeeded();
+                } else {
+                    $userCard[0].scrollIntoView({block: 'center'});
+                }
+            }
+            $('#sendLetter_area').focus();
         });
-        $("#chat_Modal").on("hidden.bs.modal", function () {
+        $('#chat_Modal').on('hidden.bs.modal', function () {
             // 修改地址栏, 去除chatuid
-            history.replaceState({"mark": "page"}, document.title, common_utils.removeParamForURL("chatuid").replace("/center/sendLetter", "/center/messages"));
+            history.replaceState({"mark": "page"}, document.title, common_utils.removeParamForURL('chatuid').replace('/center/sendLetter', '/center/messages'));
         });
         // 聊天框居中
         if ($(window).width() > 768) {
-            $("#chat_Modal").find(".modal-dialog").css({
+            $('#chat_Modal').find('.modal-dialog').css({
                 "margin-top": $(window).height() / 2 - (835 / 2)
             });
-            $("#messageInsertImageModal").find(".modal-dialog").css({
+            $('#messageInsertImageModal').find('.modal-dialog').css({
                 "margin-top": $(window).height() / 2 - (520 / 2)
             });
         }
         // 用户列表事件
-        $("#letter_userList")
-            .on("click", ".asbChatUserLetterList_trigger", function () {
-                var _self = $(this);
-                var uid = _self.attr("data-uid");
-                asbChatUserLetterList(uid); // 组装当前用户消息列表
-                setAsbChatColor(uid);   // 变色
+        $('#letter_userList')
+            .on('click', '.trigger-show-chat-user-letter-list', function () {
+                var $self = $(this);
+                var uid = $self.attr('data-uid');
+                buildChatUserLetterListHtml(uid); // 组装当前用户消息列表
+                getChatUserLetterUserCard(uid).toggleClass('active', true).siblings('.chat-user').toggleClass('active', false);   // 变色
                 // 修改地址栏, 添加chatuid
-                history.replaceState({"mark": "chat"}, document.title, common_utils.setParamForURL("chatuid", uid).replace("/center/messages", "/center/sendLetter"));
+                history.replaceState({"mark": "chat"}, document.title, common_utils.setParamForURL('chatuid', uid).replace('/center/messages', '/center/sendLetter'));
                 // 某位用户的消息点击了就将他的消息全置为已读
-                if (!_self.hasClass("has-read-user")) {
+                if (!$self.hasClass('has-read-user')) {
                     clearLetterListStatus([uid], function (leIds) {
                         if (leIds.length > 0) {
                             $.each(unreadList.letters, function (i, letter) {
@@ -1169,124 +1192,180 @@
                                     letter.status = 1;
                                 }
                             });
-                            console.debug("已将来自用户 " + uid + " 的消息标记为已读");
+                            console.log('已将来自用户 ' + uid + ' 的消息标记为已读');
                         }
-                        _self.removeClass("has-read-user").addClass("has-read-user");
+                        $self.toggleClass('has-read-user', true);
                     });
                 }
             })
-            .on("keydown", ".appendNewUserToChat", function (e) {  // 添加新聊天用户
+            .on('keydown', '.input-append-new-user-to-chat', function (e) {  // 添加新聊天用户
                 var theEvent = e || window.event;
                 var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
                 if (code == 13) { // keyCode=13是回车键
                     var chatUid = $(this).val().trim();
                     if (!/^[0-9A-Za-z]+$/.test(chatUid)) {
-                        toastr.error("用户id格式不对");
+                        toastr.error('用户id格式不对');
                     } else {
                         showChatModal(chatUid);
-                        $(this).val("");
+                        $(this).val('');
                     }
                     // 防止触发表单提交 返回false
                     //  e.preventDefault();
                     return false;
                 }
+            })
+            .on('click', '.chat-user .chat-user-name a', function (e) {
+                e.preventDefault();
             });
         // 消息内容区事件
         $('#currentLetterContent')
-            .on("click", ".message-del", function () {    // 消息删除按钮
-                if (window.confirm("你确定要删除这条私信吗？")) {
-                    var letterNode = this.parentNode.parentNode;
-                    var leid = letterNode.getAttribute("data-leid");
-                    var ismy = letterNode.getAttribute("data-s-uid") == $uid;
+            .on('scroll', function (e) { // 滚动到底部时懒惰加载更多私信
+                let $currentLetterContent = $(e.currentTarget);
+                if (e.currentTarget.scrollTop <= 30 && !$currentLetterContent.hasClass('lazy-letter-loading')) {
+                    $currentLetterContent.addClass('lazy-letter-loading');
+                    let chatUid = getCurrentLetterChatUid();
+                    if (chatUid) {
+                        $currentLetterContent.toggleClass('lazy-letter-load-completed', false);
+                        let letterList = formatLetterList[chatUid] || [],
+                            earliest_index = parseInt($currentLetterContent.attr('data-earliest-index') || -1),
+                            buildResp;
+                        buildResp = buildBatchLetterHtml(letterList, earliest_index + 1, batch_load_letter_size, profile);
+                        if (buildResp.size > 0) {
+                            let $lastLetter = $currentLetterContent.children('.chat-message');
+                            $currentLetterContent.prepend(buildResp.html);
+                            // {block: 'center'}
+                            $lastLetter[0].scrollIntoView(); // 防止滑到顶部不触发事件，这个代码至关重要，而且滑动时不会断层显示
+                            $currentLetterContent.attr('data-earliest-index', buildResp.end);
+                            $currentLetterContent.find('.chat-message .message-content .lazy-video-link:not(.lazy-video-completed)').each(function (i, linkNode) {
+                                lazyVideoObserver.observe(linkNode);
+                            });
+                            if (buildResp.end == letterList.length - 1) {
+                                $currentLetterContent.toggleClass('lazy-letter-load-completed', true);
+                            }
+                        } else {
+                            $currentLetterContent.toggleClass('lazy-letter-load-completed', true);
+                        }
+                    }
+                    $currentLetterContent.removeClass('lazy-letter-loading');
+                }
+            })
+            .on('click', '.message-del', function () {    // 消息删除按钮
+                if (window.confirm('你确定要删除这条私信吗？')) {
+                    let letterNode = this.parentNode.parentNode;
+                    let leid = letterNode.getAttribute('data-leid');
+                    let ismy = letterNode.getAttribute('data-s-uid') == $uid;
                     deleteLetter(leid, function (leid) {
                         ismy === undefined && (ismy = true);
-                        deleteLetterInLocal(leid) && toastr.success(ismy ? "已删除并撤回你的消息~" : "已删除对方消息");
+                        deleteLetterInLocal(leid) && toastr.success(ismy ? '已删除并撤回你的消息~' : '已删除对方消息');
                     });
                 }
             })
             .on({ // 删除按钮hover效果
                 "mouseenter": function () {
-                    $(this).find(".message-del").css("visibility", "visible");
+                    $(this).find('.message-del').css('visibility', 'visible');
                 },
                 "mouseleave": function () {
-                    $(this).find(".message-del").css("visibility", "hidden");
+                    $(this).find('.message-del').css('visibility', 'hidden');
                 }
-            }, ".chat-message")
-            .on("click", 'img', function () {
-                var $img = $(this);
-                if ($img.closest('a').length == 0) {
+            }, '.chat-message')
+            .on('click', '.message-content img', function () {
+                let $img = $(this);
+                if ($img.closest('a').length == 0 && !$img.hasClass('forbidden-download')) {
                     window.open($img.attr('src'));
                 }
+            })
+            .on('contextmenu', '.message-content img.forbidden-download', function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return false;
             });
         // 提交消息
-        $("#sendLetter_submit").click(function () {
-            var _self = $(this);
-            var content = $('#sendLetter_area').val();
-            var r_uid = getCurrentLetterChatUid();
-            _self.attr("disabled", "disabled");
+        $('#sendLetter_submit').on('click', function () {
+            var $self = $(this),
+                content = $('#sendLetter_area').val(),
+                r_uid = getCurrentLetterChatUid();
+            $self.attr('disabled', 'disabled');
             sendLetter(r_uid, content, function (saveLetter, data) {
                 letterList.unshift(saveLetter); // 追加到放入缓存中
                 if (!formatLetterList[r_uid]) {
                     formatLetterList[r_uid] = [];
                 }
-                //从头部插入
+                // 从头部插入
                 formatLetterList[r_uid].unshift(saveLetter);
-                getChatUserLetterUserCard(r_uid).trigger("click"); // 追加显示新的消息
-                $('#sendLetter_area').val("");
+                appendNewLetter(saveLetter); // 追加显示新的消息
+                $('#sendLetter_area').val('');
                 toastr.success('发送消息成功！');
-                _self.removeAttr("disabled");
+                $self.removeAttr('disabled');
             }, function () {
-                _self.removeAttr("disabled");
+                $self.removeAttr('disabled');
             });
         });
-        $("#sendLetter_area").on("keydown", function (e) {
+        $('#sendLetter_area').on('keydown', function (e) {
             var theEvent = e || window.event;
             var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
             if (13 == code && theEvent.ctrlKey) {
-                $("#sendLetter_submit").trigger("click");
+                $('#sendLetter_submit').trigger('click');
             }
         });
 
         // 评论贴图按钮
-        $("#openInsertImageModalTrigger").click(function () {
-            $("#messageInsertImageModal").modal();
+        $('#openInsertImageModalTrigger').on('click', function () {
+            $('#messageInsertImageModal').modal();
             return false;
         });
 
         // 提交贴图按钮
-        $("#messageInsertImageModal").find(".message-image-submit-btn").click(function () {
-            var modal = $("#messageInsertImageModal");
-            var imageFiles = modal.find(".message-image-input")[0].files;
-            var imageUrl = modal.find(".message-image-url").val();
+        $('#messageInsertImageModal').on('click', '.message-image-btn-insert-submit', function () {
+            let $modal = $('#messageInsertImageModal'),
+                imageFiles = $modal.find('.message-image-input-file')[0].files,
+                imageUrl = $modal.find('.message-image-input-url').val(),
+                imageForbiddenDownload = $modal.find('.message-image-check-forbidden-download').prop('checked');
             if ((!imageFiles || imageFiles.length == 0) && !imageUrl) {
-                toastr.error("请选择图片或输入图片地址~");
+                toastr.error('请选择图片或输入图片地址~');
                 return;
             }
-            var isUploadFile = imageFiles && imageFiles.length > 0;
-            var insertCall = function (imageHtml) {
-                var editor = $('#sendLetter_area');
-                var content = editor.val();
-                if (!content || /[\s\S]*\n$/.test(content)) {
-                    editor.val(content + imageHtml);
-                } else {
-                    editor.val(content + "\n" + imageHtml);
-                }
-                modal.modal("hide");
-                modal.find(".message-image-input").val("");
-                modal.find(".message-image-url").val("");
-                editor.focus();
-            };
+            let isUploadFile = imageFiles && imageFiles.length > 0,
+                insertCall = function (imageHtml) {
+                    let editor = $('#sendLetter_area'), content = editor.val();
+                    if (!content || /[\s\S]*\n$/.test(content)) {
+                        editor.val(content + imageHtml);
+                    } else {
+                        editor.val(content + '\n' + imageHtml);
+                    }
+                    $modal.modal('hide');
+                    $modal.find('.message-image-input-file').val('');
+                    $modal.find('.message-image-input-url').val('');
+                    editor.focus();
+                },
+                imageClassNames = 'message-insert-image not-only-img' + (imageForbiddenDownload ? ' forbidden-download' : '');
             if (isUploadFile) {
-                common_utils.postImage(imageFiles, "message-insert-image not-only-img", function (imageHtml, imageArr, isAllSuccess) {
+                common_utils.postImage(imageFiles, imageClassNames, function (imageHtml, imageArr, isAllSuccess) {
                     if (isAllSuccess) {
-                        toastr.success("已插入" + imageArr.length + "张图片~");
+                        toastr.success('已插入' + imageArr.length + '张图片~');
                     }
                     insertCall(imageHtml);
                 });
             } else {
-                var imageHtml = '<img class="message-insert-image-url not-only-img" src="' + imageUrl + '">\n';
-                toastr.success("已插入图片~");
-                insertCall(imageHtml);
+                let relativePath = null, imageHtml = null;
+                if (imageUrl.indexOf(cloudPath) == 0 && imageUrl.length > cloudPath.length) {
+                    relativePath = imageUrl.substring(cloudPath.length).replace(/\?.*$/, '');
+                    globals.request.get(globals.api.getPhotoList, {"path": relativePath}, false).always(function () {
+                        let response = this;
+                        if (response.status == 200 && response.data.photos && response.data.photos.length > 0) {
+                            let photo = response.data.photos[0];
+                            imageHtml = '<img class="' + imageClassNames + '" src="' + imageUrl + '"' +
+                                ' data-photo-id="' + photo.photo_id + '" data-raw-width="' + photo.width + '" data-raw-height="' + photo.height + '" data-relative-path="' + relativePath + '">\n';
+                        } else {
+                            imageHtml = '<img class="' + imageClassNames + '" src="' + imageUrl + '"' + (relativePath ? (' data-relative-path="' + relativePath + '"') : '') + '>\n';
+                        }
+                        toastr.success('已插入图片~');
+                        insertCall(imageHtml);
+                    });
+                } else {
+                    imageHtml = '<img class="' + imageClassNames + '" src="' + imageUrl + '">\n';
+                    toastr.success('已插入图片~');
+                    insertCall(imageHtml);
+                }
             }
         });
     }
@@ -1325,8 +1404,8 @@
                     }
                     var letter = arr[0];
                     html += '<tr class="unread unread-msg letter-li" data-uid="' + letter.chatUser.uid + '"><td class="check-mail"><input type="checkbox" class="i-checks"></td>';
-                    html += '<td class="mail-ontact"><a class="showChatModal_trigger" uid="' + letter.chatUser.uid + '">' + letter.chatUser.nickname + '</a></td>';
-                    html += ' <td class="mail-subject showChatModal_trigger" uid="' + letter.chatUser.uid + '" title="点击打开聊天框">' + replaceMediaTagToWord(letter.content) + '</td>';
+                    html += '<td class="mail-ontact"><a class="trigger-show-chat-modal" data-uid="' + letter.chatUser.uid + '">' + letter.chatUser.nickname + '</a></td>';
+                    html += '<td class="mail-subject trigger-show-chat-modal" data-uid="' + letter.chatUser.uid + '" title="点击打开聊天框">' + replaceMediaTagToWord(letter.content) + '</td>';
                     // html += '<td class=""><i class="fa fa-paperclip"></i></td>';
                     html += '<td class="text-right mail-date">' + letter.send_time + '</td></tr>';
                 });
@@ -1341,16 +1420,18 @@
                 $(unreadSysMsgList).each(function (i, sysMsg) {
                     html += '<tr class="unread unread-msg sys-msg-li" data-smid="' + sysMsg.smid + '"><td class="check-mail"><input type="checkbox" class="i-checks"></td>';
                     html += '<td class="mail-ontact"><a>系统通知</a></td>';
-                    html += ' <td class="mail-subject">' + replaceMediaTagToWord(sysMsg.content) + '</td>';
+                    html += '<td class="mail-subject">' + replaceMediaTagToWord(sysMsg.content) + '</td>';
                     html += '<td class="text-right mail-date">' + sysMsg.send_time + '</td></tr>';
                 });
                 count += unreadSysMsgList.length;
             } else {
                 unreadList.sysMsgs = [];
             }
-            $("#messageDashboardMain").html(html);
-            $("#messageDashboardMain").html(html).find(".sys-msg-li .mail-subject").each(function () {
-                $(this).prop("title", $(this).text())
+            $('#messageDashboardMain').html(html).find('.sys-msg-li .mail-subject').each(function () {
+                $(this).attr('title', $(this).text());
+            }).end().find('a').each(function (i, node) {
+                let $node = $(node), href = $node.attr('href');
+                href !== undefined && $node.url('href', href);
             });
         }
         return count;
@@ -1366,11 +1447,11 @@
             }
             var letter = arr[0];
             html += '<tr class="unread full-msg letter-li" data-uid="' + letter.chatUser.uid + '"><td class="check-mail"><input type="checkbox" class="i-checks"></td>';
-            html += '<td class="mail-ontact"><a class="showChatModal_trigger" uid="' + letter.chatUser.uid + '">' + letter.chatUser.nickname + '</a></td>';
-            html += ' <td class="mail-subject showChatModal_trigger" uid="' + letter.chatUser.uid + '" title="点击打开聊天框">' + replaceMediaTagToWord(letter.content) + '</td>';
+            html += '<td class="mail-ontact"><a class="trigger-show-chat-modal" data-uid="' + letter.chatUser.uid + '">' + letter.chatUser.nickname + '</a></td>';
+            html += '<td class="mail-subject trigger-show-chat-modal" data-uid="' + letter.chatUser.uid + '" title="点击打开聊天框">' + replaceMediaTagToWord(letter.content) + '</td>';
             html += '<td class="text-right mail-date">' + letter.send_time + '</td></tr>';
         });
-        $("#messageDashboardMain").html(html);
+        $('#messageDashboardMain').html(html);
     }
 
     // 构建面板中系统消息列表的HTML
@@ -1379,11 +1460,14 @@
         $(sysMsgList).each(function (i, sysMsg) {
             html += '<tr class="unread full-msg sys-msg-li" data-smid="' + sysMsg.smid + '"><td class="check-mail"><input type="checkbox" class="i-checks"></td>';
             html += '<td class="mail-ontact"><a>系统通知</a></td>';
-            html += ' <td class="mail-subject">' + replaceMediaTagToWord(sysMsg.content) + '</td>';
+            html += '<td class="mail-subject">' + replaceMediaTagToWord(sysMsg.content) + '</td>';
             html += '<td class="text-right mail-date">' + sysMsg.send_time + '</td></tr>';
         });
-        $("#messageDashboardMain").html(html).find(".sys-msg-li .mail-subject").each(function () {
-            $(this).prop("title", $(this).text())
+        $('#messageDashboardMain').html(html).find('.sys-msg-li .mail-subject').each(function () {
+            $(this).prop('title', $(this).text())
+        }).end().find('a').each(function (i, node) {
+            let $node = $(node), href = $node.attr('href');
+            href !== undefined && $node.url('href', href);
         });
     }
 
@@ -1391,11 +1475,11 @@
     function replaceMediaTagToWord(content) {
         if (content) {
             return content
-                .replace(/<img[\s\S]*?>/g, "[图片]")
+                .replace(/<img[\s\S]*?>/g, '[图片]')
                 .replace(/class=(["'])[^\1]*?aspect-ratio[^\1]*?\1/gi, "")
-                //.replace(/<(iframe|video|embed)[\s\S]*?(?<=\/|<\/\1)>/gi, "[视频]") //火狐不支持前置断言
-                .replace(/<(iframe|video|embed)[\s\S]*?(\/|<\/\1)>/gi, "[视频]")
-                .replace(/<br>/g, " ");
+                //.replace(/<(iframe|video|embed)[\s\S]*?(?<=\/|<\/\1)>/gi, '[视频]') //火狐不支持前置断言
+                .replace(/<(iframe|video|embed)[\s\S]*?(\/|<\/\1)>/gi, '[视频]')
+                .replace(/<br>/g, ' ');
         } else {
             return content;
         }
@@ -1406,132 +1490,213 @@
     /* --------------------- 私信聊天模式框 start -------------------------*/
 
     function showChatModal(uid) {
-        if (uid && uid != "0") {
+        if (uid && uid != '0') {
             if (getChatUserLetterUserCard(uid).length <= 0) { // 如果此用户不在聊天用户列表中，则先放入
                 appendToChatUserList(uid, function () {
-                    getChatUserLetterUserCard(uid).trigger("click");
+                    getChatUserLetterUserCard(uid).trigger('click');
                 });
             } else {
-                getChatUserLetterUserCard(uid).trigger("click");
+                getChatUserLetterUserCard(uid).trigger('click');
             }
         }
         $('#chat_Modal').modal();
     }
 
     // 组装聊天用户列表
-    function asbChatUserList() {
+    function buildChatUserListHtml() {
         if (formatLetterList) {
-            var html = '<div class="chat-user" style="background-color: rgb(245, 245, 245);"><input class="appendNewUserToChat" placeholder="输入用户id查找"></div>';
+            let html = '<div class="chat-user" style="background-color: rgb(245, 245, 245);"><input class="input-append-new-user-to-chat" placeholder="输入用户id查找"></div>';
             $.each(formatLetterList, function (key, arr) {
                 if (!arr || arr.length == 0) {
                     return true;
                 }
-                var user = arr[0].chatUser;
-                html += '<div class="chat-user asbChatUserLetterList_trigger" id="chat_uid_' + user.uid + '" data-uid="' + user.uid + '">';
-                html += '<img class="chat-avatar" src="' + user.head_photo + '" alt="">';
-                html += '<div class="chat-user-name">';
-                html += '<a >' + user.nickname + '</a>';
-                html += '</div></div>';
+                let user = arr[0].chatUser;
+                html += buildSingleUserCardHtml(user);
             });
-            var userListArea = $('#letter_userList');
-            userListArea.html(html);
+            $('#letter_userList').html(html);
         }
     }
 
     // 追加新的用户（用户不在聊天用户列表中时）
     var tempChatUser = null;    // 缓存加载的用户
     function appendToChatUserList(chatUid, callback) {
-        var dfd = $.Deferred();
+        const dfd = $.Deferred();
         if (!formatLetterList[chatUid] || formatLetterList[chatUid].length == 0) {
             if (!tempChatUser || tempChatUser.uid != chatUid) {
-                $.get("user.api?method=getUser&uid=" + chatUid, function (response) {
+                $.get(globals.api.getUser, {'uid': chatUid}, function (response) {
                     if (response.status == 200) {
                         var chatUser = tempChatUser = response.data.user;
                         dfd.resolve(chatUser);
-                        console.log("用户 " + chatUid + " 不存在聊天列表中，请求数据加载成功！ ");
+                        console.log('用户 ' + chatUid + ' 不存在聊天列表中，请求数据加载成功！ ');
                     } else {
-                        toastr.error("用户 ：" + chatUid + " 不存在！ ", '', {"timeOut": 6500});
+                        toastr.error('用户 ：' + chatUid + ' 不存在！ ', '', {"timeOut": 6500});
                     }
                 });
             }
         } else {
-            var chatUser = formatLetterList[chatUid][0].chatUser;
+            let chatUser = formatLetterList[chatUid][0].chatUser;
             dfd.resolve(chatUser);
         }
         dfd.done(function (chatUser) {
             if (getChatUserLetterUserCard(chatUser.uid).length == 0) {
-                var html = "";
-                html += '<div class="chat-user asbChatUserLetterList_trigger" id="chat_uid_' + chatUser.uid + '" data-uid="' + chatUser.uid + '" >';
-                html += '<img class="chat-avatar" src="' + chatUser.head_photo + '" title="' + chatUser.nickname + '">';
-                html += '<div class="chat-user-name">';
-                html += '<a >' + chatUser.nickname + '</a>';
-                html += ' </div></div>';
+                let html = buildSingleUserCardHtml(chatUser);
                 $('#letter_userList').append(html);
+                let $userCard = getChatUserLetterUserCard(chatUser.uid);
+                if ('scrollIntoViewIfNeeded' in $userCard[0]) {
+                    $userCard[0].scrollIntoViewIfNeeded();
+                } else if ('scrollIntoView' in $userCard[0]) {
+                    $userCard[0].scrollIntoView({block: 'center'});
+                }
             }
             callback && callback(chatUser);
         });
     }
 
+    function buildSingleUserCardHtml(chatUser) {
+        let html = '';
+        html += '<div class="chat-user trigger-show-chat-user-letter-list" id="chat_uid_' + chatUser.uid + '" data-uid="' + chatUser.uid + '" >';
+        html += '<img class="chat-avatar" src="' + chatUser.head_photo + '" title="' + chatUser.nickname + '">';
+        html += '<div class="chat-user-name">';
+        html += '<a href="' + ('u/' + chatUser.uid + '/home').toURL() + '" target="_blank">' + chatUser.nickname + '</a>';
+        html += '</div></div>';
+        return html;
+    }
+
     //  组装当前要查看用户的消息列表
-    function asbChatUserLetterList(chatUid) {
-        var $currentLetterContent = $('#currentLetterContent');
-        $currentLetterContent.attr("data-uid", chatUid);
+    function buildChatUserLetterListHtml(chatUid) {
+        let $currentLetterContent = $('#currentLetterContent'),
+            before_uid = $currentLetterContent.attr('data-uid'),
+            isChangeChatUser = before_uid != chatUid;
+        $currentLetterContent.attr('data-uid', chatUid);
         if (formatLetterList) {
-            var letterList = formatLetterList[chatUid];
-            var html = '';
+            let letterList = formatLetterList[chatUid],
+                html = '', new_leids_str = '', before_leids_str = '',
+                earliest_index = parseInt($currentLetterContent.attr('data-earliest-index') || -1);
             if (letterList) {
-                var loginUserHeadPath = $('#head_photo').attr('src');
-                var loginUserNickname = $('#profile_form input[name="nickname"]').val();
-                //倒序遍历
-                for (var i = letterList.length - 1; i >= 0; i--) {
-                    var letter = letterList[i];
-                    html += '<div class="chat-message chat-message-' + (letter.s_uid == $uid ? "right" : "left") + (letter.s_uid != $uid && letter.status == 0 ? " chat-message-un-read" : "") + '" data-leid="' + letter.leid + '" data-s-uid="' + letter.s_uid + '">';
-                    html += '<img class="message-avatar" src="' + (letter.s_uid == $uid ? loginUserHeadPath : (letter.chatUser.head_photo) ) + '" alt="">';
-                    html += '<div class="message">';
-                    html += ' <a class="message-author" target="_blank" href="u/' + letter.s_uid + '/home">' + (letter.s_uid == $uid ? loginUserNickname : letter.chatUser.nickname) + '</a>';
-                    html += '<span class="message-date">' + letter.send_time + '</span>';
-                    if (letter.s_uid == $uid) {
-                        html += '<span class="message-status" style="display: none">' + (letter.status == 0 ? "未读" : "已读") + '</span>';
+                if (!isChangeChatUser) {
+                    earliest_index = earliest_index >= 0 ? earliest_index : (batch_load_letter_size - 1);
+                    if (earliest_index > letterList.length - 1) {
+                        earliest_index = letterList.length - 1;
                     }
-                    html += '<span class="message-del">' + (letter.s_uid == $uid ? "撤回" : "删除") + '</span>';
-                    html += '<div class="message-content">' + common_utils.convertLinkToHtmlTag(letter.content) + '</div></div></div>';
+                    // 倒序遍历
+                    for (let i = earliest_index; i >= 0; i--) {
+                        let letter = letterList[i];
+                        if (!isChangeChatUser && i <= earliest_index) {
+                            new_leids_str += '_' + letter.leid;
+                        }
+                    }
+                    if (new_leids_str) {
+                        new_leids_str = new_leids_str.substring(1);
+                    }
+                    before_leids_str = $currentLetterContent.find('.chat-message').map(function () {
+                        return this.getAttribute('data-leid');
+                    }).toArray().join('_');
+                } else {
+                    earliest_index = batch_load_letter_size > letterList.length ? (letterList.length - 1) : (batch_load_letter_size - 1);
+                    $currentLetterContent.toggleClass('lazy-letter-load-completed', false);
                 }
-                html += '<div class="chat-discussion-end" style="height:0px; overflow:hidden"></div>';
-                $currentLetterContent.html(html);
-                //滚动到底部
+                if (isChangeChatUser || before_leids_str != new_leids_str) {
+                    html = buildBatchLetterHtml(letterList, 0, earliest_index + 1, profile).html;
+                    html += '<div class="chat-discussion-end" style="height:0px; overflow:hidden"></div>';
+                    $currentLetterContent.html(html);
+                    if ($currentLetterContent.children('.chat-message').length == letterList.length) {
+                        $currentLetterContent.toggleClass('lazy-letter-load-completed', true);
+                    }
+                }
+                $currentLetterContent.attr('data-earliest-index', earliest_index);
+                // 滚动到底部
                 $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight;
                 letterContentScrollBottomTimer && clearTimeout(letterContentScrollBottomTimer);
                 removeLetterUnReadStyleTimer && clearTimeout(removeLetterUnReadStyleTimer);
                 letterContentScrollBottomTimer = setTimeout(function () {    // 延迟防止modal未显示时高度未0情况
                     $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight + 2000; // 预留图片高度
                     letterContentScrollBottomTimer = null;
-                }, 300);
+                }, 900);
                 removeLetterUnReadStyleTimer = setTimeout(function () {    // 10秒后移除未读提示
-                    $currentLetterContent.find(".chat-message-un-read").each(function (i, li) {
-                        $(li).removeClass("chat-message-un-read");
+                    $currentLetterContent.find('.chat-message-un-read').each(function (i, li) {
+                        $(li).removeClass('chat-message-un-read');
                     });
                     removeLetterUnReadStyleTimer = null;
                 }, 10000);
+                // 绑定视频链接出现在可视区域时替换为视频标签的观察者
+                $currentLetterContent.find('.chat-message .message-content .lazy-video-link:not(.lazy-video-completed)').each(function (i, linkNode) {
+                    lazyVideoObserver.observe(linkNode);
+                });
             } else {
-                $currentLetterContent.html("");
+                $currentLetterContent.empty();
+                $currentLetterContent.toggleClass('lazy-letter-load-completed', true);
             }
         }
     }
 
+    function buildBatchLetterHtml(letterList, start, size, loginUser) {
+        let maxLength = letterList.length, i, end,
+            html = '';
+        (start > maxLength - 1) && (start = maxLength); // 包含起始
+        (start < 0) && (start = 0);
+        ((start + size) > maxLength) && (size = (maxLength - 1 - start + 1));
+        (size < 0) && (size = 0);
+        end = start + size - 1;
+        // 倒序遍历
+        for (i = end; i >= start; i--) {
+            let letter = letterList[i];
+            html += buildSingleLetterHtml(letter, loginUser);
+        }
+        return {
+            'html': html,
+            'start': start,
+            'end': end,
+            'size': size,
+        };
+    }
+
+    function buildSingleLetterHtml(letter, loginUser) {
+        let html = '', sendByOther = (letter.s_uid != loginUser.uid);
+        html += '<div class="chat-message chat-message-' + (sendByOther ? 'left' : 'right') + (sendByOther && letter.status == 0 ? ' chat-message-un-read' : '') + '" data-leid="' + letter.leid + '" data-s-uid="' + letter.s_uid + '">';
+        html += '<img class="message-avatar" src="' + (sendByOther ? letter.chatUser.head_photo : loginUser.head_photo) + '" alt="">';
+        html += '<div class="message">';
+        html += '<a class="message-author" target="_blank" href="' + ('u/' + letter.s_uid + '/home').toURL() + '">' + (sendByOther ? letter.chatUser.nickname : loginUser.nickname) + '</a>';
+        html += '<span class="message-date">' + letter.send_time + '</span>';
+        if (!sendByOther) {
+            html += '<span class="message-status" style="display:none;">' + (letter.status == 0 ? '未读' : '已读') + '</span>';
+        }
+        html += '<span class="message-del">' + (sendByOther ? '删除' : '撤回') + '</span>';
+        html += '<div class="message-content">' + convertMessageLink(letter.content, site_video_regex) + '</div></div></div>';
+        return html;
+    }
+
+    function convertMessageLink(content, site_video_regex) {
+        site_video_regex = site_video_regex || new RegExp('^((?:' + basePath.replace(/:(?=(?:80|443)(?=\/))\d+(?=\/)/, '') + ')?video/)(detail|embed)(/[^?]+(\\?.*)?)$');
+        return common_utils.convertLinkToHtmlTag(content, function (url) {
+            let not_hash_url = url.match(/^(.*?)(#.*)?$/) && RegExp.$1, hash = RegExp.$2 || '';
+            if (site_video_regex.test(not_hash_url)) {
+                return '<a class="lazy-video-link" data-video-preview-link="' + RegExp.$1 + 'embed' + RegExp.$3 +
+                    (RegExp.$4 ? '&' : '?') + 'save_access_record=false&disable_embed=true' + (RegExp.$2 == 'embed' ? '&disable_embed_redirect=embed' : '') + hash
+                    + '" target="_blank" href="' + url + '">' + url + '</a>';
+            } else {
+                return '<a target="_blank" href="' + url + '">' + url + '</a>';
+            }
+        });
+    }
+
+    function appendNewLetter(letter) {
+        var $currentLetterContent = $('#currentLetterContent');
+        if ($currentLetterContent.find('.chat-message[data-leid="' + letter.leid + '"]').length == 0) {
+            $currentLetterContent.find('.chat-discussion-end').before(buildSingleLetterHtml(letter, profile));
+            $currentLetterContent.attr('data-earliest-index', parseInt($currentLetterContent.attr('data-earliest-index') || -1) + 1);
+            getChatUserLetterUserCard(letter.chatUser.uid).trigger('click');
+        }
+        $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight;
+    }
+
     // 当前选中的私信用户
     function getCurrentLetterChatUid() {
-        return $("#currentLetterContent").attr("data-uid");
+        return $('#currentLetterContent').attr('data-uid');
     }
 
     // 得到用户uid的会话html节点
     function getChatUserLetterUserCard(uid) {
-        return $("#chat_uid_" + uid);
-    }
-
-    // 聊天用户列表 点击变色
-    function setAsbChatColor(uid) {
-        $("#letter_userList").find(".chat-user").css('background-color', '#f5f5f5');
-        getChatUserLetterUserCard(uid).css('background-color', '#1ab394');
+        return $('#chat_uid_' + uid);
     }
 
     // 从本地内存中删除该私信消息
@@ -1574,9 +1739,14 @@
             }
         }
         if (isFind) {
-            $('#currentLetterContent').find('.chat-message[data-leid="' + leid + '"]').remove();
-            common_utils.removeNotify("receive_letter" + "_" + leid);
-            $("#messages").find(".folder-list li.active-li a").trigger("click");
+            let $letter = $('#currentLetterContent').find('.chat-message[data-leid="' + leid + '"]'),
+                $currentLetterContent = $('#currentLetterContent');
+            if ($letter.length > 0) {
+                $letter.remove();
+                $currentLetterContent.attr('data-earliest-index', parseInt($currentLetterContent.attr('data-earliest-index') || -1) - 1);
+            }
+            globals.removeNotify('receive_letter' + '_' + leid); // 通知也删除
+            $('#messages').find('.folder-list li.active-li a').trigger('click');
         }
         return isFind;
     }
@@ -1588,12 +1758,12 @@
     // 从服务器加载未读消息列表
     function load_unread(call) {
         $.ajax({
-            url: 'message.api?method=getUnreadMsgList',
+            url: globals.api.getUnreadMsgList,
             success: function (response) {
                 if (response.status == 200) {
                     call && call(response.data);
                 } else {
-                    toastr.error(response.message, "获取未读消息失败~");
+                    toastr.error(response.message, '获取未读消息失败~');
                 }
             },
             error: function () {
@@ -1606,7 +1776,7 @@
     function load_letter(call) {
         console.log('加载私信消息...');
         $.ajax({
-            url: "message.api?method=getLetterList",
+            url: globals.api.getLetterList,
             data: {
                 "read_status": 1
             },
@@ -1615,7 +1785,7 @@
                     call && call(response.data.letters);
                     console.log('加载私信消息成功~');
                 } else {
-                    toastr.error(response.message, "加载私信消息失败~");
+                    toastr.error(response.message, '加载私信消息失败~');
                 }
             },
             error: function () {
@@ -1628,7 +1798,7 @@
     function load_sysMsg(call) {
         console.log('加载系统消息中...');
         $.ajax({
-            url: "message.api?method=getSysMsgList",
+            url: globals.api.getSysMsgList,
             data: {
                 "read_status": 1
             },
@@ -1637,7 +1807,7 @@
                     call && call(response.data.sysMsgs);
                     console.log('加载系统消息成功~');
                 } else {
-                    toastr.error(response.message, "加载系统消息失败~");
+                    toastr.error(response.message, '加载系统消息失败~');
                 }
             },
             error: function () {
@@ -1655,18 +1825,18 @@
             failCall && failCall('未指定用户~');
         } else if (content) {
             // 将图片链接转化为img标签
-            content = common_utils.convertImageLinkToHtmlTag(content.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ""), "", true);
+            content = common_utils.convertImageLinkToHtmlTag(content.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ''), '', true).replace(/\n$/, '');
             if (!content) {
                 toastr.error('请输入内容！');
                 failCall && failCall('请输入内容！');
                 return false;
             } else if (content.length >= 3999) {
-                toastr.error("字数超出~  " + content.length + "/4000");
-                failCall && failCall("字数超出~  " + content.length + "/4000");
+                toastr.error('字数超出~  ' + content.length + '/4000');
+                failCall && failCall('字数超出~  ' + content.length + '/4000');
                 return false;
             }
             $.ajax({
-                url: "message.api?method=sendLetter",
+                url: globals.api.sendLetter,
                 type: "POST",
                 data: {
                     'content': content,
@@ -1678,8 +1848,8 @@
                         var saveLetter = data.letter;
                         call && call(saveLetter, data);
                     } else {
-                        toastr.error(response.message, "消息发送失败！");
-                        console.warn("Error Code: " + response.status);
+                        toastr.error(response.message, '消息发送失败！');
+                        console.warn('Error Code: ' + response.status);
                         failCall && failCall(response.message);
                     }
                 },
@@ -1700,7 +1870,7 @@
      * @param {Function} call(leIds)
      */
     function clearLetterListStatus(userIds, call) {
-        if (!userIds || !(userIds instanceof Array)) {
+        if (!userIds || !Array.isArray(userIds)) {
             return;
         }
         var leIds = [];
@@ -1721,20 +1891,20 @@
         if (leIds.length > 0) {
             $.ajax({
                 type: "POST",
-                url: "message.api?method=clearLetterListStatus",
+                url: globals.api.clearLetterListStatus,
                 data: {"leids": postLeIds.join()},
                 dataType: "json",
                 success: function (response) {
                     if (response.status == 200 || response.status == 404) {
                         call && call(leIds);
                     } else {
-                        toastr.error("标记私信消息为已读失败~", response.message);
-                        console.warn("Error Code: " + response.status);
+                        toastr.error('标记私信消息为已读失败~', response.message);
+                        console.warn('Error Code: ' + response.status);
                     }
                 },
                 error: function (xhr, ts) {
-                    toastr.error("标记私信消息为已读失败！Error Info: " + ts);
-                    console.log("Clear letter status found error, Error Code: " + ts);
+                    toastr.error('标记私信消息为已读失败！Error Info: ' + ts);
+                    console.log('Clear letter status found error, Error Code: ' + ts);
                 }
             });
         } else {
@@ -1751,12 +1921,12 @@
         if (!leid) {
             return;
         }
-        $.post("message.api?method=deleteLetter", {"leid": leid}, function (response) {
+        $.post(globals.api.deleteLetter, {"leid": leid}, function (response) {
             if (response.status == 200) {
                 call && call(leid);
             } else {
-                toastr.error(response.message, "删除消息失败~");
-                console.warn("Error Code: " + response.status);
+                toastr.error(response.message, '删除消息失败~');
+                console.warn('Error Code: ' + response.status);
             }
         });
     }
@@ -1767,26 +1937,26 @@
      * @param {Function} call(smids)
      */
     function clearSysMsgListStatus(smids, call) {
-        if (!smids || !(smids instanceof Array)) {
+        if (!smids || !Array.isArray(smids)) {
             return;
         }
         if (smids.length > 0) {
             $.ajax({
                 type: "POST",
-                url: "message.api?method=clearSysMsgListStatus",
+                url: globals.api.clearSysMsgListStatus,
                 data: {"smids": smids.join()},
                 dataType: "json",
                 success: function (response) {
                     if (response.status == 200 || response.status == 404) {
                         call && call(smids);
                     } else {
-                        toastr.error("标记系统消息为已读失败！", response.message);
-                        console.warn("Error Code: " + response.status);
+                        toastr.error('标记系统消息为已读失败！', response.message);
+                        console.warn('Error Code: ' + response.status);
                     }
                 },
                 error: function (xhr, ts) {
-                    toastr.error("标记系统消息为已读失败！Error Info: " + ts);
-                    console.log("Clear msg status found error, Error Code: " + ts);
+                    toastr.error('标记系统消息为已读失败！Error Info: ' + ts);
+                    console.log('Clear msg status found error, Error Code: ' + ts);
                 }
             });
         }
@@ -1798,27 +1968,27 @@
      * @param {Function} call(smids)
      */
     function deleteSysMsgList(smids, call) {
-        if (!smids || !(smids instanceof Array)) {
+        if (!smids || !Array.isArray(smids)) {
             return;
         }
         if (smids.length > 0) {
             $.ajax({
                 type: "POST",
-                url: "message.api?method=deleteSysMsgList",
+                url: globals.api.deleteSysMsgList,
                 data: {"smids": smids.join()},
                 dataType: "json",
                 success: function (response) {
                     if (response.status == 200 || response.status == 404) {
                         call && call(smids);
-                        toastr.success("删除系统消息成功！");
+                        toastr.success('删除系统消息成功！');
                     } else {
-                        toastr.error("删除系统消息失败！" + response.message);
-                        console.warn("Error Code: " + response.status);
+                        toastr.error('删除系统消息失败！' + response.message);
+                        console.warn('Error Code: ' + response.status);
                     }
                 },
                 error: function (xhr, ts) {
-                    toastr.error("删除系统消息失败！Error Info: " + ts);
-                    console.log("Delete msg status found error, Error Code: " + ts);
+                    toastr.error('删除系统消息失败！Error Info: ' + ts);
+                    console.log('Delete msg status found error, Error Code: ' + ts);
                 }
             });
         }
@@ -1829,7 +1999,7 @@
     // 注册监控服务器的未读消息推送
     function initWsReceiveServerPush() {
         if (login_handle.validateLogin()) {
-            var eventPrefix = websocket_util.config.event.messageReceive + ".";
+            var eventPrefix = websocket_util.config.event.messageReceive + '.';
             var notify_ws_opts = {
                 "progressBar": false,
                 "positionClass": "toast-top-right",
@@ -1843,22 +2013,22 @@
                     }
                 },
                 "onShown": function () {
-                    $(this).css("opacity", "1");
+                    $(this).css('opacity', '1');
                 },
                 "onHidden": function (toastElement, closeType) {
-                    if (closeType != 0 && toastElement.hasClass("wsMessage") && !toastElement.hasClass("not-sync-ws-message")) {
+                    if (closeType != 0 && toastElement.hasClass('wsMessage') && !toastElement.hasClass('not-sync-ws-message')) {
                         websocket_util.post({
                             "mapping": "transfer_data_in_tabs",
                             "metadata": {
                                 "handle": "remove_ws_message",
-                                "ws_message_id": parseInt(toastElement.attr("data-wsid"))
+                                "ws_message_id": parseInt(toastElement.attr('data-wsid'))
                             }
                         });
                     }
                 }
             };
             // 收到新私信，unbind取消login.js中的默认处理
-            websocket_util.off(eventPrefix + "receive_letter").on(eventPrefix + "receive_letter", function (e, wsMessage, wsEvent) {
+            websocket_util.off(eventPrefix + 'receive_letter').on(eventPrefix + 'receive_letter', function (e, wsMessage, wsEvent) {
                 var user = wsMessage.metadata.user;
                 var letter = wsMessage.metadata.letter; // 新私信
                 if (!letter) {
@@ -1893,29 +2063,34 @@
                     }
                 });
                 // 显示通知
-                var toastrElement = null;
+                var toastElement = null;
                 if (/<(img|iframe|video|embed)[\s\S]*?>/.test(letter.content)) {
-                    toastrElement = common_utils.notify(notify_opts).success(letter.content, user.nickname + " 对你说：", "receive_letter" + "_" + letter.leid);
+                    toastElement = globals.notify(notify_opts).success(letter.content, user.nickname + ' 对你说：', 'receive_letter' + '_' + letter.leid);
                 } else {
-                    toastrElement = common_utils.notify(notify_opts).success("<b>“" + letter.content + "”</b>", user.nickname + " 对你说：", "receive_letter" + "_" + letter.leid);
+                    toastElement = globals.notify(notify_opts).success('<b>“' + letter.content + '”</b>', user.nickname + ' 对你说：', 'receive_letter' + '_' + letter.leid);
                 }
-                toastrElement.addClass("wsMessage receive_letter").attr("data-leid", letter.leid).attr("data-wsid", wsMessage.id);
+                toastElement.addClass('wsMessage receive_letter').attr('data-leid', letter.leid).attr('data-wsid', wsMessage.id);
+                toastElement.on('contextmenu', 'img.forbidden-download', function (e) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return false;
+                });
                 // 插入聊天面板
                 if (getChatUserLetterUserCard(letter.s_uid).length <= 0) { // 如果此用户不在聊天用户列表中，则先放入
                     appendToChatUserList(letter.s_uid, function () {
                         if (letter.s_uid == getCurrentLetterChatUid()) {
-                            getChatUserLetterUserCard(letter.s_uid).trigger("click");
+                            appendNewLetter(letter);
                         }
                     });
                 } else {
-                    getChatUserLetterUserCard(letter.s_uid).removeClass("has-read-user");
+                    getChatUserLetterUserCard(letter.s_uid).removeClass('has-read-user');
                     if (letter.s_uid == getCurrentLetterChatUid()) { // 如果正在查看该用户的消息，则直接插入
-                        getChatUserLetterUserCard(letter.s_uid).trigger("click");
+                        appendNewLetter(letter);
                     }
                 }
                 $('#newestMsgTime').html(letter.send_time);
-                $("#messages").find(".folder-list li.active-li a").trigger("click");
-            }).off(eventPrefix + "withdraw_letter").onPush("withdraw_letter", function (e, wsMessage, wsEvent) { // 当别的用户撤回消息
+                $('#messages').find('.folder-list li.active-li a').trigger('click');
+            }).off(eventPrefix + 'withdraw_letter').onPush('withdraw_letter', function (e, wsMessage, wsEvent) { // 当别的用户撤回消息
                 var user = wsMessage.metadata.user;
                 var letter = wsMessage.metadata.letter; // 被撤回的私信
                 if (letter) {
@@ -1927,9 +2102,9 @@
                                 showChatModal(letter.s_uid); // 打开聊天框
                             }
                         });
-                        common_utils.notify(notify_opts)
-                            .info(user.nickname + " 撤回了一条消息.", "", "withdraw_letter" + "_" + wsMessage.id)
-                            .addClass("wsMessage withdraw_letter").attr("data-wsid", wsMessage.id);
+                        globals.notify(notify_opts)
+                            .info(user.nickname + ' 撤回了一条消息.', '', 'withdraw_letter' + '_' + wsMessage.id)
+                            .addClass('wsMessage withdraw_letter').attr('data-wsid', wsMessage.id);
                     }
                 }
             });
@@ -1937,7 +2112,7 @@
     }
 
     var loadUserSetting = function (call) {
-        $.get("user.api?method=getUserSetting", function (response) {
+        $.get(globals.api.getUserSetting, function (response) {
             if (response.status == 200) {
                 call(response.data.userSetting);
             }
@@ -1945,13 +2120,13 @@
     };
 
     var updateUserSetting = function (userSetting, call) {
-        $.post("user.api?method=updateUserSetting", userSetting, function (response) {
+        $.post(globals.api.updateUserSetting, userSetting, function (response) {
             if (response.status == 200) {
-                toastr.success("用户账号配置更新成功~");
+                toastr.success('用户账号配置更新成功~');
                 call(response.data.userSetting);
             } else {
-                toastr.error(response.message, "更新失败");
-                console.warn("Error Code: " + response.status);
+                toastr.error(response.message, '更新失败');
+                console.warn('Error Code: ' + response.status);
             }
         });
     };
@@ -1962,29 +2137,29 @@
         loadUserSetting(function (loadUserSetting) {
             userSetting = loadUserSetting;
             if (userSetting.receiveNotifyEmail == 0) {
-                $("#setting_account").find('input[name="setting_receive_notify_email"][value="true"]').prop("checked", true);
+                $('#setting_account').find('input[name="setting_receive_notify_email"][value="true"]').prop('checked', true);
             } else {
-                $("#setting_account").find('input[name="setting_receive_notify_email"][value="false"]').prop("checked", true);
+                $('#setting_account').find('input[name="setting_receive_notify_email"][value="false"]').prop('checked', true);
             }
 
         });
-        $("#submit_setting_account").click(function () {
+        $('#submit_setting_account').click(function () {
             var postData = {};
-            postData.receiveNotifyEmail = $("#setting_account").find('input[name="setting_receive_notify_email"]:checked').val() == "true" ? 0 : 1;
+            postData.receiveNotifyEmail = $('#setting_account').find('input[name="setting_receive_notify_email"]:checked').val() == 'true' ? 0 : 1;
             updateUserSetting(postData, function (loadUserSetting) {
                 userSetting = loadUserSetting;
             });
         });
         // 页面显示配置，存于客户端
-        var articleConfig = common_utils.getLocalConfig("article", {
+        var articleConfig = globals.getLocalConfig('article', {
             "full_screen": false,
             "full_background": false
         });
-        var loginConfig = common_utils.getLocalConfig("login", {
+        var loginConfig = globals.getLocalConfig('login', {
             "remember_expires": 31104000000,
             "remember_default_check": true
         });
-        var albumConfig = common_utils.getLocalConfig("album", {
+        var albumConfig = globals.getLocalConfig('album', {
             "photo_page": {
                 "full_background": true,
                 "default_col": {
@@ -2028,65 +2203,65 @@
                 }
             }
         });
-        var settingTab = $("#settings");
+        var settingTab = $('#settings');
         // 初始化 article配置
         if (articleConfig.full_screen) {
-            settingTab.find('#setting_article_form input[name="setting_full_screen"][value="true"]').prop("checked", true);
+            settingTab.find('#setting_article_form input[name="setting_full_screen"][value="true"]').prop('checked', true);
         } else {
-            settingTab.find('#setting_article_form input[name="setting_full_screen"][value="false"]').prop("checked", true);
+            settingTab.find('#setting_article_form input[name="setting_full_screen"][value="false"]').prop('checked', true);
         }
         if (articleConfig.full_background) {
-            settingTab.find('#setting_article_form input[name="setting_full_background_article"][value="true"]').prop("checked", true);
+            settingTab.find('#setting_article_form input[name="setting_full_background_article"][value="true"]').prop('checked', true);
         } else {
-            settingTab.find('#setting_article_form input[name="setting_full_background_article"][value="false"]').prop("checked", true);
+            settingTab.find('#setting_article_form input[name="setting_full_background_article"][value="false"]').prop('checked', true);
         }
 
         // 初始化登录配置
         settingTab.find('#setting_login_form input[name="setting_remember_expires"]').val(loginConfig.remember_expires / (3600 * 1000 * 24));
         if (loginConfig.remember_default_check) {
-            settingTab.find('#setting_login_form input[name="setting_remember_default_check"][value="true"]').prop("checked", true);
+            settingTab.find('#setting_login_form input[name="setting_remember_default_check"][value="true"]').prop('checked', true);
         } else {
-            settingTab.find('#setting_login_form input[name="setting_remember_default_check"][value="false"]').prop("checked", true);
+            settingTab.find('#setting_login_form input[name="setting_remember_default_check"][value="false"]').prop('checked', true);
         }
 
         // 初始化相册photo_page配置
         if (albumConfig.photo_page.full_background) {
-            settingTab.find('#setting_album_form input[name="setting_full_background_photo"][value="true"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_full_background_photo"][value="true"]').prop('checked', true);
         } else {
-            settingTab.find('#setting_album_form input[name="setting_full_background_photo"][value="false"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_full_background_photo"][value="false"]').prop('checked', true);
         }
         if (albumConfig.photo_page.preview_compress) {
-            settingTab.find('#setting_album_form input[name="setting_photo_preview_compress"][value="true"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_photo_preview_compress"][value="true"]').prop('checked', true);
         } else {
-            settingTab.find('#setting_album_form input[name="setting_photo_preview_compress"][value="false"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_photo_preview_compress"][value="false"]').prop('checked', true);
         }
         settingTab.find('#setting_album_form input[name="setting_blow_up_width"]').val(albumConfig.photo_page.blow_up.width);
         settingTab.find('#setting_album_form input[name="setting_blow_up_height"]').val(albumConfig.photo_page.blow_up.height);
         settingTab.find('#setting_album_form input[name="setting_blow_up_scale"]').val(albumConfig.photo_page.blow_up.scale);
         settingTab.find('#setting_album_form input[name="setting_video_load_mode"]').each(function (i, mode) {
             if (mode.value == albumConfig.photo_page.video.load_mode) {
-                $(mode).prop("checked", true);
+                $(mode).prop('checked', true);
             }
         });
         if (albumConfig.photo_page.video.popup_iframe_border) {
-            settingTab.find('#setting_album_form input[name="setting_video_iframe_border"][value="true"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_video_iframe_border"][value="true"]').prop('checked', true);
         } else {
-            settingTab.find('#setting_album_form input[name="setting_video_iframe_border"][value="false"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_video_iframe_border"][value="false"]').prop('checked', true);
         }
         if (albumConfig.photo_page.video.popup_video_border) {
-            settingTab.find('#setting_album_form input[name="setting_video_video_border"][value="true"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_video_video_border"][value="true"]').prop('checked', true);
         } else {
-            settingTab.find('#setting_album_form input[name="setting_video_video_border"][value="false"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_video_video_border"][value="false"]').prop('checked', true);
         }
         settingTab.find('#setting_album_form input[name="setting_popup_btn_display"]').each(function (i, mode) {
             if (mode.value == albumConfig.photo_page.video.popup_btn_display) {
-                $(mode).prop("checked", true);
+                $(mode).prop('checked', true);
             }
         });
         if (albumConfig.photo_page.video.popup_hide_btn) {
-            settingTab.find('#setting_album_form input[name="setting_popup_hide_btn"][value="true"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_popup_hide_btn"][value="true"]').prop('checked', true);
         } else {
-            settingTab.find('#setting_album_form input[name="setting_popup_hide_btn"][value="false"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_popup_hide_btn"][value="false"]').prop('checked', true);
         }
         settingTab.find('#setting_album_form input[name="setting_video_height_scale"]').val(albumConfig.photo_page.video.popup_height_scale);
         settingTab.find('#setting_album_form input[name="setting_default_col_photo_2000"]').val(albumConfig.photo_page.default_col["2000"]);
@@ -2099,9 +2274,9 @@
 
         // 初始化相册album_page配置
         if (albumConfig.album_page.full_background) {
-            settingTab.find('#setting_album_form input[name="setting_full_background_album"][value="true"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_full_background_album"][value="true"]').prop('checked', true);
         } else {
-            settingTab.find('#setting_album_form input[name="setting_full_background_album"][value="false"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_full_background_album"][value="false"]').prop('checked', true);
         }
         settingTab.find('#setting_album_form input[name="setting_default_col_album_2000"]').val(albumConfig.album_page.default_col["2000"]);
         settingTab.find('#setting_album_form input[name="setting_default_col_album_1800"]').val(albumConfig.album_page.default_col["1800"]);
@@ -2112,70 +2287,70 @@
 
         // 初始化相册video_page配置
         if (albumConfig.video_page.embed.audio_use_fake_video) {
-            settingTab.find('#setting_album_form input[name="setting_audio_use_fake_video"][value="true"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_audio_use_fake_video"][value="true"]').prop('checked', true);
         } else {
-            settingTab.find('#setting_album_form input[name="setting_audio_use_fake_video"][value="false"]').prop("checked", true);
+            settingTab.find('#setting_album_form input[name="setting_audio_use_fake_video"][value="false"]').prop('checked', true);
         }
 
         // 点击保存事件
-        settingTab.find("#submit_setting_article").click(function () {
+        settingTab.find('#submit_setting_article').click(function () {
             var config = {};
-            config.full_screen = settingTab.find('#setting_article_form input[name="setting_full_screen"]:checked').val() == "true" ? true : false;
-            config.full_background = settingTab.find('#setting_article_form input[name="setting_full_background_article"]:checked').val() == "true" ? true : false;
-            common_utils.setLocalConfig("article", config);
-            toastr.success("文章配置保存成功！", "", {"progressBar": false});
+            config.full_screen = settingTab.find('#setting_article_form input[name="setting_full_screen"]:checked').val() == 'true' ? true : false;
+            config.full_background = settingTab.find('#setting_article_form input[name="setting_full_background_article"]:checked').val() == 'true' ? true : false;
+            globals.setLocalConfig('article', config);
+            toastr.success('文章配置保存成功！', '', {"progressBar": false});
         });
-        settingTab.find("#submit_setting_login").click(function () {
+        settingTab.find('#submit_setting_login').click(function () {
             var config = {};
             var days = settingTab.find('#setting_login_form input[name="setting_remember_expires"]').val();
-            if (days == "") {
-                toastr.error("请输入值！", "错误", {"progressBar": false});
+            if (days == '') {
+                toastr.error('请输入值！', '错误', {"progressBar": false});
                 return;
             }
             if (isNaN(days)) {
-                toastr.error("请输入数字！", "错误", {"progressBar": false});
+                toastr.error('请输入数字！', '错误', {"progressBar": false});
                 return;
             }
             if (days <= 0) {
-                toastr.error("请输入大于0的数字！单位为天", "错误", {"progressBar": false});
+                toastr.error('请输入大于0的数字！单位为天', '错误', {"progressBar": false});
                 return;
             }
             config.remember_expires = days * (3600 * 1000 * 24);
-            config.remember_default_check = settingTab.find('#setting_login_form input[name="setting_remember_default_check"]:checked').val() == "true" ? true : false;
-            common_utils.setLocalConfig("login", config);
-            toastr.success("登录配置保存成功！", "", {"progressBar": false});
+            config.remember_default_check = settingTab.find('#setting_login_form input[name="setting_remember_default_check"]:checked').val() == 'true' ? true : false;
+            globals.setLocalConfig('login', config);
+            toastr.success('登录配置保存成功！', '', {"progressBar": false});
         });
-        settingTab.find("#submit_setting_album").click(function () {
+        settingTab.find('#submit_setting_album').click(function () {
             var config = {};
             // photo_page
             config.photo_page = {};
-            config.photo_page.full_background = settingTab.find('#setting_album_form input[name="setting_full_background_photo"]:checked').val() == "true" ? true : false;
-            config.photo_page.preview_compress = settingTab.find('#setting_album_form input[name="setting_photo_preview_compress"]:checked').val() == "true" ? true : false;
+            config.photo_page.full_background = settingTab.find('#setting_album_form input[name="setting_full_background_photo"]:checked').val() == 'true' ? true : false;
+            config.photo_page.preview_compress = settingTab.find('#setting_album_form input[name="setting_photo_preview_compress"]:checked').val() == 'true' ? true : false;
             config.photo_page.video = {};
             config.photo_page.video.load_mode = settingTab.find('#setting_album_form input[name="setting_video_load_mode"]:checked').val();
-            config.photo_page.video.popup_iframe_border = settingTab.find('#setting_album_form input[name="setting_video_iframe_border"]:checked').val() == "true" ? true : false;
-            config.photo_page.video.popup_video_border = settingTab.find('#setting_album_form input[name="setting_video_video_border"]:checked').val() == "true" ? true : false;
+            config.photo_page.video.popup_iframe_border = settingTab.find('#setting_album_form input[name="setting_video_iframe_border"]:checked').val() == 'true' ? true : false;
+            config.photo_page.video.popup_video_border = settingTab.find('#setting_album_form input[name="setting_video_video_border"]:checked').val() == 'true' ? true : false;
             config.photo_page.video.popup_btn_display = settingTab.find('#setting_album_form input[name="setting_popup_btn_display"]:checked').val();
-            config.photo_page.video.popup_hide_btn = settingTab.find('#setting_album_form input[name="setting_popup_hide_btn"]:checked').val() == "true" ? true : false;
+            config.photo_page.video.popup_hide_btn = settingTab.find('#setting_album_form input[name="setting_popup_hide_btn"]:checked').val() == 'true' ? true : false;
             var height_scale = settingTab.find('#setting_album_form input[name="setting_video_height_scale"]').val();
-            if (height_scale == "" || isNaN(height_scale) || height_scale <= 0 || height_scale > 1) {
-                toastr.error("宽度比例应在0.0到1.0之间！", "错误", {"progressBar": false});
+            if (height_scale == '' || isNaN(height_scale) || height_scale <= 0 || height_scale > 1) {
+                toastr.error('宽度比例应在0.0到1.0之间！', '错误', {"progressBar": false});
                 return;
             }
             config.photo_page.video.popup_height_scale = parseFloat(height_scale);
             var blow_up_width = settingTab.find('#setting_album_form input[name="setting_blow_up_width"]').val();
             var blow_up_height = settingTab.find('#setting_album_form input[name="setting_blow_up_height"]').val();
             var blow_up_scale = settingTab.find('#setting_album_form input[name="setting_blow_up_scale"]').val();
-            if (blow_up_width == "" || isNaN(blow_up_width) || blow_up_width <= 0) {
-                toastr.error("放大镜宽度请输入大于0的数字！", "错误", {"progressBar": false});
+            if (blow_up_width == '' || isNaN(blow_up_width) || blow_up_width <= 0) {
+                toastr.error('放大镜宽度请输入大于0的数字！', '错误', {"progressBar": false});
                 return;
             }
-            if (blow_up_height == "" || isNaN(blow_up_height) || blow_up_height <= 0) {
-                toastr.error("放大镜高度请输入大于0的数字！", "错误", {"progressBar": false});
+            if (blow_up_height == '' || isNaN(blow_up_height) || blow_up_height <= 0) {
+                toastr.error('放大镜高度请输入大于0的数字！', '错误', {"progressBar": false});
                 return;
             }
-            if (blow_up_scale == "" || isNaN(blow_up_scale) || blow_up_scale <= 0) {
-                toastr.error("放大镜倍率请输入大于0的数字！", "错误", {"progressBar": false});
+            if (blow_up_scale == '' || isNaN(blow_up_scale) || blow_up_scale <= 0) {
+                toastr.error('放大镜倍率请输入大于0的数字！', '错误', {"progressBar": false});
                 return;
             }
             config.photo_page.blow_up = {};
@@ -2192,7 +2367,7 @@
             config.photo_page.default_query_size = parseInt(settingTab.find('#setting_album_form input[name="setting_default_query_size"]').val());
             // album_page
             config.album_page = {};
-            config.album_page.full_background = settingTab.find('#setting_album_form input[name="setting_full_background_album"]:checked').val() == "true" ? true : false;
+            config.album_page.full_background = settingTab.find('#setting_album_form input[name="setting_full_background_album"]:checked').val() == 'true' ? true : false;
             config.album_page.default_col = {};
             config.album_page.default_col["2000"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_2000"]').val());
             config.album_page.default_col["1800"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_1800"]').val());
@@ -2203,11 +2378,11 @@
             // video_page
             config.video_page = {
                 'embed': {
-                    'audio_use_fake_video': settingTab.find('#setting_album_form input[name="setting_audio_use_fake_video"]:checked').val() == "true" ? true : false
+                    'audio_use_fake_video': settingTab.find('#setting_album_form input[name="setting_audio_use_fake_video"]:checked').val() == 'true' ? true : false
                 }
             };
-            common_utils.setLocalConfig("album", config);
-            toastr.success("相册配置保存成功！", "", {"progressBar": false});
+            globals.setLocalConfig('album', config);
+            toastr.success('相册配置保存成功！', '', {"progressBar": false});
         });
     }
 
@@ -2221,7 +2396,7 @@
         var action = document.location.href.match(/^.*\/u\/\w+\/center\/(\w+)\??.*$/) ? RegExp.$1 : undefined;
         var activeTabName = null;
 
-        if (action == "sendLetter") {
+        if (action == 'sendLetter') {
             activeTabName = "messages";
             var chatuid = params['chatuid'];
             if (chatuid != undefined && chatuid.length > 0) {
@@ -2231,7 +2406,7 @@
             }
         } else if (action) {
             activeTabName = action;
-        } else if (url.hash != "" && url.hash != undefined) {
+        } else if (url.hash != '' && url.hash != undefined) {
             var isTab = false;
             $.each(["profile", "account", "friends", "followings", "followers", "collections", "messages", "settings"], function (i, value) {
                 if (url.hash == value) {
@@ -2244,35 +2419,35 @@
             }
         }
         if (activeTabName) {
-            var activeTab = $("#main_tab_ul").find('a[href="#' + activeTabName + '"]');
+            var activeTab = $('#main_tab_ul').find('a[href="#' + activeTabName + '"]');
             activeTab.tab('show');
-            if (activeTabName == "messages" && !activeTab.hasClass("messages_tab_mark_clicked")) {
+            if (activeTabName == 'messages' && !activeTab.hasClass('messages_tab_mark_clicked')) {
                 clearSysMsgOnOpenRunOnceFlag = true;
-                activeTab.removeClass("messages_tab_mark_clicked").addClass("messages_tab_mark_clicked");
+                activeTab.removeClass('messages_tab_mark_clicked').addClass('messages_tab_mark_clicked');
             }
         }
 
-        var hostUserName = document.title.substring(0, document.title.indexOf(" "));
+        var hostUserName = document.title.substring(0, document.title.indexOf(' '));
         $('#main_tab_ul a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
             // e.target // newly activated tab
             // e.relatedTarget // previous active tab
             // if ( !(action !== undefined && action.length > 0)) {
             var activeTab = $(e.target);
-            var activeTabName = activeTab.attr('href').match(/#(.*)$/) ? RegExp.$1 : "";
+            var activeTabName = activeTab.attr('href').match(/#(.*)$/) ? RegExp.$1 : '';
             history.replaceState(
                 null,
-                hostUserName + "_" + e.target.innerText + " - ImCoder's 博客",
-                location.pathname.replace(/\/center.*$/, "/center/") + activeTabName
+                hostUserName + '_' + e.target.innerText + " - ImCoder's 博客",
+                location.pathname.replace(/\/center.*$/, '/center/') + activeTabName
             );
-            document.title = hostUserName + "_" + e.target.innerText + " - ImCoder's 博客";
+            document.title = hostUserName + '_' + e.target.innerText + " - ImCoder's 博客";
             //    document.location.href = $(e.target).attr('href');
             //    //document.body.scrollTop = document.documentElement.scrollTop = 0;
             //    scrollTo(0,0);
             // }
-            if (activeTabName == "messages" && !activeTab.hasClass("messages_tab_mark_clicked")) {
+            if (activeTabName == 'messages' && !activeTab.hasClass('messages_tab_mark_clicked')) {
                 clearSysMsgOnOpenRunOnceFlag = true;
-                $("#messages").find(".folder-list li.active-li a").trigger("click");
-                activeTab.removeClass("messages_tab_mark_clicked").addClass("messages_tab_mark_clicked");
+                $('#messages').find('.folder-list li.active-li a').trigger('click');
+                activeTab.toggleClass('messages_tab_mark_clicked', true);
             }
         });
 

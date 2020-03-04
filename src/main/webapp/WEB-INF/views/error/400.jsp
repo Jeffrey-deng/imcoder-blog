@@ -1,9 +1,11 @@
 <%@ page language="java" import="site.imcoder.blog.setting.Config" pageEncoding="UTF-8" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%@ page isErrorPage="true" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%
     String path = request.getContextPath();
-    String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String hostPath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String basePath = Config.get(ConfigConstants.SITE_ADDR);
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
@@ -17,7 +19,6 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <base href="<%=basePath%>" target="_self">
     <title>400 - ImCoder's 博客</title>
     <meta name="keywords" content="400 -博客">
     <meta name="description" content="400 -博客">
@@ -79,10 +80,16 @@
 <div class="middle-box text-center animated fadeInDown">
     <h1>400</h1>
     <h3 class="font-bold">提交参数错误</h3>
-
     <div class="error-desc">
         请检查参数是否正确：）
-        <br/>您可以返回主页看看
+        <c:choose>
+            <c:when test="${not empty errorInfo}">
+                <br/>原因：${errorInfo}
+            </c:when>
+            <c:otherwise>
+                <br/>您可以返回主页看看
+            </c:otherwise>
+        </c:choose>
         <br/>
         <a href="<%=basePath%>" class="btn btn-primary m-t">主页</a>
     </div>

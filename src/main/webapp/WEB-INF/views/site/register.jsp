@@ -2,7 +2,8 @@
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
 <%
     String path = request.getContextPath();
-    String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String hostPath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path + "/";
+    String basePath = Config.get(ConfigConstants.SITE_ADDR);
     String staticPath = Config.get(ConfigConstants.SITE_CDN_ADDR);
     String cloudPath = Config.get(ConfigConstants.SITE_CLOUD_ADDR);
     String urlArgs = Config.get(ConfigConstants.SITE_CDN_ADDR_ARGS);
@@ -15,7 +16,6 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <base href="<%=basePath%>" target="_self">
     <title>注册 - ImCoder's 博客</title>
     <meta name="keywords" content="imcoder.site博客注册">
     <meta name="description" content="简单几步就可以创建一个imcoder.site账号.账户信息->个人资料->条款->提交">
@@ -52,6 +52,10 @@
             min-height: 25em;
         }
 
+        .wrapper {
+            margin-top: 50px;
+        }
+
     </style>
 
 </head>
@@ -62,7 +66,7 @@
         <div class="col-sm-12">
             <div class="ibox">
                 <div class="ibox-title" align="center">
-                    <h3 style="font-size: 1.3em"><a href="/">主页</a></h3>
+                    <h3 style="font-size: 1.3em"><a href="<%=basePath%>">I'm CODER</a></h3>
                 </div>
                 <div class="ibox-content">
                     <h2>注册</h2>
@@ -154,29 +158,42 @@
     </div>
 </div>
 
-
 <!-- Small modal start 成功提示框 -->
-<div style="margin-top:12.14286em;" class="modal fade" id="TipsModal" tabindex="-1" role="dialog"
+<div style="margin-top:12.14286em;" class="modal fade" id="registerSuccessModal" tabindex="-1" role="dialog"
      aria-labelledby="exampleModalLabel">
     <div style="width:28.5714em;" class="modal-dialog" role="document">
         <div class="modal-content animated bounceInRight">
             <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
-                        aria-hidden="true">&times;</span></button>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <h4 class="modal-title" id="exampleModalLabel">系统提示</h4>
             </div>
             <div class="modal-body" style="text-align:center;">
-                <h3>【<span id="span_username"></span>】,你成功注册了账号!</h3><br>
+                <h3>【<span class="user-name"></span>】,你成功注册了账号!</h3><br>
                 <h3>正在跳转...</h3>
             </div>
             <div class="modal-footer">
-                <a id="a_jump" href="#" class="btn btn-primary">手动跳转</a>
+                <a href="#" class="btn btn-primary user-jump-link">手动跳转</a>
             </div>
         </div>
     </div>
 </div>
 <!-- Small modal end -->
 
+<div id="site_background_wrap" class="site-background-wrap">
+    <div class="site-background">
+        <div class="site-background-canvas">
+            <div class="site-background-canvas-image" style="background-image: url('<%=staticPath%>img/site_background_canvas_image.webp');"></div>
+            <div class="site-background-canvas-video-wrap">
+                <video class="site-background-canvas-video" src="<%=staticPath%>media/site_background_canvas_video.mp4" role="presentation" preload="auto" playsinline="" loop="" muted="" autoplay="true"></video>
+            </div>
+            <div class="site-background-canvas-overlay" style="background-image: url('<%=staticPath%>img/site_background_canvas_overlay.png');"></div>
+        </div>
+    </div>
+</div>
+
+<a id="basePath" class="site-path-prefix" href="<%=basePath%>" style="display:none;"></a>
+<a id="staticPath" class="site-path-prefix" href="<%=staticPath%>" style="display:none;"></a>
+<a id="cloudPath" class="site-path-prefix" href="<%=cloudPath%>" style="display:none;"></a>
 <script baseUrl="<%=staticPath%>" urlArgs="<%=urlArgs%>" data-main="<%=staticPath%>js/config.js<%=urlArgs%>" src="<%=staticPath%>lib/requirejs/require.min.js" defer="true" async="true" id="require_node" page="register"></script>
 
 </body>

@@ -173,7 +173,7 @@ public interface IUserDao {
      * @param user
      * @return
      */
-    public List<Collection> findCollectList(User user);
+    public List<Collection> findCollectionList(User user);
 
     /**
      * 保存文章的动作记录
@@ -257,7 +257,6 @@ public interface IUserDao {
      */
     public int deleteVideoAccessDetail(AccessDetail accessDetail);
 
-
     /**
      * 保存照片的动作记录
      *
@@ -298,6 +297,47 @@ public interface IUserDao {
      * @return
      */
     public int deletePhotoAccessDetail(AccessDetail accessDetail);
+
+    /**
+     * 保存相册的动作记录
+     *
+     * @param actionRecord
+     * @return
+     */
+    public int saveAlbumActionRecord(ActionRecord<Album> actionRecord);
+
+    /**
+     * 查询相册的动作记录
+     *
+     * @param actionRecord
+     * @return
+     */
+    public ActionRecord<Album> findAlbumActionRecord(ActionRecord<Album> actionRecord);
+
+    /**
+     * 查询相册的动作记录列表
+     *
+     * @param actionRecord
+     * @param loginUser
+     * @return
+     */
+    public List<ActionRecord<Album>> findAlbumActionRecordList(ActionRecord<Album> actionRecord, User loginUser);
+
+    /**
+     * 保存相册的访问记录详情
+     *
+     * @param accessDetail
+     * @return
+     */
+    public int saveAlbumAccessDetail(AccessDetail accessDetail);
+
+    /**
+     * 删除相册的访问记录详情
+     *
+     * @param accessDetail
+     * @return
+     */
+    public int deleteAlbumAccessDetail(AccessDetail accessDetail);
 
     /**
      * 保存评论的动作记录

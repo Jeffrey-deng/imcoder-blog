@@ -178,6 +178,15 @@ public class IRequest implements GlobalConstants, Serializable {
     }
 
     /**
+     * 当前请求的登录用户是否与输入用户相等
+     *
+     * @return
+     */
+    public boolean equalsLoginUser(User user) {
+        return isHasLoggedIn() && user != null && loginUser.getUid().equals(user.getUid());
+    }
+
+    /**
      * 当前请求是否是管理员请求
      * 当没有登录时，返回false
      *
