@@ -53,6 +53,10 @@ public class IResponse implements GlobalConstants, Serializable {
         setStatus(status);
     }
 
+    public IResponse(int status, String message) {
+        setStatus(status).setMessage(message);
+    }
+
     public IResponse(BaseService serviceImpl, int status) {
         this.serviceImpl = serviceImpl;
         setStatus(status);

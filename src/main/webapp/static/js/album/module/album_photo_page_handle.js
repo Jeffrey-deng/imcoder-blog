@@ -139,7 +139,8 @@
         zipPhoto_groupWithAlbum: false,
         zipPhoto_groupWithMirrorPath: false,
         allowZipPhotos: false,
-        img_load_error_default: "res/img/img_load_error_default.jpg"
+        img_load_error_default: "res/img/img_load_error_default.jpg",
+        protect_attr_regexp: /#protect@(\w+)#/i
     };
     var init = function (options) {
         $.extendNotNull(true, config, options);
@@ -170,9 +171,9 @@
                 $('#' + config.selector.photosContainer_id)
                     .on({
                         "dragstart": function (e) {
-                            var uid = $(e.currentTarget).closest(config.selector.photo_node).attr('data-uid');
-                            var isAuthor = login_handle.equalsLoginUser(uid);
-                            var tips = isAuthor ? '松开鼠标打开编辑窗口~' : '松开鼠标查看图片信息~';
+                            var uid = $(e.currentTarget).closest(config.selector.photo_node).attr('data-uid'),
+                                isAuthor = login_handle.equalsLoginUser(uid),
+                                tips = isAuthor ? '松开鼠标打开编辑窗口~' : '松开鼠标查看图片信息~';
                             globals.notify({
                                 "progressBar": false,
                                 "timeOut": 0,
@@ -185,9 +186,11 @@
                             config.callback.actionForEditPhoto.call(context, photo, 'drag');
                             context.trigger(config.event.actionForEditPhoto, photo, 'drag');
                         }
-                    }, 'img')
+                    }, 'a')
                     .on('click', config.selector.photo_node + ' .photo-detail-link', function (e) {
                         e.preventDefault();
+                    }).on('click', config.selector.photo_node + ' .photo-detail-link.image-widget.protect', function (e) {
+                        e.target === this && $(this).find('img').trigger('click');
                     });
 
                 initClickEnlarge();
@@ -392,10 +395,11 @@
     };
     var utils = {
         "createPhotoNode": function (photo) {
-            var div = document.createElement('div');
+            var div = document.createElement('div'),
+                protectAttr = config.protect_attr_regexp.test(photo.tags) && (RegExp.$1 || 'all');
             div.id = config.selector.photo_id_prefix + photo.photo_id;
             div.className = "photo";
-            div.title = photo.name;
+            div.title = (protectAttr != 'all' && protectAttr != 'name') ? photo.name : '';
             //div.setAttribute('data-order', photo.photo_id);
             div.setAttribute('data-id', photo.photo_id);
             div.setAttribute('data-uid', photo.uid);
@@ -411,7 +415,7 @@
             } else {
                 a.href = photo.path;
             }
-            a.className = 'photo-detail-link';
+            a.className = 'photo-detail-link image-widget protect';
             div.appendChild(a);
             var img = document.createElement('img');
             img.setAttribute('src', config.callback.generatePhotoPreviewUrl.call(context, photo.path, config.page_params.real_col[config.hitColKey]));
@@ -854,12 +858,12 @@
                         'padding-bottom': '',
                         'overflow': ''
                     });
-                    mfp.content.on('click', '.btn-open-update-modal', function (e) {
+                    mfp.content.off('click.once').on('click.once', '.btn-open-update-modal', function (e) {
                         e.preventDefault();
                         var photo = utils.getPhotoByCache(mfp.currItem.photo.photo_id);
                         config.callback.actionForEditPhoto.call(context, photo, 'btn');
                         context.trigger(config.event.actionForEditPhoto, photo, 'btn');
-                    }).on('click', '.btn-like-photo', function (e) {
+                    }).on('click.once', '.btn-like-photo', function (e) {
                         e.preventDefault();
                         var $likeBtn = $(this);
                         var photo = mfp.currItem.photo;
@@ -886,8 +890,10 @@
                             photo.like_count = newValue;
                             photo.liked = !undo;
                         });
-                    }).on('click', '.photo-detail-link', function (e) {
+                    }).on('click.once', '.photo-detail-link', function (e) {
                         e.preventDefault();
+                    }).on('click.once', '.photo-detail-link.image-widget.protect', function (e) {
+                        e.target === this && $(this).find('img').trigger('click');
                     });
                     // 修改地址栏, 改变check, 在切换图片的时候
                     if (config.isMagnificPopupOpen) { // 灯箱打开的时候不替换，切换的时候替换, 回调markupParse,change在open之前运行
@@ -1093,7 +1099,7 @@
             image: {
                 markup: '<div class="mfp-figure">' +
                 '<div class="mfp-close"></div>' +
-                '<a class="photo-detail-link"><div class="mfp-img"></div></a>' +
+                '<a class="photo-detail-link image-widget protect"><div class="mfp-img"></div></a>' +
                 '<div class="mfp-bottom-bar">' +
                 '<div class="mfp-title"></div>' +
                 '<div class="mfp-counter"></div>' +
@@ -1104,6 +1110,26 @@
                     var photo = item.photo;
                     var name = photo.name;
                     var desc = photo.description;
+                    var m;
+                    if (photo.tags && (m = photo.tags.match(config.protect_attr_regexp)) && !login_handle.equalsLoginUser(photo.uid)) {
+                        switch (m[1]) {
+                            case 'name':
+                                name = '';
+                                break;
+                            case 'desc':
+                            case 'description':
+                                desc = '';
+                                break;
+                            case 'album':
+                            case 'topic':
+                            case 'tag':
+                            case 'tags':
+                            case 'refer':
+                                break;
+                            default:
+                                name = desc = ''
+                        }
+                    }
                     var photoDetailUrl = ('p/detail/' + photo.photo_id).toURL();
                     if ((!name) && desc) {
                         name = desc;

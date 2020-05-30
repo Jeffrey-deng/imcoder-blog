@@ -440,11 +440,7 @@ textarea.modal .input-lg {
 .modal .form-horizontal .form-group:before,
 .modal .form-horizontal .form-group:after {
     content: " ";
-    /* 1 */
-
     display: table;
-    /* 2 */
-
 }
 
 .modal .form-horizontal .form-group:after {
@@ -454,11 +450,7 @@ textarea.modal .input-lg {
 .modal .form-horizontal .form-group:before,
 .modal .form-horizontal .form-group:after {
     content: " ";
-    /* 1 */
-
     display: table;
-    /* 2 */
-
 }
 
 .modal .form-horizontal .form-group:after {
@@ -896,11 +888,7 @@ fieldset[disabled] .modal .btn-link:focus {
 .modal .btn-toolbar:before,
 .modal .btn-toolbar:after {
     content: " ";
-    /* 1 */
-
     display: table;
-    /* 2 */
-
 }
 
 .modal .btn-toolbar:after {
@@ -910,11 +898,7 @@ fieldset[disabled] .modal .btn-link:focus {
 .modal .btn-toolbar:before,
 .modal .btn-toolbar:after {
     content: " ";
-    /* 1 */
-
     display: table;
-    /* 2 */
-
 }
 
 .modal .btn-toolbar:after {
@@ -1036,11 +1020,7 @@ fieldset[disabled] .modal .btn-link:focus {
 .modal .btn-group-vertical > .btn-group:before,
 .modal .btn-group-vertical > .btn-group:after {
     content: " ";
-    /* 1 */
-
     display: table;
-    /* 2 */
-
 }
 
 .modal .btn-group-vertical > .btn-group:after {
@@ -1050,11 +1030,7 @@ fieldset[disabled] .modal .btn-link:focus {
 .modal .btn-group-vertical > .btn-group:before,
 .modal .btn-group-vertical > .btn-group:after {
     content: " ";
-    /* 1 */
-
     display: table;
-    /* 2 */
-
 }
 
 .modal .btn-group-vertical > .btn-group:after {
@@ -1493,11 +1469,7 @@ button.modal .close {
 .modal-footer:before,
 .modal-footer:after {
     content: " ";
-    /* 1 */
-
     display: table;
-    /* 2 */
-
 }
 
 .modal-footer:after {
@@ -1507,11 +1479,7 @@ button.modal .close {
 .modal-footer:before,
 .modal-footer:after {
     content: " ";
-    /* 1 */
-
     display: table;
-    /* 2 */
-
 }
 
 .modal-footer:after {
@@ -4092,6 +4060,14 @@ textarea {
     margin-top: 0
 }
 
+.mail-subject .video-play-button {
+    display: none;
+}
+
+.letter-li .mail-subject a {
+    pointer-events: none;
+}
+
 .comment-list-wrapper {
     padding-top: 1em;
     padding-bottom: 1em;
@@ -4246,6 +4222,9 @@ textarea {
     width: 2.28571em;
     height: 2.28571em;
     margin-right: 0.71429em;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .comment-author cite {
@@ -4890,11 +4869,9 @@ body {
     }
 }
 
-
 .chat-panel a {
     color: #3354AA;
 }
-
 
 .chat-panel a:hover, .chat-panel a:focus {
     color: #428bca;
@@ -4932,6 +4909,9 @@ body {
     height: 36px;
     margin-right: 10px;
     margin-top: 2px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .chat-user-name {
@@ -5086,6 +5066,9 @@ body {
     width: 48px;
     height: 48px;
     margin-top: 1px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .message-del {
@@ -5178,12 +5161,50 @@ body {
     border-left: 4px solid #eee;
 }
 
+.drop-item-notify {
+    background-color: #1c84c6 !important;
+}
+
+.message-insert-table {
+    width: 100%;
+    word-break: break-all;
+}
+
+.message-insert-table a:hover {
+    border-bottom: 1px solid #EEE;
+
+}
+
+.message-insert-table a {
+    border-bottom-color: transparent;
+}
+
 .forbidden-download-css {
     pointer-events: none;
 }
 
 .forbidden-download {
 
+}
+
+.image-widget {
+
+}
+
+.image-widget.protect {
+    position: relative;
+    display: block;
+}
+
+.image-widget.protect::before {
+    content: '';
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    background-color: transparent;
 }
 
 .modal .modal-body .form-group:last-child {
@@ -5884,9 +5905,13 @@ body {
 .widget-profile-box .author-head-photo {
     border: 6px solid #FFF;
     border-radius: 50%;
+    margin: 0 auto;
     margin-bottom: 1.42857em;
     width: 9.42em;
     height: 9.42em;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .widget-profile-box .author-says {
@@ -6545,6 +6570,7 @@ img.mfp-img {
     border-bottom-color: #ddd;
     border-style: solid;
     overflow-x: auto;
+    cursor: pointer;
 }
 
 .photo-detail-img img {

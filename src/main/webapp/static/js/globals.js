@@ -49,6 +49,40 @@
         }
 
         /**
+         * 判断浏览器类型
+         */
+        navigator.browser = {
+            'ie': function () {
+                return navigator.userAgent.indexOf("MEIS") !== -1 && navigator.userAgent.indexOf("Trident") !== -1;
+            },
+            'edge': function () {
+                return navigator.userAgent.indexOf('Edge') !== -1;
+            },
+            'chrome': function () {
+                return navigator.userAgent.indexOf('Chrome') !== -1;
+            },
+            'firefox': function () {
+                return navigator.userAgent.indexOf('Firefox') !== -1;
+            },
+            'safari': function () {
+                return navigator.userAgent.indexOf('Safari') !== -1;
+            },
+        };
+
+        /**
+         * 设备信息
+         */
+        navigator.device = {
+            'mobile': function () {
+                // (window.innerWidth || document.documentElement.clientWidth) <= 768;
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent);
+            },
+            'pc': function () {
+                return !/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent);
+            }
+        };
+
+        /**
          * 将字符串值由相对url转换到绝对url返回
          * @author Jeffrey.Deng
          * @param {String=} prefix - url前缀，默认为 globals.path_params.basePath
@@ -65,6 +99,30 @@
                 url = prefix;
             }
             return url;
+        };
+
+        /**
+         * 从光标位置处插入内容
+         * @param input
+         * @param text
+         */
+        HTMLTextAreaElement.prototype.insertText = HTMLInputElement.prototype.insertText = function (text) {
+            let input = this;
+            if (document.selection) {
+                input.focus();
+                let sel = document.selection.createRange();
+                sel.text = text;
+            } else if (typeof input.selectionStart === 'number' && typeof input.selectionEnd === 'number') {
+                let startPos = input.selectionStart,
+                    endPos = input.selectionEnd,
+                    cursorPos = startPos,
+                    beforeText = input.value;
+                input.value = beforeText.substring(0, startPos) + text + beforeText.substring(endPos, beforeText.length);
+                cursorPos += text.length;
+                input.selectionStart = input.selectionEnd = cursorPos;
+            } else {
+                input.value += text;
+            }
         };
 
         /**
@@ -216,6 +274,273 @@
             return target;
         };
 
+        /**
+         * 扩展jQuery事件类型
+         * 例如：
+         *      粘贴事件为 parse，而粘贴有很多种（文字、图片、文件），但我想直接绑定获得粘贴文件的事件，
+         *      那么我可以在这里扩展一个 pasteFile 事件
+         * @param {Object} types - 对象，key为事件名，value为事件初始化函数，在用户绑定该事件调用
+         */
+        $.extendEventType = function (types) {
+            if ($.type(types) == 'object') {
+                let type, data = $(document).data(), extendEvents = data.extendEvents;
+                if (!extendEvents) {
+                    data.extendEvents = extendEvents = {};
+                }
+                for (type in types) {
+                    if ($.isFunction(types[type])) {
+                        extendEvents[type] = types[type];
+                    }
+                }
+            }
+        };
+
+        $.fn.backUpOn = $.fn.on;
+        $.fn.on = function (types, selector, data, fn, one) {   // 修改 $.fn.on 以达到扩展jQuery事件类型的目的
+            var type;
+            // Types can be a map of types/handlers
+            if (typeof types === "object") {
+                // ( types-Object, selector, data )
+                if (typeof selector !== "string") {
+                    // ( types-Object, data )
+                    data = data || selector;
+                    selector = undefined;
+                }
+                for (type in types) {
+                    this.on(type, selector, data, types[type], one);
+                }
+                return this;
+            }
+            if (data == null && fn == null) {
+                // ( types, fn )
+                fn = selector;
+                data = selector = undefined;
+            } else if (fn == null) {
+                if (typeof selector === "string") {
+                    // ( types, selector, fn )
+                    fn = data;
+                    data = undefined;
+                } else {
+                    // ( types, data, fn )
+                    fn = data;
+                    data = selector;
+                    selector = undefined;
+                }
+            }
+            if (fn === false) {
+                fn = function () {
+                    return false;
+                };
+            } else if (!fn) {
+                return this;
+            }
+            var extendEvents = $(document).data('extendEvents'), extendType, extendFn;
+            if (extendEvents) {
+                for (extendType in extendEvents) {
+                    if ((types + '.').indexOf(extendType + '.') === 0) {
+                        extendFn = extendEvents[extendType];
+                        this.each(function () {
+                            extendFn.call($(this), types, selector, data, fn, one);
+                        });
+                        break;
+                    }
+                }
+            }
+            return this.backUpOn(types, selector, data, fn, one);
+        };
+
+        // 默认的扩展事件
+        $.extendEventType({
+            pasteFile: function (type, selector, data, fn, one) { // 粘贴文件 $(selector).on('pasteFile', fn);
+                fn = function (event) {
+                    let e = event.originalEvent, clipboardData = e.clipboardData;
+                    if (!clipboardData) {
+                        return;
+                    }
+                    let $this = $(this), files = clipboardData.files;
+                    if (files.length > 0) {
+                        return $this.trigger('pasteFile', [files]);
+                    }
+                };
+                this.on('paste', selector, data, fn, one);
+            },
+            pasteImage: function (type, selector, data, fn, one) {  // 粘贴图片
+                fn = function (event) {
+                    let e = event.originalEvent, clipboardData = e.clipboardData;
+                    if (!clipboardData) {
+                        return;
+                    }
+                    let $this = $(this), files = [], i, len, file, imageRegex = /^image\//;
+                    for (i = 0, len = clipboardData.files.length; i < len; i++) {
+                        file = clipboardData.files[i];
+                        if (imageRegex.test(file.type)) {
+                            files.push(file);
+                        }
+                    }
+                    if (files.length > 0) {
+                        return $this.trigger('pasteImage', [files]);
+                    }
+                };
+                this.on('paste', selector, data, fn, one);
+            },
+            pasteText: function (type, selector, data, fn, one) {   // 粘贴文字
+                fn = function (event) {
+                    let e = event.originalEvent, clipboardData = e.clipboardData;
+                    if (!clipboardData) {
+                        return;
+                    }
+                    let $this = $(this),
+                        isSafari = !clipboardData.items, textRegex = /^text\//,
+                        texts = [], types = [], i, len, item, type;
+                    if (isSafari) { // Safari没有clipboardData.items
+                        for (i = 0, len = clipboardData.types.length; i < len; i++) {
+                            type = clipboardData.types[i];
+                            if (textRegex.test(type)) {
+                                texts.push(clipboardData.getData(type));
+                                types.push(type);
+                            }
+                        }
+                    } else {
+                        for (i = 0, len = clipboardData.items.length; i < len; i++) {
+                            item = clipboardData.items[i];
+                            if (item.kind === "string") {
+                                // item.getAsString 时异步执行的，所以这里放弃
+                                texts.push(clipboardData.getData(item.type));
+                                types.push(item.type);
+                            }
+                        }
+                    }
+                    if (texts.length > 0) {
+                        return $this.triggerHandler('pasteText', [texts, types]);
+                    }
+                };
+                this.on('paste', selector, data, fn, one);
+            },
+            pasteExcel: function (type, selector, data, fn, one) {   // 粘贴excel
+                fn = function (event) {
+                    let e = event.originalEvent, clipboardData = e.clipboardData;
+                    if (!clipboardData) {
+                        return;
+                    }
+                    let $this = $(this),
+                        pasteTypes = clipboardData.types, txt, clearHtml, html, rtf, file;
+                    if (pasteTypes.length == 4 && pasteTypes[3] === 'Files' && pasteTypes[0] === 'text/plain' && pasteTypes[1] === 'text/html' && pasteTypes[2] === 'text/rtf') {
+                        txt = clipboardData.getData('text/plain');
+                        html = clipboardData.getData('text/html');
+                        rtf = clipboardData.getData('text/rtf');
+                        file = clipboardData.files[0];
+                        if (html) {
+                            clearHtml = html.match(/<!--StartFragment-->\s*([\s\S]*?)\s*<!--EndFragment-->/) && RegExp.$1 || '';
+                            if (clearHtml) {
+                                clearHtml = '<table class="message-insert-table">' + clearHtml.replace(/\s*<col[^>]*>\s*/g, '').replace(/<(tr|td)[^>]*>/g, '<$1>') + '</table>';
+                            }
+                        }
+                        return $this.triggerHandler('pasteExcel', [txt, clearHtml, html, rtf, file]);
+                    }
+                };
+                this.on('paste', selector, data, fn, one);
+            },
+            dropFile: function (type, selector, data, fn, one) {   // 拖拽文件
+                this
+                    .on('dragenter', selector, data, function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        $(this).toggleClass('drop-item-notify', true);
+                    }, one)
+                    .on('dragover', selector, data, function (event) {
+                        // 兼容某些三方应用，如圈点
+                        event.originalEvent.dataTransfer.dropEffect = 'copy';
+                        if (navigator.browser.firefox()) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        $(this).toggleClass('drop-item-notify', true);
+                    }, one)
+                    .on('dragleave', selector, data, function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        $(this).toggleClass('drop-item-notify', false);
+                    }, one)
+                    .on('drop', selector, data, function (event) {
+                        $(this).toggleClass('drop-item-notify', false);
+                        let e = event.originalEvent, $this = $(this),
+                            dataTransfer = e.dataTransfer, isSafari = !dataTransfer.items,
+                            dropFiles = [], i, item, file;
+                        if (isSafari) {
+                            for (i = 0; i < dataTransfer.files.length; i++) {
+                                dropFiles.push(dataTransfer.files[i]);
+                            }
+                        } else {
+                            for (i = 0; i < dataTransfer.items.length; i++) {
+                                item = dataTransfer.items[i];
+                                // 用webkitGetAsEntry判断是否是目录
+                                if (item.kind === "file" && (!item.webkitGetAsEntry || item.webkitGetAsEntry().isFile)) {
+                                    file = item.getAsFile();
+                                    dropFiles.push(file);
+                                }
+                            }
+                        }
+                        if (dropFiles.length > 0) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            return $this.triggerHandler('dropFile', [dropFiles]);
+                        }
+                    }, one);
+            },
+            dropImage: function (type, selector, data, fn, one) {   // 拖拽图片
+                this
+                    .on('dragenter', selector, data, function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        $(this).toggleClass('drop-item-notify', true);
+                    }, one)
+                    .on('dragover', selector, data, function (event) {
+                        // 兼容某些三方应用，如圈点
+                        event.originalEvent.dataTransfer.dropEffect = 'copy';
+                        // chrome中将这里不阻止默认行为则会同时支持其他类型的拖拽
+                        if (navigator.browser.firefox()) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        $(this).toggleClass('drop-item-notify', true);
+                    }, one)
+                    .on('dragleave', selector, data, function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        $(this).toggleClass('drop-item-notify', false);
+                    }, one)
+                    .on('drop', selector, data, function (event) {
+                        $(this).toggleClass('drop-item-notify', false);
+                        let e = event.originalEvent, $this = $(this),
+                            dataTransfer = e.dataTransfer, isSafari = !dataTransfer.items, imageRegex = /^image\//,
+                            dropFiles = [], i, item, file;
+                        if (isSafari) {
+                            for (i = 0; i < dataTransfer.files.length; i++) {
+                                file = dataTransfer.files[i];
+                                if (imageRegex.test(file.type)) {
+                                    dropFiles.push(file);
+                                }
+                            }
+                        } else {
+                            for (i = 0; i < dataTransfer.items.length; i++) {
+                                item = dataTransfer.items[i];
+                                // 用webkitGetAsEntry判断是否是目录
+                                if (item.kind === "file" && (!item.webkitGetAsEntry || item.webkitGetAsEntry().isFile)) {
+                                    file = item.getAsFile();
+                                    if (imageRegex.test(item.type)) {
+                                        dropFiles.push(file);
+                                    }
+                                }
+                            }
+                        }
+                        if (dropFiles.length > 0) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            return $this.triggerHandler('dropImage', [dropFiles]);
+                        }
+                    }, one);
+            }
+        });
 
         $.BackUpDeferred = $.Deferred;
         /**

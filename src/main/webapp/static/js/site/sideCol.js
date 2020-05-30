@@ -148,7 +148,7 @@
                 var html = null;
                 if (albums && albums.length > 0) { // html
                     let first = albums[0];
-                    html = '<a class="openAlbumByCover" data-index="0" href="' + ('p/album/' + first.album_id).toURL() + '" target="_blank" title="左键切换、右键打开"><img src="' + first.cover.path + '" style="width: 100%"></a>'
+                    html = '<a class="openAlbumByCover image-widget protect" data-index="0" href="' + ('p/album/' + first.album_id).toURL() + '" target="_blank" title="左键切换、右键打开"><img src="' + first.cover.path + '" style="width: 100%"></a>'
                 } else {
                     let userAlbumHref = ('u/' + (uid == 0 ? '' : (uid + '/')) + 'albums').toURL();
                     html = '<a href="' + userAlbumHref + '" target="_blank" title="打开用户相册"><img src="' + cloudPath + 'res/img/album_default.jpg" style="width: 100%"></a>'

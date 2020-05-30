@@ -253,7 +253,7 @@
                             "iconClass": "toast-success-no-icon",
                             "positionClass": "toast-top-right",
                             "onclick": function () {
-                                window.open('site/help?module=search');
+                                window.open('help?module=search'.toURL());
                                 searchConfig.hasReadHelp = true;
                                 globals.setLocalConfig('search', searchConfig);
                             }

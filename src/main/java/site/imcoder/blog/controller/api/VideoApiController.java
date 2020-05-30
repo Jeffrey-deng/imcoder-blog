@@ -2,6 +2,7 @@ package site.imcoder.blog.controller.api;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -9,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import site.imcoder.blog.Interceptor.annotation.AccessRecord;
 import site.imcoder.blog.Interceptor.annotation.GZIP;
 import site.imcoder.blog.Interceptor.annotation.LoginRequired;
+import site.imcoder.blog.common.Utils;
 import site.imcoder.blog.common.id.IdUtil;
 import site.imcoder.blog.controller.BaseController;
 import site.imcoder.blog.controller.formatter.primarykey.PrimaryKeyConvert;
@@ -249,41 +251,86 @@ public class VideoApiController extends BaseController {
 
     /**
      * 下载视频
-     *
-     * @param video    - 只需传video_id
+     * @param video     - 只需传video_id
+     * @param signature - 签名
+     * @param expires
+     * @param age
      * @param model
      * @param iRequest
+     * @param guest_identifier
      * @return IResponse:
      * status - 200：成功，400: 参数错误，401：需要登录，403: 没有权限，404：无此评论，500: 失败
      */
     @RequestMapping(params = "method=downloadVideo")
-    public String downloadVideo(Video video, Model model, IRequest iRequest) {
-        IResponse videoResp = videoService.findVideo(video, iRequest);
+    public String downloadVideo(Video video,
+                                String signature,
+                                String expires,
+                                String age,
+                                Model model,
+                                IRequest iRequest, @CookieValue(value = "guest_identifier", required = false) Long guest_identifier) {
+        IResponse response = new IResponse(STATUS_FORBIDDEN, "签名错误");
         String redirectUrl = "";
-        if (videoResp.isSuccess()) {
-            Video db_video = videoResp.getAttr("video");
-            if (db_video.getSource_type() != 2) {
-                if (!db_video.getSetting().getDisable_download() || (Boolean) videoResp.getAttr("is_special_man")) {
-                    Field pathField = null;
-                    try {
-                        pathField = Video.class.getDeclaredField("path");
-                    } catch (NoSuchFieldException e) {
-                        e.printStackTrace();
+        boolean hasSignature = Utils.isNotEmpty(signature) || Utils.isNotEmpty(expires) || Utils.isNotEmpty(age);
+        boolean legalSignature = Utils.isNotEmpty(signature) && Utils.isNotEmpty(expires) && Utils.isNotEmpty(age);
+        boolean shouldCheckSetting = true;
+        Long uid = iRequest.isHasLoggedIn() ? iRequest.getLoginUser().getUid() : guest_identifier;
+        Long video_id = video.getVideo_id();
+        if (IdUtil.containValue(uid) && IdUtil.containValue(video_id)) {
+            if (hasSignature) {
+                if (legalSignature) {
+                    long sl = IdUtil.convert62radixIdToDecimal(signature);
+                    long el = IdUtil.convert62radixIdToDecimal(expires);
+                    long al = IdUtil.convert62radixIdToDecimal(age);
+                    long t, et, allowAge, ca, now;
+                    now = System.currentTimeMillis();
+                    t = Math.abs(uid + sl);
+                    et = Math.abs(video_id + el);
+                    ca = et - t;
+                    allowAge = al - Math.abs(video_id - uid);
+                    if (ca >= 0 && et >= now && (allowAge == ca + 1 || allowAge == ca) && allowAge <= 28800000) {
+                        shouldCheckSetting = al % 2 == 0;
+                        response.setStatus(STATUS_SUCCESS);
                     }
-                    URLPrefixFill annotation = pathField.getAnnotation(URLPrefixFill.class);
-                    URLPrefixFillFormatter fillFormatter = new URLPrefixFillFormatter(annotation);
-                    db_video.setPath(fillFormatter.print(db_video.getPath(), Locale.getDefault()));
-                    redirectUrl = db_video.getPath();
-                } else {
-                    videoResp.setStatus(STATUS_FORBIDDEN, "此视频被设置为禁止下载").putAttr("forbidden_type", "setting_disable_download");
-                    model.addAttribute(KEY_ERROR_INFO, videoResp.getMessage());
                 }
             } else {
-                videoResp.setStatus(STATUS_PARAM_ERROR, "此视频为引用类型，不支持下载");
-                model.addAttribute(KEY_ERROR_INFO, videoResp.getMessage());
+                shouldCheckSetting = true;
+                response.setStatus(STATUS_SUCCESS);
+            }
+        } else {
+            response.setStatus(STATUS_PARAM_ERROR);
+        }
+        if (response.isSuccess()) {
+            IResponse videoResp = videoService.findVideo(video, iRequest);
+            response.setStatus(videoResp);
+            if (response.isSuccess()) {
+                Video db_video = videoResp.getAttr("video");
+                if (db_video.getSource_type() != 2) {
+                    boolean is_special_man = videoResp.getAttr("is_special_man");
+                    if (shouldCheckSetting && !hasSignature && !is_special_man) {
+                        response.setStatus(STATUS_FORBIDDEN, "签名错误");
+                    } else if (!shouldCheckSetting || (!db_video.getSetting().getDisable_download() || is_special_man)) {
+                        Field pathField = null;
+                        try {
+                            pathField = Video.class.getDeclaredField("path");
+                        } catch (NoSuchFieldException e) {
+                            e.printStackTrace();
+                        }
+                        URLPrefixFill annotation = pathField.getAnnotation(URLPrefixFill.class);
+                        URLPrefixFillFormatter fillFormatter = new URLPrefixFillFormatter(annotation);
+                        db_video.setPath(fillFormatter.print(db_video.getPath(), Locale.getDefault()));
+                        redirectUrl = db_video.getPath();
+                    } else {
+                        response.setStatus(STATUS_FORBIDDEN, "此视频被设置为禁止下载").putAttr("forbidden_type", "setting_disable_download");
+                    }
+                } else {
+                    response.setStatus(STATUS_PARAM_ERROR, "此视频为引用类型，不支持下载");
+                }
             }
         }
-        return getViewPage(videoResp, "redirect:" + redirectUrl);
+        if (response.isFail()) {
+            model.addAttribute(KEY_ERROR_INFO, response.getMessage());
+        }
+        return getViewPage(response, "redirect:" + redirectUrl);
     }
 
     /**

@@ -3,6 +3,10 @@
 <%@ page import="site.imcoder.blog.entity.Photo" %>
 <%@ page import="site.imcoder.blog.setting.Config" %>
 <%@ page import="site.imcoder.blog.setting.ConfigConstants" %>
+<%@ page import="java.util.regex.Matcher" %>
+<%@ page import="java.util.regex.Pattern" %>
+<%@ page import="site.imcoder.blog.entity.User" %>
+<%@ page import="site.imcoder.blog.entity.Album" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
@@ -19,8 +23,53 @@
     request.setAttribute("site_police_record_number", Config.get(ConfigConstants.SITE_POLICE_RECORD_NUMBER));
 
     Photo photo = (Photo) request.getAttribute("photo");
+    Album album = (Album) request.getAttribute("album");
+    User loginUser = (User) session.getAttribute("loginUser");
     if (photo != null) {
         String tags = photo.getTags();
+        if ((loginUser == null || !photo.getUid().equals(loginUser.getUid())) && tags != null && tags.length() != 0) {
+            Matcher matcher = Pattern.compile("#protect@(\\w+)#").matcher(tags);
+            if (matcher.find()) {
+                Album newAlbum = null;
+                String protect_value = matcher.group(1);
+                switch (protect_value) {
+                    case "album":
+                        break;
+                    case "topic":
+                        if (photo.getTopic() != null) {
+                            tags = tags.replace("#" + photo.getTopic().getName() + "#", "");
+                        }
+                        photo.setTopic(null);
+                        break;
+                    case "name":
+                        photo.setName("");
+                        break;
+                    case "desc":
+                    case "description":
+                        photo.setDescription("");
+                        break;
+                    case "tag":
+                    case "tags":
+                        tags = matcher.group(0);
+                        photo.setTags(tags);
+                        photo.setTopic(null);
+                        break;
+                    case "refer":
+                        photo.setRefer(null);
+                        break;
+                    default:
+                        photo.setTopic(null);
+                        photo.setName("");
+                        photo.setDescription("");
+                        tags = matcher.group(0);
+                        photo.setTags(tags);
+                        photo.setRefer(null);
+                }
+                newAlbum = new Album();
+                newAlbum.setUser(album.getUser());
+                request.setAttribute("album", newAlbum);
+            }
+        }
         if (Utils.isNotBlank(tags)) {
             String[] tagArr = Utils.splitNotEmpty(tags, "#");
             request.setAttribute("tags", tagArr);
@@ -96,6 +145,15 @@
             content: ' (照片作者)';
         }
     </style>
+
+    <!-- 修复某些移动端浏览器设置UA为PC，页面仍显示手机版的问题 -->
+    <script>
+        if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) && (window.screen.availWidth <= 768 || window.screen.availHeight <= 768) && window.devicePixelRatio >= 2) {
+            var viewport = document.querySelector("meta[name=viewport]")
+                ,content = viewport.getAttribute('content');
+            viewport.setAttribute('content', content.replace(/(initial-scale=).*?(,|$)/, '$1' + (1 / window.devicePixelRatio) + '$2'));
+        }
+    </script>
 </head>
 <body uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>">
 <!-- <body background="../../img/bg-site.png"> -->
@@ -258,7 +316,7 @@
                 <article class="post" style="background-color: #f8f8f8;box-shadow: 0px 0px 1px 0.5px #ddd;">
                     <!-- 照片内容区 start -->
                     <section>
-                        <div class="photo-detail-img">
+                        <div class="photo-detail-img image-widget protect">
                             <button title="上一张" type="button" class="topic-arrow-left topic-arrow mfp-arrow mfp-arrow-left mfp-prevent-close"></button>
                             <button title="下一张" type="button" class="topic-arrow-right topic-arrow mfp-arrow mfp-arrow-right mfp-prevent-close"></button>
                             <img id="show-img" class="img-show-fit" src="<s:eval expression="photo.path"/>" title="点击`平铺`显示"/>

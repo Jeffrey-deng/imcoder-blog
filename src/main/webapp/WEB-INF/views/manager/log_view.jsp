@@ -30,6 +30,15 @@
     <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote-bs3.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/summernote/summernote.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
+
+    <!-- 修复某些移动端浏览器设置UA为PC，页面仍显示手机版的问题 -->
+    <script>
+        if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) && (window.screen.availWidth <= 768 || window.screen.availHeight <= 768) && window.devicePixelRatio >= 2) {
+            var viewport = document.querySelector("meta[name=viewport]")
+                ,content = viewport.getAttribute('content');
+            viewport.setAttribute('content', content.replace(/(initial-scale=).*?(,|$)/, '$1' + (1 / window.devicePixelRatio) + '$2'));
+        }
+    </script>
 </head>
 <body uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>">
 <div id="first" class="" style="z-index:1000;background-image: url('<%=staticPath%>img/bg-site.png');">

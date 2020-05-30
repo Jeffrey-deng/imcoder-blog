@@ -918,7 +918,7 @@
     var batch_load_letter_size = 20;
     var lazyVideoObserver = new IntersectionObserver(function (entries, observer) {
         entries.forEach(function (entry) {
-            if (entry.isIntersecting) {
+            if (entry.isIntersecting || entry.intersectionRatio > 0) {
                 let $lazyVideoLink = $(entry.target);
                 lazyVideoObserver.unobserve($lazyVideoLink[0]);
                 if (!$lazyVideoLink.hasClass('lazy-video-completed')) {
@@ -1140,6 +1140,35 @@
         $('#openChatModal').click(function () {
             showChatModal(null);
         });
+        var modalSizeEvent = function() {
+            // 聊天框居中
+            if (navigator.device.pc()) {
+                $('#chat_Modal').find('.modal-dialog').css({
+                    "margin-top": $(window).height() / 2 - (835 / 2)
+                });
+                $('#messageInsertImageModal').find('.modal-dialog').css({
+                    "margin-top": $(window).height() / 2 - (520 / 2)
+                });
+                $('#letter_userList').children().first().css({
+                    'visibility': '',
+                    'height': ''
+                });
+            } else {
+                $('#chat_Modal').find('.modal-dialog').css({
+                    "margin-top": ''
+                });
+                $('#messageInsertImageModal').find('.modal-dialog').css({
+                    "margin-top": ''
+                });
+                $('#letter_userList').children().first().css({
+                    'visibility': 'hidden',
+                    'height': '20px'
+                });
+            }
+        };
+        modalSizeEvent();
+        $(window).resize(modalSizeEvent);
+
         $('#chat_Modal').on('shown.bs.modal', function () {
             // 聊天内容滚动到底部
             // [0]是从jquery中取得原js对象
@@ -1160,15 +1189,6 @@
             // 修改地址栏, 去除chatuid
             history.replaceState({"mark": "page"}, document.title, common_utils.removeParamForURL('chatuid').replace('/center/sendLetter', '/center/messages'));
         });
-        // 聊天框居中
-        if ($(window).width() > 768) {
-            $('#chat_Modal').find('.modal-dialog').css({
-                "margin-top": $(window).height() / 2 - (835 / 2)
-            });
-            $('#messageInsertImageModal').find('.modal-dialog').css({
-                "margin-top": $(window).height() / 2 - (520 / 2)
-            });
-        }
         // 用户列表事件
         $('#letter_userList')
             .on('click', '.trigger-show-chat-user-letter-list', function () {
@@ -1268,13 +1288,24 @@
                     $(this).find('.message-del').css('visibility', 'hidden');
                 }
             }, '.chat-message')
+            .on('click', '.message-content .image-widget.protect', function () {
+                let $widget = $(this), $img = $widget.find('img');
+                if ($widget.closest('a').length == 0 && !$widget.hasClass('protect') && !$img.hasClass('forbidden-download')) {
+                    window.open($img.attr('src'));
+                }
+            })
             .on('click', '.message-content img', function () {
                 let $img = $(this);
                 if ($img.closest('a').length == 0 && !$img.hasClass('forbidden-download')) {
                     window.open($img.attr('src'));
                 }
             })
-            .on('contextmenu', '.message-content img.forbidden-download', function (e) {
+            .on('contextmenu', '.message-content img.forbidden-download, .message-content .image-widget.protect', function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return false;
+            })
+            .on('dragstart', '.message-content img.forbidden-download, .message-content .image-widget.protect', function (e) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
                 return false;
@@ -1300,7 +1331,22 @@
                 $self.removeAttr('disabled');
             });
         });
-        $('#sendLetter_area').on('keydown', function (e) {
+        $('#sendLetter_area').on('pasteImage', function (e, files) { // 粘贴图片
+            let $modal = $('#messageInsertImageModal');
+            $modal.data('images', files);
+            $modal.find('.modal-title').text(`已选择 ${files.length} 张图片`);
+            $modal.find('.group-message-image-file,.group-message-image-url').hide();
+            $modal.modal();
+        }).on('pasteExcel', function (e, txt, clearHtml, html, rtf, file) { // 粘贴excel
+            this.insertText(clearHtml);
+            return false;
+        }).on('dropImage', function (e, files) { // 拖拽图片
+            let $modal = $('#messageInsertImageModal');
+            $modal.data('images', files);
+            $modal.find('.modal-title').text(`已选择 ${files.length} 张图片`);
+            $modal.find('.group-message-image-file,.group-message-image-url').hide();
+            $modal.modal();
+        }).on('keydown', function (e) { // 发送快捷键（ctrl + center）
             var theEvent = e || window.event;
             var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
             if (13 == code && theEvent.ctrlKey) {
@@ -1310,14 +1356,18 @@
 
         // 评论贴图按钮
         $('#openInsertImageModalTrigger').on('click', function () {
-            $('#messageInsertImageModal').modal();
+            let $modal = $('#messageInsertImageModal');
+            $modal.removeData('images');
+            $modal.find('.modal-title').text('插入图片');
+            $modal.find('.group-message-image-file,.group-message-image-url').show();
+            $modal.modal();
             return false;
         });
 
         // 提交贴图按钮
         $('#messageInsertImageModal').on('click', '.message-image-btn-insert-submit', function () {
             let $modal = $('#messageInsertImageModal'),
-                imageFiles = $modal.find('.message-image-input-file')[0].files,
+                imageFiles = $modal.data('images') || $modal.find('.message-image-input-file')[0].files,
                 imageUrl = $modal.find('.message-image-input-url').val(),
                 imageForbiddenDownload = $modal.find('.message-image-check-forbidden-download').prop('checked');
             if ((!imageFiles || imageFiles.length == 0) && !imageUrl) {
@@ -1326,16 +1376,21 @@
             }
             let isUploadFile = imageFiles && imageFiles.length > 0,
                 insertCall = function (imageHtml) {
-                    let editor = $('#sendLetter_area'), content = editor.val();
-                    if (!content || /[\s\S]*\n$/.test(content)) {
-                        editor.val(content + imageHtml);
-                    } else {
-                        editor.val(content + '\n' + imageHtml);
-                    }
+                    let $editor = $('#sendLetter_area');
+                    // let content = editor.val();
+                    // if (!content || /[\s\S]*\n$/.test(content)) {
+                    //     $editor.val(content + imageHtml);
+                    // } else {
+                    //     $editor.val(content + '\n' + imageHtml);
+                    // }
+                    $editor[0].insertText(imageHtml);
                     $modal.modal('hide');
                     $modal.find('.message-image-input-file').val('');
                     $modal.find('.message-image-input-url').val('');
-                    editor.focus();
+                    $editor.focus();
+                },
+                wrapperWidget = function (imageHtml, imageForbiddenDownload) {
+                    return `<div class="image-widget${imageForbiddenDownload ? ' protect' : ''}">${imageHtml}</div>`;
                 },
                 imageClassNames = 'message-insert-image not-only-img' + (imageForbiddenDownload ? ' forbidden-download' : '');
             if (isUploadFile) {
@@ -1343,7 +1398,7 @@
                     if (isAllSuccess) {
                         toastr.success('已插入' + imageArr.length + '张图片~');
                     }
-                    insertCall(imageHtml);
+                    insertCall(wrapperWidget(imageHtml, imageForbiddenDownload));
                 });
             } else {
                 let relativePath = null, imageHtml = null;
@@ -1359,12 +1414,12 @@
                             imageHtml = '<img class="' + imageClassNames + '" src="' + imageUrl + '"' + (relativePath ? (' data-relative-path="' + relativePath + '"') : '') + '>\n';
                         }
                         toastr.success('已插入图片~');
-                        insertCall(imageHtml);
+                        insertCall(wrapperWidget(imageHtml, imageForbiddenDownload));
                     });
                 } else {
                     imageHtml = '<img class="' + imageClassNames + '" src="' + imageUrl + '">\n';
                     toastr.success('已插入图片~');
-                    insertCall(imageHtml);
+                    insertCall(wrapperWidget(imageHtml, imageForbiddenDownload));
                 }
             }
         });
@@ -1555,7 +1610,7 @@
     function buildSingleUserCardHtml(chatUser) {
         let html = '';
         html += '<div class="chat-user trigger-show-chat-user-letter-list" id="chat_uid_' + chatUser.uid + '" data-uid="' + chatUser.uid + '" >';
-        html += '<img class="chat-avatar" src="' + chatUser.head_photo + '" title="' + chatUser.nickname + '">';
+        html += '<div class="chat-avatar" style="background-image:url(' + chatUser.head_photo + ')" title="' + chatUser.nickname + '"></div>';
         html += '<div class="chat-user-name">';
         html += '<a href="' + ('u/' + chatUser.uid + '/home').toURL() + '" target="_blank">' + chatUser.nickname + '</a>';
         html += '</div></div>';
@@ -1653,7 +1708,7 @@
     function buildSingleLetterHtml(letter, loginUser) {
         let html = '', sendByOther = (letter.s_uid != loginUser.uid);
         html += '<div class="chat-message chat-message-' + (sendByOther ? 'left' : 'right') + (sendByOther && letter.status == 0 ? ' chat-message-un-read' : '') + '" data-leid="' + letter.leid + '" data-s-uid="' + letter.s_uid + '">';
-        html += '<img class="message-avatar" src="' + (sendByOther ? letter.chatUser.head_photo : loginUser.head_photo) + '" alt="">';
+        html += '<div class="message-avatar" style="background-image:url(' + (sendByOther ? letter.chatUser.head_photo : loginUser.head_photo) + ')" alt=""></div>';
         html += '<div class="message">';
         html += '<a class="message-author" target="_blank" href="' + ('u/' + letter.s_uid + '/home').toURL() + '">' + (sendByOther ? letter.chatUser.nickname : loginUser.nickname) + '</a>';
         html += '<span class="message-date">' + letter.send_time + '</span>';
@@ -2070,7 +2125,7 @@
                     toastElement = globals.notify(notify_opts).success('<b>“' + letter.content + '”</b>', user.nickname + ' 对你说：', 'receive_letter' + '_' + letter.leid);
                 }
                 toastElement.addClass('wsMessage receive_letter').attr('data-leid', letter.leid).attr('data-wsid', wsMessage.id);
-                toastElement.on('contextmenu', 'img.forbidden-download', function (e) {
+                toastElement.on('contextmenu dragstart', 'img.forbidden-download', function (e) {
                     e.preventDefault();
                     e.stopImmediatePropagation();
                     return false;

@@ -59,7 +59,8 @@
             "albumsContainer_id": "masonryContainer",
             "page_nav": ".page-navigator",
             "album_id_prefix": "album_",
-            "album_count": "#album_count"
+            "album_count": "#album_count",
+            "album_node": '.album',
         },
         page_params: {
             "pageSize": 0, // 设置0为自适应：列数 * 10
@@ -113,7 +114,7 @@
                 })
                 .on({
                     "dragstart": function (e) {
-                        var uid = e.currentTarget.parentNode.parentNode.getAttribute('data-uid');
+                        var uid = $(e.currentTarget).closest(config.selector.album_node).attr('data-uid');
                         var isAuthor = login_handle.equalsLoginUser(uid);
                         var tips = isAuthor ? '松开鼠标打开编辑窗口~' : '松开鼠标查看相册信息~';
                         pointer.notify_drag = toastr.success(tips, '', {
@@ -124,11 +125,11 @@
                     },
                     "dragend": function (e) {
                         toastr.remove(pointer.notify_drag, true);
-                        var album = utils.getAlbumByCache(e.currentTarget.parentNode.parentNode.getAttribute('data-id'));
+                        var album = utils.getAlbumByCache($(e.currentTarget).closest(config.selector.album_node).attr('data-id'));
                         config.callback.actionForEditAlbum.call(context, album);
                         context.trigger(config.event.actionForEditAlbum, album);
                     }
-                }, 'img');
+                }, 'a');
 
             initWaterfallFlow();
 

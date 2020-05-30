@@ -129,6 +129,10 @@ public class IdUtil {
      */
     public static String convertDecimalIdTo62radix(long number) {
         StringBuilder sBuilder = new StringBuilder();
+        boolean negative = number < 0;
+        if (negative) {
+            number = number * -1;
+        }
         while (true) {
             int remainder = (int) (number % 62);
             sBuilder.append(dict62[remainder]);
@@ -136,6 +140,9 @@ public class IdUtil {
             if (number == 0) {
                 break;
             }
+        }
+        if (negative) {
+            sBuilder.append('-');
         }
         return sBuilder.reverse().toString();
     }
@@ -147,6 +154,12 @@ public class IdUtil {
      * @return
      */
     public static long convert62radixIdToDecimal(String compressStr) {
+        boolean negative = false;
+        int inputStrLength = compressStr.length();
+        if (inputStrLength > 0 && compressStr.charAt(0) == '-') {
+            compressStr = inputStrLength > 1 ? compressStr.substring(1) : "";
+            negative = true;
+        }
         long sum = 0L;
         int len = compressStr.length();
         for (int i = 0; i < len; i++) {
@@ -159,6 +172,9 @@ public class IdUtil {
                 }
             }
             sum += Math.pow(dict62.length, i) * n;
+        }
+        if (negative) {
+            sum = sum * -1;
         }
         return sum;
     }

@@ -167,16 +167,37 @@
         // 输入框
         pointer.editor = $(config.selector.commentEditor);
 
+        // 粘贴图片
+        pointer.editor.on('pasteImage', function (e, files) { // 粘贴图片
+            let $modal = $(config.selector.commentInsertImageModal);
+            $modal.data('images', files);
+            $modal.find('.modal-title').text(`已选择 ${files.length} 张图片`);
+            $modal.find('.group-message-image-file,.group-message-image-url').hide();
+            $modal.modal();
+        }).on('pasteExcel', function (e, txt, clearHtml, html, rtf, file) { // 粘贴excel
+            $(config.selector.commentInputUseHtmlTag).prop('checked', true);
+            this.insertText(clearHtml);
+            return false;
+        }).on('dropImage', function (e, files) { // 拖拽图片
+            let $modal = $(config.selector.commentInsertImageModal);
+            $modal.data('images', files);
+            $modal.find('.modal-title').text(`已选择 ${files.length} 张图片`);
+            $modal.find('.group-message-image-file,.group-message-image-url').hide();
+            $modal.modal();
+        });
         // 评论贴图按钮
         $(config.selector.commentOpenInsertImageModal).on('click', function () {
-            $(config.selector.commentInsertImageModal).modal();
+            let $modal = $(config.selector.commentInsertImageModal);
+            $modal.removeData('images');
+            $modal.find('.modal-title').text('插入图片');
+            $modal.find('.group-message-image-file,.group-message-image-url').show();
+            $modal.modal();
             return false;
         });
-
         // 提交贴图按钮
         $(config.selector.commentInsertImageModal).on('click', '.message-image-btn-insert-submit', function () {
             let $modal = $(config.selector.commentInsertImageModal),
-                imageFiles = $modal.find('.message-image-input-file')[0].files,
+                imageFiles = $modal.data('images') || $modal.find('.message-image-input-file')[0].files,
                 imageUrl = $modal.find('.message-image-input-url').val(),
                 imageForbiddenDownload = $modal.find('.message-image-check-forbidden-download').prop('checked');
             if ((!imageFiles || imageFiles.length == 0) && !imageUrl) {
@@ -185,16 +206,14 @@
             }
             let isUploadFile = imageFiles && imageFiles.length > 0,
                 insertCall = function (imageHtml) {
-                    let content = pointer.editor.val();
-                    if (!content || /[\s\S]*\n$/.test(content)) {
-                        pointer.editor.val(content + imageHtml);
-                    } else {
-                        pointer.editor.val(content + '\n' + imageHtml);
-                    }
+                    pointer.editor[0].insertText(imageHtml);
                     $modal.modal('hide');
                     $modal.find('.message-image-input-file').val('');
                     $modal.find('.message-image-input-url').val('');
                     utils.setCommentEditorFocus(false);
+                },
+                wrapperWidget = function (imageHtml, imageForbiddenDownload) {
+                    return `<div class="image-widget${imageForbiddenDownload ? ' protect' : ''}">${imageHtml}</div>`;
                 },
                 imageClassNames = 'message-insert-image not-only-img' + (imageForbiddenDownload ? ' forbidden-download' : '');
             if (isUploadFile) {
@@ -202,7 +221,7 @@
                     if (isAllSuccess) {
                         toastr.success('已插入' + imageArr.length + '张图片~');
                     }
-                    insertCall(imageHtml);
+                    insertCall(wrapperWidget(imageHtml, imageForbiddenDownload));
                 });
             } else {
                 let relativePath = null, imageHtml = null, cloudPath = config.path_params.cloudPath;
@@ -218,18 +237,19 @@
                             imageHtml = '<img class="' + imageClassNames + '" src="' + imageUrl + '"' + (relativePath ? (' data-relative-path="' + relativePath + '"') : '') + '>\n';
                         }
                         toastr.success('已插入图片~');
-                        insertCall(imageHtml);
+                        insertCall(wrapperWidget(imageHtml, imageForbiddenDownload));
                     });
                 } else {
                     imageHtml = '<img class="' + imageClassNames + '" src="' + imageUrl + '">\n';
                     toastr.success('已插入图片~');
-                    insertCall(imageHtml);
+                    insertCall(wrapperWidget(imageHtml, imageForbiddenDownload));
                 }
             }
         });
 
         // 提交评论按钮绑定事件
         $(config.selector.commentSubmit).on('click', function () {
+            var $self = $(this);
             if (login_handle.validateLogin()) {
                 var postComment = {};
                 postComment.parentId = $(config.selector.commentParentId).val() || 0;
@@ -238,7 +258,10 @@
                 postComment[config.creationIdVariableName] = config.creationId;
                 var isEnableInputUseHtmlTag = $(config.selector.commentInputUseHtmlTag).prop('checked');
                 var isEnableSendAnonymously = $(config.selector.commentSendAnonymously).prop('checked');
-                submitComment(postComment, isEnableInputUseHtmlTag, isEnableSendAnonymously);
+                $self.attr('disabled', 'disabled');
+                submitComment(postComment, isEnableInputUseHtmlTag, isEnableSendAnonymously).always(function () {
+                    $self.removeAttr('disabled');
+                });
             } else {
                 // 弹出登陆框
                 login_handle.showLoginModal(config.selector.commentListArea, function () {
@@ -314,15 +337,21 @@
         }
         $.Deferred(function (dfd) {
             if (config.commentLazyLoading && !shouldDisableLazyLoad && IntersectionObserver) {
-                let lazyLoadingObserver = new IntersectionObserver(function (entries, observer) {
-                    entries.forEach(function (entry) {
-                        if (entry.isIntersecting) {
-                            lazyLoadingObserver.unobserve(entry.target);
-                            dfd.resolve();
-                        }
+                try {
+                    let lazyLoadingObserver = new IntersectionObserver(function (entries, observer) {
+                        entries.forEach(function (entry) {
+                            // 兼容不同浏览器，chrome页面启动时默认会运行一次回调，这时entry.intersectionRatio=0需过滤
+                            // 夸克浏览器无entry.isIntersecting值，有entry.intersectionRatio值，页面启动时回调不会运行
+                            if (entry.isIntersecting || entry.intersectionRatio > 0) {
+                                lazyLoadingObserver.unobserve(entry.target);
+                                dfd.resolve();
+                            }
+                        });
                     });
-                });
-                lazyLoadingObserver.observe($(config.selector.commentListArea)[0]);
+                    lazyLoadingObserver.observe($(config.selector.commentListArea)[0]);
+                } catch (e) {
+                    dfd.resolve();
+                }
             } else {
                 dfd.resolve();
             }
@@ -387,7 +416,7 @@
         html += (comment.parentId == 0 ? 'comment-parent ' : '') + (comment.user.uid == config.hostUserId ? 'comment-by-author ' : '' );
         html += ((floor % 2 == 0) ? 'comment-level-even ' : 'comment-level-odd ') + '" data-cid=' + comment.cid + '>';
         html += '<div class="comment-author"><span itemprop="image" style="text-align: center;">';
-        html += '<img class="avatar" src="' + comment.user.head_photo + '" title=""></span>';
+        html += '<div class="avatar" style="background-image:url(' + comment.user.head_photo + ')" title=""></div></span>';
         if (comment.anonymous == 0) {
             html += '<cite itemprop="name"><a class="comment-user-name" href="' + ('u/' + comment.user.uid + '/home').toURL() + '" target="_blank">' + comment.user.nickname + '</a></cite></div>';
         } else {
@@ -523,12 +552,22 @@
                 config.commentSortType = "desc";
             }
             buildCommentAreaHtml(pointer.comments, 1, 'sort');
+        })
+        .on('click', '.comment-content .image-widget.protect', function () {
+            let $widget = $(this), $img = $widget.find('img');
+            if ($widget.closest('a').length == 0 && !$widget.hasClass('protect') && !$img.hasClass('forbidden-download')) {
+                window.open($img.attr('src'));
+            }
         }).on('click', '.comment-content img', function () {
             let $img = $(this);
             if ($img.closest('a').length == 0 && !$img.hasClass('forbidden-download')) {
                 window.open($img.attr('src'));
             }
-        }).on('contextmenu', '.comment-content img.forbidden-download', function (e) {
+        }).on('contextmenu', '.comment-content img.forbidden-download, .comment-content .image-widget.protect', function (e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return false;
+        }).on('dragstart', '.comment-content img.forbidden-download, .comment-content .image-widget.protect', function (e) {
             e.preventDefault();
             e.stopImmediatePropagation();
             return false;
@@ -603,7 +642,7 @@
      */
     function submitComment(postComment, isEnableInputUseHtmlTag, isEnableSendAnonymously) {
         if (revisePostComment(postComment, isEnableInputUseHtmlTag, isEnableSendAnonymously)) {
-            config.callback.userDefinedSubmitComment.call(context, postComment, function (saveComment) {
+            return config.callback.userDefinedSubmitComment.call(context, postComment, function (saveComment) {
                 if (saveComment && saveComment.cid) {
                     utils.appendCommentInPage(saveComment);
                     pointer.editor.val('');
@@ -611,6 +650,8 @@
                     context.trigger(config.event.commentSubmitCompleted, saveComment);
                 }
             });
+        } else {
+            return $.Deferred().rejectWith(context, {'status': 0, 'message': '评论校验失败', 'type': -1});
         }
     }
 

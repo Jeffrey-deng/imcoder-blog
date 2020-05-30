@@ -73,6 +73,14 @@
         }
     </style>
 
+    <!-- 修复某些移动端浏览器设置UA为PC，页面仍显示手机版的问题 -->
+    <script>
+        if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) && (window.screen.availWidth <= 768 || window.screen.availHeight <= 768) && window.devicePixelRatio >= 2) {
+            var viewport = document.querySelector("meta[name=viewport]")
+                ,content = viewport.getAttribute('content');
+            viewport.setAttribute('content', content.replace(/(initial-scale=).*?(,|$)/, '$1' + (1 / window.devicePixelRatio) + '$2'));
+        }
+    </script>
 </head>
 <body uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>">
 <!-- <body background="../../img/bg-site.png"> -->
@@ -245,8 +253,8 @@
                             </h2>
                             <small class="author-user-group" itemprop="memberOf">${article.author.userGroup.group_name}</small>
                         </div>
-                        <img class="author-head-photo" src="<s:eval expression="article.author.head_photo"/>" alt="head-photo" itemprop="image">
-                        <div class="author-post-stats">
+                        <div class="author-head-photo" style="background-image:url('<s:eval expression="article.author.head_photo"/>')" alt="head-photo" itemprop="image"></div>
+                            <div class="author-post-stats">
                             <span><a class="author-articleCount" target="_blank" href="<%=basePath%>u/<s:eval expression="article.author.uid"/>/home" itemprop="articleCount">${article.author.userStats.articleCount} 动态</a></span> |
                             <span><a class="author-followingCount" target="_blank" href="<%=basePath%>u/<s:eval expression="article.author.uid"/>/contact/followings" itemprop="followingCount">${article.author.userStats.followingCount} 关注</a></span> |
                             <span><a class="author-followerCount" target="_blank" href="<%=basePath%>u/<s:eval expression="article.author.uid"/>/contact/followers" itemprop="followerCount">${article.author.userStats.followerCount} 关注者</a></span>

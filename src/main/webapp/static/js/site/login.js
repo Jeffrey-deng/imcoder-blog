@@ -609,11 +609,61 @@
                 var letter = wsMessage.metadata.letter;
                 var notify_opts = $.extend({}, notify_ws_opts, {
                     "onclick": function (e) {
-                        // if (pointer.chatPageWindow && !pointer.chatPageWindow.closed) {
-                        //     window.blur();
-                        //     pointer.chatPageWindow.focus();
+                        // var getMessageTabHolder = function () {
+                        //     var holder = null,
+                        //         holder_cookie = common_utils.cookieUtil.get('message_tab_holder'),
+                        //         holder_cookie_splits;
+                        //     if (holder_cookie) {
+                        //         holder_cookie_splits = holder_cookie.split(':');
+                        //         holder = {
+                        //             'tab_id': parseInt(holder_cookie_splits[0]),
+                        //             'last_time': parseInt(holder_cookie_splits[1]),
+                        //         };
+                        //     }
+                        //     return holder;
+                        // }, openNewMessageTab = function (uid) {
+                        //     common_utils.cookieUtil.set('message_tab_holder', `${websocket_util.pointer.tabId}:${new Date().getTime()}`);
+                        //     websocket_util.pointer.chatPageWindow = window.open(('u/center/sendLetter?chatuid=' + uid).toURL());
+                        //     if (!websocket_util.pointer.has_set_delete_mth_event) {
+                        //         $(window).bind('beforeunload', function () {
+                        //             var holder = getMessageTabHolder();
+                        //             if (holder && holder.tab_id === websocket_util.pointer.tabId) {
+                        //                 common_utils.cookieUtil.delete('message_tab_holder');
+                        //             }
+                        //         });
+                        //         websocket_util.pointer.has_set_delete_mth_event = true;
+                        //     }
+                        // }, holder = getMessageTabHolder();
+                        // if (holder) {
+                        //     if (holder.tab_id === websocket_util.pointer.tabId) {
+                        //         var chatPageWindow = websocket_util.pointer.chatPageWindow;
+                        //         if (chatPageWindow && !chatPageWindow.closed) {
+                        //             window.blur();
+                        //             chatPageWindow.focus();
+                        //             if (chatPageWindow.showChatModal) {
+                        //                 chatPageWindow.showChatModal(user.uid);
+                        //             }
+                        //             common_utils.cookieUtil.set('message_tab_holder', `${websocket_util.pointer.tabId}:${new Date().getTime()}`);
+                        //         }
+                        //         return;
+                        //     }
+                        //     websocket_util.post({
+                        //         "mapping": "transfer_data_in_tabs",
+                        //         "metadata": {
+                        //             "handle": "focus_message_tab",
+                        //             "tabIds": [holder.tab_id],
+                        //             "from_tab_id": websocket_util.pointer.tabId,
+                        //             "chat_uid": user.uid
+                        //         }
+                        //     });
+                        //     setTimeout(function () {
+                        //         var newestHolder = getMessageTabHolder();
+                        //         if (newestHolder && newestHolder.tab_id === holder.tab_id && newestHolder.last_time === holder.last_time) {
+                        //             openNewMessageTab(user.uid);
+                        //         }
+                        //     }, 1200);
                         // } else {
-                        //     pointer.chatPageWindow = window.open(('u/center/sendLetter?chatuid=' + user.uid).toURL());
+                        //     openNewMessageTab(user.uid);
                         // }
                         ($(e.target).closest('a').length > 0) && e.preventDefault();
                         window.open(('u/center/sendLetter?chatuid=' + user.uid).toURL());
@@ -627,7 +677,7 @@
                     toastElement = globals.notify(notify_opts).success('<b>“' + text + '”</b>', user.nickname + ' 对你说：', 'receive_letter' + '_' + letter.leid);
                 }
                 toastElement.addClass('wsMessage receive_letter').attr('data-leid', letter.leid).attr('data-wsid', wsMessage.id);
-                toastElement.on('contextmenu', 'img.forbidden-download', function (e) {
+                toastElement.on('contextmenu dragstart', 'img.forbidden-download,.image-widget.protect', function (e) {
                     e.preventDefault();
                     e.stopImmediatePropagation();
                     return false;
@@ -719,7 +769,12 @@
                 if (msg) {
                     globals.notify(notify_opts)
                         .success(msg, '', 'receive_comment' + '_' + comment.cid)
-                        .addClass('wsMessage receive_comment').attr('data-wsid', wsMessage.id).attr('data-cid', comment.cid);
+                        .addClass('wsMessage receive_comment').attr('data-wsid', wsMessage.id).attr('data-cid', comment.cid)
+                        .on('contextmenu dragstart', 'img.forbidden-download,.image-widget.protect', function (e) {
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+                            return false;
+                        });
                 }
             });
             // 文章被收藏
@@ -766,6 +821,17 @@
                         case "remove_ws_message":
                             $('#toast-container').find('.toast[data-wsid="' + tabMessage.ws_message_id + '"]').addClass('not-sync-ws-message').remove();
                             break;
+                        // case "focus_message_tab":
+                        //     var chatPageWindow = websocket_util.pointer.chatPageWindow;
+                        //     if (chatPageWindow && !chatPageWindow.closed) {
+                        //         window.focus();
+                        //         chatPageWindow.focus();
+                        //         if (chatPageWindow.showChatModal) {
+                        //             chatPageWindow.showChatModal(tabMessage.chat_uid);
+                        //         }
+                        //         common_utils.cookieUtil.set('message_tab_holder', `${websocket_util.pointer.tabId}:${new Date().getTime()}`);
+                        //     }
+                        //     break;
                         default:
                             break;
                     }

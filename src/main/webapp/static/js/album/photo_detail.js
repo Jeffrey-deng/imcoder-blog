@@ -199,7 +199,11 @@
             transitionEventLock = false;
         };
         $switchElem.on('click', switchFunc);
-        $imgElem.on('click', switchFunc);
+        $imgElem.parent().on('click', switchFunc).on('contextmenu', function (e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return false;
+        });
         $imgElem.on('transitionend webkitTransitionEnd', function () {
             if (!transitionEventLock) { // 动画结束，删除显示设置的宽高值
                 let toValue = $switchElem.attr('data-show-size');
@@ -592,61 +596,63 @@
 
     // 应用挂载的相册信息到当前页面
     var applyMountAlbumInfoToPageIfHas = function () {
-        var pageDetailInfoNode = $(config.selector.photoDetailInfo);
-        pageDetailInfoNode.find('.photo-detail-album-name a').each(function (i, node) {
+        var $pageDetailInfoNode = $(config.selector.photoDetailInfo);
+        $pageDetailInfoNode.find('.photo-detail-album-name a').each(function (i, node) {
             var $self = $(node);
             if (!$self.hasClass('photo-source-album')) {
                 $self.remove();
             }
         });
-        request.loadAlbumInfo(config.pageAlbumId, function (album) {
-            config.pageAlbumName = album.name || ('album' + album.album_id);
-            var $node = pageDetailInfoNode.find('.photo-detail-album-name a.photo-source-album');
-            $node.attr('data-album-id', album.album_id);
-            $node.attr('data-album-name', config.pageAlbumName);
-            $node.attr('title', album.description || config.pageAlbumName);
-            $node.url('href', 'p/album/' + album.album_id + '?check=' + config.pagePhotoId);
-            $node.attr('target', '_blank');
-            $node.text(config.pageAlbumName);
-        });
-        pageDetailInfoNode.find('.photo-detail-tags a').each(function (i, node) {
-            var $self = $(node);
-            var tag = $self.attr('data-photo-tag');
-            if (/mount@(.+)/.test(tag)) {
-                var album_id = RegExp.$1;
-                if (album_id != config.pageAlbumId) {
-                    request.loadAlbumInfo(album_id, function (album) {
-                        var album_name = album.name || ('album' + album.album_id);
-                        var $node = $(document.createElement('a'));
-                        $node.attr('data-album-id', album.album_id);
-                        $node.attr('data-album-name', album_name);
-                        $node.attr('title', album.description || album_name);
-                        $node.url('href', 'p/album/' + album.album_id + '?check=' + config.pagePhotoId);
-                        $node.attr('target', '_blank');
-                        $node.text(album_name);
-                        pageDetailInfoNode.find('.photo-detail-album-name').append($node);
-                    });
+        if (login_handle.equalsLoginUser(config.hostUserId) || !$pageDetailInfoNode.find('.photo-detail-tags a[data-photo-tag^="protect@"]').hasValue()) {
+            request.loadAlbumInfo(config.pageAlbumId, function (album) {
+                config.pageAlbumName = album.name || ('album' + album.album_id);
+                var $node = $pageDetailInfoNode.find('.photo-detail-album-name a.photo-source-album');
+                $node.attr('data-album-id', album.album_id);
+                $node.attr('data-album-name', config.pageAlbumName);
+                $node.attr('title', album.description || config.pageAlbumName);
+                $node.url('href', 'p/album/' + album.album_id + '?check=' + config.pagePhotoId);
+                $node.attr('target', '_blank');
+                $node.text(config.pageAlbumName);
+            });
+            $pageDetailInfoNode.find('.photo-detail-tags a').each(function (i, node) {
+                var $self = $(node);
+                var tag = $self.attr('data-photo-tag');
+                if (/mount@(.+)/.test(tag)) {
+                    var album_id = RegExp.$1;
+                    if (album_id != config.pageAlbumId) {
+                        request.loadAlbumInfo(album_id, function (album) {
+                            var album_name = album.name || ('album' + album.album_id);
+                            var $node = $(document.createElement('a'));
+                            $node.attr('data-album-id', album.album_id);
+                            $node.attr('data-album-name', album_name);
+                            $node.attr('title', album.description || album_name);
+                            $node.url('href', 'p/album/' + album.album_id + '?check=' + config.pagePhotoId);
+                            $node.attr('target', '_blank');
+                            $node.text(album_name);
+                            $pageDetailInfoNode.find('.photo-detail-album-name').append($node);
+                        });
+                    }
                 }
-            }
-        });
+            });
+        }
     };
 
     // 应用视频信息到当前页面
     var applyVideoInfoToPageIfHas = function () {
-        var pageDetailInfoNode = $(config.selector.photoDetailInfo);
-        var imageType = pageDetailInfoNode.find('.photo-detail-image-type').text();
-        pageDetailInfoNode.find('.photo-detail-video').hide()
+        var $pageDetailInfoNode = $(config.selector.photoDetailInfo);
+        var imageType = $pageDetailInfoNode.find('.photo-detail-image-type').text();
+        $pageDetailInfoNode.find('.photo-detail-video').hide()
             .find('.photo-detail-video-name a')
             .text('');
         if (imageType && imageType.indexOf('video') != -1) {
             request.loadVideoByCover(config.pagePhotoId, function (video) {
-                pageDetailInfoNode.find('.photo-detail-video').show()
+                $pageDetailInfoNode.find('.photo-detail-video').show()
                     .find('.photo-detail-video-name a')
                     .text(video.name || ('video_' + video.video_id))
                     .attr('data-video-id', video.video_id)
                     .attr('title', video.name || ('video_' + video.video_id))
                     .url('href', 'video/detail/' + video.video_id);
-                pageDetailInfoNode.find('.photo-detail-handle-area').css('margin-top', '5px');
+                $pageDetailInfoNode.find('.photo-detail-handle-area').css('margin-top', '5px');
             });
         }
     };
@@ -1049,12 +1055,14 @@
             }
         }
         if (!comment_plugin.pointer.topicTagWrappers) {
-            request.loadPhotoTagWrapperList(config.pagePhotoId, function (tagWrappers, topicTagWrappers) {
-                config.tagWrappers = tagWrappers;
-                comment_plugin.pointer.topicTagWrappers = topicTagWrappers;
-                buildPhotoTopicCommentBarHtml(comment_plugin.pointer.topicTagWrappers, comment_plugin.config.creationId, !!comment_plugin.config.currentTopic);
-                buildPhotoRelationTagHtml(config.tagWrappers);
-            });
+            if (login_handle.equalsLoginUser(config.hostUserId) || !$(config.selector.photoDetailInfo).find('.photo-detail-tags a[data-photo-tag^="protect@"]').hasValue()) {
+                request.loadPhotoTagWrapperList(config.pagePhotoId, function (tagWrappers, topicTagWrappers) {
+                    config.tagWrappers = tagWrappers;
+                    comment_plugin.pointer.topicTagWrappers = topicTagWrappers;
+                    buildPhotoTopicCommentBarHtml(comment_plugin.pointer.topicTagWrappers, comment_plugin.config.creationId, !!comment_plugin.config.currentTopic);
+                    buildPhotoRelationTagHtml(config.tagWrappers);
+                });
+            }
         } else {
             buildPhotoTopicCommentBarHtml(comment_plugin.pointer.topicTagWrappers, comment_plugin.config.creationId, !!comment_plugin.config.currentTopic);
             buildPhotoRelationTagHtml(config.tagWrappers);

@@ -443,11 +443,18 @@
      * @return {Integer} 10进制值
      */
     var convertRadix62to10 = function (str62) {
-        var i10 = 0;
+        var i10 = 0, negative = false;
+        if (str62 && str62.charAt(0) === '-') {
+            str62 = str62.length > 1 ? str62.substring(1) : '';
+            negative = true;
+        }
         for (var i = 0; i < str62.length; i++) {
             var n = str62.length - i - 1;
             var s = str62[i];
             i10 += RADIX62_DICT.indexOf(s) * Math.pow(62, n);
+        }
+        if (negative) {
+            i10 = i10 * -1;
         }
         return i10;
     };
@@ -458,12 +465,17 @@
      * @return {String} 62进制值
      */
     var convertRadix10to62 = function (int10) {
-        var s62 = '';
-        var r = 0;
+        var s62 = '', r = 0, negative = int10 < 0;
+        if (negative) {
+            int10 = int10 * -1;
+        }
         while (int10 != 0 && s62.length < 100) {
             r = int10 % 62;
             s62 = RADIX62_DICT[r] + s62;
             int10 = Math.floor(int10 / 62);
+        }
+        if (negative) {
+            s62 = '-' + s62;
         }
         return s62;
     };

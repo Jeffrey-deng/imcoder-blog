@@ -157,7 +157,7 @@
             var $input = $(this).prev();
             var cover_id = $input.attr('data-re-cover-id');
             if (cover_id && cover_id != '0') {
-                window.open('redirect?model=album&photo_id=' + cover_id);
+                window.open(('redirect?model=album&photo_id=' + cover_id).toURL());
             } else {
                 window.open(config.path_params.cloudPath + $input.attr('data-re-cover-url'));
             }

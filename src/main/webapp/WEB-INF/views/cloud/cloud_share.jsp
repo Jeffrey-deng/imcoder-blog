@@ -76,27 +76,36 @@
             color: #333;
         }
 
-        .expries-name {
+        .expires-name {
             display: none;
             margin-left: 15px;
             color: #3c763d;
             font-size: 90%;
         }
 
-        .expries-value {
+        .expires-value {
             display: none;
             font-size: 90%;
         }
 
-        .expries-value-right {
+        .expires-value-right {
             color: #3c763d;
         }
 
-        .expries-value-invalid {
+        .expires-value-invalid {
             color: #a94442;
         }
 
     </style>
+
+    <!-- 修复某些移动端浏览器设置UA为PC，页面仍显示手机版的问题 -->
+    <script>
+        if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) && (window.screen.availWidth <= 768 || window.screen.availHeight <= 768) && window.devicePixelRatio >= 2) {
+            var viewport = document.querySelector("meta[name=viewport]")
+                ,content = viewport.getAttribute('content');
+            viewport.setAttribute('content', content.replace(/(initial-scale=).*?(,|$)/, '$1' + (1 / window.devicePixelRatio) + '$2'));
+        }
+    </script>
 </head>
 <body>
 <div id="main" style="padding-bottom: 6px;">
@@ -119,8 +128,8 @@
                             </div>
                             <div class="form-group">
                                 <input type="button" class="btn btn-primary" id="sts-input-save" value="Open" style="margin-left: 15px;">
-                                <small class="expries-name">有效期至</small>
-                                <small class="expries-value"></small>
+                                <small class="expires-name">有效期至</small>
+                                <small class="expires-value"></small>
                             </div>
                         </form>
                     </div>

@@ -245,19 +245,19 @@
     };
 
     // 视频控制栏显示控制
-    var bindVideoControlEvent = function (playerWrapper, player, video) {
+    var bindVideoControlEvent = function ($playerWrapper, player, video) {
         var isAudio = config.isAudio;
         onActivityChange(function (isActive, player) {
             if (player && isAudio) {
                 if (isActive) {
                     $(player.elements.container).css('transform', '');
                     if (player.paused) { // 暂停时
-                        playerWrapper.find('.audio-play-btn').show(0);
+                        $playerWrapper.find('.audio-play-btn').show(0);
                     }
                 } else {
                     if (!player.paused) { // 播放时
                         $(player.elements.container).css('transform', 'translateY(100%)');
-                        playerWrapper.find('.audio-play-btn').hide(0);
+                        $playerWrapper.find('.audio-play-btn').hide(0);
                     }
                 }
             }
@@ -279,6 +279,11 @@
                     'style': 'background-image: url(\'' + player.config.poster + '\');'
                 }).appendTo(player.elements.wrapper);
             }
+            if (!config.disable_embed && !config.isYoutube) { // 赋值source
+                let qualityValue = getQualityValue(video);
+                // generateVideoSignatureUrl(video.video_id, 4000, false)
+                $(`<source src="${video.path}" size="${qualityValue}">`).prependTo(player.media);
+            }
             if (!isAudio) {
                 // for popup hide control btn when mouse not moving.
                 $self.on('mousemove', function (e) {
@@ -287,7 +292,7 @@
             } else {
                 let isMouseMove = true;
                 let mouse_timer = null;
-                playerWrapper.on('mousemove', '.audio-wrapper', function (e) {
+                $playerWrapper.on('mousemove', '.audio-wrapper', function (e) {
                     activityChange(true);
                     isMouseMove = true;
                 }).on('mouseenter', '.audio-wrapper', function (e) {
@@ -318,9 +323,10 @@
                 if (video.subtitles && video.subtitles.length > 0) {
                     player.toggleCaptions(true);
                 }
+                $(player.elements.settings.panels.quality).find('button[value="-1"]').remove();
             } else {
                 // add new button
-                playerWrapper.find('.audio-play-btn').show();
+                $playerWrapper.find('.audio-play-btn').show();
             }
             initLoopControlHtml(player, player.enable_loop);
             initRotateControlHtml(player, player.rotate);
@@ -354,6 +360,20 @@
         player.on('ended', function () {
             videoPlayStatusChange('ended');
         });
+        // document.addEventListener('visibilitychange', function () {
+        //     // 解决chrome下后台标签会延迟加载视频从而导致签名过期的问题
+        //     if (!config.disable_embed && !config.isYoutube && !config.isPageActiveAtBegin && player.buffered == 0 && !config.retryLoad && document['visibilityState'] == 'visible') {
+        //         let $media = $(player.media), $source = $media.find('source'), qualityValue = getQualityValue(video),
+        //             newSourceHtml = `<source src="${generateVideoSignatureUrl(video.video_id, 4000, false)}" size="${qualityValue}">`;
+        //         if ($source.hasValue()) {
+        //             $source.replaceWith(newSourceHtml);
+        //         } else {
+        //             $media.prepend(newSourceHtml);
+        //         }
+        //         player.media.load();
+        //         config.retryLoad = true;
+        //     }
+        // }, false);
     };
 
     // 视频循环按钮
@@ -747,6 +767,8 @@
                 enabled: '开启',
                 advertisement: '广告',
                 qualityBadge: {
+                    4320: '8K',
+                    2880: '5K',
                     2160: '4K',
                     1440: 'HD',
                     1080: 'HD',
@@ -759,6 +781,36 @@
             i18n = Plyr.defaults.i18n;
         }
         return i18n;
+    };
+
+    var getQualityValue = function (video) {
+        const maxPixel = Math.max(video.width, video.height),
+            minPixel = Math.min(video.width, video.height),
+            options = [4320, 2880, 2160, 1440, 1080, 720, 576, 480, 360, 240];
+        let qualityValue = options[options.length - 1];
+        $.each(options, function (k, v) {
+            if (minPixel >= v || maxPixel >= (v / 9 * 16)) {
+                qualityValue = v;
+                return false;
+            }
+        });
+        return qualityValue;
+    };
+
+    var generateVideoSignatureUrl = function (video_id, allowAge, check) {
+        let ul, vl, t, et, at, signature, expires, age;
+        ul = parseInt(common_utils.cookieUtil.get('identifier') || common_utils.cookieUtil.get('guest_identifier'));
+        vl = common_utils.convertRadix62to10(video_id);
+        t = new Date().getTime();
+        et = t + allowAge;
+        signature = common_utils.convertRadix10to62(t - ul);
+        expires = common_utils.convertRadix10to62(et - vl);
+        at = Math.abs(vl - ul) + allowAge;
+        if ((check && at % 2 !== 0) || (!check && at % 2 !== 1)) {
+            at++;
+        }
+        age = common_utils.convertRadix10to62(at);
+        return `video.api?method=downloadVideo&video_id=${video_id}&signature=${signature}&expires=${expires}&age=${age}`.toURL();
     };
 
     var localVideoConfig = globals.getLocalConfig('album', {
@@ -789,6 +841,7 @@
                 'title': video.name || ('video_' + video.video_id),
                 'style': 'position: absolute;height: 100%;width: 100%;left: 0;top: 0;opacity: 0; background-color: transparent; z-index: 10000000;',
             }).appendTo('body');
+            config.disable_embed = true;
         }
         let isYoutube = false, youtubeVideoUrl, youtubeVideoId; // 采用plyr播放youtube
         if (video.source_type == 2 && /(https?:\/\/(?:www\.)?youtube\.com\/embed\/([A-Za-z0-9]+)(\?[^"]+)?)/.test(video.code)) {
@@ -803,7 +856,10 @@
             }
             isYoutube = true;
         }
+        config.isYoutube = isYoutube;
+        config.isPageActiveAtBegin = !document.hidden;
         if (video.source_type != 2 || isYoutube) {   // 类型为链接
+            config.isEmbed = false;
             let player = null;
             let isAudio;
             if (localVideoConfig.embed.audio_use_fake_video) {  // 是否用video标签播放audio
@@ -834,6 +890,7 @@
                 if (!video.setting.disable_download || $('body').attr('data-is-special-man') == 'true') {
                     video_controls.splice(-1, 0, 'download');
                 }
+                let qualityValue = getQualityValue(video);
                 player = currentPlayer = new Plyr($video_player, {
                     title: video.name,
                     poster: video.cover.path,
@@ -846,10 +903,11 @@
                     ratio: isYoutube ? (video.width + ':' + video.height) : null,
                     invertTime: false,
                     resetOnEnd: true,
+                    quality: {'default': qualityValue, 'selected': qualityValue, forced: true, options: [qualityValue, -1]},
                     captions: {"active": videoHasSubtitle, "language": defaultTrackLang, "update": false},
                     i18n: getPlayerI18n(),
                     urls: {
-                        "download": isYoutube ? undefined : ('video.api?method=downloadVideo&video_id=' + video.video_id).toURL()
+                        "download": isYoutube ? undefined : generateVideoSignatureUrl(video.video_id, 10800000, true)
                     }
                 });
                 if (isYoutube) {
@@ -866,7 +924,7 @@
                     '<span>Play</span></button>' +
                     '<audio class="audio-player" id="site-player">' + tracksHtml + '</audio></div>');
                 let audio_controls = ["play-large", "play", "progress", "current-time", "duration", "volume", "captions", "settings", "pip", "airplay"];
-                if (!video.setting.disable_download) {
+                if (!video.setting.disable_download || $('body').attr('data-is-special-man') == 'true') {
                     audio_controls.push('download');
                 }
                 player = currentPlayer = new Plyr($('#site-player'), {
@@ -881,7 +939,7 @@
                     captions: {"active": videoHasSubtitle, "language": defaultTrackLang, "update": false},
                     i18n: getPlayerI18n(),
                     urls: {
-                        "download": ('video.api?method=downloadVideo&video_id=' + video.video_id).toURL()
+                        "download": generateVideoSignatureUrl(video.video_id, 10800000, false)
                     }
                 });
             }
@@ -900,10 +958,8 @@
             }
             initIframeSettingInParentPage(player, video);
             bindVideoControlEvent($playerWrapper, player, video);
-            if (!isYoutube && !(disable_embed && isEmbedWindow)) {  // 赋值source
-                document.getElementById('site-player').src = video.path;
-            }
         } else {    // 类型为嵌入
+            config.isEmbed = true;
             $playerWrapper.html(video.code);
             let $iframeNode = $playerWrapper.children().eq(0);
             if ($iframeNode && $iframeNode.length > 0) {

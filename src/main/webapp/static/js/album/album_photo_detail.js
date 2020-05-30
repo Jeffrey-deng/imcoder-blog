@@ -867,33 +867,53 @@
             album_photo_handle.openUploadPhotoModal();
         });
 
-        // dragenter .album_options
+        // dragenter
+        navigator.browser.firefox() && $(document.body).on('dragstart', '.photo a.photo-detail-link', function (e) {
+            e.originalEvent.dataTransfer.setData('isDragPhotoLink', true);
+        });
         $(document.body).on('dragenter', function (e) {
-            var types = e.originalEvent.dataTransfer.types;
-            if (types && types.length > 0 && types[0] == 'Files') {
+            if (e.target.getAttribute('type') !== 'file') { // 排除文件输入框
                 e.stopPropagation();
                 e.preventDefault();
-                if (!globals.getNotify('dragUpload_notify')) {
-                    globals.notify({
-                        "timeOut": 0,
-                        "progressBar": false
-                    }).success('松开鼠标上传', '', 'dragUpload_notify');
-                }
             }
         });
         // dragover
         $(document.body).on('dragover', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
+            if (e.target.getAttribute('type') !== 'file') {
+                if (navigator.browser.firefox()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                if (e.originalEvent.dataTransfer) {
+                    let types = e.originalEvent.dataTransfer.types;
+                    if (types && types.length > 0 && types[0] == 'Files') {
+                        e.originalEvent.dataTransfer.dropEffect = 'copy';
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (!globals.getNotify('dragUpload_notify')) {
+                            globals.notify({
+                                "timeOut": 8000,
+                                "progressBar": false
+                            }).success('松开鼠标上传', '', 'dragUpload_notify');
+                        }
+                    }
+                }
+            }
         });
         // drop
         $(document.body).on('drop', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            var files = e.originalEvent.dataTransfer.files;
-            if (files && files.length > 0) {
-                globals.removeNotify('dragUpload_notify');
-                album_photo_handle.openUploadPhotoModal(files);
+            globals.removeNotify('dragUpload_notify');
+            if (e.target.getAttribute('type') !== 'file') {
+                if (navigator.browser.firefox() && e.originalEvent.dataTransfer && e.originalEvent.dataTransfer.getData('isDragPhotoLink')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                let files = e.originalEvent.dataTransfer.files;
+                if (files && files.length > 0) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    album_photo_handle.openUploadPhotoModal(files);
+                }
             }
         });
 

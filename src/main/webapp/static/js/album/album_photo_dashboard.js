@@ -700,7 +700,8 @@
                     };
                 },
                 "actionForEditPhoto": function (photo, triggerType) {
-                    if (!(photo.image_type.indexOf('video') != -1 && !login_handle.equalsLoginUser(photo.uid))) {
+                    if (!(isClearTopicPage && !login_handle.equalsLoginUser(photo.uid))
+                        && !(photo.image_type.indexOf('video') != -1 && !login_handle.equalsLoginUser(photo.uid))) {
                         triggerType == 'btn' && $.magnificPopup.close();
                         album_photo_handle.openUpdatePhotoModal(photo);
                     }

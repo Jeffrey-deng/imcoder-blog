@@ -208,8 +208,14 @@
                 if (isLogin) {
                     let $notify_uploading = globals.notify().progress('<progress value="0" max="100" style="width:100%;"></progress>', '正在上传视频~', 'notify_video_uploading'),
                         $progress = $notify_uploading.find('progress');
-                    request.uploadVideo((videoInfo.source_type == 0 ? files[0] : null), ((cover_id && cover_id != '0') ? null : coverFiles[0]), videoInfo, true).progress(function (percent) {
-                        $notify_uploading.title(`正在上传视频~ <span style="font-weight:normal;float:right;">已完成 ${percent}%</span>`);
+                    request.uploadVideo((videoInfo.source_type == 0 ? files[0] : null), ((cover_id && cover_id != '0') ? null : coverFiles[0]), videoInfo, true).progress(function (percent, finalized) {
+                        if (percent < 100) {
+                            $notify_uploading.title(`正在上传视频~ <span style="font-weight:normal;float:right;">已完成 ${percent}%</span>`);
+                        } else if (finalized !== true) {
+                            $notify_uploading.title('上传完成 <span style="font-weight:normal;float:right;">处理数据中~</span>');
+                        } else {
+                            $notify_uploading.title('上传完成 <span style="font-weight:normal;float:right;">处理数据完成</span>');
+                        }
                         $progress.val(percent);
                     }).always(function () {
                         pointer.uploadModal.find('input[name="cover_photo_id"]').val('0');
@@ -227,8 +233,8 @@
                         }
                     });
                 } else {
-                    toastr.error('登陆状态失效，请重新登录！');
                     $btn.removeAttr('disabled');
+                    toastr.error('登陆状态失效，请重新登录！');
                 }
             }, true);
         });
@@ -360,9 +366,17 @@
                 if (isLogin) {
                     let $notify_updating = globals.notify().progress('<progress value="0" max="100" style="width:100%;"></progress>', '正在更新视频~', 'notify_video_updating'),
                         $progress = $notify_updating.find('progress');
-                    request.updateVideo((uploadNewVideo ? files[0] : null), (uploadNewCover ? coverFiles[0] : null), videoInfo, true).progress(function (percent) {
-                        $notify_updating.title(`正在上传视频~ <span style="font-weight:normal;float:right;">已完成 ${percent}%</span>`);
-                        $progress.val(percent);
+                    request.updateVideo((uploadNewVideo ? files[0] : null), (uploadNewCover ? coverFiles[0] : null), videoInfo, true).progress(function (percent, finalized) {
+                        let titleValue, percentValue = finalized ? 100 : percent;
+                        if (percent < 100) {
+                            titleValue = `正在上传视频~ <span style="font-weight:normal;float:right;">已完成 ${percent}%</span>`;
+                        } else if (finalized !== true) {
+                            titleValue = '上传完成 <span style="font-weight:normal;float:right;">处理数据中~</span>';
+                        } else {
+                            titleValue = '上传完成 <span style="font-weight:normal;float:right;">处理数据完成</span>';
+                        }
+                        $notify_updating.title(titleValue);
+                        $progress.val(percentValue);
                     }).always(function () {
                         $btn.removeAttr('disabled');
                         globals.removeNotify('notify_video_updating');
@@ -373,8 +387,8 @@
                         pointer.updateModal.find('input[name="cover_file"]').val('');
                     });
                 } else {
-                    toastr.error('登陆状态失效，请重新登录！');
                     $btn.removeAttr('disabled');
+                    toastr.error('登陆状态失效，请重新登录！');
                 }
             }, true);
         });
@@ -739,12 +753,12 @@
                                         let percent = Math.floor(e.loaded / e.total * 100);
                                         if (loadPercent == undefined || loadPercent !== percent) {
                                             loadPercent = percent;
-                                            dfd.notifyWith(postData, [percent]);
+                                            dfd.notifyWith(postData, [percent, false]);
                                         }
                                     }
                                 }
                             }, globals.api.uploadVideo, postData, success, ['video'], success && '上传失败').final(function (video) {
-                                dfd.notifyWith(postData, [100]);
+                                dfd.notifyWith(postData, [100, true]);
                                 config.callback.uploadCompleted.call(context, context, video); // 回调
                                 context.trigger(config.event.uploadCompleted, video);
                                 dfd.resolveWith(this, arguments);
@@ -827,12 +841,12 @@
                                         let percent = Math.floor(e.loaded / e.total * 100);
                                         if (loadPercent == undefined || loadPercent !== percent) {
                                             loadPercent = percent;
-                                            dfd.notifyWith(postData, [percent]);
+                                            dfd.notifyWith(postData, [percent, false]);
                                         }
                                     }
                                 }
                             }, globals.api.updateVideo, postData, success, ['video'], success && '更新失败').final(function (video) {
-                                dfd.notifyWith(postData, [100]);
+                                dfd.notifyWith(postData, [100, true]);
                                 config.callback.updateCompleted.call(context, context, video); // 回调
                                 context.trigger(config.event.updateCompleted, video);
                                 dfd.resolveWith(this, arguments);
@@ -994,7 +1008,7 @@
                 pointer.updateModal.find('.form-group textarea[name="video_code"]').val(video.code).closest('.form-group').show();
             } else {
                 pointer.updateModal.find('.form-group textarea[name="video_code"]').val('').closest('.form-group').hide();
-                let downloadUrl = isAuthor ? video.path : ('video.api?method=downloadVideo&video_id=' + video.video_id).toURL();
+                let downloadUrl = isAuthor ? video.path : utils.generateVideoSignatureUrl(video.video_id, 10800000, true);
                 pointer.updateModal
                     .find('.copy-input').val(downloadUrl)
                     .closest('.form-group').addClass('user-upload-video').show() // 如果该视频是用户上传的（不是引用的），则添加标记类: .user-upload-video
@@ -1167,6 +1181,21 @@
                 minHeight: config.tagsAreaHeight,
                 runOnce: true
             });
+        },
+        'generateVideoSignatureUrl': function (video_id, allowAge, check) {
+            let ul, vl, t, et, at, signature, expires, age;
+            ul = parseInt(common_utils.cookieUtil.get('identifier') || common_utils.cookieUtil.get('guest_identifier'));
+            vl = common_utils.convertRadix62to10(video_id);
+            t = new Date().getTime();
+            et = t + allowAge;
+            signature = common_utils.convertRadix10to62(t - ul);
+            expires = common_utils.convertRadix10to62(et - vl);
+            at = Math.abs(vl - ul) + allowAge;
+            if ((check && at % 2 !== 0) || (!check && at % 2 !== 1)) {
+                at++;
+            }
+            age = common_utils.convertRadix10to62(at);
+            return `video.api?method=downloadVideo&video_id=${video_id}&signature=${signature}&expires=${expires}&age=${age}`.toURL();
         }
     };
     var context = {

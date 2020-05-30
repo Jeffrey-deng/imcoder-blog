@@ -31,6 +31,15 @@
     <%--<link rel="stylesheet" href="<%=staticPath%>lib/css/style.hplus.min.css<%=urlArgs%>">--%>
     <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+
+    <!-- 修复某些移动端浏览器设置UA为PC，页面仍显示手机版的问题 -->
+    <script>
+        if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) && (window.screen.availWidth <= 768 || window.screen.availHeight <= 768) && window.devicePixelRatio >= 2) {
+            var viewport = document.querySelector("meta[name=viewport]")
+                ,content = viewport.getAttribute('content');
+            viewport.setAttribute('content', content.replace(/(initial-scale=).*?(,|$)/, '$1' + (1 / window.devicePixelRatio) + '$2'));
+        }
+    </script>
 </head>
 <body uid="<c:if test="${not empty loginUser}"><s:eval expression="loginUser.uid"/></c:if>" style="background-image: url('<%=staticPath%>img/bg-site.png');">
 <!-- <body background="../../img/bg-site.png"> -->
@@ -200,7 +209,7 @@
                             </h2>
                             <small class="author-user-group">${hostUser.userGroup.group_name}</small>
                         </div>
-                        <img class="author-head-photo" src="<s:eval expression="hostUser.head_photo"/>" alt="head-photo">
+                        <div class="author-head-photo" style="background-image:url('<s:eval expression="hostUser.head_photo"/>')" alt="head-photo"></div>
                         <div class="author-post-stats">
                             <span><a class="author-articleCount" target="_blank" href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/home">${hostUser.userStats.articleCount} 动态</a></span> |
                             <span><a class="author-followingCount" target="_blank" href="<%=basePath%>u/<s:eval expression="hostUser.uid"/>/contact/followings">${hostUser.userStats.followingCount} 关注</a></span> |

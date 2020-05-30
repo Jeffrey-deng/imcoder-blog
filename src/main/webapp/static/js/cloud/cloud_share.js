@@ -91,17 +91,17 @@
             initpath = sharepath;
             expires_time = new Date(data.expiration).getTime();
             var expires_time_str = common_utils.formatDate(expires_time, 'yyyy-MM-dd hh:mm:ss');
-            var show_exp_name_node = document.querySelector('.expries-name');
-            var show_exp_value_node = document.querySelector('.expries-value');
+            var show_exp_name_node = document.querySelector('.expires-name');
+            var show_exp_value_node = document.querySelector('.expires-value');
             show_exp_name_node.style.display = "inline-block";
             show_exp_value_node.style.display = "inline-block";
             if (expires_time > new Date().getTime()) {
                 show_exp_value_node.innerHTML = expires_time_str;
-                show_exp_value_node.className = "expries-value expries-value-right";
+                show_exp_value_node.className = "expires-value expires-value-right";
             } else {
                 toastr.error(expires_time_str, '授权码已过期');
                 show_exp_value_node.innerHTML = "已过期";
-                show_exp_value_node.className = "expries-value expries-value-invalid";
+                show_exp_value_node.className = "expires-value expires-value-invalid";
                 return;
             }
             return func(client);

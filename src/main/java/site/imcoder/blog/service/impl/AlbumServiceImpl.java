@@ -44,6 +44,8 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
 
     private static String MOUNT_PREFIX = "mount@";
 
+    private static Pattern PHOTO_SOLO_PERMISSION_REGEXP = Pattern.compile("#permission@0?(\\d+)#");
+
     private static Comparator<Photo> ALBUM_PHOTO_COMPARATOR = new Comparator<Photo>() {
         @Override
         public int compare(Photo b, Photo n) {
@@ -679,7 +681,33 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
         if (photo == null) {
             return response.setStatus(STATUS_NOT_FOUND, "无此照片");
         }
-        IResponse albumResp = findAlbumInfo(new Album(photo.getAlbum_id()), iRequest);
+
+        // 增加支持图片单独设置权限：在tags添加标签 permission@{value}
+        IResponse authResp = null;
+        IResponse albumResp = null;
+        Album db_album = null;
+        if (photo.getTags() != null) {
+            Matcher matcher = PHOTO_SOLO_PERMISSION_REGEXP.matcher(photo.getTags());
+            if (matcher.find()) {
+                db_album = albumDao.findAlbumInfo(new Album(photo.getAlbum_id()));
+                int permission = Integer.valueOf(matcher.group(1));
+                if (db_album != null && db_album.getPermission() != permission) {
+                    authResp = authService.validateUserPermissionUtil(db_album.getUser(), permission, iRequest);
+                }
+            }
+        }
+        if (authResp == null) {
+            albumResp = findAlbumInfo(new Album(photo.getAlbum_id()), iRequest);
+        } else if (authResp.isSuccess()) {
+            if (loadAlbum) {
+                albumResp = findAlbumInfo(new Album(photo.getAlbum_id()), iRequest);
+                albumResp.setStatus(STATUS_SUCCESS, "请求成功");
+            } else {
+                albumResp = authResp;
+            }
+        } else {
+            albumResp = authResp;
+        }
         if (albumResp.isSuccess()) {
             boolean isNotLoadOriginName = iRequest.isHasNotLoggedIn() || !iRequest.getLoginUser().getUid().equals(photo.getUid());
             if (isNotLoadOriginName) {
@@ -712,10 +740,14 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
             if (loadAlbum || loadUser) {
                 Album album = albumResp.getAttr("album");
                 if (loadAlbum) {
+                    if (album == null) {
+                        album = new Album();
+                        album.setUser(db_album.getUser());
+                    }
                     response.putAttr("album", album);
                 }
                 if (loadUser) {
-                    response.putAttr("user", album.getUser());
+                    response.putAttr("user", album != null ? album.getUser() : db_album.getUser());
                 }
             }
             if (loadTopic) {

@@ -152,13 +152,16 @@ public class PhotoController extends BaseController {
     @RequestMapping(value = "/p/detail/{id}")
     public String openPhotoDetail(@PathVariable @PrimaryKeyConvert Long id, String path, Model model, IRequest iRequest) {
         Photo photo = null;
+        Album album = null;
         int flag = STATUS_SUCCESS;
         if (IdUtil.containValue(id)) {
+            iRequest.putAttr("loadAlbum", true);
             Photo queryArgs = new Photo(id);
             IResponse photoResp = albumService.findPhoto(queryArgs, iRequest);
             flag = photoResp.getStatus();
             if (photoResp.isSuccess()) {
                 photo = photoResp.getAttr("photo");
+                album = photoResp.getAttr("album");
             }
         } else if (!Utils.isNotEmpty(path)) {
             Photo queryArgs = new Photo();
@@ -179,7 +182,9 @@ public class PhotoController extends BaseController {
             flag = STATUS_PARAM_ERROR;
         }
         if (flag == STATUS_SUCCESS) {
-            Album album = albumService.findAlbumInfo(new Album(photo.getAlbum_id()), iRequest).getAttr("album");
+            if (album == null) {
+                album = albumService.findAlbumInfo(new Album(photo.getAlbum_id()), iRequest).getAttr("album");
+            }
             model.addAttribute("photo", photo);
             model.addAttribute("album", album);
         } else if (flag == STATUS_NOT_LOGIN) {

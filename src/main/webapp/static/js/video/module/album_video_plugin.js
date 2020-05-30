@@ -333,7 +333,7 @@
                     }
                     template.addClass('video-set-ready');
                 },
-                change: function () {   // mfp-container: 只有打开时才会重新创建，mfp-content: 更新时也会删除重建
+                change: function () {   // mfp-container: 只有打开时才会重新创建，mfp-content: 更新时也会删除重建，但事件会重新绑定
                     if (!this.content.hasClass('video-set-ready')) {
                         return;
                     }
@@ -342,7 +342,7 @@
                     if (config.popup_btn_display != 'inline') {
                         mfp.content.find('.mfp-close').toggleClass('video-popup-block-close', true);
                     }
-                    mfp.content.on('click', '.mfp-video-edit', function (e) {
+                    mfp.content.off('click.once').on('click.once', '.mfp-video-edit', function (e) {
                         context.trigger(config.event.actionForEditVideo, video); // 触发编辑事件
                         try {
                             var events = $._data(context, 'events'); // 如果未绑定 video.edit 事件，则打开一个网页显示video信息
@@ -363,7 +363,7 @@
                         }
                         e.preventDefault();
                         return false;
-                    }).on('click', '.mfp-video-like', function (e) {
+                    }).on('click.once', '.mfp-video-like', function (e) {
                         e.preventDefault();
                         var $likeBtn = $(this);
                         var video = mfp.currItem.video;
@@ -663,7 +663,7 @@
         node.id = 'video_' + video.video_id;
         node.setAttribute('data-video-id', video.video_id);
         if (video.source_type == 0 || video.source_type == 1) {
-            node.src = video.path;
+            node.src = utils.generateVideoSignatureUrl(video.video_id, 5000, false);
             node.controls = "controls";
             node.poster = video.cover.path;
             node.setAttribute('type', video.video_type);
@@ -690,6 +690,21 @@
     };
 
     var utils = {
+        'generateVideoSignatureUrl': function (video_id, allowAge, check) {
+            let ul, vl, t, et, at, signature, expires, age;
+            ul = parseInt(common_utils.cookieUtil.get('identifier') || common_utils.cookieUtil.get('guest_identifier'));
+            vl = common_utils.convertRadix62to10(video_id);
+            t = new Date().getTime();
+            et = t + allowAge;
+            signature = common_utils.convertRadix10to62(t - ul);
+            expires = common_utils.convertRadix10to62(et - vl);
+            at = Math.abs(vl - ul) + allowAge;
+            if ((check && at % 2 !== 0) || (!check && at % 2 !== 1)) {
+                at++;
+            }
+            age = common_utils.convertRadix10to62(at);
+            return `video.api?method=downloadVideo&video_id=${video_id}&signature=${signature}&expires=${expires}&age=${age}`.toURL();
+        },
         "getVideoByCache": function (video_id) {
             var video = null;
             pointer.videos && $.each(pointer.videos, function (i, value) {

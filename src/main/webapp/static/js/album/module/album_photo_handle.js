@@ -79,7 +79,8 @@
         },
         albumId: 0,
         downloadType: "url",
-        maxUploadSize: 10 * 1024 * 1024
+        maxUploadSize: 10 * 1024 * 1024,
+        protect_attr_regexp: /#protect@(\w+)#/i
     };
     var init = function (options) {
 
@@ -836,6 +837,9 @@
     var openUpdatePhotoModal = function (photo) {
         var formatPhotoToModal_callback = function (photo) {
             var isAuthor = login_handle.equalsLoginUser(photo.uid);
+            if (!isAuthor && photo.tags && config.protect_attr_regexp.test(photo.tags)) {
+                return;
+            }
             pointer.updateModal.data('photo', photo).data('isAuthor', isAuthor);
             // load to modal
             var photo_url = 'p/detail/' + photo.photo_id;

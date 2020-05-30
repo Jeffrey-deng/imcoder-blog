@@ -6,6 +6,23 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
 
 ## develop log
 
+#### 2021.01.27
+
+support parse/drag image to message input.
+
+    （1）site back-end
+    1、fix some bugs
+    >
+    （2）site front-end
+    1、修复某些移动端浏览器设置UA为PC，页面仍显示手机版的问题
+    >
+    （4）video module
+    1、add verify signature for video file url
+    >
+    （5）message service
+    1、support parse image to message input
+    2、support drag  image to message input
+
 #### 2020.05.29
 
 use globals pointer, globals ajax api，use full URL.
