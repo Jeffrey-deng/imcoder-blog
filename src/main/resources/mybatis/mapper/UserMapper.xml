@@ -541,7 +541,7 @@
         ad.last_access_time, ad.last_access_ip, ad.last_access_user_agent, ad.access_times, ad.deep,
         v.video_id, v.uid as author_uid , vu.nickname as author_nickname, vu.sex as author_sex, vu.head_photo as author_head_photo,
         v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
-        v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
+        v.name, v.description, v.tags, v.live_photo, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
         v.upload_time, v.originName, v.refer, v.permission, v.click_count, v.like_count, v.comment_count,
         (case when vs.disable_view is not null and vs.disable_view > 0 then true else false end) as vs_disable_view,
         (case when vs.disable_send_comment is not null and vs.disable_send_comment > 0 then true else false end) as vs_disable_send_comment,
@@ -572,7 +572,7 @@
         ad.last_access_time, ad.last_access_ip, ad.last_access_user_agent, ad.access_times, ad.deep,
         v.video_id, v.uid as author_uid , vu.nickname as author_nickname, vu.sex as author_sex, vu.head_photo as author_head_photo,
         v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
-        v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
+        v.name, v.description, v.tags, v.live_photo, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
         v.upload_time, v.refer, v.permission, v.click_count, v.like_count, v.comment_count,
         <if test="is_login">
             (case when v.uid = #{loginUser.uid} then v.originName else null end) as originName,
@@ -760,6 +760,7 @@
             <result column="name" property="name"/>
             <result column="description" property="description"/>
             <result column="tags" property="tags"/>
+            <result column="live_photo" property="live_photo"/>
             <result column="source_type" property="source_type"/>
             <result column="path" property="path"/>
             <result column="code" property="code"/>
@@ -1344,6 +1345,7 @@
         left join (comment c left join user cu on c.uid = cu.uid)
         on ar.cid = c.cid
         <where>
+            c.is_del = 0
             <if test="condition.user != null and condition.user.uid != null">
                 and ar.UID = #{condition.user.uid}
             </if>

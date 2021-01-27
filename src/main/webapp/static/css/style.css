@@ -4877,6 +4877,13 @@ body {
     color: #428bca;
 }
 
+/*
+.chat-panel .chat-discussion {
+    display: flex;
+    flex-direction: column-reverse;
+}
+*/
+
 .chat-panel .letter-input-content {
     height: 90px;
 }
@@ -5097,6 +5104,10 @@ body {
     word-break: break-all;
 }
 
+.chat-message:hover .message-del {
+    visibility: visible;
+}
+
 .chat-discussion {
     background: #eee;
     height: 400px;
@@ -5130,6 +5141,10 @@ body {
     text-align: center;
 }
 
+.chat-discussion.only-link-enable .chat-message:not(.chat-message-link) {
+    display: none;
+}
+
 .chat-users {
     height: 400px;
     overflow-y: auto;
@@ -5154,11 +5169,110 @@ body {
     margin: 3px 0;
 }
 
-.chat-message .lazy-video-preview {
+.chat-message .lazy-media-preview {
     padding-left: 0.5em;
     padding-top: 0.2em;
     margin-top: 0.1em;
     border-left: 4px solid #eee;
+    position: relative;
+}
+
+.chat-message .lazy-media-preview.lazy-photo-preview {
+    overflow: hidden;
+}
+
+.chat-message .lazy-media-preview.lazy-photo-preview .lazy-media-source {
+    -webkit-filter: blur(10px);
+    -moz-filter: blur(10px);
+    -o-filter: blur(10px);
+    -ms-filter: blur(10px);
+    filter: blur(10px);
+}
+
+.chat-message:hover .lazy-media-preview.lazy-photo-preview .lazy-media-source{
+    animation: 1.25s preview-blur-loop infinite alternate-reverse;
+}
+
+@media (max-width: 767px) {
+    .chat-message .lazy-media-preview.lazy-photo-preview .lazy-media-source{
+        animation: 1.25s preview-blur-loop infinite alternate-reverse;
+    }
+}
+
+@keyframes preview-blur-loop {
+    0% {
+        -webkit-filter: unset;
+        -moz-filter: unset;
+        -o-filter: unset;
+        -ms-filter: unset;
+        filter: unset;
+    }
+    10% {
+        -webkit-filter: blur(0px);
+        -moz-filter: blur(0x);
+        -o-filter: blur(0px);
+        -ms-filter: blur(0px);
+        filter: blur(0px);
+    }
+    19% {
+        -webkit-filter: blur(1px);
+        -moz-filter: blur(1x);
+        -o-filter: blur(1px);
+        -ms-filter: blur(1px);
+        filter: blur(1px);
+    }
+    30% {
+        -webkit-filter: blur(2px);
+        -moz-filter: blur(2x);
+        -o-filter: blur(2px);
+        -ms-filter: blur(2px);
+        filter: blur(2px);
+    }
+    55% { -webkit-filter: blur(5px);
+        -moz-filter: blur(5px);
+        -o-filter: blur(5px);
+        -ms-filter: blur(5px);
+        filter: blur(5px);
+    }
+    75% {
+        -webkit-filter: blur(7px);
+        -moz-filter: blur(7px);
+        -o-filter: blur(7px);
+        -ms-filter: blur(7px);
+        filter: blur(7px);
+    }
+    100% {
+        -webkit-filter: blur(10px);
+        -moz-filter: blur(10px);
+        -o-filter: blur(10px);
+        -ms-filter: blur(10px);
+        filter: blur(10px);
+    }
+}
+
+.chat-message .lazy-media-preview.lazy-photo-preview.image-widget.protect::after {
+    content: '查看详情';
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    font-size: 0.92rem;
+    width: 110px;
+    height: 30px;
+    padding: 3px 6px;
+    margin: auto;
+    border-radius: 6px;
+    background-color: #909fac91; /*#2e6da491;*/
+    color: white;
+    text-align: center;
+    visibility: visible;
+    transition: visibility 1s ease 0.9s;
+}
+
+.chat-message .lazy-media-preview.lazy-photo-preview.image-widget.protect.tips-delay::after {
+    visibility: hidden;
 }
 
 .drop-item-notify {
@@ -5172,7 +5286,6 @@ body {
 
 .message-insert-table a:hover {
     border-bottom: 1px solid #EEE;
-
 }
 
 .message-insert-table a {
@@ -5205,6 +5318,7 @@ body {
     top: 0;
     opacity: 0;
     background-color: transparent;
+    z-index: 1;
 }
 
 .modal .modal-body .form-group:last-child {
@@ -5322,11 +5436,16 @@ body {
 }
 
 .mail-subject {
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /*text-overflow: ellipsis;
     max-width: 70%;
-    overflow: hidden;
+    overflow: hidden;*/
+    white-space: nowrap;
+    overflow: auto;
     cursor: pointer;
+}
+
+.mail-subject::-webkit-scrollbar {
+    height: 6px;
 }
 
 .content-ellipsis {
@@ -5511,7 +5630,7 @@ body {
 
     .chat-message-right .message-del {
         float: right;
-        padding-right: 8px;
+        padding-right: 4px;
         padding-left: 0px;
     }
 
@@ -5523,6 +5642,14 @@ body {
     .chat-message-right .message-date {
         float: right;
         clear: right;
+    }
+
+    .chat-message-right .message-status {
+        float: right;
+        margin-top: -17px;
+        margin-bottom: 8px;
+        padding-left: 0px;
+        padding-right: 4px;
     }
 
     .chat-message .message-del {
@@ -5795,6 +5922,18 @@ body {
         margin: 0.5714em 0;
     }
 
+}
+
+#toast-container {
+    overflow-y: auto;
+    max-height: calc(100vh - 20px);
+    overflow-x: hidden;
+    pointer-events: all;
+}
+
+#toast-container::-webkit-scrollbar {
+    width: 0px;
+    background-color: #f5f5f5;
 }
 
 #toast-container > div {
@@ -6199,6 +6338,7 @@ button.mfp-arrow {
 
 .mfp-bottom-bar {
     margin-top: -2.5714285em;
+    z-index: 2;
 }
 
 .mfp-bottom-bar a {

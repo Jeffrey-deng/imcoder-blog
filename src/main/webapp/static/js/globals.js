@@ -52,6 +52,15 @@
          * 判断浏览器类型
          */
         navigator.browser = {
+            'getVersion': function () {
+                let sys = {}, ua = navigator.userAgent.toLowerCase(), s;
+                (s = ua.match(/msie ([\d.]+)/)) ? sys.ie = s[1] :
+                    (s = ua.match(/firefox\/([\d.]+)/)) ? sys.firefox = s[1] :
+                        (s = ua.match(/chrome\/([\d.]+)/)) ? sys.chrome = s[1] :    //Chrome会有自己和Safari的字段
+                            (s = ua.match(/opera.([\d.]+)/)) ? sys.opera = s[1] :
+                                (s = ua.match(/version\/([\d.]+).*safari/)) ? sys.safari = s[1] : 0;    //Safari只会有自己的字段
+                return sys;
+            },
             'ie': function () {
                 return navigator.userAgent.indexOf("MEIS") !== -1 && navigator.userAgent.indexOf("Trident") !== -1;
             },
@@ -59,13 +68,13 @@
                 return navigator.userAgent.indexOf('Edge') !== -1;
             },
             'chrome': function () {
-                return navigator.userAgent.indexOf('Chrome') !== -1;
+                return !!this.getVersion().chrome;
             },
             'firefox': function () {
-                return navigator.userAgent.indexOf('Firefox') !== -1;
+                return !!this.getVersion().firefox;
             },
             'safari': function () {
-                return navigator.userAgent.indexOf('Safari') !== -1;
+                return !!this.getVersion().safari;
             },
         };
 
@@ -682,6 +691,7 @@
         "hideEasing": "linear",
         "showMethod": "fadeIn",
         "hideMethod": "fadeOut",
+        "newestScrollTop": true,
         "iconClasses": {
             error: 'toast-error',
             info: 'toast-info-no-icon',
@@ -827,6 +837,7 @@
         'deleteVideo': 'video.api?method=delete',
         'triggerVideoAccess': 'video.api?method=triggerVideoAccess',
         'uploadSubtitle': 'video.api?method=uploadSubtitle',
+        'updateVideoSetting': 'video.api?method=updateVideoSetting',
         'postImage': 'cloud.api?method=postImage',  // cloud
         'saveTagWrapper': 'photo.api?method=saveTagWrapper',  // tagWrapper
         'updateTagWrapper': 'photo.api?method=updateTagWrapper',
@@ -1019,61 +1030,85 @@
     };
 
     /**
-     * 提示通知对象缓存池
-     * @type {{}}
+     * 通知对象上下文
+     * @param options
+     * @returns {NotifyContext}
+     * @constructor
      */
-    const notifyPool = {};
+    const NotifyContext = (function () {
 
-    let notifyObject = (function () {
-        let notify_options = {},
-            internalTitleFn = function (title) {
-                return this.find('.toast-title').html(title).end();
-            }, internalContentFn = function (content) {
-                return this.find('.toast-message').html(content).end();
-            }, buildNotifyElement = function (type, content, title, notifyName, notify_options) {
-                context.lastNotifyName = notifyName = notifyName || 'default';
-                let $toastElement = toastr[type](content, title, notify_options).attr('data-name', notifyName);
-                $toastElement.title = internalTitleFn;
-                $toastElement.content = internalContentFn;
-                notifyPool[notifyName] = $toastElement;
-                return $toastElement;
-            };
-        let context = {
-            "config": function (json) {
-                notify_options = $.extend(true, {}, json);
-                return context;
-            },
-            "default": function (json) {
-                json && toastr.options(json);
-                return context;
-            },
-            "lastNotifyName": null,
-            "success": function (content, title, notifyName) {
-                return buildNotifyElement('success', content, title, notifyName, notify_options);
-            },
-            "error": function (content, title, notifyName) {
-                return buildNotifyElement('error', content, title, notifyName, notify_options);
-            },
-            "info": function (content, title, notifyName) {
-                return buildNotifyElement('info', content, title, notifyName, notify_options);
-            },
-            "progress": function (content, title, notifyName) {
-                notify_options = $.extendNotNull(true, {
-                    "iconClass": "toast-success-no-icon",
-                    "progressBar": false,
-                    "hideDuration": 0,
-                    "showDuration": 0,
-                    "timeOut": 0,
-                    "closeButton": false,
-                    "hideOnHover": false,
-                    "onclick": function (e) {
-                        return false;
-                    },
-                }, notify_options);
-                return buildNotifyElement('success', content, title, notifyName, notify_options);
+        const NotifyContext = function (options) {
+            if (options) {
+                this.config(options);
             }
+            this.notify_options = {};
+            return this;
         };
-        return context;
+
+        NotifyContext.notifyPool = {}; // 提示通知对象缓存池
+
+        NotifyContext.lastNotifyName = 'default'; // 上一个通知名称
+
+        NotifyContext._title = function (title) {
+            return this.find('.toast-title').html(title).end();
+        };
+
+        NotifyContext._content = function (content) {
+            return this.find('.toast-message').html(content).end();
+        };
+
+        NotifyContext.prototype._buildNotifyElement = function (type, content, title, notifyName, notify_options) {
+            NotifyContext.lastNotifyName = notifyName = notifyName || 'default';
+            let $toastElement = toastr[type](content, title, notify_options).attr('data-name', notifyName);
+            $toastElement.title = NotifyContext._title;
+            $toastElement.content = NotifyContext._content;
+            NotifyContext.notifyPool[notifyName] = $toastElement;
+            return $toastElement;
+        };
+
+        NotifyContext.prototype.config = function (json) {
+            NotifyContext.notify_options = this.notify_options = $.extend(true, {}, json);
+            return this;
+        };
+
+        NotifyContext.prototype.default = function (json) {
+            json && toastr.options(json);
+            return this;
+        };
+
+        NotifyContext.prototype.lastNotifyName = function () {
+            return NotifyContext.lastNotifyName;
+        };
+
+        NotifyContext.prototype.success = function (content, title, notifyName) {
+            return this._buildNotifyElement('success', content, title, notifyName, this.notify_options);
+        };
+
+        NotifyContext.prototype.error = function (content, title, notifyName) {
+            return this._buildNotifyElement('error', content, title, notifyName, this.notify_options);
+        };
+
+        NotifyContext.prototype.info = function (content, title, notifyName) {
+            return this._buildNotifyElement('info', content, title, notifyName, this.notify_options);
+        };
+
+        NotifyContext.prototype.progress = function (content, title, notifyName) {
+            const notify_options = $.extendNotNull(true, {
+                "iconClass": "toast-success-no-icon",
+                "progressBar": false,
+                "hideDuration": 0,
+                "showDuration": 0,
+                "timeOut": 0,
+                "closeButton": false,
+                "hideOnHover": false,
+                "onclick": function (e) {
+                    return false;
+                },
+            }, this.notify_options);
+            return this._buildNotifyElement('success', content, title, notifyName, notify_options);
+        };
+
+        return NotifyContext;
     })();
 
     /**
@@ -1082,13 +1117,16 @@
      * @returns notifyObject - {config, default, lastNotifyName, success, error, info, progress}
      */
     let notify = function (options) {
-        let extendLast = (typeof options == 'boolean' ? options : false);
+        let extendLast = (typeof options == 'boolean' ? options : false),
+            notifyObject = new NotifyContext();
         if (!extendLast) {
             if (typeof options == 'object') {
                 notifyObject.config(options);
             } else {
                 notifyObject.config({});
             }
+        } else {
+            notifyObject.config(NotifyContext.notify_options);
         }
         return notifyObject;
     };
@@ -1099,15 +1137,15 @@
      */
     let removeNotify = function (notifyName) {
         if (!notifyName) {
-            for (let key in notifyPool) {
-                delete notifyPool[key];
+            for (let key in NotifyContext.notifyPool) {
+                delete NotifyContext.notifyPool[key];
             }
             toastr.clear();
-        } else if (notifyPool.hasOwnProperty(notifyName)) {
-            if (notifyPool[notifyName]) {
-                toastr.remove(notifyPool[notifyName], true);
+        } else if (NotifyContext.notifyPool.hasOwnProperty(notifyName)) {
+            if (NotifyContext.notifyPool[notifyName]) {
+                toastr.remove(NotifyContext.notifyPool[notifyName], true);
             }
-            delete notifyPool[notifyName];
+            delete NotifyContext.notifyPool[notifyName];
         }
         $('#toast-container').find('.toast[data-name="' + notifyName + '"]').each(function (i, toastElement) {
             toastr.remove($(toastElement), true);
@@ -1125,11 +1163,7 @@
      */
     let getNotify = function (notifyName, force) {
         if (force) {
-            let internalTitleFn = function (title) {
-                return this.find('.toast-title').html(title).end();
-            }, internalContentFn = function (content) {
-                return this.find('.toast-message').html(content).end();
-            }, $toastElements = $('#toast-container').find('.toast[data-name="' + notifyName + '"]').filter(function (i, toastElement) {
+            let $toastElements = $('#toast-container').find('.toast[data-name="' + notifyName + '"]').filter(function (i, toastElement) {
                 let $toastElement = $(toastElement);
                 if ($toastElement.is(':visible')) {
                     return true;
@@ -1138,14 +1172,14 @@
                     return false;
                 }
             });
-            $toastElements.title = internalTitleFn;
-            $toastElements.content = internalContentFn;
+            $toastElements.title = NotifyContext._title;
+            $toastElements.content = NotifyContext._content;
             return $toastElements.length !== 0 ? $toastElements : null;
         } else {
-            let $toastElement = notifyPool[notifyName];
+            let $toastElement = NotifyContext.notifyPool[notifyName];
             if ($toastElement && !force && !$toastElement.is(':visible')) {
                 $toastElement = null;
-                delete notifyPool[notifyName];
+                delete NotifyContext.notifyPool[notifyName];
                 toastr.remove($toastElement, true);
             }
             return $toastElement;
@@ -1276,7 +1310,7 @@
         api: api,
         request: request,
         extend: extend,
-        notifyPool: notifyPool,
+        notifyPool: NotifyContext.notifyPool,
         notify: notify,
         removeNotify: removeNotify,
         getNotify: getNotify,

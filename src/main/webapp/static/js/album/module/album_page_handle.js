@@ -288,9 +288,16 @@
                 y: 30
             },
             //设置列数
-            columns: real_col["2000"],
+            columns: real_col["2000+"],
             //定义不同分辨率（1200，940，520，400这些是分辨率）
             breakAt: {
+                2000: {
+                    columns: real_col["2000"],
+                    margin: {
+                        x: 20,
+                        y: 30
+                    }
+                },
                 1800: {
                     columns: real_col["1800"],
                     margin: {
@@ -455,6 +462,8 @@
                 var widthKeys = Object.keys(default_col);
                 var w = window.innerWidth;
                 widthKeys.sort(function (left, right) { // 降序
+                    left = String(left).indexOf('+') !== -1 ? (parseInt(left) + 1) : left;
+                    right = String(right).indexOf('+') !== -1 ? (parseInt(right) + 1) : right;
                     return parseInt(right) - parseInt(left);
                 });
                 var real_col = config.page_params.real_col; // 保存实际的列数
@@ -466,8 +475,14 @@
                 for (var i = widthKeys.length - 1; i >= 0; i--) {
                     var widthKey = widthKeys[i];
                     real_col[widthKey] = (col || default_col[widthKey]);
-                    if (hitKey == null && w < parseInt(widthKey)) {
-                        hitKey = widthKey;
+                    if (String(widthKey).indexOf('+') === -1) {
+                        if (hitKey == null && w < parseInt(widthKey)) {
+                            hitKey = widthKey;
+                        }
+                    } else {
+                        if (w >= parseInt(widthKey)) {
+                            hitKey = widthKey;
+                        }
                     }
                 }
                 if (hitKey == null) {

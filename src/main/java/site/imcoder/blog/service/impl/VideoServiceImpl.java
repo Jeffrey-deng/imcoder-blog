@@ -17,7 +17,6 @@ import site.imcoder.blog.service.message.IRequest;
 import site.imcoder.blog.service.message.IResponse;
 import site.imcoder.blog.setting.Config;
 import site.imcoder.blog.setting.ConfigConstants;
-import site.imcoder.blog.setting.GlobalConstants;
 
 import javax.annotation.Resource;
 import java.io.IOException;
@@ -750,6 +749,9 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             return;
         } else {
             String EMPTY = "";
+            if (video.getLive_photo() == null) {
+                video.setLive_photo(0);
+            }
             if (video.getSource_type() == null) {
                 video.setSource_type(0);
             }
@@ -770,6 +772,9 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             }
             if (video.getRefer() == null) {
                 video.setRefer(EMPTY);
+            }
+            if (video.getLive_photo() == null) {
+                video.setLive_photo(0);
             }
             VideoSetting vs = video.getSetting();
             if (vs == null) {
@@ -813,6 +818,9 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             if (video.getCover() == null) {
                 video.setCover(db_video.getCover());
             }
+            if (video.getLive_photo() == null) {
+                video.setLive_photo(db_video.getLive_photo());
+            }
             if (video.getSource_type() == null) {
                 video.setSource_type(db_video.getSource_type());
             }
@@ -833,6 +841,9 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             }
             if (video.getRefer() == null) {
                 video.setRefer(db_video.getRefer());
+            }
+            if (video.getLive_photo() == null) {
+                video.setLive_photo(db_video.getLive_photo());
             }
             if (video.getSetting() == null) {
                 video.setSetting(db_video.getSetting());

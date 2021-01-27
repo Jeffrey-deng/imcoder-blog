@@ -690,7 +690,7 @@ public class AlbumServiceImpl extends BaseService implements IAlbumService {
             Matcher matcher = PHOTO_SOLO_PERMISSION_REGEXP.matcher(photo.getTags());
             if (matcher.find()) {
                 db_album = albumDao.findAlbumInfo(new Album(photo.getAlbum_id()));
-                int permission = Integer.valueOf(matcher.group(1));
+                int permission = Integer.parseInt(matcher.group(1));
                 if (db_album != null && db_album.getPermission() != permission) {
                     authResp = authService.validateUserPermissionUtil(db_album.getUser(), permission, iRequest);
                 }

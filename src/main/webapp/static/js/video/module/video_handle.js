@@ -24,6 +24,7 @@
             "uploadModal": "#uploadVideoModal",
             "updateModal": "#updateVideoModal",
             "uploadSubtitleModal": "#uploadSubtitleModal",
+            "updateVideoSettingModal": "#updateVideoSettingModal",
             "copyVideoUrlTrigger": ".copyVideoUrl_btn"
         },
         callback: {
@@ -98,6 +99,7 @@
         pointer.uploadModal = $(config.selector.uploadModal);
         pointer.updateModal = $(config.selector.updateModal);
         pointer.uploadSubtitleModal = $(config.selector.uploadSubtitleModal);
+        pointer.updateVideoSettingModal = $(config.selector.updateVideoSettingModal);
 
         pointer.remember_video_permission = "10";
         pointer.uploadModal.find('select[name="video_permission"]').val(pointer.remember_video_permission);
@@ -105,6 +107,8 @@
         pointer.uploadModal.find('select[name="video_permission"]').change(function (e) {
             pointer.remember_video_permission = $(this).val();
         });
+
+        pointer.uploadModal.find('.form-group input[name="video_live_photo"][value="0"]').prop('checked', true);
 
         // 切换视频上传的类型
         pointer.uploadModal.find('select[name="video_source_type"]').change(function (e) {
@@ -168,6 +172,7 @@
             videoInfo.description = pointer.uploadModal.find('textarea[name="video_desc"]').val();
             videoInfo.permission = pointer.uploadModal.find('select[name="video_permission"]').val();
             videoInfo.refer = pointer.uploadModal.find('input[name="video_refer"]').val() || '';
+            videoInfo.live_photo = pointer.uploadModal.find('input[name="video_live_photo"]:checked').val() || 0;
             var tags = '';
             pointer.uploadModal.find('.tags-modify').find('.tag-content').each(function (i, tag) {
                 tags += '#' + tag.innerText + '#';
@@ -326,6 +331,7 @@
             videoInfo.description = pointer.updateModal.find('textarea[name="video_desc"]').val();
             videoInfo.permission = pointer.updateModal.find('select[name="video_permission"]').val();
             videoInfo.refer = pointer.updateModal.find('input[name="video_refer"]').val() || '';
+            videoInfo.live_photo = pointer.updateModal.find('input[name="video_live_photo"]:checked').val() || 0;
             var tags = '';
             pointer.updateModal.find('.tags-modify').find('.tag-content').each(function (i, tag) {
                 tags += '#' + tag.innerText + '#';
@@ -687,6 +693,47 @@
                 modal.modal('hide');
             });
         });
+
+
+        // 视频设置
+        pointer.updateModal.find('.form-btn-update-video-setting-modal-open').on('click', function (e) {
+            var modal = pointer.updateVideoSettingModal;
+            var video_id = pointer.updateModal.find('span[name="video_id"]').html().trim();
+            modal.find('.form-group-subtitle-video-id .form-vs-video-id').text(video_id).attr('data-video-id', video_id)
+                .closest('a').url('href', 'video/detail/' + video_id);
+            var video = pointer.updateModal.data('video'),
+                vs = video.setting;
+            modal.find(`.form-group-vs-disable-view input[name="video_setting_disable_view"][value="${vs.disable_view ? 0 : 1}"]`).prop('checked', true);
+            modal.find(`.form-group-vs-disable-send-comment input[name="video_setting_disable_send_comment"][value="${vs.disable_send_comment ? 0 : 1}"]`).prop('checked', true);
+            modal.find(`.form-group-vs-disable-list-comment input[name="video_setting_disable_list_comment"][value="${vs.disable_list_comment ? 0 : 1}"]`).prop('checked', true);
+            modal.find(`.form-group-vs-disable-embed input[name="video_setting_disable_embed"][value="${vs.disable_embed ? 0 : 1}"]`).prop('checked', true);
+            modal.find(`.form-group-vs-enable-loop input[name="video_setting_enable_loop"][value="${vs.enable_loop ? 1 : 0}"]`).prop('checked', true);
+            modal.find(`.form-group-vs-disable-download input[name="video_setting_disable_download"][value="${vs.disable_download ? 0 : 1}"]`).prop('checked', true);
+            modal.find(`.form-group-vs-rotate input[name="video_setting_rotate"][value="${vs.rotate}"]`).prop('checked', true);
+            modal.modal('show');
+        });
+        pointer.updateVideoSettingModal.find('.form-btn-update-video-setting-submit').on('click', function (e) {
+            e.preventDefault();
+            var $submitBtn = $(this), modal = pointer.updateVideoSettingModal, vs = {};
+            vs.video_id = modal.find('.form-group-subtitle-video-id .form-vs-video-id').attr('data-video-id');
+            vs.disable_view = modal.find('.form-group-vs-disable-view input[name="video_setting_disable_view"]:checked').val() === '1' ? false : true;
+            vs.disable_send_comment = modal.find('.form-group-vs-disable-send-comment input[name="video_setting_disable_send_comment"]:checked').val() === '1' ? false : true;
+            vs.disable_list_comment = modal.find('.form-group-vs-disable-list-comment input[name="video_setting_disable_list_comment"]:checked').val() === '1' ? false : true;
+            vs.disable_embed = modal.find('.form-group-vs-disable-embed input[name="video_setting_disable_embed"]:checked').val() === '1' ? false : true;
+            vs.enable_loop = modal.find('.form-group-vs-enable-loop input[name="video_setting_enable_loop"]:checked').val() === '1' ? true : false;
+            vs.disable_download = modal.find('.form-group-vs-disable-download input[name="video_setting_disable_download"]:checked').val() === '1' ? false : true;
+            vs.rotate = modal.find('.form-group-vs-rotate input[name="video_setting_rotate"]:checked').val();
+            $submitBtn.attr('disabled', 'disabled');
+            globals.notify().progress('正在设置', '', 'notify_video_setting_updating');
+            request.updateVideoSetting(vs.video_id, vs, true).always(function () {
+                $submitBtn.removeAttr('disabled');
+                globals.removeNotify('notify_video_setting_updating');
+            }).final(function (video) {
+                toastr.success('设置修改成功', '提示');
+                pointer.updateModal.data('video').setting = video.setting;
+                modal.modal('hide');
+            });
+        });
     };
 
     const request = globals.extend(globals.request, {
@@ -930,6 +977,11 @@
                         globals.request.rejectedResp({'message': '提交的file或subtitle为空', 'type': -1}, success && '字幕上传失败', null, false, dfd);
                     }
                 });
+            },
+            'updateVideoSetting': function (video, video_setting, success) {
+                let postData = video_setting;
+                postData.video_id = typeof video === 'object' ? video.video_id : video;
+                return globals.request.post(globals.api.updateVideoSetting, postData, success, ['video'], '更新视频设置失败');
             }
         }
     }).video_handle;
@@ -1017,6 +1069,7 @@
             pointer.updateModal.find('.form-group span[name="video_size"]').html(video.size + 'MB（' + video.width + '×' + video.height + '）');
             pointer.updateModal.find('.form-group span[name="video_upload_time"]').html(video.upload_time);
             pointer.updateModal.find('.form-group input[name="video_refer"]').val(video.refer);
+            pointer.updateModal.find('.form-group input[name="video_live_photo"][value="' + (video.live_photo || 0) + '"]').prop('checked', true);
             pointer.updateModal.find('.form-group select[name="cover_album_id"]').closest('.form-group').hide(0);
             pointer.updateModal
                 .find('.form-group input[name="cover_file"]').css('display', 'none')
@@ -1039,6 +1092,7 @@
             pointer.updateModal.find('button[name="deleteVideo_trigger"]').css('display', btnStyle);
             pointer.updateModal.find('button[name="updateVideo_trigger"]').css('display', btnStyle);
             pointer.updateModal.find('.form-btn-upload-subtitle-modal-open').css('display', btnStyle);
+            pointer.updateModal.find('.form-btn-update-video-setting-modal-open').css('display', btnStyle);
 
             // 视频标签
             video.tags = video.tags || '';
@@ -1085,6 +1139,7 @@
                 // css
                 tags_modify_dom.css('overflow-y', "").closest('.form-group').next().css('padding-top', '7px');
             }
+            pointer.updateModal.data('video', video);
             pointer.updateModal.modal('show');
         };
         config.callback.beforeUpdateModalOpen.call(context, context, pointer.updateModal, formatVideoToModal_callback, video); // 回调

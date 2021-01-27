@@ -115,6 +115,7 @@
             "photo_page": {
                 "full_background": false,
                 "default_col": {
+                    "2000+": 6,
                     "2000": 6,
                     "1800": 5,
                     "1600": 4,

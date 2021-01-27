@@ -185,6 +185,7 @@
                     target: 'body',
                     closeHtml: '<button type="button">&times;</button>',
                     newestOnTop: true,
+                    newestScrollTop: true, // add by Jeffrey.deng
                     preventDuplicates: false,
                     progressBar: false
                 };
@@ -291,7 +292,15 @@
                     $toastElement.hide();
 
                     $toastElement[options.showMethod](
-                        {duration: options.showDuration, easing: options.showEasing, complete: options.onShown}
+                        {duration: options.showDuration, easing: options.showEasing, complete: function() {
+                            if (options.newestScrollTop) { // add by Jeffrey.den
+                                $toastElement[0].scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'start'
+                                });
+                            }
+                            options.onShown && options.onShown.call($toastElement, arguments);
+                        }}
                     );
 
                     if (options.timeOut > 0) {

@@ -327,7 +327,7 @@
                 if (open) {
                     blowup && blowup.destroy();
                     blowup = $.blowup({
-                        selector: config.selector.photoNode,
+                        selector: $(config.selector.photoNode).parent(),
                         width: blowupConfig.width,
                         height: blowupConfig.height,
                         scale: blowupConfig.scale
@@ -930,12 +930,16 @@
             "mouseleave": function () {
                 $(this).find('.topic-arrow').css('display', 'none');
             }
-        }).on('click', '.topic-arrow-left', function () {
+        }).on('click', '.topic-arrow-left', function (e) {
             $(config.selector.photoNode).removeClass('animated bounceInLeft bounceInRight').addClass('animated bounceInLeft');
             switchTopicPhoto('left');
-        }).on('click', '.topic-arrow-right', function () {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }).on('click', '.topic-arrow-right', function (e) {
             $(config.selector.photoNode).removeClass('animated bounceInLeft bounceInRight').addClass('animated bounceInRight');
             switchTopicPhoto('right');
+            e.preventDefault();
+            e.stopImmediatePropagation();
         }).on('animationend webkitAnimationEnd', config.selector.photoNode, function () {
             $(this).removeClass('animated bounceInLeft bounceInRight');
         });

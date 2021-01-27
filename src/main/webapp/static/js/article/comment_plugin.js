@@ -691,14 +691,21 @@
                 }
             });
         } else {
-            var reMap = {};
-            var replacementIndex = 0;
-            textContent = textContent.replace(/(<img[\s\S]*?>)|{(<format>)}|{(<\/format>)}/gi, function (match, g1, g2, g3) {
-                var key = '【$RE_(*%$_MATCH_^_REPACEMENT_%$_' + (replacementIndex++) + '】'; // 首尾中文符号，避开[\x21-\x7e]更合适，此处需要特别注意xml符号，因为下面会转义
+            var reMap = {},
+                replacementIndex = 0
+                generateReplaceKey = function () {
+                    return '【$RE_(*%$_MATCH_^_REPACEMENT_%$_' + (replacementIndex++) + '】'; // 首尾中文符号，避开[\x21-\x7e]更合适，此处需要特别注意xml符号，因为下面会转义
+                };
+            textContent = textContent.replace(/(<(div|a)[\s\S]*?\sclass="[\s\S]*?\bimage-widget\b[\s\S]*?"[\s\S]*?>)[\s\S]*?(<\/\2>)/gi, function(match){ // 新增的图片widget
+                var key = generateReplaceKey();
+                reMap[key] = match;
+                return key;
+            }).replace(/(<img[\s\S]*?>)|{(<format>)}|{(<\/format>)}/gi, function (match, g1, g2, g3) {
+                var key = generateReplaceKey();
                 reMap[key] = g1 || (g2 && common_utils.encodeHTML(g2)) || (g3 && common_utils.encodeHTML(g3));
                 return key;
             }).replace(/(<format[\s\S]*?>)([\s\S]*?)(<\/format>)/gi, function (match, tagLeft, content, tagRight) { // 代码块, 原来是code标签，先改为format标签
-                var key = '【$RE_(*%$_MATCH_^_REPACEMENT_%$_' + (replacementIndex++) + '】'; // 首尾中文符号，避开[\x21-\x7e]更合适，此处需要特别注意xml符号，因为下面会转义
+                var key = generateReplaceKey();
                 reMap[key] = ('<pre><code>' + common_utils.encodeHTML(content).replace(/(^\n+)|(\n+$)/g, "") + '</code></pre>'); // .replace(/\n/g, '<br>')
                 return key;
             });

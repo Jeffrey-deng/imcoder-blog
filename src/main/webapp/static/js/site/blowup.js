@@ -74,21 +74,28 @@
 
         var $IMAGE_URL = '', NATIVE_IMG = new Image(), $el = null, el_pageX, el_pageY;
 
+        var findImgTargetInEvent = function (e) {
+            e = e ? e : window.event;
+            var obj = e.srcElement ? e.srcElement : e.target,
+                img = obj.tagName === 'IMG' ? obj : obj.querySelector('img');
+            return img;
+        }
+
         // Show magnification lens
         var mouseenter_handler = function (e) {
             $blowupCanvas.css('visibility', 'visible');
-            NATIVE_IMG.src = $IMAGE_URL = e.target.src;
-            $el = $(e.target);
+            var img = findImgTargetInEvent(e);
+            NATIVE_IMG.src = $IMAGE_URL = img.src;
+            $el = $(img);
         };
 
         // Mouse motion on image
         var mousemove_handler = function (e) {
-            e = e ? e : window.event;
-            var obj = e.srcElement ? e.srcElement : e.target;
-            if (NATIVE_IMG.src != obj.src) {
-                NATIVE_IMG.src = $IMAGE_URL = obj.src;
+            var img = findImgTargetInEvent(e);
+            if (NATIVE_IMG.src != img.src) {
+                NATIVE_IMG.src = $IMAGE_URL = img.src;
             }
-            $el = $(obj);
+            $el = $(img);
             el_pageX = e.pageX;
             el_pageY = e.pageY;
             drawImageToCanvas();

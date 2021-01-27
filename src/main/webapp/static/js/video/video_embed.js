@@ -262,15 +262,17 @@
                 }
             }
         });
+        initLivePhotoEvent(player, video);
         // 这些回调方法在父window中无效，需使用我新创建的API
         // Triggered when the instance is ready for API calls.
         player.on('ready', function (event) {
-            if (video.video_type == 'video/mp3') {
+            if (video.video_type === 'video/mp3') {
                 $(player.media).addClass('audio-player');
             }
             // var instance = event.detail.plyr; // player
             // this equals player.elements.container
             var $self = $(this);
+            $self.toggleClass('plyr--video-loading', true);
             if (!player.isEmbed) {
                 // add the removed poster in new version
                 $self.addClass(player.config.classNames.posterEnabled);
@@ -337,6 +339,7 @@
         });
         // The media's metadata has finished loading; all attributes now contain as much useful information as they're going to.
         player.on('loadedmetadata', function (event) {
+            video.live_photo !== 1 && $(this).toggleClass('plyr--video-loading', false);
             // fixed bug
             $(player.elements.controls).find('.plyr__volume').removeAttr('hidden');
             if (player.autoplay) {
@@ -374,6 +377,85 @@
         //         config.retryLoad = true;
         //     }
         // }, false);
+    };
+
+    // 添加LivePhoto风格支持
+    var initLivePhotoEvent = function (player, video) {
+        if (video.live_photo !== 1) {
+            return;
+        }
+        player.muted = true;
+        player.isUserHasInteract = false;
+        let touchTimer = null;
+        player.on('ready', function (event) {
+            let $playerContainer = $(this);
+            $playerContainer.toggleClass('plyr--live-photo', true);
+            $playerContainer.on({
+                'mouseenter': function () {
+                    player.play();
+                },
+                'mousemove': function () {
+                    if (!player.playing) {
+                        player.play();
+                    }
+                },
+                'mouseleave': function () {
+                    player.stop();
+                },
+                'touchstart': function (e) {
+                    //e.preventDefault();
+                    //.stopPropagation();
+                    touchTimer = setTimeout(function () {
+                        player.play();
+                    }, 200);//这里设置长按响应时间
+                },
+                'touchend': function (e) {
+                    //e.preventDefault();
+                    //e.stopPropagation();
+                    player.stop();
+                    touchTimer && clearTimeout(touchTimer);
+                    touchTimer = null;
+                },
+            });
+            $playerContainer.find('.plyr__video-wrapper').append(
+                '<span class="plyr--live-photo-muted-btn muted" style="position: absolute;width: 30px;height: 30px;top: 8px;right: 8px;z-index: 10;cursor: pointer">' +
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" width="88" height="88" preserveAspectRatio="xMidYMid meet "' +
+                'style="width: 100%;height: 100%;">' +
+                '<use xlink:href="#live-photo-muted-symbol"></use>\n' +
+                '</svg></span>');
+            $playerContainer.on('click', '.plyr--live-photo-muted-btn', function (e) {
+                if (player.muted) {
+                    $('#live-photo-muted-symbol').find('.muted-line').attr('opacity', '0');
+                } else {
+                    $('#live-photo-muted-symbol').find('.muted-line').attr('opacity', '1');
+                }
+                $(this).toggleClass('muted', !player.muted);
+                player.muted = !player.muted;
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            $playerContainer.on('click',function (e) {
+                if (e.originalEvent && !player.isUserHasInteract) {
+                    if (player.muted) {
+                        $('#live-photo-muted-symbol').find('.muted-line').attr('opacity', '0');
+                        $playerContainer.find('.plyr--live-photo-muted-btn').toggleClass('muted', !player.muted);
+                    }
+                    player.muted = false;
+                    player.isUserHasInteract = true;
+                    player.play();
+                }
+            });
+        });
+        player.on('loadedmetadata', function (event) {
+            player.play();
+        });
+        player.on('playing', function (event) {
+            $(this).toggleClass('plyr--video-loading', false);
+        });
+        var $video_iframe_in_top = window.frameElement ? $(window.frameElement) : null;
+        if ($video_iframe_in_top) {
+            $video_iframe_in_top.addClass('video-live-photo');
+        }
     };
 
     // 视频循环按钮
@@ -831,6 +913,14 @@
         if (!disable_embed && initParams.hasOwnProperty('disable_embed')) {
             disable_embed = initParams['disable_embed'] == 'true';
             disable_embed_redirect = initParams['disable_embed_redirect'] == 'embed' ? 'embed' : 'detail';
+            if (video.live_photo === 1) {
+                disable_embed = false;
+            }
+        }
+        if (disable_embed && isEmbedWindow && window.top.document
+            && common_utils.parseURL(document.location.href).host === window.top.document.location.hostname
+            && /\/video\/detail\/[^?]+/.test(window.top.document.location.href)) {
+            disable_embed = false;
         }
         if (disable_embed && isEmbedWindow) { // 关闭embed
             let redirect_url = common_utils.removeParamForURL('save_access_record', (common_utils.removeParamForURL('disable_embed_redirect', common_utils.removeParamForURL('disable_embed'))))
@@ -905,6 +995,7 @@
                     resetOnEnd: true,
                     quality: {'default': qualityValue, 'selected': qualityValue, forced: true, options: [qualityValue, -1]},
                     captions: {"active": videoHasSubtitle, "language": defaultTrackLang, "update": false},
+                    storage: {"enabled": video.live_photo !== 1, "key": 'plyr' },
                     i18n: getPlayerI18n(),
                     urls: {
                         "download": isYoutube ? undefined : generateVideoSignatureUrl(video.video_id, 10800000, true)
@@ -1062,5 +1153,4 @@
         return window;
     };
 
-})
-;
+});

@@ -916,19 +916,20 @@
     var letterContentScrollBottomTimer = null;
     var site_video_regex = new RegExp('^((?:' + basePath.replace(/:(?=(?:80|443)(?=\/))\d+(?=\/)/, '') + ')?video/)(detail|embed)(/[^?]+(\\?.*)?)$'); // 匹配本站的视频链接，去掉basePath中的80/443端口
     var batch_load_letter_size = 20;
-    var lazyVideoObserver = new IntersectionObserver(function (entries, observer) {
+    var lazyMediaObserver = new IntersectionObserver(function (entries, observer) {
         entries.forEach(function (entry) {
             if (entry.isIntersecting || entry.intersectionRatio > 0) {
-                let $lazyVideoLink = $(entry.target);
-                lazyVideoObserver.unobserve($lazyVideoLink[0]);
-                if (!$lazyVideoLink.hasClass('lazy-video-completed')) {
-                    $lazyVideoLink.addClass('lazy-video-completed');
-                    $lazyVideoLink.after('<div class="lazy-video-preview">' +
-                        '<iframe class="lazy-video-embed" src="' + $lazyVideoLink.attr('data-video-preview-link') + '" data-scale="stay" style="width:100%;"></iframe></div>');
+                let $lazyMediaLink = $(entry.target);
+                lazyMediaObserver.unobserve($lazyMediaLink[0]);
+                if (!$lazyMediaLink.hasClass('lazy-media-completed')) {
+                    $lazyMediaLink.addClass('lazy-media-completed');
+                    insertMediaPreviewWidget($lazyMediaLink);
                 }
             }
         });
     });
+    var stayBottomTimer = null;
+    var stayBottomLock = false;
 
     function initMessageTab(callAfterLoad) {
 
@@ -937,20 +938,20 @@
         bindChatModalEvent();
 
         // 加载数据
-        load_unread(function (data) {
+        request.loadUnreadMsgList(function(data) {
             unreadList = data;
             $('#messages').find('.folder-list li a[action="listUnreadMsg"]').trigger('click');
         });
-        load_letter(function (data) {
-            letterList = data;
+        request.loadLetterList({"read_status": 1}, function(letters) {
+            letterList = letters;
             formatLetterList = formatLetter(letterList);
             $('#letterCount').html(letterList.length);
             $('#msgBoxSize').html(letterList.length);
             buildChatUserListHtml();
             callAfterLoad && callAfterLoad();
         });
-        load_sysMsg(function (data) {
-            sysMsgList = data;
+        request.loadSysMsg({"read_status": 1}, function(sysMsgs) {
+            sysMsgList = sysMsgs;
             $('#sysMsgCount').html(sysMsgList.length);
         });
 
@@ -969,13 +970,13 @@
             switch (action) {
                 case "listUnreadMsg":  // 未读消息
                     if (clearSysMsgOnOpenRunOnceFlag) {
-                        var smids = [];
+                        var smIds = [];
                         $.each(unreadList.sysMsgs, function (i, sysMsg) {
                             if (sysMsg.status == 0) {
-                                smids.push(sysMsg.smid);
+                                smIds.push(sysMsg.smid);
                             }
                         });
-                        clearSysMsgListStatus(smids, function (smIds) {
+                        request.clearSysMsgListStatus(smIds, function () {
                             $.each(sysMsgList, function (i, sysMsg) {
                                 if (smIds.indexOf(sysMsg.smid) != -1) {
                                     sysMsg.status = 1;
@@ -1030,14 +1031,14 @@
             $messageDashboardMain.find('.unread-msg.sys-msg-li .check-mail input:checked').each(function (i, checkbox) {
                 smIds.push(parseInt(checkbox.parentNode.parentNode.getAttribute('data-smid')));
             });
-            clearSysMsgListStatus(smIds, function (smIds) {
+            request.clearSysMsgListStatus(smIds, function () {
                 unreadList.sysMsgs = unreadList.sysMsgs.filter(function (sysMsg) {
                     return smIds.indexOf(sysMsg.smid) == -1;
                 });
                 $('#messages').find('.folder-list li a[action="listUnreadMsg"]').trigger('click');
                 toastr.success('清除未读系统消息成功！');
                 $.each(sysMsgList, function (i, sysMsg) {
-                    if (smIds.indexOf(sysMsg.smid) != -1) {
+                    if (smIds.indexOf(sysMsg.smid) !== -1) {
                         sysMsg.status = 1;
                     }
                 });
@@ -1047,7 +1048,31 @@
             $messageDashboardMain.find('.unread-msg.letter-li .check-mail input:checked').each(function (i, checkbox) {
                 userIds.push(checkbox.parentNode.parentNode.getAttribute('data-uid'));
             });
-            clearLetterListStatus(userIds, function (leIds) {
+            $.Deferred(function (dfd) {
+                var leIds = [], postLeIds = [];
+                $.each(userIds, function (i, uid) {
+                    var userLetters = formatLetterList[uid];
+                    if (userLetters) {
+                        $.each(userLetters, function (i, letter) {
+                            if (letter.r_uid == $uid) { // 只能清除自己接收的
+                                if (letter.status == 0) {   // 提交时只提交未读的
+                                    postLeIds.push(letter.leid);
+                                }
+                                leIds.push(letter.leid);    // 回调时未读已读一起返回
+                            }
+                        });
+                    }
+                });
+                if (postLeIds.length === 0) {
+                    dfd.resolve(leIds);
+                    return;
+                }
+                request.clearLetterListStatus(postLeIds, true).final(function () {
+                    dfd.resolve(leIds);
+                }, function (status, message, type) {
+                    type === -1 && dfd.resolve(leIds);
+                });
+            }).done(function (leIds) {
                 if (leIds.length > 0) {
                     unreadList.letters = unreadList.letters.filter(function (letter) {
                         return leIds.indexOf(letter.leid) == -1;
@@ -1061,6 +1086,7 @@
                     toastr.success('标记私信消息为已读成功！');
                 }
             });
+
             if (smIds.length == 0 && userIds.length == 0) {
                 toastr.error('还没有选择，你点什么');
             }
@@ -1074,12 +1100,12 @@
                 });
                 if (smIds.length > 0) {
                     if (window.confirm('确定删除' + smIds.length + '条系统消息吗？')) {
-                        deleteSysMsgList(smIds, function (smIds) {
+                        request.deleteSysMsgList(smIds, function () {
                             unreadList.sysMsgs = unreadList.sysMsgs.filter(function (sysMsg) {
-                                return smIds.indexOf(sysMsg.smid) == -1;
+                                return smIds.indexOf(sysMsg.smid) === -1;
                             });
                             sysMsgList = sysMsgList.filter(function (sysMsg) {
-                                return smIds.indexOf(sysMsg.smid) == -1;
+                                return smIds.indexOf(sysMsg.smid) === -1;
                             });
                             $('#messages').find('.folder-list li.active-li a').trigger('click');
                         });
@@ -1098,7 +1124,7 @@
                 "timeOut": 0
             }).success('正在拉取数据中~', '', 'notify_refresh_message_list');
             var activeLiName = $('#messages').find('.folder-list li.active-li a').attr('action') || 'listUnreadMsg';
-            load_unread(function (data) {
+            request.loadUnreadMsgList(function(data) {
                 unreadList = data;
                 if (activeLiName == 'listUnreadMsg') {
                     globals.removeNotify('notify_refresh_message_list');
@@ -1106,8 +1132,8 @@
                     $('#messages').find('.folder-list li a[action="listUnreadMsg"]').trigger('click');
                 }
             });
-            load_letter(function (data) {
-                letterList = data;
+            request.loadLetterList({"read_status": 1}, function(letters) {
+                letterList = letters;
                 if (activeLiName == 'listLetters') {
                     globals.removeNotify('notify_refresh_message_list');
                     toastr.success('刷新消息列表成功~');
@@ -1120,8 +1146,8 @@
                 buildChatUserListHtml();
                 getChatUserLetterUserCard(getCurrentLetterChatUid()).trigger('click');
             });
-            load_sysMsg(function (data) {
-                sysMsgList = data;
+            request.loadSysMsg({"read_status": 1}, function(sysMsgs) {
+                sysMsgList = sysMsgs;
                 if (activeLiName == 'listSysMsgs') {
                     globals.removeNotify('notify_refresh_message_list');
                     toastr.success('刷新消息列表成功~');
@@ -1129,7 +1155,6 @@
                 } else {
                     $('#sysMsgCount').html(sysMsgList.length);
                 }
-
             });
         });
     }
@@ -1174,6 +1199,8 @@
             // [0]是从jquery中取得原js对象
             $('#currentLetterContent')[0].scrollTop = $('#currentLetterContent')[0].scrollHeight + 2000;
             // $('#currentLetterContent .chat-discussion-end')[0].scrollIntoView(true);
+            // $('#currentLetterContent')[0].scrollTop = 0;
+
             // 用户列表也滚动到可视区域
             let $userCard = getChatUserLetterUserCard(getCurrentLetterChatUid());
             if ($userCard.length > 0 && ('scrollIntoView' in $userCard[0] || 'scrollIntoViewIfNeeded' in $userCard[0])) {
@@ -1200,7 +1227,29 @@
                 history.replaceState({"mark": "chat"}, document.title, common_utils.setParamForURL('chatuid', uid).replace('/center/messages', '/center/sendLetter'));
                 // 某位用户的消息点击了就将他的消息全置为已读
                 if (!$self.hasClass('has-read-user')) {
-                    clearLetterListStatus([uid], function (leIds) {
+                    $.Deferred(function (dfd) {
+                        var leIds = [], postLeIds = [];
+                        var userLetters = formatLetterList[uid];
+                        if (userLetters) {
+                            $.each(userLetters, function (i, letter) {
+                                if (letter.r_uid == $uid) { // 只能清除自己接收的
+                                    if (letter.status == 0) {   // 提交时只提交未读的
+                                        postLeIds.push(letter.leid);
+                                    }
+                                    leIds.push(letter.leid);    // 回调时未读已读一起返回
+                                }
+                            });
+                        }
+                        if (postLeIds.length === 0) {
+                            dfd.resolve(leIds);
+                            return;
+                        }
+                        request.clearLetterListStatus(postLeIds, true).final(function () {
+                            dfd.resolve(leIds);
+                        }, function (status, message, type) {
+                            type === -1 && dfd.resolve(leIds);
+                        });
+                    }).done(function (leIds) {
                         if (leIds.length > 0) {
                             $.each(unreadList.letters, function (i, letter) {
                                 if (leIds.indexOf(letter.leid) != -1) {
@@ -1239,9 +1288,11 @@
             });
         // 消息内容区事件
         $('#currentLetterContent')
-            .on('scroll', function (e) { // 滚动到底部时懒惰加载更多私信
-                let $currentLetterContent = $(e.currentTarget);
-                if (e.currentTarget.scrollTop <= 30 && !$currentLetterContent.hasClass('lazy-letter-loading')) {
+            .on('mousewheel touchend', function (e) { // 滚动到顶部时懒惰加载更多私信
+                let $currentLetterContent = $(e.currentTarget), isCloseTop = false;
+                isCloseTop = e.currentTarget.scrollTop <= 30;
+                // isCloseTop = e.currentTarget.scrollHeight - (e.currentTarget.scrollTop * -1 + e.currentTarget.clientHeight) <= 30;
+                if (isCloseTop && !$currentLetterContent.hasClass('lazy-letter-loading')) {
                     $currentLetterContent.addClass('lazy-letter-loading');
                     let chatUid = getCurrentLetterChatUid();
                     if (chatUid) {
@@ -1253,11 +1304,13 @@
                         if (buildResp.size > 0) {
                             let $lastLetter = $currentLetterContent.children('.chat-message');
                             $currentLetterContent.prepend(buildResp.html);
+                            // $currentLetterContent.append(buildResp.html);
                             // {block: 'center'}
-                            $lastLetter[0].scrollIntoView(); // 防止滑到顶部不触发事件，这个代码至关重要，而且滑动时不会断层显示
+                            $lastLetter[0].scrollIntoView();
+                            // $lastLetter.last()[0].scrollIntoView(); // 防止滑到顶部不触发事件，这个代码至关重要，而且滑动时不会断层显示
                             $currentLetterContent.attr('data-earliest-index', buildResp.end);
-                            $currentLetterContent.find('.chat-message .message-content .lazy-video-link:not(.lazy-video-completed)').each(function (i, linkNode) {
-                                lazyVideoObserver.observe(linkNode);
+                            $currentLetterContent.find('.chat-message .message-content .lazy-media-link:not(.lazy-media-completed)').each(function (i, linkNode) {
+                                lazyMediaObserver.observe(linkNode);
                             });
                             if (buildResp.end == letterList.length - 1) {
                                 $currentLetterContent.toggleClass('lazy-letter-load-completed', true);
@@ -1269,34 +1322,41 @@
                     $currentLetterContent.removeClass('lazy-letter-loading');
                 }
             })
+            .on('mousewheel touchstart', function(e) {
+                if (e.originalEvent && stayBottomTimer) {
+                    clearInterval(stayBottomTimer);
+                    stayBottomTimer = null;
+                }
+                stayBottomLock = false;
+            })
             .on('click', '.message-del', function () {    // 消息删除按钮
                 if (window.confirm('你确定要删除这条私信吗？')) {
                     let letterNode = this.parentNode.parentNode;
                     let leid = letterNode.getAttribute('data-leid');
                     let ismy = letterNode.getAttribute('data-s-uid') == $uid;
-                    deleteLetter(leid, function (leid) {
+                    request.deleteLetter(leid, function () {
                         ismy === undefined && (ismy = true);
                         deleteLetterInLocal(leid) && toastr.success(ismy ? '已删除并撤回你的消息~' : '已删除对方消息');
                     });
                 }
             })
-            .on({ // 删除按钮hover效果
-                "mouseenter": function () {
-                    $(this).find('.message-del').css('visibility', 'visible');
-                },
-                "mouseleave": function () {
-                    $(this).find('.message-del').css('visibility', 'hidden');
-                }
-            }, '.chat-message')
+            // .on({ // 删除按钮hover效果
+            //     "mouseenter": function () {
+            //         $(this).find('.message-del').css('visibility', 'visible');
+            //     },
+            //     "mouseleave": function () {
+            //         $(this).find('.message-del').css('visibility', 'hidden');
+            //     }
+            // }, '.chat-message')
             .on('click', '.message-content .image-widget.protect', function () {
                 let $widget = $(this), $img = $widget.find('img');
-                if ($widget.closest('a').length == 0 && !$widget.hasClass('protect') && !$img.hasClass('forbidden-download')) {
+                if ($widget.closest('a').length === 0 && !$widget.hasClass('protect') && !$img.hasClass('forbidden-download')) {
                     window.open($img.attr('src'));
                 }
             })
             .on('click', '.message-content img', function () {
                 let $img = $(this);
-                if ($img.closest('a').length == 0 && !$img.hasClass('forbidden-download')) {
+                if ($img.closest('a').length === 0 && !$img.hasClass('forbidden-download')) {
                     window.open($img.attr('src'));
                 }
             })
@@ -1316,7 +1376,10 @@
                 content = $('#sendLetter_area').val(),
                 r_uid = getCurrentLetterChatUid();
             $self.attr('disabled', 'disabled');
-            sendLetter(r_uid, content, function (saveLetter, data) {
+            request.sendLetter({
+                'content': content,
+                'r_uid': r_uid
+            }, true).final(function (saveLetter) {
                 letterList.unshift(saveLetter); // 追加到放入缓存中
                 if (!formatLetterList[r_uid]) {
                     formatLetterList[r_uid] = [];
@@ -1326,8 +1389,7 @@
                 appendNewLetter(saveLetter); // 追加显示新的消息
                 $('#sendLetter_area').val('');
                 toastr.success('发送消息成功！');
-                $self.removeAttr('disabled');
-            }, function () {
+            }).always(function () {
                 $self.removeAttr('disabled');
             });
         });
@@ -1635,6 +1697,7 @@
                     }
                     // 倒序遍历
                     for (let i = earliest_index; i >= 0; i--) {
+                        // for (let i = 0; i <= earliest_index; i++) {
                         let letter = letterList[i];
                         if (!isChangeChatUser && i <= earliest_index) {
                             new_leids_str += '_' + letter.leid;
@@ -1654,28 +1717,45 @@
                     html = buildBatchLetterHtml(letterList, 0, earliest_index + 1, profile).html;
                     html += '<div class="chat-discussion-end" style="height:0px; overflow:hidden"></div>';
                     $currentLetterContent.html(html);
-                    if ($currentLetterContent.children('.chat-message').length == letterList.length) {
+                    if ($currentLetterContent.children('.chat-message').length === letterList.length) {
                         $currentLetterContent.toggleClass('lazy-letter-load-completed', true);
                     }
+                    stayBottomTimer && clearInterval(stayBottomTimer);
+                    stayBottomLock = true;
+                    stayBottomTimer = setInterval(function () {
+                        if (stayBottomLock) {
+                            $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight;
+                        }
+                    }, 500);
+                    setTimeout(function () {
+                        if (chatUid == getCurrentLetterChatUid()) {
+                            stayBottomTimer && clearInterval(stayBottomTimer);
+                            stayBottomTimer = null;
+                            stayBottomLock = false;
+                        }
+                    },7000);
                 }
                 $currentLetterContent.attr('data-earliest-index', earliest_index);
+
                 // 滚动到底部
                 $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight;
-                letterContentScrollBottomTimer && clearTimeout(letterContentScrollBottomTimer);
+                //letterContentScrollBottomTimer && clearTimeout(letterContentScrollBottomTimer);
                 removeLetterUnReadStyleTimer && clearTimeout(removeLetterUnReadStyleTimer);
-                letterContentScrollBottomTimer = setTimeout(function () {    // 延迟防止modal未显示时高度未0情况
-                    $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight + 2000; // 预留图片高度
-                    letterContentScrollBottomTimer = null;
-                }, 900);
+                //letterContentScrollBottomTimer = setTimeout(function () {    // 延迟防止modal未显示时高度未0情况
+                //    $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight + 2000; // 预留图片高度
+                //    letterContentScrollBottomTimer = null;
+                //}, 900);
                 removeLetterUnReadStyleTimer = setTimeout(function () {    // 10秒后移除未读提示
                     $currentLetterContent.find('.chat-message-un-read').each(function (i, li) {
                         $(li).removeClass('chat-message-un-read');
                     });
                     removeLetterUnReadStyleTimer = null;
                 }, 10000);
-                // 绑定视频链接出现在可视区域时替换为视频标签的观察者
-                $currentLetterContent.find('.chat-message .message-content .lazy-video-link:not(.lazy-video-completed)').each(function (i, linkNode) {
-                    lazyVideoObserver.observe(linkNode);
+                // $currentLetterContent[0].scrollTop = 0;
+
+                // 绑定视频/图片链接出现在可视区域时替换为视频/图片标签的观察者
+                $currentLetterContent.find('.chat-message .message-content .lazy-media-link:not(.lazy-media-completed)').each(function (i, linkNode) {
+                    lazyMediaObserver.observe(linkNode);
                 });
             } else {
                 $currentLetterContent.empty();
@@ -1694,6 +1774,7 @@
         end = start + size - 1;
         // 倒序遍历
         for (i = end; i >= start; i--) {
+            // for (i = start; i <= end; i++) {
             let letter = letterList[i];
             html += buildSingleLetterHtml(letter, loginUser);
         }
@@ -1706,42 +1787,86 @@
     }
 
     function buildSingleLetterHtml(letter, loginUser) {
-        let html = '', sendByOther = (letter.s_uid != loginUser.uid);
-        html += '<div class="chat-message chat-message-' + (sendByOther ? 'left' : 'right') + (sendByOther && letter.status == 0 ? ' chat-message-un-read' : '') + '" data-leid="' + letter.leid + '" data-s-uid="' + letter.s_uid + '">';
+        let html = '', sendByOther = (letter.s_uid != loginUser.uid),
+            isHasLink = /(http:\/\/|https:\/\/)/.test(letter.content);
+        html += '<div class="chat-message chat-message-' + (sendByOther ? 'left' : 'right') + (sendByOther && letter.status == 0 ? ' chat-message-un-read' : '') + (isHasLink ? ' chat-message-link' : '') + '" data-leid="' + letter.leid + '" data-s-uid="' + letter.s_uid + '">';
         html += '<div class="message-avatar" style="background-image:url(' + (sendByOther ? letter.chatUser.head_photo : loginUser.head_photo) + ')" alt=""></div>';
         html += '<div class="message">';
         html += '<a class="message-author" target="_blank" href="' + ('u/' + letter.s_uid + '/home').toURL() + '">' + (sendByOther ? letter.chatUser.nickname : loginUser.nickname) + '</a>';
         html += '<span class="message-date">' + letter.send_time + '</span>';
         if (!sendByOther) {
-            html += '<span class="message-status" style="display:none;">' + (letter.status == 0 ? '未读' : '已读') + '</span>';
+            html += '<span class="message-status" title="对方已阅读你的消息\n同样，如果你已阅读对方的消息，那么对方也会知道你已读">' + (letter.status == 0 ? '未读' : '已读<span class="hidden-xs"> ✔</span>') + '</span>';
         }
         html += '<span class="message-del">' + (sendByOther ? '删除' : '撤回') + '</span>';
         html += '<div class="message-content">' + convertMessageLink(letter.content, site_video_regex) + '</div></div></div>';
         return html;
     }
 
-    function convertMessageLink(content, site_video_regex) {
+    function convertMessageLink(content, site_video_regex, site_photo_regex) {
         site_video_regex = site_video_regex || new RegExp('^((?:' + basePath.replace(/:(?=(?:80|443)(?=\/))\d+(?=\/)/, '') + ')?video/)(detail|embed)(/[^?]+(\\?.*)?)$');
+        site_photo_regex = site_photo_regex || new RegExp('^((?:' + basePath.replace(/:(?=(?:80|443)(?=\/))\d+(?=\/)/, '') + ')?p/)(detail|embed)(/[^?]+(\\?.*)?)$');
         return common_utils.convertLinkToHtmlTag(content, function (url) {
             let not_hash_url = url.match(/^(.*?)(#.*)?$/) && RegExp.$1, hash = RegExp.$2 || '';
             if (site_video_regex.test(not_hash_url)) {
-                return '<a class="lazy-video-link" data-video-preview-link="' + RegExp.$1 + 'embed' + RegExp.$3 +
-                    (RegExp.$4 ? '&' : '?') + 'save_access_record=false&disable_embed=true' + (RegExp.$2 == 'embed' ? '&disable_embed_redirect=embed' : '') + hash
-                    + '" target="_blank" href="' + url + '">' + url + '</a>';
+                const videoPreviewLink = RegExp.$1 + 'embed' + RegExp.$3 + (RegExp.$4 ? '&' : '?') + 'save_access_record=false&disable_embed=true' +
+                    (RegExp.$2 === 'embed' ? '&disable_embed_redirect=embed' : '') + hash;
+                return `<a class="lazy-media-link lazy-video-link" data-media-preview-link="${videoPreviewLink}" target="_blank" href="${url}">${url}</a>`;
+            } else if (site_photo_regex.test(not_hash_url)) {
+                const photoPreviewLink = url;
+                return `<a class="lazy-media-link lazy-photo-link" data-media-preview-link="${photoPreviewLink}" target="_blank" href="${url}">${url}</a>`;
             } else {
-                return '<a target="_blank" href="' + url + '">' + url + '</a>';
+                return `<a target="_blank" href="${url}">${url}</a>`;
             }
         });
     }
 
+    // 视频照片预览
+    function insertMediaPreviewWidget($lazyMediaLink) {
+        const mediaType = $lazyMediaLink.hasClass('lazy-video-link') ? 'video' : 'photo',
+            url = $lazyMediaLink.attr('href');
+        switch (mediaType) {
+            case 'video':
+                const videoPreviewLink = $lazyMediaLink.attr('data-media-preview-link');
+                $lazyMediaLink.after('<div class="lazy-media-preview lazy-video-preview">' +
+                    `<iframe class="lazy-media-source lazy-media-embed" src="${videoPreviewLink}" data-scale="stay" style="width:100%;"></iframe></div>`);
+                break;
+            case 'photo':
+                let photo_id = /\/p\/detail\/([^?&#]+)$/.test(url) && RegExp.$1;
+                if (photo_id) {
+                    globals.request.get(globals.api.getPhoto, {
+                        "id": photo_id,
+                        "loadActionRecord": false
+                    }, false, ['photo']).final(function (photo) {
+                        const $photoPreviewEmbed = $('<a>', {
+                            "href": url,
+                            "class": "lazy-media-preview lazy-photo-preview image-widget protect tips-delay",
+                            "target": "_blank",
+                            "data-photo-id": photo_id
+                        }).append($('<img>', {
+                            "src": photo.path,
+                            "class": 'lazy-media-source',
+                            "style": "width:100%;"
+                        }));
+                        $lazyMediaLink.after($photoPreviewEmbed);
+                        setTimeout(function () {
+                            $photoPreviewEmbed.removeClass('tips-delay');
+                        }, 0);
+                    });
+                }
+                break;
+        }
+    }
+
     function appendNewLetter(letter) {
-        var $currentLetterContent = $('#currentLetterContent');
-        if ($currentLetterContent.find('.chat-message[data-leid="' + letter.leid + '"]').length == 0) {
+        const $currentLetterContent = $('#currentLetterContent');
+        if ($currentLetterContent.find('.chat-message[data-leid="' + letter.leid + '"]').length === 0) {
             $currentLetterContent.find('.chat-discussion-end').before(buildSingleLetterHtml(letter, profile));
+            // $currentLetterContent.prepend(buildSingleLetterHtml(letter, profile));
             $currentLetterContent.attr('data-earliest-index', parseInt($currentLetterContent.attr('data-earliest-index') || -1) + 1);
             getChatUserLetterUserCard(letter.chatUser.uid).trigger('click');
         }
         $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight;
+        // $currentLetterContent[0].scrollTop = 0;
     }
 
     // 当前选中的私信用户
@@ -1810,244 +1935,109 @@
 
     /* --------------------- 发送消息与服务器交互请求 start -------------------------*/
 
-    // 从服务器加载未读消息列表
-    function load_unread(call) {
-        $.ajax({
-            url: globals.api.getUnreadMsgList,
-            success: function (response) {
-                if (response.status == 200) {
-                    call && call(response.data);
+    const request = globals.extend(globals.request, {
+        user_center: {
+            'loadUnreadMsgList': function (success) {   // 从服务器加载未读消息列表
+                return globals.request.get(globals.api.getUnreadMsgList, success, success && '获取未读消息失败~');
+            },
+            'loadLetterList': function (params, success) { // 从服务器加载私信消息列表
+                return globals.request.get(globals.api.getLetterList, params, success, ['letters'], success && '加载私信消息失败~');
+            },
+            'loadSysMsg': function (params, success) { // 从服务加载系统消息列表
+                return globals.request.get(globals.api.getSysMsgList, params, success, ['sysMsgs'], success && '加载系统消息失败~');
+            },
+            'sendLetter': function (letter, success) { // 提交私信到服务器
+                let error;
+                if (!letter) {
+                    error = '私信对象为空';
+                } else if (!letter.r_uid) {
+                    error = '未指定用户~';
+                } else if (!letter.content) {
+                    error = '请输入内容~';
                 } else {
-                    toastr.error(response.message, '获取未读消息失败~');
-                }
-            },
-            error: function () {
-                console.log('加载未读消息失败！');
-            }
-        });
-    }
-
-    // 从服务器加载私信消息列表
-    function load_letter(call) {
-        console.log('加载私信消息...');
-        $.ajax({
-            url: globals.api.getLetterList,
-            data: {
-                "read_status": 1
-            },
-            success: function (response) {
-                if (response.status == 200) {
-                    call && call(response.data.letters);
-                    console.log('加载私信消息成功~');
-                } else {
-                    toastr.error(response.message, '加载私信消息失败~');
-                }
-            },
-            error: function () {
-                console.log('加载私信消息失败！');
-            }
-        });
-    }
-
-    // 从服务加载系统消息列表
-    function load_sysMsg(call) {
-        console.log('加载系统消息中...');
-        $.ajax({
-            url: globals.api.getSysMsgList,
-            data: {
-                "read_status": 1
-            },
-            success: function (response) {
-                if (response.status == 200) {
-                    call && call(response.data.sysMsgs);
-                    console.log('加载系统消息成功~');
-                } else {
-                    toastr.error(response.message, '加载系统消息失败~');
-                }
-            },
-            error: function () {
-                console.log('加载系统消息失败！');
-            }
-        });
-    }
-
-    /**
-     * 提交私信到服务器
-     */
-    function sendLetter(r_uid, content, call, failCall) {
-        if (!r_uid) {
-            toastr.error('未指定用户~');
-            failCall && failCall('未指定用户~');
-        } else if (content) {
-            // 将图片链接转化为img标签
-            content = common_utils.convertImageLinkToHtmlTag(content.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ''), '', true).replace(/\n$/, '');
-            if (!content) {
-                toastr.error('请输入内容！');
-                failCall && failCall('请输入内容！');
-                return false;
-            } else if (content.length >= 3999) {
-                toastr.error('字数超出~  ' + content.length + '/4000');
-                failCall && failCall('字数超出~  ' + content.length + '/4000');
-                return false;
-            }
-            $.ajax({
-                url: globals.api.sendLetter,
-                type: "POST",
-                data: {
-                    'content': content,
-                    'r_uid': r_uid
-                },
-                success: function (response) {
-                    if (response.status == 200) {
-                        var data = response.data;
-                        var saveLetter = data.letter;
-                        call && call(saveLetter, data);
+                    let content = letter.content;
+                    // 将图片链接转化为img标签
+                    content = common_utils.convertImageLinkToHtmlTag(content.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ''), '', true).replace(/\n$/, '');
+                    if (!content) {
+                        error = '请输入内容~';
+                    } else if (content.length >= 3999) {
+                        error = '字数超出~  ' + content.length + '/4000';
                     } else {
-                        toastr.error(response.message, '消息发送失败！');
-                        console.warn('Error Code: ' + response.status);
-                        failCall && failCall(response.message);
+                        letter.content = content;
                     }
-                },
-                error: function () {
-                    toastr.error('发送消息失败！');
-                    failCall && failCall('发送消息失败！');
                 }
-            });
-        } else {
-            toastr.error('请输入内容！');
-            failCall && failCall('请输入内容！');
-        }
-    }
-
-    /**
-     * 清除未读私信消息
-     * @param {Array} userIds
-     * @param {Function} call(leIds)
-     */
-    function clearLetterListStatus(userIds, call) {
-        if (!userIds || !Array.isArray(userIds)) {
-            return;
-        }
-        var leIds = [];
-        var postLeIds = [];
-        $.each(userIds, function (i, uid) {
-            var userLetters = formatLetterList[uid];
-            if (userLetters) {
-                $.each(userLetters, function (i, letter) {
-                    if (letter.r_uid == $uid) { // 只能清除自己接收的
-                        if (letter.status == 0) {   // 提交时只提交未读的
-                            postLeIds.push(letter.leid);
+                if (error) {
+                    success && globals.notify().error(error);
+                    return globals.request.rejectedResp({
+                        'message': error,
+                        'type': -1
+                    }, false, null, false);
+                } else {
+                    return globals.request.post(globals.api.sendLetter, letter, success, ['letter'], success && '消息发送失败');
+                }
+            },
+            'deleteLetter': function (leid, success) { // 删除并撤回私信消息
+                return globals.request.get(globals.api.deleteLetter, {'leid': leid}, success, null, success && '删除消息失败');
+            },
+            'clearLetterListStatus': function (leIds, success) { // 清除未读私信消息
+                return $.Deferred(function (dfd) {
+                    if (!leIds || !Array.isArray(leIds) || leIds.length === 0) {
+                        globals.request.rejectedResp({'message': '传入的消息列表为空', 'type': -1}, false, null, false, dfd);
+                        return;
+                    }
+                    globals.request.ajax({
+                        type: 'post',
+                        dataType: "json"
+                    }, globals.api.clearLetterListStatus, {"leids": leIds.join()}, false).always(function () {
+                        let resp = this;
+                        if (resp.status === 200 || (resp.type === 1 && resp.status === 404)) {
+                            globals.request.resolvedResp(resp, success, null, false, dfd);
+                        } else {
+                            globals.request.rejectedResp(resp, success && '标记系统消息为已读失败', null, false, dfd);
                         }
-                        leIds.push(letter.leid);    // 回调时未读已读一起返回
-                    }
+                    });
                 });
-            }
-        });
-        if (leIds.length > 0) {
-            $.ajax({
-                type: "POST",
-                url: globals.api.clearLetterListStatus,
-                data: {"leids": postLeIds.join()},
-                dataType: "json",
-                success: function (response) {
-                    if (response.status == 200 || response.status == 404) {
-                        call && call(leIds);
-                    } else {
-                        toastr.error('标记私信消息为已读失败~', response.message);
-                        console.warn('Error Code: ' + response.status);
+            },
+            'clearSysMsgListStatus': function (smIds, success) { // 清除未读系统消息
+                return $.Deferred(function (dfd) {
+                    if (!smIds || !Array.isArray(smIds) || smIds.length === 0) {
+                        globals.request.rejectedResp({'message': '传入的消息列表为空', 'type': -1}, false, null, false, dfd);
+                        return;
                     }
-                },
-                error: function (xhr, ts) {
-                    toastr.error('标记私信消息为已读失败！Error Info: ' + ts);
-                    console.log('Clear letter status found error, Error Code: ' + ts);
-                }
-            });
-        } else {
-            call && call(leIds);
-        }
-    }
-
-    /**
-     * 删除并撤回私信消息
-     * @param leid
-     * @param ismy 这条私信是当前登录用户发送的吗
-     */
-    function deleteLetter(leid, call) {
-        if (!leid) {
-            return;
-        }
-        $.post(globals.api.deleteLetter, {"leid": leid}, function (response) {
-            if (response.status == 200) {
-                call && call(leid);
-            } else {
-                toastr.error(response.message, '删除消息失败~');
-                console.warn('Error Code: ' + response.status);
-            }
-        });
-    }
-
-    /**
-     * 清除未读系统消息
-     * @param {Array} smids
-     * @param {Function} call(smids)
-     */
-    function clearSysMsgListStatus(smids, call) {
-        if (!smids || !Array.isArray(smids)) {
-            return;
-        }
-        if (smids.length > 0) {
-            $.ajax({
-                type: "POST",
-                url: globals.api.clearSysMsgListStatus,
-                data: {"smids": smids.join()},
-                dataType: "json",
-                success: function (response) {
-                    if (response.status == 200 || response.status == 404) {
-                        call && call(smids);
-                    } else {
-                        toastr.error('标记系统消息为已读失败！', response.message);
-                        console.warn('Error Code: ' + response.status);
+                    globals.request.ajax({
+                        type: 'post',
+                        dataType: "json"
+                    }, globals.api.clearSysMsgListStatus, {"smids": smIds.join()}, false).always(function () {
+                        let resp = this;
+                        if (resp.status === 200 || (resp.type === 1 && resp.status === 404)) {
+                            globals.request.resolvedResp(resp, success, null, false, dfd);
+                        } else {
+                            globals.request.rejectedResp(resp, success && '标记系统消息为已读失败', null, false, dfd);
+                        }
+                    });
+                });
+            },
+            'deleteSysMsgList': function (smIds, success) { // 删除未读系统消息
+                return $.Deferred(function (dfd) {
+                    if (!smIds || !Array.isArray(smIds) || smIds.length === 0) {
+                        globals.request.rejectedResp({'message': '传入的消息列表为空', 'type': -1}, false, null, false, dfd);
+                        return;
                     }
-                },
-                error: function (xhr, ts) {
-                    toastr.error('标记系统消息为已读失败！Error Info: ' + ts);
-                    console.log('Clear msg status found error, Error Code: ' + ts);
-                }
-            });
+                    globals.request.ajax({
+                        type: 'post',
+                        dataType: "json"
+                    }, globals.api.deleteSysMsgList, {"smids": smIds.join()}, false).always(function () {
+                        let resp = this;
+                        if (resp.status === 200 || (resp.type === 1 && resp.status === 404)) {
+                            globals.request.resolvedResp(resp, success, null, false, dfd);
+                        } else {
+                            globals.request.rejectedResp(resp, success && '删除系统消息失败', null, false, dfd);
+                        }
+                    });
+                });
+            },
         }
-    }
-
-    /**
-     * 删除系统消息
-     * @param {Array} smids
-     * @param {Function} call(smids)
-     */
-    function deleteSysMsgList(smids, call) {
-        if (!smids || !Array.isArray(smids)) {
-            return;
-        }
-        if (smids.length > 0) {
-            $.ajax({
-                type: "POST",
-                url: globals.api.deleteSysMsgList,
-                data: {"smids": smids.join()},
-                dataType: "json",
-                success: function (response) {
-                    if (response.status == 200 || response.status == 404) {
-                        call && call(smids);
-                        toastr.success('删除系统消息成功！');
-                    } else {
-                        toastr.error('删除系统消息失败！' + response.message);
-                        console.warn('Error Code: ' + response.status);
-                    }
-                },
-                error: function (xhr, ts) {
-                    toastr.error('删除系统消息失败！Error Info: ' + ts);
-                    console.log('Delete msg status found error, Error Code: ' + ts);
-                }
-            });
-        }
-    }
+    }).user_center;
 
     /* --------------------- 发送消息与服务器交互请求  end -------------------------*/
 
@@ -2218,6 +2208,7 @@
             "photo_page": {
                 "full_background": true,
                 "default_col": {
+                    "2000+": 6,
                     "2000": 6,
                     "1800": 5,
                     "1600": 4,
@@ -2244,6 +2235,7 @@
             "album_page": {
                 "full_background": false,
                 "default_col": {
+                    "2000+": 5,
                     "2000": 4,
                     "1800": 4,
                     "1600": 4,
@@ -2319,6 +2311,7 @@
             settingTab.find('#setting_album_form input[name="setting_popup_hide_btn"][value="false"]').prop('checked', true);
         }
         settingTab.find('#setting_album_form input[name="setting_video_height_scale"]').val(albumConfig.photo_page.video.popup_height_scale);
+        settingTab.find('#setting_album_form input[name="setting_default_col_photo_2000+"]').val(albumConfig.photo_page.default_col["2000+"]);
         settingTab.find('#setting_album_form input[name="setting_default_col_photo_2000"]').val(albumConfig.photo_page.default_col["2000"]);
         settingTab.find('#setting_album_form input[name="setting_default_col_photo_1800"]').val(albumConfig.photo_page.default_col["1800"]);
         settingTab.find('#setting_album_form input[name="setting_default_col_photo_1600"]').val(albumConfig.photo_page.default_col["1600"]);
@@ -2333,6 +2326,7 @@
         } else {
             settingTab.find('#setting_album_form input[name="setting_full_background_album"][value="false"]').prop('checked', true);
         }
+        settingTab.find('#setting_album_form input[name="setting_default_col_album_2000+"]').val(albumConfig.album_page.default_col["2000+"]);
         settingTab.find('#setting_album_form input[name="setting_default_col_album_2000"]').val(albumConfig.album_page.default_col["2000"]);
         settingTab.find('#setting_album_form input[name="setting_default_col_album_1800"]').val(albumConfig.album_page.default_col["1800"]);
         settingTab.find('#setting_album_form input[name="setting_default_col_album_1600"]').val(albumConfig.album_page.default_col["1600"]);
@@ -2413,6 +2407,7 @@
             config.photo_page.blow_up.height = parseInt(blow_up_height);
             config.photo_page.blow_up.scale = parseFloat(blow_up_scale);
             config.photo_page.default_col = {};
+            config.photo_page.default_col["2000+"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_2000+"]').val());
             config.photo_page.default_col["2000"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_2000"]').val());
             config.photo_page.default_col["1800"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_1800"]').val());
             config.photo_page.default_col["1600"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_photo_1600"]').val());
@@ -2424,6 +2419,7 @@
             config.album_page = {};
             config.album_page.full_background = settingTab.find('#setting_album_form input[name="setting_full_background_album"]:checked').val() == 'true' ? true : false;
             config.album_page.default_col = {};
+            config.album_page.default_col["2000+"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_2000+"]').val());
             config.album_page.default_col["2000"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_2000"]').val());
             config.album_page.default_col["1800"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_1800"]').val());
             config.album_page.default_col["1600"] = parseInt(settingTab.find('#setting_album_form input[name="setting_default_col_album_1600"]').val());

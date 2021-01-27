@@ -106,7 +106,7 @@
         <if test="not is_login">
             left join comment_action_record ar on (ar.cid = c.cid and ar.uid = 0 and ar.ip = #{loginUser.userStatus.last_login_ip})
         </if>
-        where c.creation_id = #{condition.creationId} and c.creation_type = #{condition.creationType}
+        where c.creation_id = #{condition.creationId} and c.creation_type = #{condition.creationType} and c.is_del = 0
     </select>
 
     <!-- 根据cid查询评论 -->

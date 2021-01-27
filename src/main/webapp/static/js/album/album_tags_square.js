@@ -347,6 +347,7 @@
             "album_page": {
                 "full_background": false,
                 "default_col": {
+                    "2000+": 5,
                     "2000": 4,
                     "1800": 4,
                     "1600": 4,

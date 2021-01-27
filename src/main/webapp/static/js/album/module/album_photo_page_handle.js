@@ -123,6 +123,7 @@
             "pageNum": 1,
             "col": undefined,
             "default_col": {
+                "2000+": 6,
                 "2000": 6,
                 "1800": 5,
                 "1600": 4,
@@ -525,7 +526,10 @@
                 var user_defined_col = pointer.album.show_col; // 用户定义的该相册的列数
                 var widthKeys = Object.keys(default_col);
                 var w = window.innerWidth;
+                debugger;
                 widthKeys.sort(function (left, right) { // 降序
+                    left = String(left).indexOf('+') !== -1 ? (parseInt(left) + 1) : left;
+                    right = String(right).indexOf('+') !== -1 ? (parseInt(right) + 1) : right;
                     return parseInt(right) - parseInt(left);
                 });
                 var real_col = config.page_params.real_col; // 保存实际的列数
@@ -541,8 +545,14 @@
                     } else {
                         real_col[widthKey] = (col || (user_defined_col == 0 ? default_col[widthKey] : (user_defined_col < default_col[widthKey] ? user_defined_col : default_col[widthKey])));
                     }
-                    if (hitKey == null && w < parseInt(widthKey)) {
-                        hitKey = widthKey;
+                    if (String(widthKey).indexOf('+') === -1) {
+                        if (hitKey == null && w < parseInt(widthKey)) {
+                            hitKey = widthKey;
+                        }
+                    } else {
+                        if (w >= parseInt(widthKey)) {
+                            hitKey = widthKey;
+                        }
                     }
                 }
                 if (hitKey == null) {
@@ -706,10 +716,17 @@
                 y: 7.5
             },
             //设置列数
-            columns: real_col["2000"],
+            columns: real_col["2000+"],
             //定义不同分辨率（1200，940，520，400这些是分辨率）
             breakAt: {
-                1800: { // 1600px以下显示
+                2000: { // 2000px以下显示
+                    columns: real_col["2000"],
+                    margin: {
+                        x: 7.5,
+                        y: 7.5
+                    }
+                },
+                1800: { // 1800px以下显示
                     columns: real_col["1800"],
                     margin: {
                         x: 7.5,

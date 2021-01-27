@@ -6,6 +6,25 @@ demo: [https://imcoder.site](https://imcoder.site "imcoder.site")
 
 ## develop log
 
+#### 2021.11.13
+
+enhance private letter user experience，and fixed some bugs.
+    
+    （1）album module
+    1、modify default_col for photo showing.
+    2、fixed album photo sort input bug.
+    3、fixed video_detail page video embed bug.
+    4、add video setting panel for realizing video detail page
+    >
+    （2）message service
+    1、add fuzzy preview of photo links in private messages.
+    2、add livephoto style video support.
+    3、re comment insert picture bug, iPhone Safari turn off the default full screen video.
+    4、add only-link-enable、disable message-status hidden
+    5、fixed letter display bug
+    6、add comment is_del field
+    7、fixed system message display bug
+    
 #### 2021.01.27
 
 support parse/drag image to message input.

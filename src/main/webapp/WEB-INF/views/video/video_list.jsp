@@ -433,6 +433,11 @@
                         <option value="10">私有</option>
                     </select>
                 </div>
+                <div class="form-group inline-group" style="padding-top: 7px;">
+                    <label class="control-label" title="是否作为LivePhoto播放">LivePhoto：</label>
+                    <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_live_photo" value="0" checked="checked"> 否 </label>
+                    <label class="radio-inline"><input type="radio" name="video_live_photo" value="1"> 是 </label>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary" name="uploadVideo_trigger">插入视频</button>
@@ -544,6 +549,11 @@
                     </select>
                 </div>
                 <div class="form-group inline-group" style="padding-top: 7px;">
+                    <label class="control-label" title="是否作为LivePhoto播放">LivePhoto：</label>
+                    <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_live_photo" value="0" checked="checked"> 否 </label>
+                    <label class="radio-inline"><input type="radio" name="video_live_photo" value="1"> 是 </label>
+                </div>
+                <div class="form-group inline-group">
                     <label class="control-label">视频大小：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
                     <span name="video_size" class="control-label"></span>
                 </div>
@@ -555,6 +565,7 @@
             <div class="modal-footer">
                 <button class="btn btn-danger" name="deleteVideo_trigger">删除视频</button>
                 <button class="btn btn-info form-btn-upload-subtitle-modal-open">上传字幕</button>
+                <button class="btn form-btn-update-video-setting-modal-open" style="background-color:rgba(222, 160, 91, 0.98);color:#ffffff;">更新设置</button>
                 <button class="btn btn-primary" name="updateVideo_trigger">更新信息</button>
                 <button class="btn btn-default" name="cancelBtn" data-dismiss="modal">关闭</button>
             </div>
@@ -592,6 +603,66 @@
             <div class="modal-footer">
                 <button class="btn btn-default form-btn-upload-subtitle-cancel" data-dismiss="modal">关闭</button>
                 <button class="btn btn-primary form-btn-upload-subtitle-submit" type="button">上传</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade in" id="updateVideoSettingModal" aria-hidden="false" tabindex="-1">
+    <div class="modal-dialog" style="width:550px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true">×</span></button>
+                <h4 class="modal-title">更新视频设置</h4></div>
+            <div class="modal-body">
+                <div class="form-group form-group-subtitle-video-id">
+                    <label class="control-label">视频ID：&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                    <a target="_blank" style="color: #666; cursor: pointer" title="在详情页打开">
+                        <span class="form-vs-video-id" data-video-id="" class="control-label"></span>
+                    </a>
+                </div>
+                <div class="form-group form-group-vs-disable-view">
+                    <label class="control-label" title="其他人无论有没有权限是否可以查看（打开）">视频激活：</label>
+                    <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_setting_disable_view" value="0"> 关闭 </label>
+                    <label class="radio-inline"><input type="radio" name="video_setting_disable_view" value="1" checked="checked"> 开启 </label>
+                </div>
+                <div class="form-group form-group-vs-disable-send-comment">
+                    <label class="control-label" title="用户发送评论">发送评论：</label>
+                    <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_setting_disable_send_comment" value="0" checked="checked"> 关闭 </label>
+                    <label class="radio-inline"><input type="radio" name="video_setting_disable_send_comment" value="1"> 开启 </label>
+                </div>
+                <div class="form-group form-group-vs-disable-list-comment">
+                    <label class="control-label" title="用户查看评论">查看评论：</label>
+                    <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_setting_disable_list_comment" value="0" checked="checked"> 关闭 </label>
+                    <label class="radio-inline"><input type="radio" name="video_setting_disable_list_comment" value="1"> 开启 </label>
+                </div>
+                <div class="form-group form-group-vs-disable-embed">
+                    <label class="control-label" title="支持embed嵌入">支持嵌入：</label>
+                    <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_setting_disable_embed" value="0"> 关闭 </label>
+                    <label class="radio-inline"><input type="radio" name="video_setting_disable_embed" value="1" checked="checked"> 开启 </label>
+                </div>
+                <div class="form-group form-group-vs-enable-loop">
+                    <label class="control-label" title="开启循环播放">循环播放：</label>
+                    <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_setting_enable_loop" value="0" checked="checked"> 关闭 </label>
+                    <label class="radio-inline"><input type="radio" name="video_setting_enable_loop" value="1"> 开启 </label>
+                </div>
+                <div class="form-group form-group-vs-disable-download">
+                    <label class="control-label" title="支持用户下载">支持下载：</label>
+                    <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_setting_disable_download" value="0"> 关闭 </label>
+                    <label class="radio-inline"><input type="radio" name="video_setting_disable_download" value="1" checked="checked"> 开启 </label>
+                </div>
+                <div class="form-group form-group-vs-rotate">
+                    <label class="control-label" title="选择使用旋转角度">旋转角度：</label>
+                    <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_setting_rotate" value="0" checked="checked"> 0° </label>
+                    <label class="radio-inline"><input type="radio" name="video_setting_rotate" value="90"> 90° </label>
+                    <label class="radio-inline"><input type="radio" name="video_setting_rotate" value="180"> 180° </label>
+                    <label class="radio-inline"><input type="radio" name="video_setting_rotate" value="270"> 270° </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default form-btn-update-video-setting-cancel" data-dismiss="modal">关闭</button>
+                <button class="btn btn-primary form-btn-update-video-setting-submit" type="button">修改</button>
             </div>
         </div>
     </div>

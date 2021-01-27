@@ -247,7 +247,7 @@
                         var $findnreplace_info = $toolbar.find('.note-findnreplace-info');
                         if (fnrFind) {
                             $findnreplace_info.text(fnrCount + lang.findnreplace.findResult + '`' + fnrFind + '`');
-                            var fnrReplaced = fnrCode.replace(new RegExp("(' + fnrFind + ')", 'gi'), '<u class="note-findnreplace" style="' + options.findnreplace.highlight + '">$1</u>');
+                            var fnrReplaced = fnrCode.replace(new RegExp('(' + fnrFind + ')', 'gi'), '<u class="note-findnreplace" style="' + options.findnreplace.highlight + '">$1</u>');
                             $note.summernote('code', fnrReplaced);
                         } else
                             $findnreplace_info.html('<span class="text-danger">' + lang.findnreplace.findError + '</span>');

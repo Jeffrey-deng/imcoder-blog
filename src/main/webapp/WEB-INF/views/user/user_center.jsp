@@ -41,6 +41,12 @@
                 padding-top: 0.5em;
             }
         }
+
+        .chat-message .message-status {
+            /*display:none;*/
+            display: inline-block!important;
+            cursor: help;
+        }
     </style>
 
     <!-- 修复某些移动端浏览器设置UA为PC，页面仍显示手机版的问题 -->
@@ -724,16 +730,22 @@
                                                     <div class="form-group">
                                                         <label class="col-sm-2 col-xs-2 control-label">每行展示照片个数</label>
                                                         <div class="col-sm-10 col-xs-10">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">2000px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_2000">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1800px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_1800">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1600px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_1600">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">940px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_940">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">720px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_720">
+                                                            <div class="col-12">
+                                                                <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">2000+px</label>
+                                                                <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_2000+">
+                                                                <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">2000px</label>
+                                                                <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_2000">
+                                                                <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1800px</label>
+                                                                <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_1800">
+                                                            </div>
+                                                            <div class="col-12" style="margin-top:10px;">
+                                                                <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1600px</label>
+                                                                <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_1600">
+                                                                <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">940px</label>
+                                                                <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_940">
+                                                                <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">720px</label>
+                                                                <input class="inline col-sm-1 col-xs-6" name="setting_default_col_photo_720">
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div class="form-group">
@@ -770,16 +782,22 @@
                                                     <div class="form-group">
                                                         <label class="col-sm-2 col-xs-2 control-label">每行展示相簿个数</label>
                                                         <div class="col-sm-10 col-xs-10">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">2000px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_2000">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1800px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_1800">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1600px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_1600">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">940px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_940">
-                                                            <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;">720px</label>
-                                                            <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_720">
+                                                            <div class="col-12">
+                                                                <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">2000+px</label>
+                                                                <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_2000+">
+                                                                <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">2000px</label>
+                                                                <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_2000">
+                                                                <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1800px</label>
+                                                                <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_1800">
+                                                            </div>
+                                                            <div class="col-12" style="margin-top:10px;">
+                                                                <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">1600px</label>
+                                                                <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_1600">
+                                                                <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">940px</label>
+                                                                <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_940">
+                                                                <label class="control-label col-sm-1 col-xs-5" style="margin-left: 5px;margin-right: 5px;">720px</label>
+                                                                <input class="inline col-sm-1 col-xs-6" name="setting_default_col_album_720">
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div class="form-group">

@@ -29,7 +29,7 @@
                 if (open) {
                     blowup && blowup.destroy();
                     blowup = $.blowup({
-                        selector: "#masonryContainer img",
+                        selector: "#masonryContainer .photo .image-widget",
                         width: config.width,
                         height: config.height,
                         scale: config.scale
@@ -37,7 +37,7 @@
                     var mfpContent = album_photo_page_handle.pointer.magnificPopup.content;
                     if (mfpContent) {
                         album_photo_page_handle.pointer.blowup = $.blowup({
-                            selector: mfpContent.find('img'),
+                            selector: mfpContent.find('.image-widget'),
                             width: config.width,
                             height: config.height,
                             scale: config.scale
@@ -66,7 +66,7 @@
                     var mfpContent = album_photo_page_handle.pointer.magnificPopup.content;
                     if (mfpContent) {
                         album_photo_page_handle.pointer.blowup = $.blowup({
-                            selector: mfpContent.find('img'),
+                            selector: mfpContent.find('.image-widget'),
                             width: config.width,
                             height: config.height,
                             scale: config.scale
@@ -347,6 +347,7 @@
             "photo_page": {
                 "full_background": true,
                 "default_col": {
+                    "2000+": 6,
                     "2000": 6,
                     "1800": 5,
                     "1600": 4,
@@ -838,7 +839,7 @@
             } else {
                 apr.before_sort = parseInt(apr.before_sort) || common_utils.convertRadix62to10(apr.photo_id);
             }
-            if (/^[0-9]+$/.test(apr.sort)) {
+            if (!/^[0-9]+$/.test(apr.sort)) {
                 toastr.error('请输入整数数字~');
                 return;
             } else {
