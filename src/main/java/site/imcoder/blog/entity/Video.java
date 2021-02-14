@@ -52,6 +52,11 @@ public class Video implements Serializable {
     private String tags;
 
     /**
+     * 是否 Live Photo ，0/1
+     */
+    private Integer live_photo;
+
+    /**
      * 视频源的类型：
      * 0：本地源
      * 1：引用链接
@@ -206,6 +211,14 @@ public class Video implements Serializable {
 
     public void setTags(String tags) {
         this.tags = tags;
+    }
+
+    public Integer getLive_photo() {
+        return live_photo;
+    }
+
+    public void setLive_photo(Integer live_photo) {
+        this.live_photo = live_photo;
     }
 
     public Integer getSource_type() {

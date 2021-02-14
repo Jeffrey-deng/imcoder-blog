@@ -28,7 +28,7 @@
         popup_height_scale: 0.91, // 视频高度占窗口高的比例
         popup_url_check_id_use_by: "photo", // 弹出视频时使用photo_id还是video_id，值 photo 或 video，只有纯视频列表页面才能使用video，不然可能会出问题
         popup_trigger_class_name: "video-popup",
-        use_site_iframe: true, // 本站的视频也使用ifame方式加载
+        use_site_iframe: true, // 本站的视频也使用iframe方式加载
         event: {
             "actionForEditPhoto": "photo.edit",
             "pagePaginationClick": "page.jump.click",
@@ -539,16 +539,18 @@
                     }
                 },
                 calcWidthStyle: function () {
-                    var mfp = this; // $.magnificPopup.instance
-                    var video = this.currItem.video;
-                    var $playerWrap = this.content.find('.include-iframe');
-                    var $player = $playerWrap.children().eq(0);
-                    var isBlockStyle = config.popup_btn_display == "block"; // 控件显示方式
-                    var usableHeight = null;    // 可用实际高度
-                    var usableWidth = this.container.width();   // 可用实际宽度
-                    var height_scale = null; // 容器高度占浏览器高度比
-                    var scale = null; // 播放器宽高缩放比例
-                    var block_padding = null;
+                    var mfp = this, // $.magnificPopup.instance
+                        video = this.currItem.video,
+                        $playerWrap = this.content.find('.include-iframe'),
+                        $player = $playerWrap.children().eq(0),
+                        isBlockStyle = config.popup_btn_display == "block", // 控件显示方式
+                        usableHeight = null,    // 可用实际高度
+                        usableWidth = this.container.width(),   // 可用实际宽度
+                        height_scale = null, // 容器高度占浏览器高度比
+                        scale = null, // 播放器宽高缩放比例
+                        block_padding = null,
+                        popup_iframe_border = video.live_photo == 1 ? false : config.popup_iframe_border,
+                        popup_video_border = video.live_photo == 1 ? false : config.popup_video_border;
                     if (isBlockStyle) {
                         height_scale = 1;
                         var computedStyle = getComputedStyle($player[0]);
@@ -582,7 +584,7 @@
                             if (need_height <= usableHeight) {
                                 mfp.contentContainer.css('height', (need_height + block_padding) + 'px');
                             }
-                        } else if (config.popup_iframe_border) { // 添加黑边
+                        } else if (popup_iframe_border) { // 添加黑边
                             mfp.contentContainer.css('height', (height_scale * 100) + '%');
                             mfp.contentContainer.css('width', '');
                         } else { // IFrame设置宽度去除黑边
@@ -593,7 +595,7 @@
                         mfp.contentContainer.css('height', ''); // 不指定就会居中
                         if (need_width > usableWidth) {
                             mfp.contentContainer.css('width', '');
-                        } else if (config.popup_video_border) { // 添加黑边
+                        } else if (popup_video_border) { // 添加黑边
                             mfp.contentContainer.css('width', '');
                             $player.get(0).style.width = need_width + 'px';
                             if (!isBlockStyle) {
