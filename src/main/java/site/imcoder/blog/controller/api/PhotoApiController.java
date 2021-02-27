@@ -205,11 +205,13 @@ public class PhotoApiController extends BaseController {
             @RequestParam(defaultValue = "false") boolean loadUser,
             @RequestParam(defaultValue = "false") boolean loadTopic,
             @RequestParam(defaultValue = "false") boolean loadVideo,
+            @RequestParam(defaultValue = "true") boolean loadActionRecord,
             IRequest iRequest) {
         iRequest.putAttr("loadAlbum", loadAlbum);
         iRequest.putAttr("loadUser", loadUser);
         iRequest.putAttr("loadTopic", loadTopic);
         iRequest.putAttr("loadVideo", loadVideo);
+        iRequest.putAttr("loadActionRecord", loadActionRecord);
         return albumService.findPhoto(new Photo(id), iRequest);
     }
 

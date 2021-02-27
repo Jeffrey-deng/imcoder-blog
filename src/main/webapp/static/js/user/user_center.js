@@ -916,19 +916,20 @@
     var letterContentScrollBottomTimer = null;
     var site_video_regex = new RegExp('^((?:' + basePath.replace(/:(?=(?:80|443)(?=\/))\d+(?=\/)/, '') + ')?video/)(detail|embed)(/[^?]+(\\?.*)?)$'); // 匹配本站的视频链接，去掉basePath中的80/443端口
     var batch_load_letter_size = 20;
-    var lazyVideoObserver = new IntersectionObserver(function (entries, observer) {
+    var lazyMediaObserver = new IntersectionObserver(function (entries, observer) {
         entries.forEach(function (entry) {
             if (entry.isIntersecting || entry.intersectionRatio > 0) {
-                let $lazyVideoLink = $(entry.target);
-                lazyVideoObserver.unobserve($lazyVideoLink[0]);
-                if (!$lazyVideoLink.hasClass('lazy-video-completed')) {
-                    $lazyVideoLink.addClass('lazy-video-completed');
-                    $lazyVideoLink.after('<div class="lazy-video-preview">' +
-                        '<iframe class="lazy-video-embed" src="' + $lazyVideoLink.attr('data-video-preview-link') + '" data-scale="stay" style="width:100%;"></iframe></div>');
+                let $lazyMediaLink = $(entry.target);
+                lazyMediaObserver.unobserve($lazyMediaLink[0]);
+                if (!$lazyMediaLink.hasClass('lazy-media-completed')) {
+                    $lazyMediaLink.addClass('lazy-media-completed');
+                    insertMediaPreviewWidget($lazyMediaLink);
                 }
             }
         });
     });
+    var stayBottomTimer = null;
+    var stayBottomLock = false;
 
     function initMessageTab(callAfterLoad) {
 
@@ -1174,6 +1175,8 @@
             // [0]是从jquery中取得原js对象
             $('#currentLetterContent')[0].scrollTop = $('#currentLetterContent')[0].scrollHeight + 2000;
             // $('#currentLetterContent .chat-discussion-end')[0].scrollIntoView(true);
+            // $('#currentLetterContent')[0].scrollTop = 0;
+
             // 用户列表也滚动到可视区域
             let $userCard = getChatUserLetterUserCard(getCurrentLetterChatUid());
             if ($userCard.length > 0 && ('scrollIntoView' in $userCard[0] || 'scrollIntoViewIfNeeded' in $userCard[0])) {
@@ -1240,8 +1243,10 @@
         // 消息内容区事件
         $('#currentLetterContent')
             .on('scroll', function (e) { // 滚动到底部时懒惰加载更多私信
-                let $currentLetterContent = $(e.currentTarget);
-                if (e.currentTarget.scrollTop <= 30 && !$currentLetterContent.hasClass('lazy-letter-loading')) {
+                let $currentLetterContent = $(e.currentTarget), isCloseTop = false;
+                isCloseTop = e.currentTarget.scrollTop <= 30;
+                // isCloseTop = e.currentTarget.scrollHeight - (e.currentTarget.scrollTop * -1 + e.currentTarget.clientHeight) <= 30;
+                if (isCloseTop && !$currentLetterContent.hasClass('lazy-letter-loading')) {
                     $currentLetterContent.addClass('lazy-letter-loading');
                     let chatUid = getCurrentLetterChatUid();
                     if (chatUid) {
@@ -1253,11 +1258,13 @@
                         if (buildResp.size > 0) {
                             let $lastLetter = $currentLetterContent.children('.chat-message');
                             $currentLetterContent.prepend(buildResp.html);
+                            // $currentLetterContent.append(buildResp.html);
                             // {block: 'center'}
-                            $lastLetter[0].scrollIntoView(); // 防止滑到顶部不触发事件，这个代码至关重要，而且滑动时不会断层显示
+                            $lastLetter[0].scrollIntoView();
+                            // $lastLetter.last()[0].scrollIntoView(); // 防止滑到顶部不触发事件，这个代码至关重要，而且滑动时不会断层显示
                             $currentLetterContent.attr('data-earliest-index', buildResp.end);
-                            $currentLetterContent.find('.chat-message .message-content .lazy-video-link:not(.lazy-video-completed)').each(function (i, linkNode) {
-                                lazyVideoObserver.observe(linkNode);
+                            $currentLetterContent.find('.chat-message .message-content .lazy-media-link:not(.lazy-media-completed)').each(function (i, linkNode) {
+                                lazyMediaObserver.observe(linkNode);
                             });
                             if (buildResp.end == letterList.length - 1) {
                                 $currentLetterContent.toggleClass('lazy-letter-load-completed', true);
@@ -1268,6 +1275,13 @@
                     }
                     $currentLetterContent.removeClass('lazy-letter-loading');
                 }
+            })
+            .on('mousewheel touchstart', function(e) {
+                if (e.originalEvent && stayBottomTimer) {
+                    clearInterval(stayBottomTimer);
+                    stayBottomTimer = null;
+                }
+                stayBottomLock = false;
             })
             .on('click', '.message-del', function () {    // 消息删除按钮
                 if (window.confirm('你确定要删除这条私信吗？')) {
@@ -1280,23 +1294,23 @@
                     });
                 }
             })
-            .on({ // 删除按钮hover效果
-                "mouseenter": function () {
-                    $(this).find('.message-del').css('visibility', 'visible');
-                },
-                "mouseleave": function () {
-                    $(this).find('.message-del').css('visibility', 'hidden');
-                }
-            }, '.chat-message')
+            // .on({ // 删除按钮hover效果
+            //     "mouseenter": function () {
+            //         $(this).find('.message-del').css('visibility', 'visible');
+            //     },
+            //     "mouseleave": function () {
+            //         $(this).find('.message-del').css('visibility', 'hidden');
+            //     }
+            // }, '.chat-message')
             .on('click', '.message-content .image-widget.protect', function () {
                 let $widget = $(this), $img = $widget.find('img');
-                if ($widget.closest('a').length == 0 && !$widget.hasClass('protect') && !$img.hasClass('forbidden-download')) {
+                if ($widget.closest('a').length === 0 && !$widget.hasClass('protect') && !$img.hasClass('forbidden-download')) {
                     window.open($img.attr('src'));
                 }
             })
             .on('click', '.message-content img', function () {
                 let $img = $(this);
-                if ($img.closest('a').length == 0 && !$img.hasClass('forbidden-download')) {
+                if ($img.closest('a').length === 0 && !$img.hasClass('forbidden-download')) {
                     window.open($img.attr('src'));
                 }
             })
@@ -1635,6 +1649,7 @@
                     }
                     // 倒序遍历
                     for (let i = earliest_index; i >= 0; i--) {
+                    // for (let i = 0; i <= earliest_index; i++) {
                         let letter = letterList[i];
                         if (!isChangeChatUser && i <= earliest_index) {
                             new_leids_str += '_' + letter.leid;
@@ -1654,28 +1669,45 @@
                     html = buildBatchLetterHtml(letterList, 0, earliest_index + 1, profile).html;
                     html += '<div class="chat-discussion-end" style="height:0px; overflow:hidden"></div>';
                     $currentLetterContent.html(html);
-                    if ($currentLetterContent.children('.chat-message').length == letterList.length) {
+                    if ($currentLetterContent.children('.chat-message').length === letterList.length) {
                         $currentLetterContent.toggleClass('lazy-letter-load-completed', true);
                     }
+                    stayBottomTimer && clearInterval(stayBottomTimer);
+                    stayBottomLock = true;
+                    stayBottomTimer = setInterval(function () {
+                        if (stayBottomLock) {
+                            $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight;
+                        }
+                    }, 500);
+                    setTimeout(function () {
+                        if (chatUid == getCurrentLetterChatUid()) {
+                            stayBottomTimer && clearInterval(stayBottomTimer);
+                            stayBottomTimer = null;
+                            stayBottomLock = false;
+                        }
+                    },7000);
                 }
                 $currentLetterContent.attr('data-earliest-index', earliest_index);
+
                 // 滚动到底部
                 $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight;
-                letterContentScrollBottomTimer && clearTimeout(letterContentScrollBottomTimer);
+                //letterContentScrollBottomTimer && clearTimeout(letterContentScrollBottomTimer);
                 removeLetterUnReadStyleTimer && clearTimeout(removeLetterUnReadStyleTimer);
-                letterContentScrollBottomTimer = setTimeout(function () {    // 延迟防止modal未显示时高度未0情况
-                    $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight + 2000; // 预留图片高度
-                    letterContentScrollBottomTimer = null;
-                }, 900);
+                //letterContentScrollBottomTimer = setTimeout(function () {    // 延迟防止modal未显示时高度未0情况
+                //    $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight + 2000; // 预留图片高度
+                //    letterContentScrollBottomTimer = null;
+                //}, 900);
                 removeLetterUnReadStyleTimer = setTimeout(function () {    // 10秒后移除未读提示
                     $currentLetterContent.find('.chat-message-un-read').each(function (i, li) {
                         $(li).removeClass('chat-message-un-read');
                     });
                     removeLetterUnReadStyleTimer = null;
                 }, 10000);
-                // 绑定视频链接出现在可视区域时替换为视频标签的观察者
-                $currentLetterContent.find('.chat-message .message-content .lazy-video-link:not(.lazy-video-completed)').each(function (i, linkNode) {
-                    lazyVideoObserver.observe(linkNode);
+                // $currentLetterContent[0].scrollTop = 0;
+
+                // 绑定视频/图片链接出现在可视区域时替换为视频/图片标签的观察者
+                $currentLetterContent.find('.chat-message .message-content .lazy-media-link:not(.lazy-media-completed)').each(function (i, linkNode) {
+                    lazyMediaObserver.observe(linkNode);
                 });
             } else {
                 $currentLetterContent.empty();
@@ -1694,6 +1726,7 @@
         end = start + size - 1;
         // 倒序遍历
         for (i = end; i >= start; i--) {
+        // for (i = start; i <= end; i++) {
             let letter = letterList[i];
             html += buildSingleLetterHtml(letter, loginUser);
         }
@@ -1720,28 +1753,71 @@
         return html;
     }
 
-    function convertMessageLink(content, site_video_regex) {
+    function convertMessageLink(content, site_video_regex, site_photo_regex) {
         site_video_regex = site_video_regex || new RegExp('^((?:' + basePath.replace(/:(?=(?:80|443)(?=\/))\d+(?=\/)/, '') + ')?video/)(detail|embed)(/[^?]+(\\?.*)?)$');
+        site_photo_regex = site_photo_regex || new RegExp('^((?:' + basePath.replace(/:(?=(?:80|443)(?=\/))\d+(?=\/)/, '') + ')?p/)(detail|embed)(/[^?]+(\\?.*)?)$');
         return common_utils.convertLinkToHtmlTag(content, function (url) {
             let not_hash_url = url.match(/^(.*?)(#.*)?$/) && RegExp.$1, hash = RegExp.$2 || '';
             if (site_video_regex.test(not_hash_url)) {
-                return '<a class="lazy-video-link" data-video-preview-link="' + RegExp.$1 + 'embed' + RegExp.$3 +
-                    (RegExp.$4 ? '&' : '?') + 'save_access_record=false&disable_embed=true' + (RegExp.$2 == 'embed' ? '&disable_embed_redirect=embed' : '') + hash
-                    + '" target="_blank" href="' + url + '">' + url + '</a>';
+                const videoPreviewLink = RegExp.$1 + 'embed' + RegExp.$3 + (RegExp.$4 ? '&' : '?') + 'save_access_record=false&disable_embed=true' +
+                    (RegExp.$2 === 'embed' ? '&disable_embed_redirect=embed' : '') + hash;
+                return `<a class="lazy-media-link lazy-video-link" data-media-preview-link="${videoPreviewLink}" target="_blank" href="${url}">${url}</a>`;
+            } else if (site_photo_regex.test(not_hash_url)) {
+                const photoPreviewLink = url;
+                return `<a class="lazy-media-link lazy-photo-link" data-media-preview-link="${photoPreviewLink}" target="_blank" href="${url}">${url}</a>`;
             } else {
-                return '<a target="_blank" href="' + url + '">' + url + '</a>';
+                return `<a target="_blank" href="${url}">${url}</a>`;
             }
         });
     }
 
+    // 视频照片预览
+    function insertMediaPreviewWidget($lazyMediaLink) {
+        const mediaType = $lazyMediaLink.hasClass('lazy-video-link') ? 'video' : 'photo',
+            url = $lazyMediaLink.attr('href');
+        switch (mediaType) {
+            case 'video':
+                const videoPreviewLink = $lazyMediaLink.attr('data-media-preview-link');
+                $lazyMediaLink.after('<div class="lazy-media-preview lazy-video-preview">' +
+                    `<iframe class="lazy-media-source lazy-media-embed" src="${videoPreviewLink}" data-scale="stay" style="width:100%;"></iframe></div>`);
+                break;
+            case 'photo':
+                let photo_id = /\/p\/detail\/([^?&#]+)$/.test(url) && RegExp.$1;
+                if (photo_id) {
+                    globals.request.get(globals.api.getPhoto, {
+                        "id": photo_id,
+                        "loadActionRecord": false
+                    }, false, ['photo']).final(function (photo) {
+                        const $photoPreviewEmbed = $('<a>', {
+                            "href": url,
+                            "class": "lazy-media-preview lazy-photo-preview image-widget protect tips-delay",
+                            "target": "_blank",
+                            "data-photo-id": photo_id
+                        }).append($('<img>', {
+                            "src": photo.path,
+                            "class": 'lazy-media-source',
+                            "style": "width:100%;"
+                        }));
+                        $lazyMediaLink.after($photoPreviewEmbed);
+                        setTimeout(function () {
+                            $photoPreviewEmbed.removeClass('tips-delay');
+                        }, 0);
+                    });
+                }
+                break;
+        }
+    }
+
     function appendNewLetter(letter) {
-        var $currentLetterContent = $('#currentLetterContent');
-        if ($currentLetterContent.find('.chat-message[data-leid="' + letter.leid + '"]').length == 0) {
+        const $currentLetterContent = $('#currentLetterContent');
+        if ($currentLetterContent.find('.chat-message[data-leid="' + letter.leid + '"]').length === 0) {
             $currentLetterContent.find('.chat-discussion-end').before(buildSingleLetterHtml(letter, profile));
+            // $currentLetterContent.prepend(buildSingleLetterHtml(letter, profile));
             $currentLetterContent.attr('data-earliest-index', parseInt($currentLetterContent.attr('data-earliest-index') || -1) + 1);
             getChatUserLetterUserCard(letter.chatUser.uid).trigger('click');
         }
         $currentLetterContent[0].scrollTop = $currentLetterContent[0].scrollHeight;
+        // $currentLetterContent[0].scrollTop = 0;
     }
 
     // 当前选中的私信用户
@@ -1809,6 +1885,111 @@
     /* --------------------- 私信聊天模式框 end -------------------------*/
 
     /* --------------------- 发送消息与服务器交互请求 start -------------------------*/
+
+    const request = globals.extend(globals.request, {
+        user_center: {
+            'loadUnreadMsgList': function (success) {
+                return globals.request.get(globals.api.getUnreadMsgList, success, success && '获取未读消息失败~');
+            },
+            'loadLetterList': function (success) {
+                return globals.request.get(globals.api.getLetterList, {'read_status': 1}, success, ['letters'], success && '加载私信消息失败~');
+            },
+            'loadSysMsg': function (success) {
+                return globals.request.get(globals.api.getSysMsgList, {'read_status': 1}, success, ['sysMsgs'], success && '加载系统消息失败~');
+            },
+            'sendLetter': function (letter, success) {
+                return $.Deferred(function (dfd) {
+                    let error;
+                    if (!letter) {
+                        error = '私信对象为空';
+                    } else if (!letter.r_uid) {
+                        error = '未指定用户~';
+                    } else if (!letter.content) {
+                        error = '请输入内容~';
+                    } else {
+                        let content = letter.content;
+                        // 将图片链接转化为img标签
+                        content = common_utils.convertImageLinkToHtmlTag(content.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ''), '', true).replace(/\n$/, '');
+                        if (!content) {
+                            error = '请输入内容~';
+                        } else if (content.length >= 3999) {
+                            error = '字数超出~  ' + content.length + '/4000';
+                        } else {
+                            letter.content = content;
+                        }
+                    }
+                    if (error) {
+                        globals.request.rejectedResp({
+                            'message': error,
+                            'type': -1
+                        }, success && error, null, false, dfd);
+                    } else {
+                        globals.request.post(globals.api.sendLetter, letter, success, ['letter'], success && '消息发送失败');
+                    }
+                });
+            },
+            'deleteLetter': function (leid, success) {
+                return globals.request.get(globals.api.deleteLetter, {'leid': leid}, success, null, success && '删除消息失败');
+            },
+            'clearLetterListStatus': function (leIds, success) {
+                return $.Deferred(function (dfd) {
+                    if (!leIds || !Array.isArray(leIds) || leIds.length === 0) {
+                        globals.request.rejectedResp({'message': '传入的消息列表为空', 'type': -1}, false, null, false, dfd);
+                        return;
+                    }
+                    globals.request.ajax({
+                        type: 'post',
+                        dataType: "json"
+                    }, globals.api.clearLetterListStatus, {"leids": leIds.join()}, false).always(function () {
+                        let resp = this;
+                        if (resp.status === 200 || (resp.type === 1 && resp.status === 404)) {
+                            globals.request.resolvedResp(resp, success, null, false, dfd);
+                        } else {
+                            globals.request.rejectedResp(resp, success && '标记系统消息为已读失败', null, false, dfd);
+                        }
+                    });
+                });
+            },
+            'clearSysMsgListStatus': function (smIds, success) {
+                return $.Deferred(function (dfd) {
+                    if (!smIds || !Array.isArray(smIds) || smIds.length === 0) {
+                        globals.request.rejectedResp({'message': '传入的消息列表为空', 'type': -1}, false, null, false, dfd);
+                        return;
+                    }
+                    globals.request.ajax({
+                        type: 'post',
+                        dataType: "json"
+                    }, globals.api.clearSysMsgListStatus, {"smids": smIds.join()}, false).always(function () {
+                        let resp = this;
+                        if (resp.status === 200 || (resp.type === 1 && resp.status === 404)) {
+                            globals.request.resolvedResp(resp, success, null, false, dfd);
+                        } else {
+                            globals.request.rejectedResp(resp, success && '标记系统消息为已读失败', null, false, dfd);
+                        }
+                    });
+                });
+            },
+            'deleteSysMsgList': function (smIds, success) {
+                return $.Deferred(function (dfd) {
+                    if (!smIds || !Array.isArray(smIds) || smIds.length === 0) {
+                        globals.request.rejectedResp({'message': '传入的消息列表为空', 'type': -1}, false, null, false, dfd);
+                        return;
+                    }
+                    globals.request.ajax({
+                        type: 'post',
+                        dataType: "json"
+                    }, globals.api.deleteSysMsgList, {"smids": smIds.join()}, false).always(function () {
+                        let resp = this;
+                        if (resp.status === 200 || (resp.type === 1 && resp.status === 404)) {
+                            globals.request.resolvedResp(resp, success, null, false, dfd);
+                        } else {
+                            globals.request.rejectedResp(resp, success && '删除系统消息失败', null, false, dfd);
+                        }
+                    });
+                });
+            },
+        }
+    }).user_center;
 
     // 从服务器加载未读消息列表
     function load_unread(call) {

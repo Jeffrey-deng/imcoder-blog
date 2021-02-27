@@ -52,6 +52,10 @@
             opacity: 1 !important;
         }
 
+        .plyr.plyr--video-loading {
+            cursor: progress;
+        }
+
         .plyr__captions {
             z-index: 1;
         }
@@ -207,6 +211,50 @@
 
         .plyr--video.plyr--live-photo .plyr__poster {
             cursor: pointer;
+        }
+
+        .plyr--video.plyr--live-photo.plyr--video-loading .plyr__poster {
+            cursor: progress;
+        }
+
+        .plyr--video.plyr--live-photo .plyr__video-wrapper .plyr--live-photo-muted-btn:hover::after {
+            animation: 0.5s live-photo-tips-audio infinite;
+        }
+
+        .plyr--video.plyr--live-photo .plyr__video-wrapper .plyr--live-photo-muted-btn::after{
+            /*display: block;*/
+            position: fixed;
+            right: 45px;
+            top: 10px;
+            font-size: 0.9rem;
+            width: 80px;
+            height: 28px;
+            padding: 3px 6px;
+            margin: auto;
+            border-radius: 6px;
+            background-color: #909fac91;
+            color: white;
+            text-align: center;
+            visibility: hidden;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .plyr--video.plyr--live-photo .plyr__video-wrapper .plyr--live-photo-muted-btn.muted::after{
+            content: '开启声音';
+        }
+
+        .plyr--video.plyr--live-photo .plyr__video-wrapper .plyr--live-photo-muted-btn::after{
+            content: '点击静音';
+        }
+
+        @keyframes live-photo-tips-audio {
+            0% {
+                visibility: visible;
+            }
+            100% {
+                visibility: visible;
+            }
         }
 
     </style>
