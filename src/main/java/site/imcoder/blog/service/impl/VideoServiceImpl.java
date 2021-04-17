@@ -773,6 +773,9 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             if (video.getRefer() == null) {
                 video.setRefer(EMPTY);
             }
+            if (video.getLive_photo() == null) {
+                video.setLive_photo(0);
+            }
             VideoSetting vs = video.getSetting();
             if (vs == null) {
                 vs = new VideoSetting();
@@ -838,6 +841,9 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             }
             if (video.getRefer() == null) {
                 video.setRefer(db_video.getRefer());
+            }
+            if (video.getLive_photo() == null) {
+                video.setLive_photo(db_video.getLive_photo());
             }
             if (video.getSetting() == null) {
                 video.setSetting(db_video.getSetting());

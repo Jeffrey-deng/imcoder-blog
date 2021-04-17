@@ -168,6 +168,7 @@
             videoInfo.description = pointer.uploadModal.find('textarea[name="video_desc"]').val();
             videoInfo.permission = pointer.uploadModal.find('select[name="video_permission"]').val();
             videoInfo.refer = pointer.uploadModal.find('input[name="video_refer"]').val() || '';
+            videoInfo.live_photo = pointer.uploadModal.find('input[name="video_live_photo"]:checked').val() || 0;
             var tags = '';
             pointer.uploadModal.find('.tags-modify').find('.tag-content').each(function (i, tag) {
                 tags += '#' + tag.innerText + '#';
@@ -326,6 +327,7 @@
             videoInfo.description = pointer.updateModal.find('textarea[name="video_desc"]').val();
             videoInfo.permission = pointer.updateModal.find('select[name="video_permission"]').val();
             videoInfo.refer = pointer.updateModal.find('input[name="video_refer"]').val() || '';
+            videoInfo.live_photo = pointer.updateModal.find('input[name="video_live_photo"]:checked').val() || 0;
             var tags = '';
             pointer.updateModal.find('.tags-modify').find('.tag-content').each(function (i, tag) {
                 tags += '#' + tag.innerText + '#';
@@ -1017,6 +1019,7 @@
             pointer.updateModal.find('.form-group span[name="video_size"]').html(video.size + 'MB（' + video.width + '×' + video.height + '）');
             pointer.updateModal.find('.form-group span[name="video_upload_time"]').html(video.upload_time);
             pointer.updateModal.find('.form-group input[name="video_refer"]').val(video.refer);
+            pointer.updateModal.find('.form-group input[name="video_live_photo"][value="' + (video.live_photo || 0) + '"]').prop('checked', true);
             pointer.updateModal.find('.form-group select[name="cover_album_id"]').closest('.form-group').hide(0);
             pointer.updateModal
                 .find('.form-group input[name="cover_file"]').css('display', 'none')
