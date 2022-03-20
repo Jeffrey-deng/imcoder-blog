@@ -7129,6 +7129,10 @@ hr.fill-width {
     .photo-detail-info, .video-detail-info {
         font-size: 13px;
     }
+
+    .video-detail-info-header .video-detail-name {
+        white-space: unset;
+    }
 }
 
 @media (min-width: 768px) {

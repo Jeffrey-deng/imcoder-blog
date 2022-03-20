@@ -498,7 +498,7 @@
                 switch (true) {
                     case action == "reply":
                         var comment = getComment(commentId, pointer.comments);
-                        pointer.editor.val('@' + comment.user.nickname + ':');
+                        pointer.editor.val('')[0].insertText('@' + comment.user.nickname + ':\n');
                         $(config.selector.commentParentId).val(commentId);
                         $(config.selector.commentReplyUid).val(comment.user.uid);
                         utils.setCommentEditorFocus(false);
@@ -856,8 +856,9 @@
                 }
                 $('html, body').animate({
                     scrollTop: pointer.editor.offset().top - 80
-                }, time);
-                pointer.editor.focus();
+                }, time, 'swing', function () {
+                    pointer.editor.focus()[0].moveCursorEnd();
+                });
             };
             focusFunc(0);
             tryMultiScroll && utils.tryToRunOnCommentMediaLoad(focusFunc);

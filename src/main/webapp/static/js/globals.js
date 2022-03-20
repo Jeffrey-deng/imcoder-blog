@@ -134,6 +134,24 @@
             }
         };
 
+
+        /**
+         * 移动光标位置到文本框末尾
+         */
+        HTMLTextAreaElement.prototype.moveCursorEnd = HTMLInputElement.prototype.moveCursorEnd = function () {
+            let input = this;
+            if (input.createTextRange) {    // IE浏览器
+                var range = input.createTextRange();
+                range.moveStart("character", input.value.length);
+                range.moveEnd("character", input.value.length);
+                range.collapse(true);
+                range.select();
+            } else {    // 非IE浏览器
+                input.setSelectionRange(input.value.length, input.value.length);
+                input.focus();
+            }
+        };
+
         /**
          * 修改Jquery.extend方法，让如果某属性options为null而target中该属性有值就不覆盖
          * @author Jeffrey.Deng
