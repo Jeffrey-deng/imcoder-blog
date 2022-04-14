@@ -199,7 +199,7 @@
             transitionEventLock = false;
         };
         $switchElem.on('click', switchFunc);
-        $imgElem.parent().on('click', switchFunc).on('contextmenu', function (e) {
+        $imgElem.parent().on('contextmenu', function (e) {
             e.preventDefault();
             e.stopImmediatePropagation();
             return false;
@@ -211,6 +211,9 @@
                 transitionEventLock = true;
             }
         });
+        if (!navigator.device.mobile()) {
+            $imgElem.parent().on('click', switchFunc)
+        }
     };
 
     // 图片旋转功能、图片翻转功能
@@ -305,6 +308,11 @@
                 }
             }
         });
+        navigator.device.mobile() && $(config.selector.photoNode).parent().on('click', function () {
+            var $img = $(config.selector.photoNode),
+                before_angle = parseInt($img.attr('data-rotate') || '0');
+            rotatePhoto(before_angle + 90);
+        })
     };
 
     // 放大镜功能
