@@ -5309,6 +5309,10 @@ body {
     display: block;
 }
 
+.image-widget.protect img {
+    pointer-events: none;
+}
+
 .image-widget.protect::before {
     content: '';
     position: absolute;
