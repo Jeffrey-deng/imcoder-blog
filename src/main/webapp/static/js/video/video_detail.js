@@ -504,12 +504,17 @@
 
     // 评论列表构建完成后再构建合集名称显示栏
     comment_plugin.on(comment_plugin.config.event.commentHtmlBuildCompleted, function (e, list, pageIndex, buildReason) {
-        if (list.length < 50 && (buildReason == 'init' || buildReason == 'refresh')) {
+        if (list.length < 50 && (buildReason === 'init' || buildReason === 'refresh')) {
+            let $commentList = $(comment_plugin.config.selector.commentListArea).find('.comment-list');
             if (!comment_plugin.config.currentTopic) {
-                $(comment_plugin.config.selector.commentListArea).find('.comment-list').removeClass('animated bounceInLeft bounceInRight').addClass('animated bounceInLeft');
+                $commentList.removeClass('animated bounceInLeft bounceInRight').addClass('animated bounceInLeft');
             } else {
-                $(comment_plugin.config.selector.commentListArea).find('.comment-list').removeClass('animated bounceInLeft bounceInRight').addClass('animated bounceInRight');
+                $commentList.removeClass('animated bounceInLeft bounceInRight').addClass('animated bounceInRight');
             }
+            $commentList.on('animationend webkitAnimationEnd', function () {
+                let _self = $(this);
+                _self.removeClass('animated bounceInLeft bounceInRight');
+            });
         }
         if (!comment_plugin.pointer.topicTagWrappers) {
             request.loadPhotoTagWrapperList(config.pageCoverId, function (tagWrappers, topicTagWrappers) {

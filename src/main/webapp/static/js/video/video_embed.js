@@ -999,7 +999,8 @@
                     i18n: getPlayerI18n(),
                     urls: {
                         "download": isYoutube ? undefined : generateVideoSignatureUrl(video.video_id, 10800000, true)
-                    }
+                    },
+                    fullscreen: {"iosNative": true} // iosNative: whether to use native iOS fullscreen when entering fullscreen (no custom controls).
                 });
                 if (isYoutube) {
                     $(player.elements.container).addClass('plyr__video-embed-disable');
