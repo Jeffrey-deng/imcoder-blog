@@ -123,13 +123,19 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             response.setStatus(STATUS_NOT_LOGIN);
         } else if (!isAllowUpload(loginUser)) {
             response.setStatus(STATUS_FORBIDDEN, "你的用户组不允许上传视频~");
-        } else if (video == null || video.getCover() == null || !IdUtil.containValue(video.getCover().getPhoto_id())) {
+        } else if (video == null) {
+            response.setStatus(STATUS_PARAM_ERROR);
+        } else if ((video.getCover() == null || !IdUtil.containValue(video.getCover().getPhoto_id())) && video.getVoice_message() != 1) {
             response.setStatus(STATUS_PARAM_ERROR);
         } else {
             video.setVideo_id(IdUtil.generatePrimaryKey()); // 主键
             video.setUpload_time(new Date());
             video.setUser(loginUser);
             Photo cover = video.getCover();
+            if (cover == null || cover.getPhoto_id() == null) {
+                cover = cover == null ? new Photo() : cover;
+                cover.setPhoto_id(0L);
+            }
             if (video.getRefer() == null) {
                 if (cover.getRefer() != null) {
                     video.setRefer(cover.getRefer());
@@ -204,8 +210,10 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             if (response.isSuccess()) {
                 response.setStatus(convertRowToHttpCode(videoDao.saveVideo(video)));
                 if (response.isSuccess()) {
-                    cover.setImage_type(cover.getImage_type() == null ? "video/jpeg" : cover.getImage_type().replace("image", "video"));
-                    videoDao.updateCoverImageType(cover);
+                    if (video.getVoice_message() != 1 || !cover.getPhoto_id().equals(0L)) {
+                        cover.setImage_type(cover.getImage_type() == null ? "video/jpeg" : cover.getImage_type().replace("image", "video"));
+                        videoDao.updateCoverImageType(cover);
+                    }
                     response.putAttr("video", video);
                 } else if (sourceType == 0) {
                     String diskPath = fileService.baseCloudDir(video.getPath());
@@ -373,7 +381,9 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             response.setStatus(STATUS_NOT_LOGIN);
         } else if (!isAllowUpload(loginUser)) {
             response.setStatus(STATUS_FORBIDDEN, "你的用户组不允许上传视频~");
-        } else if (video == null || !IdUtil.containValue(video.getVideo_id()) || video.getCover() == null || !IdUtil.containValue(video.getCover().getPhoto_id())) {
+        } else if (video == null || !IdUtil.containValue(video.getVideo_id())) {
+            response.setStatus(STATUS_PARAM_ERROR);
+        } else if ((video.getCover() == null || !IdUtil.containValue(video.getCover().getPhoto_id())) && video.getVoice_message() != 1) {
             response.setStatus(STATUS_PARAM_ERROR);
         } else {
             IResponse videoResp = findVideo(video, iRequest);
@@ -476,21 +486,25 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
                                 fileService.recycleTrash(fileService.baseCloudDir(null), db_video.getPath(), true);
                             }
                             if (!db_video.getCover().getPhoto_id().equals(cover.getPhoto_id())) {
-                                if (db_video.getCover().getImage_type() == null) {
-                                    Matcher matcher = Pattern.compile("^.*/[^/]+(\\.([^/]+))?$").matcher(db_video.getPath());
-                                    String type = null;
-                                    if (matcher.find() && matcher.groupCount() == 2 && matcher.group(2) != null) {
-                                        type = matcher.group(2).replace("jpg", "jpeg");
+                                if (db_video.getVoice_message() != 1 || !db_video.getCover().getPhoto_id().equals(0L)) {
+                                    if (db_video.getCover().getImage_type() == null) {
+                                        Matcher matcher = Pattern.compile("^.*/[^/]+(\\.([^/]+))?$").matcher(db_video.getPath());
+                                        String type = null;
+                                        if (matcher.find() && matcher.groupCount() == 2 && matcher.group(2) != null) {
+                                            type = matcher.group(2).replace("jpg", "jpeg");
+                                        } else {
+                                            type = "jpeg";
+                                        }
+                                        db_video.getCover().setImage_type("image/" + type);
                                     } else {
-                                        type = "jpeg";
+                                        db_video.getCover().setImage_type(db_video.getCover().getImage_type().replace("video", "image"));
                                     }
-                                    db_video.getCover().setImage_type("image/" + type);
-                                } else {
-                                    db_video.getCover().setImage_type(db_video.getCover().getImage_type().replace("video", "image"));
+                                    videoDao.updateCoverImageType(db_video.getCover());
                                 }
-                                videoDao.updateCoverImageType(db_video.getCover());
-                                cover.setImage_type(cover.getImage_type() == null ? "video/jpeg" : cover.getImage_type().replace("image", "video"));
-                                videoDao.updateCoverImageType(cover);
+                                if (video.getVoice_message() != 1 || !cover.getPhoto_id().equals(0L)) {
+                                    cover.setImage_type(cover.getImage_type() == null ? "video/jpeg" : cover.getImage_type().replace("image", "video"));
+                                    videoDao.updateCoverImageType(cover);
+                                }
                             }
                             response.putAttr("video", findVideo(db_video, iRequest).getAttr("video"));
                         } else if (sourceType == 0 && video.getPath() != null && !db_video.getPath().equals(video.getPath())) {
@@ -776,6 +790,9 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             if (video.getLive_photo() == null) {
                 video.setLive_photo(0);
             }
+            if (video.getVoice_message() == null) {
+                video.setVoice_message(0);
+            }
             VideoSetting vs = video.getSetting();
             if (vs == null) {
                 vs = new VideoSetting();
@@ -820,6 +837,9 @@ public class VideoServiceImpl extends BaseService implements IVideoService {
             }
             if (video.getLive_photo() == null) {
                 video.setLive_photo(db_video.getLive_photo());
+            }
+            if (video.getVoice_message() == null) {
+                video.setVoice_message(db_video.getVoice_message());
             }
             if (video.getSource_type() == null) {
                 video.setSource_type(db_video.getSource_type());

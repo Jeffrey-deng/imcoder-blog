@@ -27,6 +27,7 @@ import site.imcoder.blog.service.IAlbumService;
 import site.imcoder.blog.service.IVideoService;
 import site.imcoder.blog.service.message.IRequest;
 import site.imcoder.blog.service.message.IResponse;
+import site.imcoder.blog.setting.GlobalConstants;
 
 import javax.annotation.Resource;
 import java.lang.reflect.Field;
@@ -91,7 +92,7 @@ public class VideoApiController extends BaseController {
             if (photoResp.isSuccess() && !((Photo) photoResp.getAttr("photo")).getUid().equals(iRequest.getLoginUser().getUid())) {
                 photoResp.setStatus(STATUS_FORBIDDEN, "此封面你没有权限使用~");
             }
-        } else {
+        } else if (video != null) {
             Photo cover = video.getCover(); // fix 嵌套时PropertiesEditor失效 bug
             if (cover != null) {
                 EscapeEmojiPropertyFieldConverter escapeEmojiConverter = EscapeEmojiPropertyFieldConverter.getInstance();
@@ -100,8 +101,10 @@ public class VideoApiController extends BaseController {
                 cover.setOriginName(escapeEmojiConverter.convert(cover.getOriginName(), null, null));
             }
             photoResp = albumService.savePhoto(coverFile, video.getCover(), iRequest);
+        } else {
+            photoResp = new IResponse(STATUS_PARAM_ERROR, "提交参数错误");
         }
-        if (photoResp.isSuccess()) {
+        if (photoResp.isSuccess() || (video != null && video.getVoice_message() == 1)) {
             video.setCover(photoResp.getAttr("photo"));
             return videoService.saveVideo(videoFile, video, iRequest);
         } else {
@@ -205,10 +208,12 @@ public class VideoApiController extends BaseController {
             if (photoResp.isSuccess() && !((Photo) photoResp.getAttr("photo")).getUid().equals(iRequest.getLoginUser().getUid())) {
                 photoResp.setStatus(STATUS_FORBIDDEN, "此封面你没有权限使用~");
             }
-        } else {
+        } else if (video != null) {
             photoResp = albumService.savePhoto(coverFile, video.getCover(), iRequest);
+        } else {
+            photoResp = new IResponse(STATUS_PARAM_ERROR, "提交参数错误");
         }
-        if (photoResp.isSuccess()) {
+        if (photoResp.isSuccess() || (video != null && video.getVoice_message() == 1)) {
             video.setCover(photoResp.getAttr("photo"));
             return videoService.updateVideo(videoFile, video, iRequest);
         } else {

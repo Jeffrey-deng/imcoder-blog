@@ -526,7 +526,6 @@
                 var user_defined_col = pointer.album.show_col; // 用户定义的该相册的列数
                 var widthKeys = Object.keys(default_col);
                 var w = window.innerWidth;
-                debugger;
                 widthKeys.sort(function (left, right) { // 降序
                     left = String(left).indexOf('+') !== -1 ? (parseInt(left) + 1) : left;
                     right = String(right).indexOf('+') !== -1 ? (parseInt(right) + 1) : right;

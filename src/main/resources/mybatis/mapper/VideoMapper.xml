@@ -6,11 +6,11 @@
 
     <!-- 插入视频 -->
     <insert id="saveVideo" parameterType="video">
-        insert into video (video_id, uid, cover_id, name, description, tags, live_photo, source_type, path, code, width, height,
+        insert into video (video_id, uid, cover_id, name, description, tags, live_photo, voice_message, source_type, path, code, width, height,
         size, video_type, upload_time, originName, refer, permission, click_count, like_count, comment_count)
         values
         (#{video_id},
-        #{user.uid},#{cover.photo_id},#{name},#{description},#{tags},#{live_photo},#{source_type},#{path},#{code},#{width},#{height},#{size},#{video_type},
+        #{user.uid},#{cover.photo_id},#{name},#{description},#{tags},#{live_photo},#{voice_message},#{source_type},#{path},#{code},#{width},#{height},#{size},#{video_type},
         #{upload_time,javaType=Date,jdbcType=BIGINT,typeHandler=site.imcoder.blog.dao.typehandler.DateTypeHandler}
         ,#{originName}, #{refer}, #{permission}, #{click_count}, #{like_count}, #{comment_count})
     </insert>
@@ -47,6 +47,7 @@
         <result column="description" property="description"/>
         <result column="tags" property="tags"/>
         <result column="live_photo" property="live_photo"/>
+        <result column="voice_message" property="voice_message"/>
         <result column="source_type" property="source_type"/>
         <result column="path" property="path"/>
         <result column="code" property="code"/>
@@ -102,7 +103,7 @@
 
     <select id="findVideoById" parameterType="video" resultMap="videoResultMap">
         select v.video_id, v.uid , u.nickname, u.sex, u.head_photo, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
-        v.name, v.description, v.tags, v.live_photo, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
+        v.name, v.description, v.tags, v.live_photo, v.voice_message, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
         v.upload_time, v.originName, v.refer, v.permission, v.click_count, v.like_count, v.comment_count,
         (case when vs.disable_view is not null and vs.disable_view > 0 then true else false end) as vs_disable_view,
         (case when vs.disable_send_comment is not null and vs.disable_send_comment > 0 then true else false end) as vs_disable_send_comment,
@@ -131,7 +132,7 @@
     <select id="findVideoListByCoverIdArray" parameterType="hashMap" resultMap="videoResultMap">
         <bind name="is_login" value="loginUser != null and loginUser.uid != null and loginUser.uid > 0"/>
         select v.video_id, v.uid , u.nickname, u.sex, u.head_photo, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
-        v.name, v.description, v.tags, v.live_photo, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
+        v.name, v.description, v.tags, v.live_photo, v.voice_message, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
         v.upload_time, v.refer, v.permission, v.click_count, v.like_count, v.comment_count,
         <if test="is_login">
             (case when v.uid = #{loginUser.uid} then v.originName else null end) as originName,
@@ -203,7 +204,7 @@
         <bind name="is_as_user_comments_query" value="is_base_user_comments or (is_login and is_and_logic_conn and video != null and video.commented)"/>
         <bind name="is_as_user_history_query" value="is_base_user_history or (is_login and is_and_logic_conn and video != null and video.accessed)"/>
         select v.video_id, v.uid , u.nickname, u.sex, u.head_photo, v.cover_id, p.album_id, p.path as p_path, p.width as p_width, p.height as p_height, p.image_type,
-        v.name, v.description, v.tags, v.live_photo, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
+        v.name, v.description, v.tags, v.live_photo, v.voice_message, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
         v.upload_time, v.refer, v.permission, v.click_count, v.like_count, v.comment_count,
         <if test="is_login">
             (case when v.uid = #{loginUser.uid} then v.originName else null end) as originName,
@@ -226,6 +227,7 @@
             left join video_action_record ar on (ar.video_id = v.video_id and ar.uid = #{loginUser.uid}) left join video_access_detail ad on ar.var_id = ad.var_id
         </if>
         <where>
+            v.voice_message = 0
             <if test="video == null">
                 <if test="!is_and_logic_conn">
                     and (1 != 1)
@@ -316,6 +318,9 @@
                         <if test="video.live_photo != null">
                             or v.live_photo = #{video.live_photo}
                         </if>
+                        <if test="video.voice_message != null">
+                            or v.voice_message = #{video.voice_message}
+                        </if>
                         <if test="video.source_type != null">
                             or v.source_type = #{video.source_type}
                         </if>
@@ -390,6 +395,9 @@
                         </if>
                         <if test="video.live_photo != null">
                             and v.live_photo = #{video.live_photo}
+                        </if>
+                        <if test="video.voice_message != null">
+                            and v.voice_message = #{video.voice_message}
                         </if>
                         <if test="video.source_type != null">
                             and v.source_type = #{video.source_type}
@@ -509,7 +517,7 @@
     </select>
 
     <update id="updateVideo" parameterType="video">
-        update video set cover_id = #{cover.photo_id}, name = #{name}, description = #{description}, tags = #{tags}, live_photo = #{live_photo}, source_type = #{source_type}, path = #{path},
+        update video set cover_id = #{cover.photo_id}, name = #{name}, description = #{description}, tags = #{tags}, live_photo = #{live_photo}, voice_message = #{voice_message}, source_type = #{source_type}, path = #{path},
          code = #{code}, width = #{width}, height = #{height}, size = #{size}, video_type = #{video_type}, originName = #{originName}, refer = #{refer}, permission = #{permission}
         where video_id = #{video_id}
     </update>
