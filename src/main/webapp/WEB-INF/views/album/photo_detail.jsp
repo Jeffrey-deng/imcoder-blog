@@ -29,7 +29,7 @@
         String tags = photo.getTags();
         if ((loginUser == null || !photo.getUid().equals(loginUser.getUid())) && tags != null && tags.length() != 0) {
             Matcher matcher = Pattern.compile("#protect@(\\w+)#").matcher(tags);
-            if (matcher.find()) {
+            while (matcher.find()) {
                 Album newAlbum = null;
                 String protect_value = matcher.group(1);
                 switch (protect_value) {

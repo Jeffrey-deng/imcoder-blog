@@ -861,41 +861,58 @@
             (case when p.uid = #{loginUser.uid} then p.originName else null end) as originName,
         </if>
         t.ptwid, t.name as tname, t.permission as tpermission, t.scope
-        from ((photo_action_record ar left join photo_access_detail ad on ar.par_id = ad.par_id) left join user u on ar.uid = u.uid)
-        left join ((
-        (select all_p.* from (photo all_p left join album a on all_p.album_id = a.album_id)
-        <where>
-            <choose>
-                <when test="is_login and loginUser.userGroup.gid == '-1'">
-                    and (1 = 1)
-                </when>
-                <when test="is_login">
-                    and (
-                    a.uid = #{loginUser.uid}
-                    or
-                    (
-                    (a.permission = 0 or a.permission = 1)
-                    or
-                    (a.permission = 2 or a.permission = 3)
-                    or
-                    ((a.permission = 4 or a.permission = 5) and a.uid in (select following.fuid from user_follow
-                    following where following.uid = #{loginUser.uid}))
-                    or
-                    ((a.permission = 6 or a.permission = 7) and a.uid in (select follower.uid from user_follow follower
-                    where follower.fuid = #{loginUser.uid}))
-                    or
-                    ((a.permission = 8 or a.permission = 9) and a.uid in (select friend.uid from friends friend where
-                    friend.fid = #{loginUser.uid}))
-                    )
-                    )
-                </when>
-                <otherwise>
-                    and (a.permission = 0 or a.permission = 1)
-                </otherwise>
-            </choose>
-        </where>
-        ) p left join album a on p.album_id = a.album_id) left join photo_tag_wrapper t on p.topic = t.ptwid)
-        on ar.photo_id = p.photo_id
+        from ((photo_action_record ar left join photo_access_detail ad on ar.par_id = ad.par_id) left join user u on
+        ar.uid = u.uid)
+        left join
+        (
+            select *
+            from
+            (
+                select *, case when p_permission is null then a_permission else p_permission end as permission
+                from
+                (
+                    select all_p.*
+                        ,CASE
+                            WHEN SUBSTRING_INDEX(SUBSTRING_INDEX(all_p.tags, '#permission@', -1), '#', 1) REGEXP '^([0-9]|10)$'
+                            THEN CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(all_p.tags, '#permission@', -1), '#', 1) AS UNSIGNED)
+                            ELSE NULL
+                         END as p_permission
+                        ,a.permission as a_permission
+                    from photo all_p left join album a on all_p.album_id = a.album_id
+                ) t
+            ) tt
+            <where>
+                <choose>
+                    <when test="is_login and loginUser.userGroup.gid == '-1'">
+                        and (1 = 1)
+                    </when>
+                    <when test="is_login">
+                        and (
+                        uid = #{loginUser.uid}
+                        or
+                        (
+                        (permission = 0 or permission = 1)
+                        or
+                        (permission = 2 or permission = 3)
+                        or
+                        ((permission = 4 or permission = 5) and uid in (select following.fuid from user_follow
+                        following where following.uid = #{loginUser.uid}))
+                        or
+                        ((permission = 6 or permission = 7) and uid in (select follower.uid from user_follow follower
+                        where follower.fuid = #{loginUser.uid}))
+                        or
+                        ((permission = 8 or permission = 9) and uid in (select friend.uid from friends friend where
+                        friend.fid = #{loginUser.uid}))
+                        )
+                        )
+                    </when>
+                    <otherwise>
+                        and (permission = 0 or permission = 1)
+                    </otherwise>
+                </choose>
+            </where>
+        ) p on ar.photo_id = p.photo_id
+        left join photo_tag_wrapper t on p.topic = t.ptwid
         <where>
             <if test="condition.user != null and condition.user.uid != null">
                 and ar.UID = #{condition.user.uid}

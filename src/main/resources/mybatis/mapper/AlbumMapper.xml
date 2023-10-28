@@ -740,7 +740,32 @@
             , (case when (ar.commented is not null and ar.commented > 0) then true else false end) as commented
             , (case when (ad.par_id is not null) then true else false end) as accessed
         </if>
-        from (((photo p left join (album a left join user u on a.uid = u.uid) on p.album_id = a.album_id)
+        from ((
+            (
+                <choose>
+                    <when test="is_as_album_query or is_as_user_likes_query or is_as_user_comments_query or is_as_user_history_query">
+                        (
+                            select *, case when p_permission is null then a_permission else p_permission end as merge_permission
+                            from
+                            (
+                                select t1.*
+                                    ,CASE
+                                        WHEN SUBSTRING_INDEX(SUBSTRING_INDEX(t1.tags, '#permission@', -1), '#', 1) REGEXP '^([0-9]|10)$'
+                                        THEN CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(t1.tags, '#permission@', -1), '#', 1) AS UNSIGNED)
+                                        ELSE NULL
+                                     END as p_permission
+                                    ,t2.permission as a_permission
+                                from photo t1 left join album t2 on t1.album_id = t2.album_id
+                            ) t
+                        ) p
+                        left join (album a left join user u on a.uid = u.uid) on p.album_id = a.album_id
+                    </when>
+                    <otherwise>
+                        photo p left join (album a left join user u on a.uid = u.uid) on p.album_id = a.album_id
+                    </otherwise>
+                </choose>
+
+            )
         <if test="is_as_album_query">
             left join album_photo_relation apr on (apr.photo_id = p.photo_id and apr.album_id = #{photo.album_id})
         </if>
@@ -952,17 +977,17 @@
                             a.uid = #{loginUser.uid}
                             or
                             (
-                            (a.permission = 0 or a.permission = 1)
+                            (p.merge_permission = 0 or p.merge_permission = 1)
                             or
-                            (a.permission = 2 or a.permission = 3)
+                            (p.merge_permission = 2 or p.merge_permission = 3)
                             or
-                            ((a.permission = 4 or a.permission = 5) and a.uid in (select following.fuid from user_follow
+                            ((p.merge_permission = 4 or p.merge_permission = 5) and a.uid in (select following.fuid from user_follow
                             following where following.uid = #{loginUser.uid}))
                             or
-                            ((a.permission = 6 or a.permission = 7) and a.uid in (select follower.uid from user_follow
+                            ((p.merge_permission = 6 or p.merge_permission = 7) and a.uid in (select follower.uid from user_follow
                             follower where follower.fuid = #{loginUser.uid}))
                             or
-                            ((a.permission = 8 or a.permission = 9) and a.uid in (select friend.uid from friends friend
+                            ((p.merge_permission = 8 or p.merge_permission = 9) and a.uid in (select friend.uid from friends friend
                             where friend.fid = #{loginUser.uid}))
                             )
                             )
@@ -1013,7 +1038,7 @@
                 <otherwise>
                     <choose>
                         <when test="is_as_album_query">
-                            and (a.permission = 0 or a.permission = 1)
+                            and (p.merge_permission = 0 or p.merge_permission = 1)
                         </when>
                         <when test="is_as_topic_query">
                             and (t.permission = 0 or t.permission = 1)
