@@ -183,6 +183,8 @@
         <result column="name" property="name"/>
         <result column="description" property="description"/>
         <result column="tags" property="tags"/>
+        <result column="live_photo" property="live_photo"/>
+        <result column="voice_message" property="voice_message"/>
         <result column="source_type" property="source_type"/>
         <result column="path" property="path"/>
         <result column="code" property="code"/>
@@ -247,7 +249,7 @@
     <select id="findVideoList" parameterType="user" resultMap="videoResultMap">
         select v.video_id, v.uid , u.nickname, v.cover_id, p.path as p_path, p.album_id, p.width as p_width, p.height as
         p_height,
-        v.name, v.description, v.tags, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
+        v.name, v.description, v.tags, v.live_photo, v.voice_message, v.source_type, v.path, v.code, v.width, v.height, v.size, v.video_type,
         v.upload_time, v.originName, v.permission, v.click_count, v.like_count, v.comment_count,
         (case when vs.disable_view is not null and vs.disable_view > 0 then true else false end) as vs_disable_view,
         (case when vs.disable_send_comment is not null and vs.disable_send_comment > 0 then true else false end) as vs_disable_send_comment,

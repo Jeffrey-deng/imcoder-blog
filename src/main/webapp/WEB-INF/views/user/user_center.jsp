@@ -32,6 +32,7 @@
     <link rel="stylesheet" href="<%=staticPath%>lib/cropper/cropper.min.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/cropper/ImgCropping.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>lib/toastr/toastr.min.css<%=urlArgs%>">
+    <link rel="stylesheet" href="<%=staticPath%>lib/plyr/plyr.css<%=urlArgs%>">
     <link rel="stylesheet" href="<%=staticPath%>css/style.css<%=urlArgs%>">
 
     <style>
@@ -46,6 +47,16 @@
             /*display:none;*/
             display: inline-block!important;
             cursor: help;
+        }
+
+        .voice-message-wrapper .plyr--audio {
+            padding: 8px;
+        }
+
+        .voice-message-wrapper .plyr--audio .plyr__controls{
+            border-radius: 10px;
+            background: linear-gradient(to left top, #e0f6ffa6, #f5fcff) fixed;
+            border: 1px solid #e7eaec8a;
         }
     </style>
 

@@ -1080,7 +1080,7 @@
                         if (zipFileLength >= maxIndex) {
                             let isDownloadZip = options.callback.allFilesOnload_callback(files, names, location_info, options, zip, main_folder);
                             if (isDownloadZip !== false) {
-                                zip.generateAsync({type: "blob"}).done(function (content) {
+                                zip.generateAsync({type: "blob"}).then(function (content) {
                                     options.callback.beforeZipFileDownload_callback(content, files, names, location_info, options, zip, main_folder);
                                     toastr.success('下载完成！', names.zipName);
                                 });

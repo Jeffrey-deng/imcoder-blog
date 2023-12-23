@@ -671,7 +671,9 @@
                 });
                 var text = common_utils.convertLinkToHtmlTag(letter.content);
                 var toastElement = null;
-                if (/<(img|iframe|video|embed|a|div)[\s\S]*?>/.test(text)) {
+                if (/\/video\/(detail|embed)\/([^?&#]+)\?.*voice_message=true.*/.test(text)) {
+                    toastElement = globals.notify(notify_opts).success('<b>给你发送了一条语音消息</b>', user.nickname, 'receive_letter' + '_' + letter.leid);
+                } else if (/<(img|iframe|video|embed|a|div)[\s\S]*?>/.test(text)) {
                     toastElement = globals.notify(notify_opts).success(text, user.nickname + ' 对你说：', 'receive_letter' + '_' + letter.leid);
                 } else {
                     toastElement = globals.notify(notify_opts).success('<b>“' + text + '”</b>', user.nickname + ' 对你说：', 'receive_letter' + '_' + letter.leid);

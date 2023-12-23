@@ -2,12 +2,12 @@
     /* global define */
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'cityselect', 'birthday', 'globals', 'common_utils', 'login_handle', 'cropper', 'websocket_util'], factory);
+        define(['jquery', 'bootstrap', 'domReady', 'toastr', 'cityselect', 'birthday', 'globals', 'common_utils', 'login_handle', 'cropper', 'websocket_util', 'Plyr'], factory);
     } else {
         // Browser globals
-        factory(window.jQuery, null, $(document).ready, toastr, null, null, globals, common_utils, login_handle, null, websocket_util);
+        factory(window.jQuery, null, $(document).ready, toastr, null, null, globals, common_utils, login_handle, null, websocket_util, Plyr);
     }
-})(function ($, bootstrap, domReady, toastr, cityselect, birthday, globals, common_utils, login_handle, cropper, websocket_util) {
+})(function ($, bootstrap, domReady, toastr, cityselect, birthday, globals, common_utils, login_handle, cropper, websocket_util, Plyr) {
 
     //将表单中的参数拼装成可用json格式  serialize方式不能应付‘&’字符这种
     window.getFormJson = function (form) {
@@ -1592,6 +1592,7 @@
     function replaceMediaTagToWord(content) {
         if (content) {
             return content
+                .replace(new RegExp('^((?:' + basePath.replace(/:(?=(?:80|443)(?=\/))\d+(?=\/)/, '') + ')?video/)(detail|embed)(/[^?]+(\\?.*voice_message=true.*))$'), '[语音消息]')
                 .replace(/<img[\s\S]*?>/g, '[图片]')
                 .replace(/class=(["'])[^\1]*?aspect-ratio[^\1]*?\1/gi, "")
                 //.replace(/<(iframe|video|embed)[\s\S]*?(?<=\/|<\/\1)>/gi, '[视频]') //火狐不支持前置断言
@@ -1826,12 +1827,41 @@
             url = $lazyMediaLink.attr('href');
         switch (mediaType) {
             case 'video':
-                const videoPreviewLink = $lazyMediaLink.attr('data-media-preview-link');
-                $lazyMediaLink.after('<div class="lazy-media-preview lazy-video-preview">' +
-                    `<iframe class="lazy-media-source lazy-media-embed" src="${videoPreviewLink}" data-scale="stay" style="width:100%;"></iframe></div>`);
+                if (url.indexOf('voice_message=true') !== -1) {
+                    let video_id = /\/video\/(detail|embed)\/([^?&#]+)/.test(url) && RegExp.$2;
+                    if (video_id) {
+                        globals.request.get(globals.api.getVideo, {
+                            "video_id": video_id,
+                            "loadActionRecord": false
+                        }, false, ['video']).final(function (video) {
+                            const $voiceMessagePreviewEmbed = $('<audio>', {
+                                "src": video.path,
+                                "data-video-id": video_id
+                            }).appendTo($('<div>', {
+                                'class': 'voice-message-wrapper'
+                            }));
+                            $lazyMediaLink.after($voiceMessagePreviewEmbed.parent());
+                            new Plyr($voiceMessagePreviewEmbed, {
+                                title: video.name,
+                                iconUrl: globals.path_params.staticPath + "lib/plyr/plyr.svg",
+                                disableContextMenu: true,
+                                //controls: audio_controls,
+                                // settings: ['captions', 'quality', 'speed', 'loop'],
+                                tooltips: {"controls": true, "seek": true},
+                                controls: (window.innerWidth || document.documentElement.clientWidth) <= 768 ? ["play", "progress"] : ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+                                invertTime: false,
+                            });
+                            $lazyMediaLink.hide();
+                        });
+                    }
+                } else {
+                    const videoPreviewLink = $lazyMediaLink.attr('data-media-preview-link');
+                    $lazyMediaLink.after('<div class="lazy-media-preview lazy-video-preview">' +
+                        `<iframe class="lazy-media-source lazy-media-embed" src="${videoPreviewLink}" data-scale="stay" style="width:100%;"></iframe></div>`);
+                }
                 break;
             case 'photo':
-                let photo_id = /\/p\/detail\/([^?&#]+)$/.test(url) && RegExp.$1;
+                let photo_id = /\/p\/detail\/([^?&#]+)/.test(url) && RegExp.$1;
                 if (photo_id) {
                     globals.request.get(globals.api.getPhoto, {
                         "id": photo_id,
@@ -2109,7 +2139,9 @@
                 });
                 // 显示通知
                 var toastElement = null;
-                if (/<(img|iframe|video|embed)[\s\S]*?>/.test(letter.content)) {
+                if (/\/video\/(detail|embed)\/([^?&#]+)\?.*voice_message=true.*/.test(letter.content)) {
+                    toastElement = globals.notify(notify_opts).success('<b>给你发送了一条语音消息</b>', user.nickname, 'receive_letter' + '_' + letter.leid);
+                } else if (/<(img|iframe|video|embed)[\s\S]*?>/.test(letter.content)) {
                     toastElement = globals.notify(notify_opts).success(letter.content, user.nickname + ' 对你说：', 'receive_letter' + '_' + letter.leid);
                 } else {
                     toastElement = globals.notify(notify_opts).success('<b>“' + letter.content + '”</b>', user.nickname + ' 对你说：', 'receive_letter' + '_' + letter.leid);

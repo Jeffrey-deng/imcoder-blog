@@ -146,14 +146,21 @@
             var $btn = $(this),
                 videoInfo = {},
                 coverInfo = {},
-                cover_id = pointer.uploadModal.find('input[name="cover_photo_id"]').val();
+                cover_id = pointer.uploadModal.find('input[name="cover_photo_id"]').val(),
+                coverFiles = pointer.uploadModal.find('input[name="cover_file"]')[0].files,
+                coverFile = null;
+            videoInfo.voice_message = pointer.uploadModal.find('input[name="video_voice_message"]:checked').val() || 0;
             if (cover_id && cover_id != '0') {
                 coverInfo.photo_id = cover_id;
             } else {
-                var coverFiles = pointer.uploadModal.find('input[name="cover_file"]')[0].files;
-                if (coverFiles == null || coverFiles[0] == undefined || coverFiles[0] == null) {
+                const is_has_set_cover_file= !(coverFiles == null || coverFiles[0] == undefined || coverFiles[0] == null);
+                coverFile = is_has_set_cover_file ? coverFiles[0] : null;
+                if (videoInfo.voice_message == '0' && !is_has_set_cover_file) {
                     toastr.error('未选择封面文件呢');
                     return;
+                }
+                if (videoInfo.voice_message == '1' && !coverFile) {
+                    coverInfo.photo_id = 0;
                 }
             }
             videoInfo.source_type = pointer.uploadModal.find('select[name="video_source_type"]').val();
@@ -208,12 +215,19 @@
                 return;
             }
 
+            if (videoInfo.voice_message == '1' ) {
+                if (!videoInfo.name) {
+                    videoInfo.name = '语音消息_' + common_utils.formatDate(new Date(), 'yyyyMMddhhmmss');
+                }
+                videoInfo.live_photo = '1'
+            }
+
             $btn.attr('disabled', 'disabled');
             login_handle.runOnLogin(function (isLogin) {
                 if (isLogin) {
                     let $notify_uploading = globals.notify().progress('<progress value="0" max="100" style="width:100%;"></progress>', '正在上传视频~', 'notify_video_uploading'),
                         $progress = $notify_uploading.find('progress');
-                    request.uploadVideo((videoInfo.source_type == 0 ? files[0] : null), ((cover_id && cover_id != '0') ? null : coverFiles[0]), videoInfo, true).progress(function (percent, finalized) {
+                    request.uploadVideo((videoInfo.source_type == 0 ? files[0] : null), ((cover_id && cover_id != '0') ? null : coverFile), videoInfo, true).progress(function (percent, finalized) {
                         if (percent < 100) {
                             $notify_uploading.title(`正在上传视频~ <span style="font-weight:normal;float:right;">已完成 ${percent}%</span>`);
                         } else if (finalized !== true) {
@@ -226,7 +240,10 @@
                         pointer.uploadModal.find('input[name="cover_photo_id"]').val('0');
                         $btn.removeAttr('disabled');
                         globals.removeNotify('notify_video_uploading');
-                    }).final(function () {
+                    }).final(function (video) {
+                        if (videoInfo.voice_message == '1') {
+                            window.open(`video/detail/${video.video_id}?voice_message=true`.toURL())
+                        }
                         toastr.success('上传完成！');
                         pointer.uploadModal.modal('hide');
                         pointer.uploadModal.find('input[name="video_file"]').val('');
@@ -296,13 +313,16 @@
                 toastr.error('代码出错~');
                 return;
             }
+            videoInfo.voice_message = pointer.updateModal.find('input[name="video_voice_message"]:checked').val() || 0;
             var coverFiles = pointer.updateModal.find('input[name="cover_file"]')[0].files;
             var uploadNewCover = false;
             if (coverFiles == null || coverFiles[0] == undefined || coverFiles[0] == null) {
                 var cover_id = pointer.updateModal.find('input[name="cover_photo_id"]').val() || 0;
                 if (cover_id && cover_id != '0') {
                     coverInfo.photo_id = cover_id;
-                } else {
+                } else if (videoInfo.voice_message == '1') {
+                    coverInfo.photo_id = 0;
+                } else if (!cover_id || cover_id == '0') {
                     coverInfo.photo_id = 0;
                     toastr.error('你既未选择新封面文件，又未指定已上传的封面ID呢');
                     return;
@@ -365,6 +385,13 @@
             if (videoInfo.source_type == 2 && !videoInfo.code) {
                 toastr.error('未输入引用代码块', '错误', {"progressBar": false});
                 return;
+            }
+
+            if (videoInfo.voice_message == '1' ) {
+                if (!videoInfo.name) {
+                    videoInfo.name = '语音消息_' + common_utils.formatDate(new Date(), 'yyyyMMddhhmmss');
+                }
+                videoInfo.live_photo = '1'
             }
 
             $btn.attr('disabled', 'disabled');
@@ -768,7 +795,7 @@
                         }
                     });
                     // cover
-                    if (photoData.photo_id) {
+                    if (photoData.photo_id || (videoData.voice_message == '1' && !coverFile)) {
                         postData.append('cover.photo_id', photoData.photo_id);
                     } else {
                         postData.append('coverFile', coverFile);
@@ -856,7 +883,7 @@
                         }
                     });
                     // cover
-                    if (photoData.photo_id) {
+                    if (photoData.photo_id|| (videoData.voice_message == '1' && !coverFile)) {
                         postData.append('cover.photo_id', photoData.photo_id);
                     } else {
                         postData.append('coverFile', coverFile);
@@ -1011,6 +1038,8 @@
                 }
             }
             album_select_dom.html(options_str).val(selectValue);
+            pointer.uploadModal.find('.form-group input[name="video_live_photo"][value="0"]').prop('checked', true);
+            pointer.uploadModal.find('.form-group input[name="video_voice_message"][value="0"]').prop('checked', true);
             pointer.uploadModal.find('select[name="video_permission"]').val(pointer.remember_video_permission);
             pointer.uploadModal.find('button[name="uploadVideo_trigger"]').removeAttr('disabled');
             pointer.uploadModal.modal('show');
@@ -1070,6 +1099,7 @@
             pointer.updateModal.find('.form-group span[name="video_upload_time"]').html(video.upload_time);
             pointer.updateModal.find('.form-group input[name="video_refer"]').val(video.refer);
             pointer.updateModal.find('.form-group input[name="video_live_photo"][value="' + (video.live_photo || 0) + '"]').prop('checked', true);
+            pointer.updateModal.find('.form-group input[name="video_voice_message"][value="' + (video.voice_message || 0) + '"]').prop('checked', true);
             pointer.updateModal.find('.form-group select[name="cover_album_id"]').closest('.form-group').hide(0);
             pointer.updateModal
                 .find('.form-group input[name="cover_file"]').css('display', 'none')

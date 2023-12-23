@@ -257,6 +257,17 @@
             }
         }
 
+        .voice-message-wrapper .plyr--audio {
+            padding: 8px;
+        }
+
+        .voice-message-wrapper .plyr--audio .plyr__controls{
+            border-radius: 5px;
+            /*  border-radius: 10px;
+            background: linear-gradient(to left top, #e0f6ffa6, #f5fcff) fixed;
+            border: 1px solid #e7eaec8a;*/
+        }
+
     </style>
 
     <!-- 修复某些移动端浏览器设置UA为PC，页面仍显示手机版的问题 -->

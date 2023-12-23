@@ -57,6 +57,11 @@ public class Video implements Serializable {
     private Integer live_photo;
 
     /**
+     * 是否 语音消息 ，0/1
+     */
+    private Integer voice_message;
+
+    /**
      * 视频源的类型：
      * 0：本地源
      * 1：引用链接
@@ -219,6 +224,14 @@ public class Video implements Serializable {
 
     public void setLive_photo(Integer live_photo) {
         this.live_photo = live_photo;
+    }
+
+    public Integer getVoice_message() {
+        return voice_message;
+    }
+
+    public void setVoice_message(Integer voice_message) {
+        this.voice_message = voice_message;
     }
 
     public Integer getSource_type() {

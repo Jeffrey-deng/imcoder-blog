@@ -969,7 +969,7 @@
                 });
             }
             // 构建Plyr-player
-            if (!isAudio) {  // 视频
+            if (!isAudio && video.voice_message !== 1) {  // 视频
                 let $video_player = $('#site-player');
                 // calcVideoPix($video_player);  // 发现并不需要计算，因为我在外面计算好了，100vh, 100vw即可
                 $video_player.attr('poster', video.cover.path);
@@ -1008,7 +1008,7 @@
                 // $(window).resize(function () {
                 //     calcVideoPix($('#site-player'));
                 // });
-            } else {    // 音频
+            } else if (video.voice_message !== 1 || parseInt(video.cover.photo_id)) {    // 音频
                 $playerWrapper.html('<div class="audio-wrapper">' +
                     '<div class="audio-cover" style="background-image: url(' + (video.cover.path) + ');"></div>' +
                     '<button type="button" class="audio-play-btn">' +
@@ -1034,6 +1034,37 @@
                         "download": generateVideoSignatureUrl(video.video_id, 10800000, false)
                     }
                 });
+            } else {
+                $playerWrapper.html('<div class="voice-message-wrapper"><audio class="voice-message-player" id="site-player"></audio></div>');
+                let audio_controls = ["play-large", "play", "progress", "current-time", "duration", "volume", "captions", "settings", "pip", "airplay"];
+                if (!video.setting.disable_download || $('body').attr('data-is-special-man') == 'true') {
+                    audio_controls.push('download');
+                }
+                player = currentPlayer = new Plyr($('#site-player'), {
+                    title: video.name,
+                    iconUrl: config.path_params.staticPath + "lib/plyr/plyr.svg",
+                    blankVideo: config.path_params.staticPath + "lib/plyr/blank.mp4",
+                    disableContextMenu: true,
+                    controls: audio_controls,
+                    // settings: ['captions', 'quality', 'speed', 'loop'],
+                    tooltips: {"controls": true, "seek": true},
+                    invertTime: false,
+                    captions: {"active": videoHasSubtitle, "language": defaultTrackLang, "update": false},
+                    i18n: getPlayerI18n(),
+                    urls: {
+                        "download": generateVideoSignatureUrl(video.video_id, 10800000, false)
+                    }
+                });
+
+                // $('html')[0].style.backgroundColor = '#f8f8f8'
+                $('html')[0].style.background = 'linear-gradient(to left top,#f3ca97,#fff6f5)';
+                $('html')[0].style.backgroundAttachment = 'fixed';
+
+                var $video_iframe_in_top = window.frameElement ? $(window.frameElement) : null;
+                if ($video_iframe_in_top) {
+                    $video_iframe_in_top[0].style.height = '70px'
+                }
+
             }
             // 根据设置和url初始化一些参数
             player.enable_loop = video.setting.enable_loop;
@@ -1049,7 +1080,13 @@
                 player.rotate = (parseInt(initParams['rotate']) + 360) % 360;
             }
             initIframeSettingInParentPage(player, video);
-            bindVideoControlEvent($playerWrapper, player, video);
+            if (video.voice_message !== 1) {
+                bindVideoControlEvent($playerWrapper, player, video);
+            } else {
+                player.on('ready', function (event) {
+                    $(`<source src="${video.path}">`).prependTo(player.media);
+                });
+            }
         } else {    // 类型为嵌入
             config.isEmbed = true;
             $playerWrapper.html(video.code);

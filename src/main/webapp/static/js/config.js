@@ -131,7 +131,7 @@
                         require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar", "sideCol", "contact_with", "user_home"]);
                         break;
                     case "user_center":
-                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "birthday", "cityselect", "globals", "common_utils", "login_handle", "toolbar", "user_center"]);
+                        require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "birthday", "cityselect", "globals", "common_utils", "Plyr", "login_handle", "toolbar", "user_center"]);
                         break;
                     case "user_history":
                         require(["jquery", "bootstrap", "domReady", "stickUp", "toastr", "globals", "common_utils", "login_handle", "toolbar", "user_history"]);

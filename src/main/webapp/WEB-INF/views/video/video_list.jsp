@@ -438,6 +438,11 @@
                     <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_live_photo" value="0" checked="checked"> 否 </label>
                     <label class="radio-inline"><input type="radio" name="video_live_photo" value="1"> 是 </label>
                 </div>
+                <div class="form-group inline-group" style="padding-top: 7px;">
+                    <label class="control-label" title="是否是语音消息" style="padding-right: 9px;">语音消息：</label>
+                    <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_voice_message" value="0" checked="checked"> 否 </label>
+                    <label class="radio-inline"><input type="radio" name="video_voice_message" value="1"> 是 </label>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary" name="uploadVideo_trigger">插入视频</button>
@@ -552,6 +557,11 @@
                     <label class="control-label" title="是否作为LivePhoto播放">LivePhoto：</label>
                     <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_live_photo" value="0" checked="checked"> 否 </label>
                     <label class="radio-inline"><input type="radio" name="video_live_photo" value="1"> 是 </label>
+                </div>
+                <div class="form-group inline-group" style="padding-top: 7px;">
+                    <label class="control-label" title="是否是语音消息" style="padding-right: 9px;">语音消息：</label>
+                    <label class="radio-inline" style="margin-left:10px;"><input type="radio" name="video_voice_message" value="0" checked="checked"> 否 </label>
+                    <label class="radio-inline"><input type="radio" name="video_voice_message" value="1"> 是 </label>
                 </div>
                 <div class="form-group inline-group">
                     <label class="control-label">视频大小：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
