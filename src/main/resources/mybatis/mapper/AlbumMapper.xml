@@ -972,7 +972,7 @@
             <choose>
                 <when test="is_login">
                     <choose>
-                        <when test="is_as_album_query or is_as_user_likes_query or is_as_user_comments_query or is_as_user_history_query">
+                        <when test="is_as_user_likes_query or is_as_user_comments_query or is_as_user_history_query">
                             and (
                             a.uid = #{loginUser.uid}
                             or
@@ -988,6 +988,26 @@
                             follower where follower.fuid = #{loginUser.uid}))
                             or
                             ((p.merge_permission = 8 or p.merge_permission = 9) and a.uid in (select friend.uid from friends friend
+                            where friend.fid = #{loginUser.uid}))
+                            )
+                            )
+                        </when>
+                        <when test="is_as_album_query">
+                            and (
+                            a.uid = #{loginUser.uid}
+                            or
+                            (
+                            (p.merge_permission = 0)
+                            or
+                            (p.merge_permission = 2)
+                            or
+                            ((p.merge_permission = 4) and a.uid in (select following.fuid from user_follow
+                            following where following.uid = #{loginUser.uid}))
+                            or
+                            ((p.merge_permission = 6) and a.uid in (select follower.uid from user_follow
+                            follower where follower.fuid = #{loginUser.uid}))
+                            or
+                            ((p.merge_permission = 8) and a.uid in (select friend.uid from friends friend
                             where friend.fid = #{loginUser.uid}))
                             )
                             )
@@ -1038,7 +1058,7 @@
                 <otherwise>
                     <choose>
                         <when test="is_as_album_query">
-                            and (p.merge_permission = 0 or p.merge_permission = 1)
+                            and (p.merge_permission = 0)
                         </when>
                         <when test="is_as_topic_query">
                             and (t.permission = 0 or t.permission = 1)
